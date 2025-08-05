@@ -84,7 +84,7 @@ EmoParse/
 │
 ├── data/ # CSVs con datos procesados
 ├── errores/ # Registro de errores
-├── logs/ # Logs de ejecución
+├── logs/ # Logs de ejecución (Próximamente)
 ├── modulos/ # Módulos funcionales
 │ ├── init.py
 │ ├── prompts.py
@@ -103,8 +103,8 @@ EmoParse/
 │ ├── identificacion_actores.py
 │ ├── reprocesamiento.py
 │ ├── postprocesamiento.py
-│ ├── diccionario_compatibilidades.py
-│ └── emociones.py
+│ ├── diccionario_compatibilidades.py # (Próximamente)
+│ └── emociones.py # (Próximamente)
 
 ```
 ---
