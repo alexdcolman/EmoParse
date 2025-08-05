@@ -1,0 +1,51 @@
+# Web scraping
+selenium>=4.12.0
+webdriver-manager>=3.8.6
+
+# NLP básico
+spacy>=3.7.2
+spacytextblob
+nltk
+scikit-learn
+pandas
+numpy
+yake
+summa
+
+# Modelado emocional y resumen
+transformers==4.40.0  # compatible con torch>=2.0.0 y evita errores con tokenizer
+sentence-transformers>=2.2.2  # versión estable con tqdm actualizado
+torch>=2.1.0  # más estable con sentence-transformers recientes
+sentencepiece>=0.1.99  # corrige algunos avisos de tokenización
+sacremoses>=0.0.53  # incluye mejoras de compatibilidad
+protobuf>=3.20.3  # evita conflictos de deserialización en modelos HF
+
+# Comunicación con Ollama vía Python
+ollama
+
+# Visualización y depuración
+matplotlib
+seaborn
+rich
+tqdm>=4.66.4  # versión que evita warning de notebook si se usa ipywidgets
+ipywidgets>=8.1.2  # resuelve warning con tqdm.autonotebook
+
+# Exportación y manejo de archivos
+openpyxl
+pyarrow
+
+# Validación y logueo
+jsonschema
+loguru
+
+# Para integración con LangChain y transformers LLM pipelines
+langchain>=0.0.318
+huggingface_hub[hf_xet]>=0.23.0  # compatible con accelerate y transformers recientes
+accelerate>=0.29.0  # mejoras de device management
+langchain_community
+langchain-ollama
+
+# Otros
+charset_normalizer>=3.3.2
+
+
