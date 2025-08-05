@@ -70,8 +70,9 @@ Próximamente se implementarán las funciones específicas del módulo `emocione
 
 ---
 
-## 📁 Estructura del proyecto
+## Estructura del proyecto
 
+```bash
 EmoParse/
 │
 ├── main.ipynb # Notebook principal de ejecución
@@ -105,7 +106,7 @@ EmoParse/
 │ ├── diccionario_compatibilidades.py
 │ └── emociones.py
 
-
+```
 ---
 
 ## Ejecución recomendada
