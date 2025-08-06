@@ -14,7 +14,7 @@ Este sistema busca automatizar el análisis emocional de discursos complejos, re
 
 EmoParse está organizado como una cadena de módulos funcionales. Cada módulo opera de forma autónoma, pero está integrado dentro de una pipeline general documentada y reproducible:
 
-### 1. Recolección de discursos (`webscraping.py`)
+### 1. Recolección de discursos ([`webscraping.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/webscraping.py))
 - Descarga discursos desde sitios web estructurados.
 - Genera una base con metadatos como autor, fecha, medio, etc.
 
