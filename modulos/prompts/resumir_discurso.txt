@@ -1,0 +1,8 @@
+Título del discurso: {titulo}
+Fecha: {fecha}
+
+A continuación tenés los resúmenes parciales de un discurso político extenso.
+Redactá un resumen final fluido y preciso, sin repetir ideas, manteniendo el tono original y resaltando los temas clave del discurso.
+Evitá generalidades vacías o fórmulas genéricas. Escribí en español claro:
+
+{resumenes_parciales}

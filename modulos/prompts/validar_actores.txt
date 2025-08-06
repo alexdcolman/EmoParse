@@ -1,0 +1,14 @@
+Tarea:
+Analizá si el siguiente actor mencionado en una frase representa a un ser humano individual, un grupo humano o una institución conformada por humanos.
+
+Frase:
+"{frase}"
+
+Actor identificado:
+"{actor}"
+
+Ontología de actores válidos:
+{ontologia}
+
+Evaluación:
+¿Este actor corresponde a alguno de los tipos válidos definidos en la ontología? Respondé sólo con "Válido" si cumple con los criterios, o "Excluido" si no lo cumple. No agregues explicaciones.

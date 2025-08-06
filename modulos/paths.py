@@ -1,0 +1,47 @@
+from pathlib import Path
+
+# Base del proyecto
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Carpeta de datos
+DATA_DIR = BASE_DIR / "data"
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+# Archivos CSV
+discursos = DATA_DIR / "A1. discursos.csv"
+discursos_filtrado = DATA_DIR / "A2. discursos_filtrado.csv"
+discursos_preprocesado = DATA_DIR / "A3. discursos_preprocesado.csv"
+discursos_resumen = DATA_DIR / "A4. discursos_resumenes.csv"
+discursos_enunc = DATA_DIR / "A5. discursos_enunciacion.csv"
+
+recortes = DATA_DIR / "B1. recortes.csv"
+recortes_filtrado = DATA_DIR / "B2. recortes_filtrado.csv"
+recortes_preprocesado = DATA_DIR / "B3. recortes_preprocesado.csv"
+recortes_prueba = DATA_DIR / "B3b. recortes_preprocesado_10.csv"
+
+actores_identificados = DATA_DIR / "C1. actores_identificados.csv"
+
+# Carpeta de logs
+LOGS_DIR = BASE_DIR / "logs"
+
+# Listas de códigos
+codigos_eliminados = LOGS_DIR / "codigos_eliminados.txt"
+
+# Carpeta de errores
+ERRORS_DIR = BASE_DIR / "errors"
+ERRORS_DIR.mkdir(parents=True, exist_ok=True)
+
+# Listas de errores
+errores_identificacion_actores = ERRORS_DIR / "errores_identificar_actores.jsonl"
+errores_persistentes = ERRORS_DIR / "errores_persistentes.jsonl"
+
+# Carpeta de prompts
+PROMPTS_DIR = BASE_DIR / "modulos" / "prompts"
+PROMPTS_DIR.mkdir(parents=True, exist_ok=True)  # Por si necesitás crearla desde cero
+
+# Prompts específicos
+PROMPT_FRAGMENTO_PATH = PROMPTS_DIR / "resumir_fragmento.txt"
+PROMPT_DISCURSO_PATH = PROMPTS_DIR / "resumir_discurso.txt"
+PROMPT_TIPO_DISCURSO_PATH = PROMPTS_DIR / "identificar_tipo_discurso.txt"
+PROMPT_ENUNCIACION_PATH = PROMPTS_DIR / "identificar_instancias_enunciativas.txt"
+PROMPT_LUGAR_PATH = PROMPTS_DIR / "identificar_lugar.txt"
