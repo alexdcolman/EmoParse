@@ -64,7 +64,7 @@ def generar_recortes(
     return df_recortes
 
 
-# Submódulo 2.2: filtrado por cantidad de frases VOY POR AQUI PARA AFINAR
+# Submódulo 2.2: filtrado por cantidad de frases
     
 import pandas as pd
 
