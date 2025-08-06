@@ -18,16 +18,16 @@ EmoParse está organizado como una cadena de módulos funcionales. Cada módulo 
 - Descarga discursos desde sitios web estructurados.
 - Genera una base con metadatos como autor, fecha, medio, etc.
 
-### 2. Preprocesamiento lingüístico (`preprocesamiento.py`)
+### 2. Preprocesamiento lingüístico ([`preprocesamiento.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/preprocesamiento.py))
 - Limpieza, segmentación y análisis gramatical (POS, lemas, dependencias).
 - Extracción de entidades y sujetos implícitos.
 - Identificación de nominalizaciones y otros recursos.
 
-### 3. Resumen contextual inteligente (`resumen.py`)
+### 3. Resumen contextual inteligente ([`resumen.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/resumen.py))
 - Resumen global y por secciones mediante LLM.
 - Proporciona contexto clave para análisis enunciativo y emocional.
 
-### 4. Identificación de actores discursivos (`identificacion_actores.py`)
+### 4. Identificación de actores discursivos ([`identificacion_actores.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/identificacion_actores.py))
 - Usa LLM para detectar enunciador, enunciatarios y actores representados.
 - Clasifica roles enunciativos por frase.
 - Aplica reglas discursivas (e.g., triple destinación de Verón).
@@ -139,7 +139,7 @@ jupyter lab
 
 ```
 
-**Nota:** actualmente requiere instalación de Ollama y download de LLMs (Mistral, Gemma, etc.).
+**Nota:** actualmente requiere instalación de [Ollama](https://ollama.com/download) y download de LLMs (Mistral, Gemma, etc.).
 
 ## Módulos destacados y funciones clave
 
@@ -162,12 +162,12 @@ jupyter lab
 **Identificación enunciativa (procesar_discursos_llm)**
 
 - Detecta tipo de discurso, enunciador, enunciatarios y lugar.
-- Usa prompts y un diccionario conceptual.
+- Usa [prompts](https://github.com/alexdcolman/EmoParse/blob/main/modulos/prompts.py) y un [diccionario conceptual](https://github.com/alexdcolman/EmoParse/blob/main/modulos/tipos_discurso.py).
 
 **Actores por contexto (identificar_actores_con_contexto)**
 
 - Detecta actores implícitos y explícitos por frase.
-- Cruza contexto global, ontología y heurísticas.
+- Cruza contexto global, [ontología](https://github.com/alexdcolman/EmoParse/blob/main/modulos/ontologia/actores.json) y [heurísticas](https://github.com/alexdcolman/EmoParse/blob/main/modulos/heuristicas/inferencia_actores.txt).
 - Usa LLM (por defecto, Mistral vía Ollama, pero extensible a OpenAI).
 
 ## ¿Qué aporta EmoParse?
@@ -185,7 +185,7 @@ jupyter lab
 
 ## Licencia
 
-Este proyecto se publica bajo la licencia GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007. Podés reutilizar y modificar el código citando adecuadamente.
+Este proyecto se publica bajo la [licencia GNU GENERAL PUBLIC LICENSE Version 3, 29 June 2007](https://github.com/alexdcolman/EmoParse/blob/main/LICENSE). Podés reutilizar y modificar el código citando adecuadamente.
 
 ## Autoría
 
@@ -198,7 +198,7 @@ alexdcolman@gmail.com
 
 ## Agradecimientos
 
-Agradezco especialmente a [Mathi Gatti](https://mathigatti.com/) y a [Martín Schuster](https://www.flacso.org.ar/docentes/schuster-martin-ivan/) por la orientación en el desarrollo del proyecto.
+Agradezco especialmente a [Martín Schuster](https://www.flacso.org.ar/docentes/schuster-martin-ivan/) y a [Mathi Gatti](https://mathigatti.com/) por la orientación en el desarrollo del proyecto.
 
 ## ¿Querés colaborar?
 
