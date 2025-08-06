@@ -180,7 +180,7 @@ jupyter lab
 ## Futuras implementaciones
 
 - Identificación de escenas enunciativas y géneros discursivos.
-- Incorporación de emociones compuestas y dinámicas afectivas.
+- Incorporación de emociones compuestas, dinámicas afectivas y diferentes atributos (ver [Diccionario de variables](https://github.com/alexdcolman/cartografia-afectiva/blob/main/diccionario_variables.md).
 - Generación automática de informes emocionales comparativos.
 
 ## Licencia
