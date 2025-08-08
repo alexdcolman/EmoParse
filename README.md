@@ -12,7 +12,7 @@ Este sistema busca automatizar el análisis emocional de discursos complejos, re
 
 ## Arquitectura modular
 
-EmoParse está organizado como una cadena de módulos funcionales. Cada módulo opera de forma autónoma, pero está integrado dentro de una pipeline general documentada y reproducible:
+EmoParse está organizado como una cadena de módulos funcionales. Cada módulo opera de forma autónoma, pero está integrado dentro de una [pipeline general](https://github.com/alexdcolman/EmoParse/blob/main/main.ipynb) documentada y reproducible (aún en fase de prueba de módulos):
 
 ### 1. Recolección de discursos ([`webscraping.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/webscraping.py))
 - Descarga discursos desde sitios web estructurados.
