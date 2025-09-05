@@ -27,7 +27,7 @@ EmoParse está organizado como una cadena de módulos funcionales. Cada módulo 
 - Resumen global y por secciones mediante LLM.
 - Proporciona contexto clave para análisis enunciativo y emocional.
 
-### 4. Identificación de metadatos () y enunciación ()
+### 4. Identificación de metadatos ([`metadatos.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/metadatos.py)) y enunciación ([`enunciacion.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/enunciacion.py))
 - Módulos que identifican tipo de discurso, lugar, enunciador y enunciatarios usando LLMs y diccionarios conceptuales.
 
 ### 5. Identificación de actores discursivos ([`identificacion_actores.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/identificacion_actores.py))
@@ -67,7 +67,7 @@ Actualmente se encuentran optimizadas las funciones de:
 - Identificación de actores y tipos de discurso.
 - Posprocesamiento y validación de resultados.
 
-Próximamente se implementarán las funciones específicas del módulo `emociones.py` para detección y caracterización completa.
+Próximamente se implementarán las funciones específicas de los módulos `deteccion_emociones.py` y `caracterizacion_emociones.py` para detección y caracterización completa.
 
 ---
 
