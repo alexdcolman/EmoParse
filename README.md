@@ -6,7 +6,7 @@ EmoParse es una arquitectura automatizada que integra herramientas de procesamie
 
 ## Propósito
 
-Este sistema busca automatizar el análisis emocional de discursos complejos, respetando las especificidades del lenguaje, el contexto y los modos en que se inscriben las emociones. Su modularidad permite adaptarlo a diferentes tipos de texto y expandirlo progresivamente. Pretende ser un aporte metodológico para investigaciones en ciencias sociales, análisis del discurso, estudios emocionales y lingüística computacional.
+Este sistema busca automatizar el análisis emocional de discursos complejos, respetando las especificidades del lenguaje, el contexto y los modos en que se inscriben las emociones. Su modularidad permite adaptarlo a diferentes tipos de texto y expandirlo progresivamente. Pretende ser un aporte metodológico para investigaciones en análisis del discurso, ciencias sociales, estudios emocionales y lingüística computacional.
 
 ---
 
@@ -27,33 +27,34 @@ EmoParse está organizado como una cadena de módulos funcionales. Cada módulo 
 - Resumen global y por secciones mediante LLM.
 - Proporciona contexto clave para análisis enunciativo y emocional.
 
-### 4. Identificación de actores discursivos ([`identificacion_actores.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/identificacion_actores.py))
-- Usa LLM para detectar enunciador, enunciatarios y actores representados.
-- Clasifica roles enunciativos por frase.
-- Aplica reglas discursivas (e.g., triple destinación de Verón).
+### 4. Identificación de metadatos () y enunciación ()
+- Módulos que identifican tipo de discurso, lugar, enunciador y enunciatarios usando LLMs y diccionarios conceptuales.
 
-### 5. Detección de emociones (`emociones.py`, en desarrollo)
+### 5. Identificación de actores discursivos ([`identificacion_actores.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/identificacion_actores.py))
+- Usa LLM para detectar actores explícitos o inferibles por frase.
+
+### 6. Detección de emociones (`deteccion_emociones.py`, en desarrollo)
 - Clasifica emociones **dichas, mostradas, sostenidas e inducidas**.
 - Asocia emociones a actores específicos.
 - Identifica efectos emocionales sobre el destinatario.
 
-### 6. Caracterización emocional (`emociones.py`)
+### 7. Caracterización emocional (`caracterizacion_emociones.py`, en desarrollo)
 - Atributos (MVP): foria (tonalidad), dominancia, intensidad, fuente.
 - Expandible a otros atributos.
 - Categorización computacional basada en inferencias semióticas.
 
-### 7. Verificación y control de coherencia (`postprocesamiento.py`)
+### 8. Verificación y control de coherencia (`verificacion.py`, en desarrollo)
 - Cruza resultados con diccionarios de compatibilidades.
 - Genera alertas ante contradicciones semánticas o estructurales.
 
-### 8. Historial de decisiones
+### 9. Historial de decisiones
 - Registro transparente del camino de clasificación por frase.
 
-### 9. Exportación y análisis
+### 10. Exportación y análisis
 - Base final con una línea por emoción, frase y actor.
 - Estructura lista para análisis cuantitativo o visualización.
 
-### 10. Visualización temporal del discurso
+### 11. Visualización temporal del discurso
 - Curvas emocionales frase a frase.
 - Seguimiento de la evolución afectiva del enunciador, destinatario y actores.
 
@@ -76,70 +77,105 @@ Próximamente se implementarán las funciones específicas del módulo `emocione
 EmoParse/
 │
 ├── main.ipynb # Notebook principal de ejecución
-├── inicio.bat # Inicia entorno desde CMD o Anaconda Prompt
+├── ini.bat # Inicia entorno desde CMD o Anaconda Prompt
 ├── requirements.txt # Librerías necesarias
-├── readme.md # Este archivo
+├── README.md # Este archivo
 ├── arquitectura_modular.md # Detalle de cada módulo
 ├── marco_teorico.md # (Próximamente)
 │
 ├── data/ # CSVs con datos procesados
-├── errores/ # Registro de errores
-├── logs/ # Logs de ejecución (Próximamente)
+├── errors/ # Registro de errores
+├── logs/ # Logs de ejecución
 ├── modulos/ # Módulos funcionales
 │ ├── init.py
-│ ├── prompts.py
-│ ├── ontologia.py
-│ ├── diccionario_conceptual.py
-│ ├── heuristicas.py
-│ ├── paths.py
-│ ├── modelo.py
-│ ├── recursos.py
-│ ├── webscraping.py
-│ ├── preprocesamiento.py
-│ ├── resumen.py
-│ ├── extraer_fragmentos.py
-│ ├── metadatos.py
-│ ├── enunciacion.py
-│ ├── identificacion_actores.py
-│ ├── reprocesamiento.py
-│ ├── postprocesamiento.py
 │ ├── diccionario_compatibilidades.py # (Próximamente)
-│ └── emociones.py # (Próximamente)
+│ ├── diccionario_conceptual.py # (Próximamente)
+│ ├── driver_utils.py
+│ ├── emociones.py # (Próximamente)
+│ ├── extraccion_fragmentos.py
+│ ├── identificacion_actores
+│ ├── metadatos
+│ ├── modelo
+│ ├── parsers
+│ ├── paths
+│ ├── postprocesamiento_actores
+│ ├── preprocesamiento
+│ ├── prompts
+│ ├── recursos
+│ ├── reprocesamiento
+│ └── resumen
+│ └── schemas
+│ └── scraping_utils
+│ └── tipos_discurso
+│ └── utils_io
+│ └── webscraping
 
 ```
 ---
 
 ## Ejecución recomendada
 
+### Automática
+
+1. **Crear entorno con Python 3.10**
 ```bash
-# 1. Crear entorno con Python 3.10
 conda create -n ag_env2 python=3.10
+```
+2. **Correr el archivo `ini.bat`**
+```bash
+ini
+```
 
-# 2. Activar entorno
+### Manual
+
+1. **Crear entorno con Python 3.10**  
+```bash
+conda create -n ag_env2 python=3.10
+```
+2. **Activar el entorno**
+```bash
 conda activate ag_env2
-
-# 3. Instalar dependencias
+```
+3. **Instalar pip**
+```bash
+conda install pip
+```
+4. **Instalar PyTorch con CUDA (cu118) desde el índice oficial de PyTorc**
+```bash
+pip install torch==2.1.0+cu118 torchvision==0.16.0+cu118 torchaudio==2.1.0+cu118 -f https://download.pytorch.org/whl/torch_stable.html
+```
+5. **Instalar todo desde requirements.txt con pip**
+```bash
 pip install -r requirements.txt
-
-# 4. Descargar recursos adicionales
+```
+6. **Instalar stanza**
+```bash
+pip install stanza
+```
+7. **Descargar recursos adicionales necesarios**
+```bash
 python -m nltk.downloader punkt
 python -m nltk.downloader averaged_perceptron_tagger
 python -m nltk.downloader stopwords
 python -m nltk.downloader wordnet
 python -m nltk.downloader omw-1.4
+```
+8. **Descargar modelos de procesamiento de lenguaje**
+```bash
 python -m spacy download es_core_news_sm
 python -m spacy download es_core_news_md
 python -m stanza.download es
-
-# 5. (Opcional) Instalar JupyterLab
+```
+9. **(Opcional) Instalar jupyterlab para trabajar en notebooks**
+```bash
 conda install -y jupyterlab
-
-# 6. Lanzar JupyterLab
+```
+10. **Lanzar Jupyter Lab**
+```bash
 jupyter lab
-
 ```
 
-**Nota:** actualmente requiere instalación de [Ollama](https://ollama.com/download) y download de LLMs (Mistral, Gemma, etc.).
+**Nota:** actualmente requiere instalación de [Ollama](https://ollama.com/download) y download de LLMs (GPT-OSS:20b, Mistral, etc.).
 
 ## Módulos destacados y funciones clave
 
@@ -159,16 +195,20 @@ jupyter lab
 - Segmenta discursos en fragmentos temáticos.
 - Resume con LLM fragmentos y luego redacción global.
 
-**Identificación enunciativa (procesar_discursos_llm)**
+**Metadatos (procesar_metadatos_llm)** y **Enunciación (procesar_enunciacion_llm)**
 
-- Detecta tipo de discurso, enunciador, enunciatarios y lugar.
-- Usa [prompts](https://github.com/alexdcolman/EmoParse/blob/main/modulos/prompts.py) y un [diccionario conceptual](https://github.com/alexdcolman/EmoParse/blob/main/modulos/tipos_discurso.py).
+- Detectan tipo de discurso, enunciador, enunciatarios y lugar.
+- Usan [prompts](https://github.com/alexdcolman/EmoParse/blob/main/modulos/prompts.py) y un [diccionario conceptual](https://github.com/alexdcolman/EmoParse/blob/main/modulos/tipos_discurso.py).
 
 **Actores por contexto (identificar_actores_con_contexto)**
 
 - Detecta actores implícitos y explícitos por frase.
 - Cruza contexto global, [ontología](https://github.com/alexdcolman/EmoParse/blob/main/modulos/ontologia/actores.json) y [heurísticas](https://github.com/alexdcolman/EmoParse/blob/main/modulos/heuristicas/inferencia_actores.txt).
 - Usa LLM (por defecto, Mistral vía Ollama, pero extensible a OpenAI).
+
+**Reprocesamiento (reprocesar_errores_metadatos, reprocesar_enunciacion, reprocesar_errores_identificacion)** y **Postprocesamiento (propagar_actores_por_pronombres, validacion_actores)**
+
+- Funciones de reprocesamiento y validación que aseguran consistencia y completitud de los resultados.
 
 ## ¿Qué aporta EmoParse?
 
@@ -182,6 +222,13 @@ jupyter lab
 - Identificación de escenas enunciativas y géneros discursivos.
 - Incorporación de emociones compuestas, dinámicas afectivas y diferentes atributos (ver [Diccionario de variables](https://github.com/alexdcolman/cartografia-afectiva/blob/main/diccionario_variables.md)).
 - Generación automática de informes emocionales comparativos.
+- Puede ampliarse a otros corpus, análisis de emociones y estudios comparativos de dinámicas discursivas.
+
+## Limitaciones
+
+- Dependencia de calidad de prompts y cobertura del modelo.  
+- Requiere revisión manual para corroborar resultados.  
+- Consumo elevado de recursos y tiempos de cómputo intensos para identificación de actores por frase.  
 
 ## Licencia
 
