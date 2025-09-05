@@ -88,10 +88,11 @@ EmoParse/
 ├── logs/ # Logs de ejecución
 ├── modulos/ # Módulos funcionales
 │ ├── init.py
+│ ├── caracterizacion_emociones.py # (Próximamente)
+│ ├── deteccion_emociones.py # (Próximamente)
 │ ├── diccionario_compatibilidades.py # (Próximamente)
 │ ├── diccionario_conceptual.py # (Próximamente)
 │ ├── driver_utils.py
-│ ├── emociones.py # (Próximamente)
 │ ├── extraccion_fragmentos.py
 │ ├── identificacion_actores
 │ ├── metadatos
