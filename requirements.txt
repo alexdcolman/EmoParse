@@ -8,7 +8,7 @@ spacytextblob
 nltk
 scikit-learn
 pandas
-numpy
+numpy<2
 yake
 summa
 
@@ -47,5 +47,6 @@ langchain-ollama
 
 # Otros
 charset_normalizer>=3.3.2
+pydantic>=2.8.2
 
 

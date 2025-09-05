@@ -2,7 +2,7 @@ diccionario_tipos_discurso = {
     "discurso político": {
         "descripción": "Discurso producido por actores del campo político, como representantes estatales, partidos, o movimientos. Tiene siempre tres tipos de destinatarios simultáneos",
         "tipos_de_destinatarios": {
-            "prodestinatario": "Grupo que comparte los valores y las creencias del enunciador. Generalmente, su propio partido y su propia base electoral. Nunca se corresponde con una población",
+            "prodestinatario": "Grupo que comparte los valores y las creencias del enunciador. Generalmente, su propio partido y su propia base electoral. Nunca se corresponde con una población ni con una una sociedad.",
             "paradestinatario": "Audiencia neutra o indecisa, a la que el discurso intenta atraer y persuadir.",
             "contradestinatario": "Oposición o adversarios explícitos, mencionados para contraposición o polarización."
         }

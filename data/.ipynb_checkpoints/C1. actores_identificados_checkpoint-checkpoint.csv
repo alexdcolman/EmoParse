@@ -1,0 +1,190 @@
+﻿actor,tipo,modo,justificacion,frase_idx,recorte_id,codigo
+Bolsa de Comercio de Rosario,institucional,explícito,Mencionado explícitamente como destinatario de saludo y felicitación,0,DISCURSO_001_FR_001,DISCURSO_001
+economistas,colectivo,explícito,"La frase menciona explícitamente ""algunos economistas"" como sujeto que cree.",5,DISCURSO_001_FR_006,DISCURSO_001
+uno,humano_individual,explícito,pronombre personal que indica un actor genérico,7,DISCURSO_001_FR_008,DISCURSO_001
+panadero,humano_individual,explícito,"referido explícitamente en la frase ""un panadero""",10,DISCURSO_001_FR_011,DISCURSO_001
+alguien,humano_individual,inferido,"Pronombre 'alguien' se refiere a una persona no nombrada, por lo tanto se infiere como actor.",11,DISCURSO_001_FR_012,DISCURSO_001
+el hombre,humano_individual,explícito,El sujeto explícito 'el hombre' aparece en la frase.,14,DISCURSO_001_FR_015,DISCURSO_001
+el hombre,humano_individual,inferido,El sujeto de la acción 'hizo' se infiere del contexto previo donde se menciona 'el hombre' como sujeto de la oración anterior.,15,DISCURSO_001_FR_016,DISCURSO_001
+el ser humano,humano_individual,inferido,El sujeto de la acción 'hizo' también se refiere a 'el ser humano' mencionado en la oración posterior.,15,DISCURSO_001_FR_016,DISCURSO_001
+el hombre,humano_individual,inferido,"El sujeto de la oración es elíptico; el contexto previo menciona 'el hombre', por lo que se infiere que él es quien buscó la forma de realizar los intercambios.",16,DISCURSO_001_FR_017,DISCURSO_001
+el ser humano,colectivo,explícito,explicitly mentioned in the phrase,17,DISCURSO_001_FR_018,DISCURSO_001
+ser humano,colectivo,inferido,"inferred from context: the question ""¿por qué?"" refers to the preceding statement about the first money used by the ser humano",18,DISCURSO_001_FR_019,DISCURSO_001
+el hombre nómade,humano_individual,explícito,explicitly mentioned as the subject of the sentence,19,DISCURSO_001_FR_020,DISCURSO_001
+el hombre,humano_individual,explícito,"El sujeto de la oración ""empezó a usar"".",20,DISCURSO_001_FR_021,DISCURSO_001
+el hombre,humano_individual,inferido,El sujeto implícito del verbo 'compraba' se infiere del contexto previo que menciona 'el hombre' como el agente que utiliza el trigo como medio de intercambio.,21,DISCURSO_001_FR_022,DISCURSO_001
+accionistas,colectivo,inferido,El pronombre indirecto 'les' y la referencia a 'tenían una acción' indican que el grupo que posee la acción es el que experimenta la caída de 20.,26,DISCURSO_001_FR_027,DISCURSO_001
+personas de edad similar a la del hablante,colectivo,inferido,"El pronombre 'aquellos' se refiere a un grupo de personas con edad similar a la del hablante, inferido por la frase 'aquellos que tienen una edad como la mía o un poco más'.",28,DISCURSO_001_FR_029,DISCURSO_001
+consumidores,colectivo,inferido,"El consumo es realizado por consumidores, que son los responsables de la demanda de dinero; la frase indica que la demanda de dinero depende del consumo, implicando que los consumidores son los actores que generan dicha demanda.",34,DISCURSO_001_FR_035,DISCURSO_001
+empresas de ocio,colectivo,inferido,"La frase contiene la nominalización 'la venta de ocio', cuyo agente implícito se infiere como las empresas que realizan dicha venta.",45,DISCURSO_001_FR_046,DISCURSO_001
+empresas de la economía,colectivo,explícito,El texto menciona explícitamente 'empresas de la economía' como destinatario de la participación y fuente de beneficios.,45,DISCURSO_001_FR_046,DISCURSO_001
+empresa de la economía,colectivo,explícito,"El texto menciona explícitamente 'la empresa de la economía' en la expresión 'los beneficios de la empresa de la economía', indicando su participación en la dinámica.",45,DISCURSO_001_FR_046,DISCURSO_001
+economista,humano_individual,explícito,El sustantivo 'economista' aparece directamente en la frase objetivo.,50,DISCURSO_001_FR_051,DISCURSO_001
+sector privado,colectivo,explícito,explicitly mentioned as the entity that captures benefits,63,DISCURSO_001_FR_064,DISCURSO_001
+los que asumen una economía de propiedad privada,colectivo,inferido,"subject of the conditional clause 'si asumen', inferred as actors who adopt a private property economy",63,DISCURSO_001_FR_064,DISCURSO_001
+Robert Lucas Jr.,humano_individual,explícito,Nombre propio mencionado directamente en la frase objetivo.,64,DISCURSO_001_FR_065,DISCURSO_001
+los teóricos cuantitativistas,colectivo,explícito,"El sujeto de la oración es explícitamente mencionado como ""los teóricos cuantitativistas"".",65,DISCURSO_001_FR_066,DISCURSO_001
+nosotros,colectivo,explícito,Pronombre personal que indica el grupo del hablante.,74,DISCURSO_001_FR_075,DISCURSO_001
+el gobierno,institucional,explícito,Noun phrase indicating the institution that the speaker arrived at.,74,DISCURSO_001_FR_075,DISCURSO_001
+Toto Caputo,humano_individual,explícito,"explicitly mentioned as ""el señor toto caputo"" en la frase objetivo",76,DISCURSO_001_FR_077,DISCURSO_001
+Gobierno,institucional,inferido,"El verbo 'lo logramos' indica que el sujeto que realizó la acción es el grupo que incluye al presidente, es decir, el gobierno o la administración.",77,DISCURSO_001_FR_078,DISCURSO_001
+nosotros,colectivo,explícito,El pronombre 'nosotros' aparece directamente en la frase y se refiere al grupo que incluye al hablante y a otros miembros del gobierno.,78,DISCURSO_001_FR_079,DISCURSO_001
+el gobierno,institucional,inferido,"El verbo 'hicimos' en primera persona plural indica que la acción fue realizada por el grupo del gobierno, no por el enunciador individual.",79,DISCURSO_001_FR_080,DISCURSO_001
+Gobierno,institucional,inferido,"El verbo 'empezamos' indica que el sujeto es un colectivo que incluye al hablante, pero no se nombra explícitamente; se infiere que se refiere al gobierno o administración que lleva a cabo la acción.",81,DISCURSO_001_FR_082,DISCURSO_001
+los críticos,colectivo,inferido,El verbo 'dijeron' indica un sujeto plural no nombrado; el contexto sugiere que se refiere a los críticos/opositores de la reforma.,83,DISCURSO_001_FR_084,DISCURSO_001
+los economistas,colectivo,inferido,Sujeto tácito: 'decían' se refiere a un grupo de personas que afirmaron que no podíamos romper los umbrales de inflación; el contexto sugiere que son economistas o analistas.,84,DISCURSO_001_FR_085,DISCURSO_001
+los políticos,colectivo,explícito,mención explícita en la frase,86,DISCURSO_001_FR_087,DISCURSO_001
+los políticos,colectivo,inferido,"El pronombre 'les' en la frase se refiere a 'los políticos', según el contexto previo 'por algo les gusta tanto a los políticos'.",88,DISCURSO_001_FR_089,DISCURSO_001
+otro salame,humano_individual,explícito,El término 'otro salame' aparece explícitamente en la frase y se refiere a la persona que pagará en dos años.,88,DISCURSO_001_FR_089,DISCURSO_001
+nosotros,colectivo,explícito,"Pronombre explícito 'nosotros' presente en la frase objetivo, indicando un grupo de personas que actúan conjuntamente.",89,DISCURSO_001_FR_090,DISCURSO_001
+emae,institucional,explícito,referido explícitamente como 'por el emae' en la frase objetivo,91,DISCURSO_001_FR_092,DISCURSO_001
+los economistas,colectivo,inferido,"El sujeto de 'dicen' está elíptico; se infiere que son los economistas que emiten las afirmaciones sobre la actividad y el consumo, según el contexto del discurso económico.",94,DISCURSO_001_FR_095,DISCURSO_001
+los crueles liberales,colectivo,explícito,El grupo de personas 'los crueles liberales' aparece explícitamente en la oración como sujeto de la acción de sacar a la pobreza.,96,DISCURSO_001_FR_097,DISCURSO_001
+12 millones de personas,colectivo,explícito,La frase menciona explícitamente '12 millones de personas' como beneficiarios de la acción.,96,DISCURSO_001_FR_097,DISCURSO_001
+6 millones de personas,colectivo,explícito,La oración incluye explícitamente '6 millones de personas' como beneficiarios.,96,DISCURSO_001_FR_097,DISCURSO_001
+2 millones y medio de chicos,colectivo,explícito,La frase menciona explícitamente '2 millones y medio de chicos' como beneficiarios.,96,DISCURSO_001_FR_097,DISCURSO_001
+Banco Central de la República Argentina,institucional,inferido,"El verbo 'emitimos' indica acción de emisión de dinero, atribuible al Banco Central, que es la institución responsable de la emisión de moneda en Argentina.",102,DISCURSO_001_FR_103,DISCURSO_001
+los mayoristas,colectivo,explícito,mencionado explícitamente en la frase objetivo,103,DISCURSO_001_FR_104,DISCURSO_001
+los minoristas,colectivo,explícito,mencionado explícitamente en la frase objetivo,103,DISCURSO_001_FR_104,DISCURSO_001
+aquellos,colectivo,explícito,"El pronombre demostrativo ""aquellos"" se refiere a un grupo de personas que están pidiendo devaluación, actuando como sujeto de la oración ""están pidiendo"".",105,DISCURSO_001_FR_106,DISCURSO_001
+los pobres,colectivo,explícito,"El grupo ""los pobres"" aparece como objeto directo de la acción de ""aumentar"", indicando que son destinatarios de la petición.",105,DISCURSO_001_FR_106,DISCURSO_001
+los indigentes,colectivo,explícito,"El grupo ""los indigentes"" también aparece como objeto directo de la acción de ""aumentar"", indicando que son destinatarios de la petición.",105,DISCURSO_001_FR_106,DISCURSO_001
+los economistas,colectivo,explícito,explicitly mentioned in the phrase,107,DISCURSO_001_FR_108,DISCURSO_001
+uno de los economistas,humano_individual,inferido,inferred from the phrase 'uno de los' referring to 'los economistas',107,DISCURSO_001_FR_108,DISCURSO_001
+yo,humano_individual,explícito,El pronombre personal 'yo' aparece explícitamente como sujeto de la oración.,111,DISCURSO_001_FR_112,DISCURSO_001
+un gobierno,institucional,explícito,"referido explícitamente en la frase: ""la forma en la cual un gobierno hace eso""",113,DISCURSO_001_FR_114,DISCURSO_001
+los individuos,colectivo,explícito,"referido explícitamente en la frase: ""a los individuos""",113,DISCURSO_001_FR_114,DISCURSO_001
+el individuo,humano_individual,explícito,referido explícitamente como objeto de la acción 'le tiran la restricción presupuestaria al individuo',114,DISCURSO_001_FR_115,DISCURSO_001
+Gobierno,institucional,inferido,"La frase menciona 'en el primer mes de gobierno', indicando que 'nosotros' se refiere al gobierno que experimentó la situación.",120,DISCURSO_001_FR_121,DISCURSO_001
+Mayoristas,colectivo,explícito,"La frase menciona explícitamente 'los mayoristas', identificando a este colectivo.",120,DISCURSO_001_FR_121,DISCURSO_001
+Gobierno,institucional,inferido,"El discurso trata de controles de capitales, que son implementados por el gobierno; la frase indica que la fuente de sobrante monetario deriva de dichos controles, implicando que el gobierno es el actor que los impone.",122,DISCURSO_001_FR_123,DISCURSO_001
+gobierno anterior,institucional,explícito,El término 'gobierno anterior' aparece explícitamente en la frase,124,DISCURSO_001_FR_125,DISCURSO_001
+el gobierno anterior,institucional,inferido,"El sujeto tácito 'eso' en la frase ""generaba presión en los precios"" se refiere al gobierno anterior mencionado en la oración previa, que emitía a mansalva y generaba presión en los precios.",125,DISCURSO_001_FR_126,DISCURSO_001
+el gobierno anterior,institucional,explícito,mencionado explícitamente en la frase,126,DISCURSO_001_FR_127,DISCURSO_001
+gobierno anterior,institucional,explícito,La frase contiene la expresión 'el gobierno anterior'.,128,DISCURSO_001_FR_129,DISCURSO_001
+Gobierno anterior,institucional,inferido,El sujeto tácito del verbo 'ponía' se infiere como el gobierno anterior a partir del contexto '¿qué hacía el gobierno anterior?',129,DISCURSO_001_FR_130,DISCURSO_001
+Banco Central,institucional,inferido,La alta tasa de interés es un instrumento de política monetaria que típicamente es fijado por el Banco Central.,131,DISCURSO_001_FR_132,DISCURSO_001
+el gobierno anterior,institucional,explícito,"Se menciona directamente ""el gobierno anterior"" como quien compensaba sumando empleados públicos y generando déficit fiscal.",132,DISCURSO_001_FR_133,DISCURSO_001
+empleados públicos,colectivo,explícito,"Se menciona directamente ""empleados públicos"" como los que se suman por el gobierno anterior.",132,DISCURSO_001_FR_133,DISCURSO_001
+trabajadores formales,colectivo,explícito,"mencionado explícitamente en la frase ""un tercio de los trabajadores formales""",133,DISCURSO_001_FR_134,DISCURSO_001
+el gobierno anterior,institucional,inferido,"El verbo 'dejaron' en la frase 'ese era el sistema que dejaron' indica un sujeto que abandonó el sistema; el contexto previo menciona 'el gobierno anterior' como actor que compensaba con empleados públicos, lo que sugiere que fue el responsable de dejar el sistema.",134,DISCURSO_001_FR_135,DISCURSO_001
+el kirchnerismo,institucional,inferido,"El contexto posterior menciona 'todos esos desequilibrios monetarios que había dejado el kirchnerismo', lo que indica que el kirchnerismo es el sujeto que dejó el sistema.",134,DISCURSO_001_FR_135,DISCURSO_001
+Gobierno,institucional,inferido,"El sujeto 'nosotros' que fijó la cantidad de dinero se refiere al gobierno, ya que el enunciador es el presidente y la acción corresponde a la política monetaria del gobierno.",135,DISCURSO_001_FR_136,DISCURSO_001
+Kirchnerismo,colectivo,explícito,El texto menciona explícitamente 'el kirchnerismo' como la fuente de los desequilibrios monetarios.,135,DISCURSO_001_FR_136,DISCURSO_001
+los economistas,colectivo,explícito,referido directamente en la frase como sujeto de 'se den cuenta',136,DISCURSO_001_FR_137,DISCURSO_001
+Dornbusch,humano_individual,inferido,el modelo de overshooting de dornbusch indica que el autor es Dornbusch; la frase 'un paper que escribió allá por 1976' se refiere al autor del modelo,136,DISCURSO_001_FR_137,DISCURSO_001
+el mercado de dinero,colectivo,explícito,sujeto explícito que realiza la acción de ajustar rápido,140,DISCURSO_001_FR_141,DISCURSO_001
+el mercado de bienes,colectivo,explícito,sujeto explícito que realiza la acción de ajustar lento,140,DISCURSO_001_FR_141,DISCURSO_001
+Gobierno,institucional,inferido,"El verbo 'decían' con sujeto omitido sugiere que el sujeto es el gobierno, que es el actor que dijo que no lo íbamos a abrir.",142,DISCURSO_001_FR_143,DISCURSO_001
+Gobierno,institucional,inferido,El verbo 'abrimos' indica una acción realizada por un sujeto plural que no es el enunciador; en el contexto del discurso se refiere a la acción del gobierno.,144,DISCURSO_001_FR_145,DISCURSO_001
+el gobierno,institucional,inferido,"El verbo 'se anunciaron' es una construcción pasiva con 'se', indicando que las bandas fueron anunciadas por una entidad sin especificar. En el contexto del discurso sobre política monetaria y apertura de controles de divisas, la entidad responsable de anunciar bandas de precios es típicamente el gobierno o el banco central. Dado que el enunciador es el presidente y la acción se refiere a una política pública, se infiere que el agente es el gobierno.",145,DISCURSO_001_FR_146,DISCURSO_001
+todos,colectivo,inferido,"La frase 'todos dijeron' presenta a 'todos' como sujeto colectivo que realiza la acción de decir. No se especifica a quiénes pertenecen, pero en el contexto del mercado de divisas y la discusión sobre bandas de precios, se entiende que se refiere a todos los participantes del mercado o a los operadores que reaccionan a la noticia.",145,DISCURSO_001_FR_146,DISCURSO_001
+los que se anunciaron las bandas,colectivo,inferido,"El pronombre 'les' en la frase '¿qué les hubiera dicho la teoría económica?' se refiere a los individuos que anunciaron las bandas y dijeron que se irían al techo, según el contexto previo.",147,DISCURSO_001_FR_148,DISCURSO_001
+los participantes del mercado,colectivo,inferido,"El pronombre reflexivo 'se' indica un sujeto tácito que, en el contexto del mercado de divisas mencionado, se refiere a los participantes del mercado que se moverían a la zona oficial (acá).",148,DISCURSO_001_FR_149,DISCURSO_001
+el ministro Caputo,humano_individual,explícito,explicitly mentioned in the phrase,155,DISCURSO_001_FR_156,DISCURSO_001
+el gobierno,institucional,inferido,"El pronombre 'nosotros' en la frase se refiere al grupo que incluye al enunciador y al ministro Caputo, indicando el gobierno argentino.",156,DISCURSO_001_FR_157,DISCURSO_001
+John Maynard Keynes,humano_individual,explícito,Nombre propio mencionado directamente en la frase objetivo.,158,DISCURSO_001_FR_159,DISCURSO_001
+John Maynard Keynes,humano_individual,explícito,"La frase menciona directamente a ""keynes"", identificándose con el economista John Maynard Keynes.",159,DISCURSO_001_FR_160,DISCURSO_001
+el mercado de trabajo,institucional,explícito,la frase menciona directamente 'el mercado de trabajo' como sujeto que determina el salario,160,DISCURSO_001_FR_161,DISCURSO_001
+mercado de dinero,colectivo,explícito,El término 'mercado de dinero' aparece en la frase y se infiere como sujeto que determina la tasa de interés.,161,DISCURSO_001_FR_162,DISCURSO_001
+keynes,humano_individual,explícito,El nombre 'keynes' aparece explícitamente en la frase objetivo.,163,DISCURSO_001_FR_164,DISCURSO_001
+los políticos,colectivo,explícito,frase 'la teoría general es amada por los políticos',164,DISCURSO_001_FR_165,DISCURSO_001
+los políticos,colectivo,explícito,explicitly mentioned in the phrase 'entre los políticos',165,DISCURSO_001_FR_166,DISCURSO_001
+banco central,institucional,explícito,El término 'banco central' aparece directamente en la frase como parte de la expresión 'un balance del banco central'.,167,DISCURSO_001_FR_168,DISCURSO_001
+Alfonsín,humano_individual,explícito,"El nombre propio 'Alfonsín' se menciona en la frase en la expresión 'la hiper de Alfonsín', identificando al presidente Alfonsín como actor.",167,DISCURSO_001_FR_168,DISCURSO_001
+políticos populistas,colectivo,explícito,explicado en la frase,170,DISCURSO_001_FR_171,DISCURSO_001
+demagogos,colectivo,explícito,explicado en la frase,170,DISCURSO_001_FR_171,DISCURSO_001
+gastadores maníacos,colectivo,explícito,explicado en la frase,170,DISCURSO_001_FR_171,DISCURSO_001
+la gente,colectivo,explícito,explicado en la frase,170,DISCURSO_001_FR_171,DISCURSO_001
+uno,humano_individual,explícito,El pronombre 'uno' aparece explícitamente en la frase 'regularmente uno dice'.,176,DISCURSO_001_FR_177,DISCURSO_001
+empresa,institucional,explícito,"La frase contiene el sustantivo 'una empresa', indicando explícitamente la entidad como actor del caso hipotético.",180,DISCURSO_001_FR_181,DISCURSO_001
+una empresa,institucional,explícito,mencionado explícitamente en la frase,181,DISCURSO_001_FR_182,DISCURSO_001
+uno,humano_individual,explícito,Pronombre 'uno' que funciona como sujeto del verbo 'cree' en la frase.,182,DISCURSO_001_FR_183,DISCURSO_001
+los que creen,colectivo,inferido,El verbo 'hacen' en la pregunta se refiere a los sujetos que creen que los bienes futuros van a ser más caros; se infiere que el sujeto es un colectivo de personas con esa creencia.,182,DISCURSO_001_FR_183,DISCURSO_001
+empresa,institucional,inferido,"El verbo 'van a pasar' tiene sujeto tácito; el contexto previo menciona 'una empresa' como sujeto que puede vender en presente o futuro, indicando que las empresas son las que trasladan la producción.",183,DISCURSO_001_FR_184,DISCURSO_001
+Hogares,colectivo,inferido,El ahorro es típicamente realizado por hogares en el contexto macroeconómico.,185,DISCURSO_001_FR_186,DISCURSO_001
+Empresas,institucional,inferido,La inversión es típicamente realizada por empresas en el contexto macroeconómico.,185,DISCURSO_001_FR_186,DISCURSO_001
+nadie,humano_individual,explícito,"Pronombre indefinido que funciona como sujeto de la oración, representando a cualquier persona.",196,DISCURSO_001_FR_197,DISCURSO_001
+políticos que abrazan las ideas de la libertad y gente razonable,colectivo,explícito,La frase menciona explícitamente a un grupo de políticos que abrazan las ideas de la libertad y gente razonable.,203,DISCURSO_001_FR_204,DISCURSO_001
+políticos orcos (kuka),colectivo,explícito,"La frase menciona explícitamente a los orcos, también llamados kuka, como otro grupo de políticos.",203,DISCURSO_001_FR_204,DISCURSO_001
+diputado kirchnerista,humano_individual,explícito,"El texto menciona explícitamente ""un diputado kirchnerista"".",204,DISCURSO_001_FR_205,DISCURSO_001
+Gobierno,institucional,explícito,referencia explícita a 'este gobierno' en la frase,205,DISCURSO_001_FR_206,DISCURSO_001
+candidato,humano_individual,explícito,"mencionado en la frase ""un candidato en la provincia de buenos aires""",206,DISCURSO_001_FR_207,DISCURSO_001
+marx,humano_individual,explícito,"mencionado en la frase ""está recitando a marx""",206,DISCURSO_001_FR_207,DISCURSO_001
+el socialismo en su versión pura,colectivo,explícito,"Es el sujeto explícito del verbo 'fue' y 'asesinó', actuando como agente de la acción.",207,DISCURSO_001_FR_208,DISCURSO_001
+150 millones de seres humanos,colectivo,explícito,"Es el objeto explícito del verbo 'asesinó', representando a los seres humanos que fueron víctimas de la acción.",207,DISCURSO_001_FR_208,DISCURSO_001
+los sodomitas del capital,colectivo,explícito,"El grupo ""los sodomitas del capital"" es mencionado explícitamente en la frase objetivo.",209,DISCURSO_001_FR_210,DISCURSO_001
+los orcos,colectivo,explícito,explicitamente mencionado en la frase objetivo,212,DISCURSO_001_FR_213,DISCURSO_001
+los kukas,colectivo,explícito,explicitamente mencionado en la frase objetivo,212,DISCURSO_001_FR_213,DISCURSO_001
+el doctor sturzenegger,humano_individual,explícito,mencionado explícitamente en la frase objetivo,213,DISCURSO_001_FR_214,DISCURSO_001
+los kuka,colectivo,explícito,referido directamente en la frase objetivo,214,DISCURSO_001_FR_215,DISCURSO_001
+punteros,colectivo,explícito,mencionado en la frase 'pagar punteros',215,DISCURSO_001_FR_216,DISCURSO_001
+colegios,institucional,explícito,mencionado en la frase 'se compran colegios',215,DISCURSO_001_FR_216,DISCURSO_001
+candidatos testimoniales,colectivo,explícito,"El término 'candidatos testimoniales' aparece directamente en la frase objetivo, indicando un grupo de personas que actúan como candidatos.",216,DISCURSO_001_FR_217,DISCURSO_001
+los intendentes,colectivo,explícito,referido explícitamente en la frase objetivo,217,DISCURSO_001_FR_218,DISCURSO_001
+los intendentes,colectivo,explícito,Mencionado explícitamente en la frase objetivo.,218,DISCURSO_001_FR_219,DISCURSO_001
+el kirchnerismo,colectivo,explícito,referencia explícita en la frase objetivo,219,DISCURSO_001_FR_220,DISCURSO_001
+La Libertad Avanza,institucional,explícito,"La frase menciona explícitamente ""la libertad avanza"" como un piso para nosotros.",220,DISCURSO_001_FR_221,DISCURSO_001
+Kirchnerismo,institucional,explícito,"La frase menciona explícitamente ""el cajón del kirchnerismo"".",220,DISCURSO_001_FR_221,DISCURSO_001
+los kukas,colectivo,explícito,"referencia directa en la frase ""frente a la presencia de los kukas""",237,DISCURSO_001_FR_238,DISCURSO_001
+los inversores,colectivo,explícito,"referencia directa en la frase ""los inversores se asustan""",237,DISCURSO_001_FR_238,DISCURSO_001
+inversores,colectivo,inferido,"El sujeto que se asusta en la frase anterior es 'los inversores', por lo tanto el actor que se pregunta 'qué hacen' es ese colectivo.",238,DISCURSO_001_FR_239,DISCURSO_001
+los inversores,colectivo,inferido,"El sujeto de 'renovaban' está implícito y el contexto previo menciona a 'los inversores' como los que se asustan y se pregunta qué hacen, por lo tanto se infiere que son los que no renovaban las lecaps.",239,DISCURSO_001_FR_240,DISCURSO_001
+banco central,institucional,explícito,"La frase incluye la expresión 'como banco central', indicando que 'nosotros' se refiere al banco central.",240,DISCURSO_001_FR_241,DISCURSO_001
+banco central,institucional,inferido,"El sujeto tácito del verbo 'generaba' se infiere como 'nosotros, como banco central', según la frase contextual 'nosotros, como banco central, honrábamos la deuda y pagábamos'.",242,DISCURSO_001_FR_243,DISCURSO_001
+Gobierno,institucional,inferido,"El discurso menciona que ""nosotros"" decidimos mantener el equilibrio del mercado monetario; en el contexto político, la acción corresponde al gobierno que implementa políticas monetarias.",244,DISCURSO_001_FR_245,DISCURSO_001
+nosotros,colectivo,inferido,"El verbo 'hicimos' está conjugado en primera persona plural, lo que implica que el sujeto es 'nosotros', un colectivo que no está explícitamente mencionado en la frase.",245,DISCURSO_001_FR_246,DISCURSO_001
+Gobierno,institucional,inferido,"El verbo 'tuvimos' indica un sujeto colectivo que tuvo que expandir la cantidad de dinero para honrar la deuda; la deuda es una obligación del Estado, por lo tanto el actor implícito es el Gobierno.",246,DISCURSO_001_FR_247,DISCURSO_001
+Banco Central,institucional,inferido,"La acción de 'subir los encajes' corresponde a la política de requisitos de reserva, que es una función del Banco Central; por tanto, el actor implícito es el Banco Central.",246,DISCURSO_001_FR_247,DISCURSO_001
+los kukas,colectivo,explícito,La frase incluye la expresión 'los kukas' como sujeto de la oración 'del otro lado están los kukas'.,247,DISCURSO_001_FR_248,DISCURSO_001
+el kirchnerismo,institucional,explícito,El término 'el kirchnerismo' aparece directamente en la frase.,248,DISCURSO_001_FR_249,DISCURSO_001
+el Congreso,institucional,inferido,"La construcción 'en una sesión nos votaron 12 proyectos en contra' implica que el sujeto que votó es el cuerpo legislativo, es decir, el Congreso o los diputados.",248,DISCURSO_001_FR_249,DISCURSO_001
+lesfi,colectivo,explícito,"El sustantivo 'lesfi' aparece directamente en la frase objetivo y se refiere a un grupo de personas o entidad, por lo que se considera un actor explícito.",249,DISCURSO_001_FR_250,DISCURSO_001
+Gobierno de Milei,colectivo,inferido,"El pronombre 'nosotros' se refiere al equipo o gobierno que ejecutó las acciones mencionadas, inferido por el contexto del discurso.",251,DISCURSO_001_FR_252,DISCURSO_001
+la oposición,colectivo,explícito,El término 'la oposición' aparece explícitamente en la frase.,251,DISCURSO_001_FR_252,DISCURSO_001
+el gobierno,institucional,inferido,"sujeto tacito en la frase 'si no nos rollean deuda', inferido como el agente que emite deuda en el contexto del discurso sobre política monetaria.",252,DISCURSO_001_FR_253,DISCURSO_001
+Gobierno,institucional,inferido,"El verbo 'aumentamos' y 'hacemos' en primera persona plural indica acción del grupo del presidente, que corresponde al Gobierno.",253,DISCURSO_001_FR_254,DISCURSO_001
+los kukas,colectivo,explícito,"El pronombre 'los' y el sustantivo 'kukas' aparecen en la frase, indicando un grupo de personas.",259,DISCURSO_001_FR_260,DISCURSO_001
+kirchnerismo,colectivo,explícito,referido explícitamente en la frase objetivo,260,DISCURSO_001_FR_261,DISCURSO_001
+Estado,institucional,explícito,referencia explícita en la frase 'el estado del medio',262,DISCURSO_001_FR_263,DISCURSO_001
+Sector privado,colectivo,explícito,referencia explícita en la frase 'el sector privado',262,DISCURSO_001_FR_263,DISCURSO_001
+los kukas,colectivo,explícito,"El término ""los kukas"" aparece directamente en la frase objetivo, indicando un grupo de personas.",263,DISCURSO_001_FR_264,DISCURSO_001
+los inversores,colectivo,explícito,Mencionado explícitamente en la frase objetivo,267,DISCURSO_001_FR_268,DISCURSO_001
+los argentinos,colectivo,explícito,explicitly mentioned as subject of 'quieren',270,DISCURSO_001_FR_271,DISCURSO_001
+la sociedad,colectivo,explícito,explicitly mentioned as subject of 'elige suicidarse',270,DISCURSO_001_FR_271,DISCURSO_001
+la sociedad,colectivo,inferido,"El sujeto de ""puede elegir"" no está explícito en la frase objetivo, pero el contexto previo menciona a ""la sociedad"" como sujeto de la acción de elegir, por lo tanto se infiere que la sociedad es el actor que puede elegir abrazar las ideas de la libertad.",271,DISCURSO_001_FR_272,DISCURSO_001
+la argentina,colectivo,explícito,referencia explícita en la frase objetivo,272,DISCURSO_001_FR_273,DISCURSO_001
+todos,colectivo,explícito,"expresión ""a todos"" en la frase",275,DISCURSO_001_FR_276,DISCURSO_001
+la cámara de comercio y servicios,institucional,explícito,explicitamente mencionado en la frase objetivo,277,DISCURSO_002_FR_002,DISCURSO_002
+Eduardo,humano_individual,explícito,Nombre propio mencionado directamente en la frase objetivo.,278,DISCURSO_002_FR_003,DISCURSO_002
+nosotros,colectivo,inferido,"El verbo 'asistimos' indica un sujeto plural implícito que se refiere a 'nosotros', no nombrado explícitamente.",280,DISCURSO_002_FR_005,DISCURSO_002
+Congreso de la Nación,institucional,explícito,El término 'el congreso de la nación' aparece explícitamente en la frase como entidad.,280,DISCURSO_002_FR_005,DISCURSO_002
+Congreso,institucional,explícito,"La frase menciona explícitamente ""un congreso secuestrado"" y ""un congreso que solo responde a sus propios intereses"".",281,DISCURSO_002_FR_006,DISCURSO_002
+Estado nacional,institucional,explícito,"La frase menciona explícitamente la acción de ""quebrar al estado nacional"".",281,DISCURSO_002_FR_006,DISCURSO_002
+legisladores kirchneristas,colectivo,explícito,"El texto menciona explícitamente a ""estos 'honorables' legisladores kirchnerista"" como fuente de la observación.",282,DISCURSO_002_FR_007,DISCURSO_002
+gobierno,institucional,explícito,"Se hace referencia explícita a ""este gobierno"" como el objetivo de la frase.",282,DISCURSO_002_FR_007,DISCURSO_002
+los argentinos,colectivo,inferido,"Pronombre 'nos' se refiere a los argentinos, inferido por contexto.",283,DISCURSO_002_FR_008,DISCURSO_002
+acreedores,colectivo,explícito,El término 'acreedores' aparece directamente en la frase 'maltratos a los acreedores'.,284,DISCURSO_002_FR_009,DISCURSO_002
+Argentinos,colectivo,inferido,Pronombre 'nos' en la frase hace referencia a los argentinos,285,DISCURSO_002_FR_010,DISCURSO_002
+los 47 millones de los argentinos,colectivo,explícito,mencionado explícitamente en la frase objetivo,286,DISCURSO_002_FR_011,DISCURSO_002
+paladines de la pobreza,colectivo,explícito,"El término aparece directamente en la frase: ""paladines de la pobreza"".",287,DISCURSO_002_FR_012,DISCURSO_002
+almas nobles,colectivo,explícito,"El término aparece directamente en la frase: ""almas nobles"".",287,DISCURSO_002_FR_012,DISCURSO_002
+los más miserables,colectivo,explícito,"El término aparece directamente en la frase: ""los más miserables"".",287,DISCURSO_002_FR_012,DISCURSO_002
+la gente,colectivo,explícito,"El término aparece directamente en la frase: ""la gente"".",287,DISCURSO_002_FR_012,DISCURSO_002
+todos los argentinos de bien,colectivo,explícito,El grupo 'todos los argentinos de bien' es mencionado directamente en la frase.,288,DISCURSO_002_FR_013,DISCURSO_002
+un país,colectivo,explícito,"La frase incluye el sustantivo 'un país', que actúa como experienciador del sufrimiento descrito.",290,DISCURSO_002_FR_015,DISCURSO_002
+familiares y amigos,colectivo,explícito,"El sujeto de la oración es 'todos sus familiares y amigos', que se menciona directamente.",292,DISCURSO_002_FR_017,DISCURSO_002
+empleados públicos,colectivo,explícito,Se menciona explícitamente 'empleados públicos' como una categoría de personas que viven del estado.,292,DISCURSO_002_FR_017,DISCURSO_002
+negocios ilegítimos,institucional,explícito,"La frase indica que 'tienen negocios ilegítimos con el estado y las provincias', identificando a los negocios como entidades.",292,DISCURSO_002_FR_017,DISCURSO_002
+el estado,institucional,explícito,El estado aparece como fuente de ingresos ('viven del estado') y como contraparte de los negocios.,292,DISCURSO_002_FR_017,DISCURSO_002
+las provincias,institucional,explícito,Se menciona 'las provincias' como entidad con la que los negocios tienen relaciones.,292,DISCURSO_002_FR_017,DISCURSO_002
+sus familiares y amigos,colectivo,inferido,"El pronombre 'ellos' en la frase se refiere al grupo mencionado en las oraciones previas como 'sus familiares y amigos', quienes viven del estado y tienen negocios ilegítimos.",293,DISCURSO_002_FR_018,DISCURSO_002
+el estado,institucional,explícito,El término 'el estado' aparece directamente en la frase como parte del objeto 'la mano ensangrentada del estado'.,294,DISCURSO_002_FR_019,DISCURSO_002
+futuros clientes,colectivo,explícito,"La expresión 'sus futuros clientes' se menciona explícitamente en la frase, indicando un grupo de personas.",294,DISCURSO_002_FR_019,DISCURSO_002
+pobres,colectivo,explícito,"referido en la frase ""cada pobre""",295,DISCURSO_002_FR_020,DISCURSO_002
+ciudadanos honestos,colectivo,explícito,"referido en la frase ""ciudadano honesto""",295,DISCURSO_002_FR_020,DISCURSO_002
+pobres,colectivo,inferido,"El pronombre 'los' en la frase se refiere a 'pobres', según el contexto previo donde se menciona que 'cada pobre' es una oportunidad para los kirchneristas.",296,DISCURSO_002_FR_021,DISCURSO_002
+cualquier argentino de trabajo,colectivo,explícito,referido directamente en la frase objetivo,297,DISCURSO_002_FR_022,DISCURSO_002
+un político,humano_individual,explícito,explicit mention in the phrase,298,DISCURSO_002_FR_023,DISCURSO_002
+políticos,colectivo,inferido,"El pronombre 'ellos' en la frase se refiere a los políticos, indicado por la oración previa 'un político no entiende', y actúa como agente del verbo 'quieren hacer creer'.",299,DISCURSO_002_FR_024,DISCURSO_002
+la gente,colectivo,inferido,"El complemento directo 'a la gente' indica que la gente es la receptora de la acción de creer, por lo que es un actor experienciador.",299,DISCURSO_002_FR_024,DISCURSO_002

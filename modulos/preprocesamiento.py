@@ -1,8 +1,16 @@
-# Submódulo 2.1: segmentación de discursos en frases
-
 import pandas as pd
 import re
+import time
+import spacy
+import os
+import json
+from modulos.utils_io import guardar_csv, mostrar_tiempo_procesamiento
 
+# Cargar modelo base de spaCy
+nlp = spacy.load("es_core_news_md")
+
+
+# ---------- Submódulo 2.1: segmentación de discursos ----------
 
 def normalizar_texto(texto):
     texto = re.sub(r'\[\.["”]\]', '[".]', texto)
@@ -22,8 +30,10 @@ def generar_recortes(
     agregar_codigo=True,
     prefijo_codigo="DISCURSO",
     guardar=False,
-    output_path=None
+    output_path=None,
+    mostrar_tiempo=True
 ):
+    start_time = time.time()
 
     if agregar_codigo or 'codigo' not in df_discursos.columns:
         df_discursos["codigo"] = [f"{prefijo_codigo}_{i:03d}" for i in range(1, len(df_discursos) + 1)]
@@ -53,21 +63,22 @@ def generar_recortes(
         "frase": frases_lista
     })
 
+    # 🚀 Agregar columna INDEX explícita
+    df_recortes = df_recortes.reset_index().rename(columns={"index": "INDEX"})
+
     if guardar:
         if output_path is None:
             raise ValueError("Debés especificar un 'output_path' si guardar=True.")
-        df_recortes.to_csv(output_path, index=False, encoding="utf-8-sig")
-        print("✅ Archivo CSV generado correctamente.")
-        print(f"📄 Ruta: {output_path}")
+        guardar_csv(df_recortes, output_path)
         print(f"🧾 La base tiene {len(df_recortes)} observaciones (frases).")
+
+    if mostrar_tiempo:
+        mostrar_tiempo_procesamiento(start_time, mensaje="Tiempo de generar_recortes")
 
     return df_recortes
 
 
-# Submódulo 2.2: filtrado por cantidad de frases
-    
-import pandas as pd
-
+# ---------- Submódulo 2.2: filtrado por cantidad de frases ----------
 
 def filtrar_discursos(
     df,
@@ -77,7 +88,9 @@ def filtrar_discursos(
     path_discursos=None,
     path_recortes=None,
     path_codigos_eliminados=None,
+    mostrar_tiempo=True
 ):
+    start_time = time.time()
 
     # 1) Conteo por código
     conteo_frases = df_recortes.groupby("codigo").size().reset_index(name="cantidad_frases")
@@ -103,32 +116,20 @@ def filtrar_discursos(
         if not all([path_discursos, path_recortes, path_codigos_eliminados]):
             raise ValueError("⚠️ Para guardar, se deben especificar todos los paths de salida.")
 
-        df_filtrado.to_csv(path_discursos, index=False, encoding="utf-8-sig")
-        df_recortes_filtrado.to_csv(path_recortes, index=False, encoding="utf-8-sig")
-
+        guardar_csv(df_filtrado, path_discursos)
+        guardar_csv(df_recortes_filtrado, path_recortes)
         with open(path_codigos_eliminados, "w", encoding="utf-8") as f:
             for codigo in codigos_eliminados:
                 f.write(codigo + "\n")
+        print(f"\n💾 Códigos eliminados guardados en: {path_codigos_eliminados}")
 
-        print(f"\n💾 Archivos guardados:")
-        print(f"- Discursos: {path_discursos}")
-        print(f"- Recortes: {path_recortes}")
-        print(f"- Códigos eliminados: {path_codigos_eliminados}")
+    if mostrar_tiempo:
+        mostrar_tiempo_procesamiento(start_time, mensaje="Tiempo de filtrar_discursos")
 
     return df_filtrado, df_recortes_filtrado, codigos_eliminados, codigos_validos, conteo_frases
 
 
-# Submódulo 2.3: limpieza y preprocesamiento de texto
-
-import re
-import spacy
-import pandas as pd
-import os
-import json
-
-# Cargar modelo base de spaCy
-nlp = spacy.load("es_core_news_md")
-
+# ---------- Submódulo 2.3: limpieza y preprocesamiento de texto ----------
 
 def limpiar_texto(texto):
     if texto is None:
@@ -204,7 +205,9 @@ def preprocesar_texto(texto, extraer_tokens=True, extraer_lemmas=True,
 
 
 def procesar_textos(df, columna_texto, texto_limpio=True, tokens=True, lemmas=True, pos_tags=True,
-                    dependencias=True, entidades=True, sujetos=True, guardar=False, path_salida=None):
+                    dependencias=True, entidades=True, sujetos=True, guardar=False, path_salida=None,
+                    mostrar_tiempo=True):
+    start_time = time.time()
 
     if columna_texto not in df.columns:
         raise ValueError(f"La columna '{columna_texto}' no está en el DataFrame.")
@@ -233,11 +236,11 @@ def procesar_textos(df, columna_texto, texto_limpio=True, tokens=True, lemmas=Tr
     df_final = pd.concat([df.reset_index(drop=True), df_expandido], axis=1)
 
     if guardar:
-        if not path_salida:
+        if path_salida is None:
             raise ValueError("Debe especificarse `path_salida` si `guardar=True`.")
-        os.makedirs(os.path.dirname(path_salida), exist_ok=True)
-        df_final.to_csv(path_salida, index=False, encoding="utf-8-sig")
-        print(f"✅ Archivo guardado: {path_salida}")
+        guardar_csv(df_final, path_salida)
+
+    if mostrar_tiempo:
+        mostrar_tiempo_procesamiento(start_time, mensaje="Tiempo de procesar_textos")
 
     return df_final
-

@@ -1,10 +1,4 @@
-from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import NoSuchElementException, ElementClickInterceptedException
-from webdriver_manager.chrome import ChromeDriverManager
-import pandas as pd
-import time
+# webscraping.py
 
 # XPaths específicos del sitio Casa Rosada
 xpaths_casarosada = {
@@ -15,74 +9,17 @@ xpaths_casarosada = {
     "contenido": '/html/body/div[1]/div[2]/div/div/div[1]/div/article/div/div[2]/p'
 }
 
-# Funciones secundarias
-def iniciar_driver(headless=True):
-    options = webdriver.ChromeOptions()
-    if headless:
-        options.add_argument("--headless")
-    options.add_argument("--start-maximized")
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    return driver
+import pandas as pd
+import time
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import NoSuchElementException, ElementClickInterceptedException
+from modulos.driver_utils import iniciar_driver
+from modulos.scraping_utils import extraer_elementos, extraer_discurso
+from modulos.utils_io import guardar_csv, mostrar_tiempo_procesamiento
 
-
-def extraer_links_visibles(driver, xpath_link_items, links, max_items_por_pagina=50):
-    nuevos_links = []
-    for i in range(1, max_items_por_pagina + 1):
-        try:
-            xpath = xpath_link_items.format(i=i)
-            elemento = driver.find_element(By.XPATH, xpath)
-            href = elemento.get_attribute('href')
-            if href and href not in links:
-                nuevos_links.append(href)
-        except NoSuchElementException:
-            break
-    return nuevos_links
-
-
-def extraer_discurso(driver, link, xpaths, espera, verbose):
-    try:
-        driver.get(link)
-        time.sleep(espera)
-
-        def get_text(xpath, default):
-            try:
-                return driver.find_element(By.XPATH, xpath).text.strip()
-            except:
-                return default
-
-        titulo = get_text(xpaths["titulo"], "Título no encontrado")
-        fecha = get_text(xpaths["fecha"], "Fecha no encontrada")
-
-        try:
-            parrafos = driver.find_elements(By.XPATH, xpaths["contenido"])
-            contenido = [p.text.strip() for p in parrafos if p.text.strip()]
-            if not contenido:
-                contenido = ["Contenido no encontrado"]
-        except:
-            contenido = ["Contenido no encontrado"]
-
-        if verbose:
-            palabras = sum(len(p.split()) for p in contenido)
-            print(f"📝 {titulo} ({fecha}) - {palabras} palabras")
-
-        return titulo, fecha, contenido
-
-    except Exception as e:
-        if verbose:
-            print(f"⚠️ Error procesando {link}: {e}")
-        return "Título no encontrado", "Fecha no encontrada", ["Contenido no encontrada"]
-
-# Función principal
-def scrap_discursos(
-    base_url,
-    xpaths,
-    espera,
-    paginas,
-    articulos_maximos,
-    headless=True,
-    verbose=True,
-    output_path=None
-):
+def scrap_discursos(base_url, xpaths, espera, paginas, articulos_maximos,
+                    headless=True, verbose=True, output_path=None, mostrar_tiempo=True):
+    start_time = time.time()
 
     driver = iniciar_driver(headless)
     driver.get(base_url)
@@ -93,7 +30,9 @@ def scrap_discursos(
     for pagina in range(paginas):
         if verbose:
             print(f"🌐 Página {pagina + 1}")
-        nuevos = extraer_links_visibles(driver, xpaths["link_items"], links)
+
+        nuevos = extraer_elementos(driver, xpath_template=xpaths["link_items"], 
+                                   atributo="href", existentes=links, max_items=50)
         links.extend(nuevos)
         if verbose:
             print(f"➕ {len(nuevos)} nuevos links")
@@ -136,11 +75,14 @@ def scrap_discursos(
 
     df["codigo"] = [f"DISCURSO_{i:03d}" for i in range(1, len(df) + 1)]
 
+    df["INDEX"] = df.index.astype(int)
+
     if output_path:
-        df.to_csv(output_path, index=False, encoding='utf-8-sig')
-        if verbose:
-            print(f"\n✅ Archivo '{output_path}' guardado correctamente.")
+        guardar_csv(df, output_path, verbose)
 
     driver.quit()
-    return df
 
+    if mostrar_tiempo:
+        mostrar_tiempo_procesamiento(start_time)
+
+    return df

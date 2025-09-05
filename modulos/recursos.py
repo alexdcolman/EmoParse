@@ -1,8 +1,159 @@
 import json
 import os
+import logging
+import ast
+import re
+import signal
+import threading
+import platform
+from datetime import datetime
+from langchain.output_parsers import PydanticOutputParser
+from modulos.parsers import extraer_texto_respuesta
 
 # Base path relativo al archivo actual (recursos.py)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+class TimeoutException(Exception):
+    pass
+
+
+# ==============================
+# Manejadores de timeout por SO
+# ==============================
+
+def _ejecutar_con_timeout_signal(func, timeout):
+    """
+    Versión Unix/Linux/Mac usando signal.alarm
+    """
+    def handler(signum, frame):
+        raise TimeoutException
+
+    # Guardamos handler anterior para restaurar luego
+    old_handler = signal.signal(signal.SIGALRM, handler)
+    signal.alarm(timeout)
+
+    try:
+        return func()
+    finally:
+        signal.alarm(0)  # Desactivar alarma
+        signal.signal(signal.SIGALRM, old_handler)
+
+
+def _ejecutar_con_timeout_threading(func, timeout):
+    """
+    Versión Windows usando threading
+    """
+    result = [TimeoutException("Tiempo excedido")]
+
+    def wrapper():
+        try:
+            result[0] = func()
+        except Exception as e:
+            result[0] = e
+
+    hilo = threading.Thread(target=wrapper)
+    hilo.daemon = True
+    hilo.start()
+    hilo.join(timeout)
+
+    if hilo.is_alive():
+        raise TimeoutException("Tiempo excedido")
+    elif isinstance(result[0], Exception):
+        raise result[0]
+    else:
+        return result[0]
+
+
+def ejecutar_con_timeout(func, timeout=60):
+    """
+    Wrapper portable: usa signal en Unix, threading en Windows.
+    """
+    if platform.system() == "Windows":
+        return _ejecutar_con_timeout_threading(func, timeout)
+    else:
+        return _ejecutar_con_timeout_signal(func, timeout)
+
+
+# ==============================
+# Analizador genérico
+# ==============================
+
+def analizar_generico(
+    modelo_llm,
+    prompt_base,
+    campos,
+    default,
+    schema=None,
+    etiqueta_log=None,
+    mostrar_prompts=False,
+    path_errores=None,
+    timeout=30
+):
+    """
+    Ejecuta LLM con prompt y parsea usando PydanticOutputParser de LangChain.
+    Si hay error, timeout o se devuelve default, se guarda un JSONL si path_errores está definido.
+    """
+    if schema is None:
+        logging.warning("[analizar_generico] No se pasó schema, devolviendo default")
+        return default
+
+    parser = schema.get_langchain_parser()
+    format_instructions = parser.get_format_instructions()
+
+    # Construir prompt
+    prompt = prompt_base
+    for clave, valor in campos.items():
+        prompt = prompt.replace(f"<<{clave.upper()}>>", valor)
+    prompt = f"{prompt}\n\n{format_instructions}"
+
+    if mostrar_prompts:
+        print(f"\n📤 Prompt - {etiqueta_log or 'Análisis'}:\n{prompt}\n")
+
+    respuesta = ""
+    resultado = default
+
+    try:
+        respuesta = ejecutar_con_timeout(lambda: modelo_llm(prompt), timeout=timeout)
+        resultado = parser.parse(respuesta)
+
+    except Exception as e:
+        logging.warning(f"[analizar_generico] Excepción en {etiqueta_log}: {e}")
+        resultado = default
+
+    # --- Registro de errores si se devuelve default ---
+    if resultado == default and path_errores:
+        os.makedirs(os.path.dirname(path_errores), exist_ok=True)
+        registro_error = {
+            "etiqueta": etiqueta_log,
+            "error": "Default devuelto (timeout, parseo fallido o respuesta vacía)",
+            "prompt_usado": prompt,
+            "respuesta_cruda": respuesta,
+            "campos": campos,
+            "timestamp": datetime.now().isoformat(),
+            "INDEX": campos.get("INDEX")
+        }
+        with open(path_errores, "a", encoding="utf-8-sig") as f:
+            f.write(json.dumps(registro_error, ensure_ascii=False) + "\n")
+
+    return resultado
+
+
+# ==============================
+# Preparación de fragmentos y limpieza de prompts
+# ==============================
+
+def preparar_fragmentos_str(fragmentos):
+    return "\n".join([f"Fragmento {i+1}:\n{frag}" for i, frag in enumerate(fragmentos)])
+
+
+def limpiar_prompt(prompt: str) -> str:
+    # Elimina espacios innecesarios y normaliza saltos de línea
+    return "\n".join(line.strip() for line in prompt.strip().splitlines() if line.strip())
+
+# ==============================
+# Carga de ontología y heurística
+# ==============================
 
 def cargar_ontologia(path=None):
     if path is None:
@@ -10,149 +161,80 @@ def cargar_ontologia(path=None):
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 
+
 def cargar_heuristicas(path=None):
     if path is None:
         path = os.path.join(BASE_DIR, "heuristicas", "inferencia_actores.txt")
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
-def cargar_prompt_template1(path=None):
-    if path is None:
-        path = os.path.join(BASE_DIR, "prompts", "identificar_actores.txt")
-    elif not os.path.isabs(path):
-        path = os.path.join(BASE_DIR, path)
-    
-    with open(path, "r", encoding="utf-8") as f:
-        return f.read()
+# ==============================
+# Manejo de registro de errores
+# ==============================
 
-def cargar_prompt_template(path):
-    with open(path, "r", encoding="utf-8") as f:
-        return f.read()
-
-def limpiar_prompt(prompt: str) -> str:
-    # Elimina espacios innecesarios y normaliza saltos de línea
-    return "\n".join(line.strip() for line in prompt.strip().splitlines() if line.strip())
-
-import ast
-
-def limpiar_dict_modelo(respuesta: str):
+class ErrorLogger:
     """
-    Intenta decodificar la respuesta del modelo como un diccionario Python (no JSON).
-    Es más flexible con comillas internas.
+    Maneja registro de errores en formato JSONL (un error por línea).
     """
-    try:
-        contenido = re.sub(r"^```(json|python)?\s*|\s*```$", "", respuesta.strip(), flags=re.DOTALL)
-        return ast.literal_eval(contenido)
-    except Exception as e:
-        print("❌ Error al interpretar como diccionario Python:", e)
-        print(respuesta)
-        return None
 
-def limpiar_json_modelo(respuesta: str):
-    try:
-        contenido = re.sub(r"^```json\s*|\s*```$", "", respuesta.strip(), flags=re.DOTALL)
-        return json.loads(contenido)
-    except Exception as e:
-        print("❌ Error al decodificar JSON:", e)
-        print(respuesta)
-        return None
+    def __init__(self, path_errores):
+        self.path = path_errores
 
-# Limpiado de respuestas de modelos
+    def cargar(self):
+        """
+        Devuelve lista de errores (dicts). Si no existe, devuelve [].
+        """
+        if not os.path.exists(self.path):
+            return []
 
-import json
-import re
-import ast
+        errores = []
+        with open(self.path, "r", encoding="utf-8-sig") as f:
+            for line in f:
+                try:
+                    errores.append(json.loads(line))
+                except json.JSONDecodeError:
+                    continue
+        return errores
 
-def limpiar_markdown(response: str) -> str:
-    """
-    Elimina bloques markdown de código (```json```, ```python```, etc) al principio y final del texto.
-    """
-    return re.sub(r"^```(json|python)?\s*|\s*```$", "", response.strip(), flags=re.DOTALL)
+    def guardar(self, error, auto_timestamp=True):
+        """
+        Agrega un único error al archivo.
+        """
+        if auto_timestamp and "timestamp" not in error:
+            error["timestamp"] = datetime.now().isoformat()
 
-def reemplazar_comillas_simples_por_dobles(texto: str) -> str:
-    """
-    Reemplaza comillas simples por dobles en contextos JSON simples.
-    Atención: no es infalible, mejor usar junto con parseo seguro.
-    """
-    # Solo reemplaza comillas simples que no estén escapadas ni dentro de strings dobles
-    # Aquí simplificamos para casos comunes
-    texto = re.sub(r"(?<!\\)'", '"', texto)
-    return texto
+        with open(self.path, "a", encoding="utf-8-sig") as f:
+            f.write(json.dumps(error, ensure_ascii=False) + "\n")
 
-def corregir_comas_basico(texto: str) -> str:
-    """
-    Intenta corregir errores básicos de comas:
-    - Agrega coma faltante entre } y { en listas de objetos JSON
-    - Elimina comas finales antes de cierre de objetos o listas
-    """
-    # Ejemplo básico: agregar coma entre objetos concatenados (esto es muy simple)
-    texto = re.sub(r"}\s*{", "},{", texto)
-    # Eliminar comas finales antes de ] o }
-    texto = re.sub(r",(\s*[\]}])", r"\1", texto)
-    return texto
+    def guardar_varios(self, errores, overwrite=False, auto_timestamp=True):
+        """
+        Guarda múltiples errores.
+        """
+        mode = "w" if overwrite else "a"
+        with open(self.path, mode, encoding="utf-8-sig") as f:
+            for err in errores:
+                if auto_timestamp and "timestamp" not in err:
+                    err["timestamp"] = datetime.now().isoformat()
+                f.write(json.dumps(err, ensure_ascii=False) + "\n")
 
-def parsear_json_con_fallback(texto: str):
-    """
-    Intenta parsear texto como JSON con limpieza y fallback a dict Python.
-    """
-    texto = limpiar_markdown(texto)
-    texto = reemplazar_comillas_simples_por_dobles(texto)
-    texto = corregir_comas_basico(texto)
+    def eliminar_error(self, error_a_eliminar):
+        """
+        Elimina un error específico buscando coincidencia por INDEX y etiqueta.
+        """
+        if not os.path.exists(self.path):
+            return
 
-    try:
-        return json.loads(texto)
-    except json.JSONDecodeError as e_json:
-        print(f"❌ Error json.loads(): {e_json}")
-        # Intentar parsear como dict Python (más permisivo, con ast.literal_eval)
-        try:
-            return ast.literal_eval(texto)
-        except Exception as e_ast:
-            print(f"❌ Error ast.literal_eval(): {e_ast}")
-            print("Respuesta problemática:\n", texto)
-            return None
+        errores = self.cargar()
+        index_obj = error_a_eliminar.get("INDEX")
+        etiqueta_obj = error_a_eliminar.get("etiqueta")
 
-# Ejemplo de función para limpiar respuesta del modelo (usar en lugar de limpiar_json_modelo)
-def limpiar_respuesta_modelo(respuesta: str):
-    """
-    Función genérica para limpiar y parsear la respuesta del modelo LLM.
-    """
-    resultado = parsear_json_con_fallback(respuesta)
-    if resultado is None:
-        print("⚠️ No se pudo parsear la respuesta del modelo.")
-    return resultado
+        errores_filtrados = [
+            err for err in errores
+            if not (err.get("INDEX") == index_obj and err.get("etiqueta") == etiqueta_obj)
+        ]
 
-import re
-
-def parsear_actores_texto(texto):
-    """
-    Parsea el formato libre de actores devuelto por el modelo a una lista de diccionarios.
-    El formato esperado en texto es:
-
-    - ACTOR: ...
-      TIPO: ...
-      MODO: ...
-      JUSTIFICACION: ...
-
-    Retorna:
-        lista de dicts con claves: actor, tipo, modo, justificacion.
-    """
-    actores = []
-    bloques = re.split(r'\n(?=- ACTOR: )', texto.strip())  # Divide solo en líneas que empiezan con "- ACTOR:"
-
-    for bloque in bloques:
-        actor_match = re.search(r'- ACTOR: (.+)', bloque)
-        tipo_match = re.search(r'  TIPO: (.+)', bloque)
-        modo_match = re.search(r'  MODO: (.+)', bloque)
-        justif_match = re.search(r'  JUSTIFICACION: (.+)', bloque)
-
-        if actor_match and tipo_match and modo_match and justif_match:
-            actores.append({
-                "actor": actor_match.group(1).strip(),
-                "tipo": tipo_match.group(1).strip(),
-                "modo": modo_match.group(1).strip(),
-                "justificacion": justif_match.group(1).strip()
-            })
-        else:
-            # Opcional: podrías registrar logs o avisos si algún bloque está incompleto
-            continue
-    return actores
+        # Solo sobrescribimos si hubo cambios
+        if len(errores_filtrados) < len(errores):
+            with open(self.path, "w", encoding="utf-8-sig") as f:
+                for err in errores_filtrados:
+                    f.write(json.dumps(err, ensure_ascii=False) + "\n")
