@@ -1,3 +1,5 @@
+# identificacion_actores.py
+
 import os
 import json
 import time
@@ -9,8 +11,6 @@ from modulos.recursos import cargar_heuristicas, cargar_ontologia, limpiar_promp
 from modulos.schemas import ActorSchema, ListaActoresSchema
 from modulos.utils_io import guardar_csv, mostrar_tiempo_procesamiento
 from modulos.modelo import get_model_ollama
-
-# -------------------- CONSTRUCCIÓN DE PROMPT --------------------
 
 def construir_prompt(
     frase,
@@ -37,8 +37,6 @@ def construir_prompt(
         enunciatarios=enunciatarios,
         enunciador=enunciador
     ))
-
-# -------------------- PROCESAR UNA FRASE --------------------
 
 def extraer_contexto(df_recortes, frase_idx, window=4):
     idx_inicio = max(frase_idx - window, 0)
@@ -126,8 +124,6 @@ def procesar_una_frase(
     df_actores["codigo"] = codigo
 
     return df_actores, prompt, data
-
-# -------------------- IDENTIFICAR ACTORES CON CONTEXTO --------------------
 
 def identificar_actores_con_contexto(
     df_recortes, df_enunc, path_errores=None, output_path=None,

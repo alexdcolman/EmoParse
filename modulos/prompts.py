@@ -1,3 +1,5 @@
+# prompts.py
+
 PROMPT_RESUMIR_DISCURSO = (
     "Título del discurso: <<TITULO>>\n"
     "Fecha: <<FECHA>>\n\n"

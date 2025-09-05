@@ -1,6 +1,7 @@
+# extraccion_fragmentos.py
+
 from typing import List
 from spacy.language import Language
-
 
 def obtener_intro_cierre(texto: str, n_intro: int, n_cierre: int) -> List[str]:
     """Devuelve los fragmentos de inicio y cierre del texto."""
@@ -13,11 +14,9 @@ def obtener_intro_cierre(texto: str, n_intro: int, n_cierre: int) -> List[str]:
         fragmentos.append(cierre)
     return fragmentos
 
-
 def filtrar_parrafos(texto: str, min_len: int) -> List[str]:
     """Filtra párrafos que superen cierta longitud mínima."""
     return [p.strip() for p in texto.split("\n") if len(p.strip()) >= min_len]
-
 
 def calcular_densidad_entidades(
     parrafo: str,
@@ -28,7 +27,6 @@ def calcular_densidad_entidades(
     doc = nlp(parrafo)
     entidades = [ent for ent in doc.ents if ent.label_ in etiquetas_validas]
     return len(entidades) / (len(parrafo) + 1)  # evitar división por cero
-
 
 def seleccionar_parrafos_densos(
     parrafos: List[str],
@@ -41,7 +39,6 @@ def seleccionar_parrafos_densos(
     ]
     seleccionados = sorted(puntuados, key=lambda x: -x[0])[:n]
     return [p for _, p in seleccionados]
-
 
 def extraer_fragmentos_relevantes(
     texto: str,

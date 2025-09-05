@@ -16,7 +16,6 @@ def get_text(driver, xpath, default="No encontrado"):
     except Exception:
         return default
 
-
 def extraer_elementos(driver, xpath_template, atributo=None, max_items=50, existentes=None):
     """
     Extrae valores de elementos visibles usando un XPath con índice {i}.
@@ -40,7 +39,6 @@ def extraer_elementos(driver, xpath_template, atributo=None, max_items=50, exist
         except Exception:
             continue
     return resultados
-
 
 def extraer_discurso(driver, link, xpaths, espera=2, verbose=True):
     """

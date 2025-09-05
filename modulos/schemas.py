@@ -2,7 +2,7 @@ from pydantic import BaseModel, RootModel
 from typing import List, Optional
 from langchain.output_parsers import PydanticOutputParser
 
-# --- Tipo de discurso ---
+# Tipo de discurso
 class TipoDiscursoSchema(BaseModel):
     tipo: str
     justificacion: str
@@ -11,7 +11,7 @@ class TipoDiscursoSchema(BaseModel):
     def get_langchain_parser(cls):
         return PydanticOutputParser(pydantic_object=cls)
 
-# --- Lugar ---
+# Lugar
 class LugarSchema(BaseModel):
     ciudad: str
     provincia: str
@@ -22,7 +22,7 @@ class LugarSchema(BaseModel):
     def get_langchain_parser(cls):
         return PydanticOutputParser(pydantic_object=cls)
 
-# --- Enunciación ---
+# Enunciación
 class EnunciadorSchema(BaseModel):
     actor: str
     justificacion: str
@@ -40,7 +40,7 @@ class EnunciacionSchema(BaseModel):
     def get_langchain_parser(cls):
         return PydanticOutputParser(pydantic_object=cls)
 
-# --- Actores ---
+# Actores
 class ActorSchema(BaseModel):
     actor: str
     tipo: str

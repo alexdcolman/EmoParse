@@ -1,3 +1,5 @@
+# recursos.py
+
 import json
 import os
 import logging
@@ -13,15 +15,10 @@ from modulos.parsers import extraer_texto_respuesta
 # Base path relativo al archivo actual (recursos.py)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-
 class TimeoutException(Exception):
     pass
 
-
-# ==============================
 # Manejadores de timeout por SO
-# ==============================
-
 def _ejecutar_con_timeout_signal(func, timeout):
     """
     Versión Unix/Linux/Mac usando signal.alarm
@@ -38,7 +35,6 @@ def _ejecutar_con_timeout_signal(func, timeout):
     finally:
         signal.alarm(0)  # Desactivar alarma
         signal.signal(signal.SIGALRM, old_handler)
-
 
 def _ejecutar_con_timeout_threading(func, timeout):
     """
@@ -64,7 +60,6 @@ def _ejecutar_con_timeout_threading(func, timeout):
     else:
         return result[0]
 
-
 def ejecutar_con_timeout(func, timeout=60):
     """
     Wrapper portable: usa signal en Unix, threading en Windows.
@@ -74,11 +69,7 @@ def ejecutar_con_timeout(func, timeout=60):
     else:
         return _ejecutar_con_timeout_signal(func, timeout)
 
-
-# ==============================
 # Analizador genérico
-# ==============================
-
 def analizar_generico(
     modelo_llm,
     prompt_base,
@@ -138,29 +129,20 @@ def analizar_generico(
 
     return resultado
 
-
-# ==============================
 # Preparación de fragmentos y limpieza de prompts
-# ==============================
-
 def preparar_fragmentos_str(fragmentos):
     return "\n".join([f"Fragmento {i+1}:\n{frag}" for i, frag in enumerate(fragmentos)])
-
 
 def limpiar_prompt(prompt: str) -> str:
     # Elimina espacios innecesarios y normaliza saltos de línea
     return "\n".join(line.strip() for line in prompt.strip().splitlines() if line.strip())
 
-# ==============================
 # Carga de ontología y heurística
-# ==============================
-
 def cargar_ontologia(path=None):
     if path is None:
         path = os.path.join(BASE_DIR, "ontologia", "actores.json")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
-
 
 def cargar_heuristicas(path=None):
     if path is None:
@@ -168,10 +150,7 @@ def cargar_heuristicas(path=None):
     with open(path, "r", encoding="utf-8") as f:
         return f.read()
 
-# ==============================
 # Manejo de registro de errores
-# ==============================
-
 class ErrorLogger:
     """
     Maneja registro de errores en formato JSONL (un error por línea).

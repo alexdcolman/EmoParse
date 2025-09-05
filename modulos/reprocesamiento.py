@@ -1,3 +1,5 @@
+# reprocesamiento.py
+
 import os
 import json
 import pandas as pd
@@ -8,9 +10,7 @@ from modulos.identificacion_actores import procesar_una_frase
 from modulos.schemas import LugarSchema, TipoDiscursoSchema, EnunciacionSchema
 from modulos.enunciacion import analizar_enunciacion
 
-# ------------------------------
 # Helpers
-# ------------------------------
 def _guardar_errores_persistentes(errores, path_errores, intento):
     """Guarda errores persistentes en un nuevo archivo _intentoX.jsonl"""
     nuevo_path = f"{os.path.splitext(path_errores)[0]}_intento{intento}.jsonl"
@@ -60,10 +60,7 @@ def _remove_successful_errors(logger, exitosos, path_errores):
         for err in filtrados:
             f.write(json.dumps(err, ensure_ascii=False) + "\n")
 
-
-# ------------------------------
-# REPROCESAR METADATOS
-# ------------------------------
+# Reprocesar metadatos
 def reprocesar_errores_metadatos(
     df_original,
     path_errores,
@@ -87,7 +84,6 @@ def reprocesar_errores_metadatos(
     errores_persistentes = []
     exitosos = []
 
-    # Asegurar INDEX como int
     if "INDEX" in df_original.columns:
         df_original["INDEX"] = df_original["INDEX"].astype(int)
 
@@ -182,9 +178,7 @@ def reprocesar_errores_metadatos(
 
     return df_original
 
-# ------------------------------
-# REPROCESAR IDENTIFICACION (ACTORES)
-# ------------------------------
+# Reprocesar actores
 def reprocesar_errores_identificacion(
     df_recortes,
     df_enunc,
@@ -297,9 +291,7 @@ def reprocesar_errores_identificacion(
 
     return df_corr
 
-# ------------------------------
-# REPROCESAR ENUNCIACIÓN
-# ------------------------------
+# Reprocesar enunciación
 def reprocesar_enunciacion(
     df_original,
     path_errores,
@@ -425,4 +417,3 @@ def reprocesar_enunciacion(
         print(f"✅ Eliminados {len(exitosos)} errores exitosos del JSONL original")
 
     return df_corr
-

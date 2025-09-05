@@ -1,3 +1,5 @@
+# paths.py
+
 from pathlib import Path
 
 # Base del proyecto

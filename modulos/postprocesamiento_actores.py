@@ -1,3 +1,5 @@
+# postprocesamiento_actores
+
 import os
 import json
 import re
@@ -9,8 +11,7 @@ from modulos.recursos import cargar_ontologia, ErrorLogger
 from modulos.identificacion_actores import procesar_una_frase
 from modulos.prompts import PROMPT_VALIDAR_ACTORES
 
-# -------------------- PROPAGACIÓN DE ACTORES POR PRONOMBRES --------------------
-
+# Propagación de actores por pronombres
 PRONOMBRES_SUBJETIVOS = {"él", "ella", "ellos", "ellas", "nosotros", "vosotros", "vos"}
 PRONOMBRES_OBJETO = {"lo", "la", "los", "las", "le", "les", "nos", "os"}
 PRONOMBRES_POSESIVOS = {"su", "sus", "nuestro", "nuestra", "nuestros", "nuestras"}
@@ -75,8 +76,7 @@ def propagar_actores_por_pronombres(df_resultado):
     df_resultado = df_resultado.sort_values(by=["frase_idx"]).reset_index(drop=True)
     return df_resultado
 
-# -------------------- VALIDACIÓN DE ACTORES SEGÚN ONTOLOGÍA --------------------
-
+# Validación de actores según ontología
 def validacion_actores(
     path_df_actores,
     path_df_recortes,

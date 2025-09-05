@@ -1,3 +1,5 @@
+# preprocesamiento.py
+
 import pandas as pd
 import re
 import time
@@ -9,13 +11,11 @@ from modulos.utils_io import guardar_csv, mostrar_tiempo_procesamiento
 # Cargar modelo base de spaCy
 nlp = spacy.load("es_core_news_md")
 
-
-# ---------- Submódulo 2.1: segmentación de discursos ----------
+# Segmentación de discursos
 
 def normalizar_texto(texto):
     texto = re.sub(r'\[\.["”]\]', '[".]', texto)
     return texto
-
 
 def segmentar_en_frases(contenido):
     contenido = normalizar_texto(contenido)
@@ -23,7 +23,6 @@ def segmentar_en_frases(contenido):
     frases = re.split(r'(?<=[.!?])\s+', contenido)
     frases = [f.strip() for f in frases if len(f.strip()) > 1]
     return frases
-
 
 def generar_recortes(
     df_discursos,
@@ -63,7 +62,7 @@ def generar_recortes(
         "frase": frases_lista
     })
 
-    # 🚀 Agregar columna INDEX explícita
+    # Agregar columna INDEX explícita
     df_recortes = df_recortes.reset_index().rename(columns={"index": "INDEX"})
 
     if guardar:
@@ -77,8 +76,7 @@ def generar_recortes(
 
     return df_recortes
 
-
-# ---------- Submódulo 2.2: filtrado por cantidad de frases ----------
+# Filtrado por cantidad de frases
 
 def filtrar_discursos(
     df,
@@ -128,8 +126,7 @@ def filtrar_discursos(
 
     return df_filtrado, df_recortes_filtrado, codigos_eliminados, codigos_validos, conteo_frases
 
-
-# ---------- Submódulo 2.3: limpieza y preprocesamiento de texto ----------
+# Limpieza y preprocesamiento de texto
 
 def limpiar_texto(texto):
     if texto is None:
@@ -141,7 +138,6 @@ def limpiar_texto(texto):
     texto = re.sub(r'\n{2,}', '\n', texto)
     return texto
 
-
 def marcar_sujeto_omitido_por_frase(texto):
     doc = nlp(texto)
     resultado = []
@@ -152,7 +148,6 @@ def marcar_sujeto_omitido_por_frase(texto):
             "sujeto_explicito": tiene_sujeto
         })
     return resultado
-
 
 def preprocesar_texto(texto, extraer_tokens=True, extraer_lemmas=True,
                       extraer_pos=True, extraer_entidades=True,
@@ -202,7 +197,6 @@ def preprocesar_texto(texto, extraer_tokens=True, extraer_lemmas=True,
         resultado["frases_con_sujeto"] = marcar_sujeto_omitido_por_frase(texto_limpio)
 
     return resultado
-
 
 def procesar_textos(df, columna_texto, texto_limpio=True, tokens=True, lemmas=True, pos_tags=True,
                     dependencias=True, entidades=True, sujetos=True, guardar=False, path_salida=None,

@@ -1,3 +1,5 @@
+# enunciacion.py
+
 import json
 import pandas as pd
 import time
@@ -101,4 +103,3 @@ def procesar_enunciacion_llm(
     if mostrar_tiempo:
         mostrar_tiempo_procesamiento(start_time, mensaje="Tiempo de procesar_enunciacion_llm")
     return df_final
-

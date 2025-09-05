@@ -1,4 +1,4 @@
-# modulos/resumen.py
+# resumen.py
 
 import os
 import logging
@@ -18,10 +18,7 @@ logging.basicConfig(level=logging.INFO)
 # Modelo de embeddings para segmentación
 emb_model = SentenceTransformer("distiluse-base-multilingual-cased-v1")
 
-
-# ----------------------------
 # Funciones de segmentación
-# ----------------------------
 def segmentar_por_cambio_tema(texto, umbral=0.25):
     """
     Segmenta un texto en bloques usando embeddings de frase y similitud coseno.
@@ -45,10 +42,7 @@ def segmentar_por_cambio_tema(texto, umbral=0.25):
 
     return [seg for seg in segmentos if len(seg) > 100]
 
-
-# ----------------------------
 # Funciones de resumen
-# ----------------------------
 def resumir_con_llm(prompt, modelo_llm):
     """
     Llama al LLM con el prompt y devuelve solo el texto limpio.
@@ -58,7 +52,6 @@ def resumir_con_llm(prompt, modelo_llm):
     except Exception as e:
         logging.warning(f"[LLM] Error al resumir: {e}")
         return "[Error en resumen]"
-
 
 def resumen_llm_registro(
     registro, modelo_llm, prompt_fragmento, prompt_discurso,
@@ -92,7 +85,7 @@ def resumen_llm_registro(
     if len(joined_resumenes) > max_chars_final:
         joined_resumenes = joined_resumenes[:max_chars_final] + "\n[...]"
 
-    # --- Prompt final con todos los resúmenes parciales ---
+    # Prompt final con todos los resúmenes parciales
     prompt_final = (
         prompt_discurso
         .replace("<<TITULO>>", titulo)
@@ -112,7 +105,6 @@ def resumen_llm_registro(
     print("-" * 80)
 
     return resumen_final
-
 
 def resumir_dataframe(
     df, modelo_llm, prompt_fragmento, prompt_discurso, umbral=0.25,
