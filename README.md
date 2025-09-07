@@ -43,7 +43,7 @@ Actualmente se están evaluando dos posibles implementaciones:
 1) **Función general**  
 Detecta emociones del enunciador, enunciatarios y actores en un solo prompt. Permite un análisis rápido y centralizado, útil para pruebas iniciales o textos de menor complejidad.
 
-2) **Función separada por roles**
+2) **Función separada por roles**  
 Detecta emociones del enunciador, enunciatarios y actores con prompts separados. Aporta mayor granularidad y efectividad en la detección, permitiendo un análisis más detallado de cada actor y su relación emocional con el discurso.
 
 ### 7. Caracterización emocional (`caracterizacion_emociones.py`, en desarrollo)
