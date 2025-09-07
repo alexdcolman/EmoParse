@@ -33,10 +33,18 @@ EmoParse está organizado como una cadena de módulos funcionales. Cada módulo 
 ### 5. Identificación de actores discursivos ([`identificacion_actores.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/identificacion_actores.py))
 - Usa LLM para detectar actores explícitos o inferibles por frase.
 
-### 6. Detección de emociones (`deteccion_emociones.py`, en desarrollo)
+### 6. Detección de emociones ([`deteccion_emociones.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/deteccion_emociones.py), en desarrollo)
 - Clasifica emociones **dichas, mostradas, sostenidas e inducidas**.
 - Asocia emociones a actores específicos.
 - Identifica efectos emocionales sobre el destinatario.
+
+Actualmente se están evaluando dos posibles implementaciones:
+
+1) **Función general**  
+Detecta emociones del enunciador, enunciatarios y actores en un solo prompt. Permite un análisis rápido y centralizado, útil para pruebas iniciales o textos de menor complejidad.
+
+2) **Función separada por roles**
+Detecta emociones del enunciador, enunciatarios y actores con prompts separados. Aporta mayor granularidad y efectividad en la detección, permitiendo un análisis más detallado de cada actor y su relación emocional con el discurso.
 
 ### 7. Caracterización emocional (`caracterizacion_emociones.py`, en desarrollo)
 - Atributos (MVP): foria (tonalidad), dominancia, intensidad, fuente.
@@ -67,7 +75,7 @@ Actualmente se encuentran optimizadas las funciones de:
 - Identificación de actores y tipos de discurso.
 - Posprocesamiento y validación de resultados.
 
-Próximamente se implementarán las funciones específicas de los módulos `deteccion_emociones.py` y `caracterizacion_emociones.py` para detección y caracterización completa.
+Próximamente se optimizarán las funciones específicas de los módulos `deteccion_emociones.py` y `caracterizacion_emociones.py` para detección y caracterización completa.
 
 ---
 
@@ -89,7 +97,7 @@ EmoParse/
 ├── modulos/ # Módulos funcionales
 │ ├── init.py
 │ ├── caracterizacion_emociones.py # (Próximamente)
-│ ├── deteccion_emociones.py # (Próximamente)
+│ ├── deteccion_emociones.py
 │ ├── diccionario_compatibilidades.py # (Próximamente)
 │ ├── diccionario_conceptual.py # (Próximamente)
 │ ├── driver_utils.py
@@ -206,6 +214,15 @@ jupyter lab
 - Detecta actores implícitos y explícitos por frase.
 - Cruza contexto global, [ontología](https://github.com/alexdcolman/EmoParse/blob/main/modulos/ontologia/actores.json) y [heurísticas](https://github.com/alexdcolman/EmoParse/blob/main/modulos/heuristicas/inferencia_actores.txt).
 - Usa LLM (por defecto, Mistral vía Ollama, pero extensible a OpenAI).
+
+**Detección de emociones (identificar_emociones_con_contexto / identificar_emociones_todas)**
+
+- Clasifica emociones **dichas, mostradas, sostenidas e inducidas**.
+- Asocia emociones a actores específicos.
+- Identifica efectos emocionales sobre el destinatario.
+- Dos posibles implementaciones:
+  1. Función general: detecta emociones de enunciador, enunciatarios y actores en un solo prompt. Útil para pruebas iniciales o textos de menor complejidad.
+  2. Función separada por roles: detecta emociones con prompts distintos para enunciador, enunciatarios y actores. Aporta mayor granularidad y efectividad en la detección.
 
 **Reprocesamiento (reprocesar_errores_metadatos, reprocesar_enunciacion, reprocesar_errores_identificacion)** y **Postprocesamiento (propagar_actores_por_pronombres, validacion_actores)**
 
