@@ -213,7 +213,7 @@ jupyter lab
 
 - Detecta actores implícitos y explícitos por frase.
 - Cruza contexto global, [ontología](https://github.com/alexdcolman/EmoParse/blob/main/modulos/ontologia/actores.json) y [heurísticas](https://github.com/alexdcolman/EmoParse/blob/main/modulos/heuristicas/inferencia_actores.txt).
-- Usa LLM (por defecto, Mistral vía Ollama, pero extensible a OpenAI).
+- Usa LLM (por defecto, GPT-OSS:20b vía Ollama).
 
 **Detección de emociones (identificar_emociones_con_contexto / identificar_emociones_todas)**
 
