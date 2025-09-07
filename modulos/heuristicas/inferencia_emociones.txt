@@ -24,7 +24,7 @@ Estas reglas se aplican para identificar emociones que pueden estar explícitas 
      - Emoción inferida: "tristeza" del actor que lamenta.
 
 4. Cualificación afectiva por indicadores cognitivos
-   - Identificá emociones inferibles a partir de juicios, evaluaciones o inferencias sobre los estados afectivos de los actores o del enunciador.
+   - Identificá emociones inferibles a partir de juicios, evaluaciones o inferencias sobre los estados afectivos de quienes experimentan esas emociones.
    - Estas expresiones no mencionan la emoción directamente, pero activan marcos cognitivos asociados.
    - Ejemplo:
      - Frase: "No podía soportar la injusticia."
@@ -45,17 +45,17 @@ Estas reglas se aplican para identificar emociones que pueden estar explícitas 
 7. Cualificación afectiva por componentes descriptivo-narrativos
    - Inferí emociones a partir de la escenificación de acontecimientos o situaciones narradas.
    - Ejemplo:
-     - Frase: "El incendio devoró todo el vecindario mientras ellos huían aterrorizados."
-     - Emoción inferida: "miedo" de los actores afectados.
+     - Frase: "El incendio devoró todo el vecindario mientras ellos huían despavoridamente."
+     - Emoción inferida: "pánico" de los actores afectados.
 
 8. Cualificación afectiva por transposición de la situación de reconocimiento potencial
    - Identificá emociones inferibles desde la forma en que el discurso organiza una situación potencialmente emocionante.
    - Ejemplo:
-     - Frase: "Al leer la carta, uno podía imaginar la alegría del destinatario."
-     - Emoción inferida: "alegría" atribuida al actor potencialmente reconocido en la situación.
+     - Frase: "Con respecto a los informes que dan cuenta de estos hechos, vemos la misma lógica que en el caso anterior, donde quienes resultan investigados son las víctimas en lugar de los victimarios."
+     - Emoción inferida: "indignación" atribuida como emoción potencial al enunciatario del discurso.
    
 Instrucciones generales:
 - No inventes emociones; deducí solo si hay indicios claros.
-- Asociá cada emoción al actor correspondiente o al enunciador según el contexto.
+- Asociá cada emoción al sujeto correspondiente que la experimenta según el contexto.
 - Evitá repetir emociones ya registradas para el mismo actor en la misma frase.
-- Considerá contexto discursivo y frases cercanas para desambiguar el actor o el tipo de emoción.
+- Considerá contexto discursivo y frases cercanas para desambiguar el tipo de emoción.

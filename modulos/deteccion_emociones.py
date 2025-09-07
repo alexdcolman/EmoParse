@@ -1,3 +1,7 @@
+# modulos/deteccion_emociones2.py
+
+# IMPORTS Y FUNCIONES BASE
+
 import os
 import json
 import time
@@ -16,6 +20,7 @@ from modulos.utils_io import guardar_csv, mostrar_tiempo_procesamiento
 from modulos.modelo import get_model_ollama
 from modulos.schemas import ListaEmocionesSchema
 from modulos.paths import BASE_DIR
+from modulos.tipos_discurso import diccionario_tipos_discurso
 
 def construir_prompt_emociones(
     frase,
@@ -29,7 +34,8 @@ def construir_prompt_emociones(
     actores,
     heuristicas,
     ontologia,
-    prompt_base
+    prompt_base,
+    diccionario=None
 ):
     """
     Arma el prompt para pedirle al LLM identificación de emociones discursivas.
@@ -46,22 +52,17 @@ def construir_prompt_emociones(
             lugar_justificacion=lugar_justificacion,
             enunciatarios=enunciatarios,
             enunciador=enunciador,
-            actores=actores
+            actores=actores,
+            diccionario=json.dumps(diccionario, indent=2, ensure_ascii=False) if diccionario else ""
         )
     )
 
 def extraer_contexto(df_recortes, frase_idx, window=3):
-    """
-    Devuelve lista de frases alrededor de la frase central.
-    """
     idx_inicio = max(frase_idx - window, 0)
     idx_fin = min(frase_idx + window, len(df_recortes) - 1)
     return df_recortes.loc[idx_inicio:idx_fin, "texto_limpio"].tolist()
 
 def obtener_metadatos(df_discursos, df_actores, codigo):
-    """
-    Devuelve fila de df_discursos + lista de enunciatarios + actores externos.
-    """
     fila = df_discursos[df_discursos["codigo"] == codigo].iloc[0]
 
     enunciatarios = []
@@ -79,9 +80,6 @@ def obtener_metadatos(df_discursos, df_actores, codigo):
 def llamar_llm_y_parsear(
     modelo_llm, prompt, schema, mostrar_prompt=False, path_errores=None, index=None
 ):
-    """
-    Llama al modelo con analizar_generico y devuelve dataframe con resultados.
-    """
     try:
         data = analizar_generico(
             modelo_llm=modelo_llm,
@@ -124,10 +122,8 @@ def procesar_una_frase(
     mostrar_prompt=False,
     max_context=2,
     path_errores=None,
+    diccionario=None
 ):
-    """
-    Procesa una frase, construye prompt y llama al LLM.
-    """
     frase = df_recortes.loc[frase_idx, "texto_limpio"]
     recorte_id = df_recortes.loc[frase_idx, "recorte_id"]
     codigo = df_recortes.loc[frase_idx, "codigo"]
@@ -135,7 +131,6 @@ def procesar_una_frase(
     frases_contexto = extraer_contexto(df_recortes, frase_idx, window=max_context)
     fila_disc, enunciatarios, actores = obtener_metadatos(df_discursos, df_actores, codigo)
 
-    # --- Filtrar solo actores que aparecen en la frase ---
     actores_en_frase = [a for a in actores if a in frase]
 
     heuristicas_path = Path(BASE_DIR) / "modulos" / "heuristicas" / "inferencia_emociones.txt"
@@ -160,12 +155,13 @@ def procesar_una_frase(
         heuristicas=heuristicas,
         ontologia=ontologia,
         prompt_base=prompt_emociones,
+        diccionario=diccionario
     )
 
     df_emociones, data = llamar_llm_y_parsear(
         modelo_llm=modelo_llm,
         prompt=prompt,
-        schema=ListaEmocionesSchema,
+        schema=schema,
         mostrar_prompt=mostrar_prompt,
         path_errores=path_errores,
         index=frase_idx,
@@ -192,6 +188,7 @@ def identificar_emociones_con_contexto(
     checkpoint_interval=50,
     procesador=None,
     max_context=2,
+    diccionario=None,
 ):
     """
     Loop sobre frases de df_recortes para identificar emociones con contexto.
@@ -217,6 +214,7 @@ def identificar_emociones_con_contexto(
                 mostrar_prompt=mostrar_prompts,
                 max_context=max_context,
                 path_errores=path_errores,
+                diccionario=diccionario,
             )
             resultados.append(df_emociones)
 
@@ -241,3 +239,100 @@ def identificar_emociones_con_contexto(
         mostrar_tiempo_procesamiento(start_time, mensaje="Tiempo de identificar_emociones_con_contexto")
 
     return df_resultado
+
+# NUEVAS FUNCIONES ESPECIALIZADAS
+
+def identificar_emociones_enunciador(**kwargs):
+    return identificar_emociones_con_contexto(
+        prompt_emociones=kwargs.pop("prompt_emociones"),
+        **kwargs
+    )
+
+def identificar_emociones_enunciatarios(**kwargs):
+    return identificar_emociones_con_contexto(
+        prompt_emociones=kwargs.pop("prompt_emociones"),
+        **kwargs
+    )
+
+def identificar_emociones_actores(**kwargs):
+    return identificar_emociones_con_contexto(
+        prompt_emociones=kwargs.pop("prompt_emociones"),
+        **kwargs
+    )
+
+# Helper pequeño (local)
+def _add_suffix_to_path(path, suffix):
+    """Si path es None devuelve None. Si es str, inserta _suffix antes de la extensión."""
+    if not path:
+        return None
+    p = Path(path)
+    return str(p.with_name(f"{p.stem}_{suffix}{p.suffix}"))
+
+# FUNCIÓN INTEGRADORA
+
+def identificar_emociones_todas(
+    df_recortes,
+    df_discursos,
+    df_actores,
+    schema,
+    modelo_llm,
+    prompt_enunciador,
+    prompt_enunciatarios,
+    prompt_actores,
+    diccionario=None,
+    **kwargs
+):
+    output_path_base = kwargs.pop("output_path", None)
+    path_errores_base = kwargs.pop("path_errores", None)
+
+    resultados = {}
+
+    # Enunciador
+    out_enunciador = _add_suffix_to_path(output_path_base, "enunciador")
+    err_enunciador = _add_suffix_to_path(path_errores_base, "enunciador")
+    resultados["enunciador"] = identificar_emociones_con_contexto(
+        df_recortes=df_recortes,
+        df_discursos=df_discursos,
+        df_actores=df_actores,
+        schema=schema,
+        modelo_llm=modelo_llm,
+        prompt_emociones=prompt_enunciador,
+        path_errores=err_enunciador,
+        output_path=out_enunciador,
+        diccionario=None,
+        **kwargs
+    )
+
+    # Enunciatarios
+    out_enunciatarios = _add_suffix_to_path(output_path_base, "enunciatarios")
+    err_enunciatarios = _add_suffix_to_path(path_errores_base, "enunciatarios")
+    resultados["enunciatarios"] = identificar_emociones_con_contexto(
+        df_recortes=df_recortes,
+        df_discursos=df_discursos,
+        df_actores=df_actores,
+        schema=schema,
+        modelo_llm=modelo_llm,
+        prompt_emociones=prompt_enunciatarios,
+        diccionario=diccionario,
+        path_errores=err_enunciatarios,
+        output_path=out_enunciatarios,
+        **kwargs
+    )
+
+    # Actores
+    out_actores = _add_suffix_to_path(output_path_base, "actores")
+    err_actores = _add_suffix_to_path(path_errores_base, "actores")
+    resultados["actores"] = identificar_emociones_con_contexto(
+        df_recortes=df_recortes,
+        df_discursos=df_discursos,
+        df_actores=df_actores,
+        schema=schema,
+        modelo_llm=modelo_llm,
+        prompt_emociones=prompt_actores,
+        path_errores=err_actores,
+        output_path=out_actores,
+        diccionario=None,
+        **kwargs
+    )
+
+    return resultados

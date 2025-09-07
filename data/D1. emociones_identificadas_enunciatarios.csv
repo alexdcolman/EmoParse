@@ -1,0 +1,10 @@
+﻿root,frase_idx,recorte_id,codigo,experienciador,tipo_emocion,modo_existencia,justificacion
+,2,DISCURSO_001_FR_003,DISCURSO_001,prodestinatario,confianza,realizada,"El discurso enfatiza la defensa de la libertad y el respaldo a la propia organización, lo que genera un sentimiento de confianza en la capacidad del partido para avanzar."
+,2,DISCURSO_001_FR_003,DISCURSO_001,paradestinatario,esperanza,realizada,El llamado a no ceder ante la intimidación y a seguir el camino de la libertad inspira esperanza y motivación en la ciudadanía.
+,2,DISCURSO_001_FR_003,DISCURSO_001,contradestinatario,amenaza,realizada,La crítica directa al Congreso kirchnerista y la amenaza de vetar aumentos de gasto generan una sensación de amenaza y desafío para el grupo.
+,4,DISCURSO_001_FR_005,DISCURSO_001,prodestinatario,miedo,realizada,"El discurso describe una situación aberrante con violencia y piedras arrojadas, lo que sugiere temor por la seguridad del partido."
+,4,DISCURSO_001_FR_005,DISCURSO_001,prodestinatario,ira,realizada,La referencia a un grupejo violento y a operaciones difamadoras indica enojo hacia los agresores y la campaña de desinformación.
+,4,DISCURSO_001_FR_005,DISCURSO_001,prodestinatario,indignación,realizada,"El término ""burdas operaciones difamadoras"" implica una valoración negativa que genera indignación en el partido."
+,4,DISCURSO_001_FR_005,DISCURSO_001,paradestinatario,miedo,realizada,La descripción de piedras arrojadas y violencia sugiere que la ciudadanía argentina también experimenta temor ante la amenaza.
+,4,DISCURSO_001_FR_005,DISCURSO_001,paradestinatario,ira,realizada,"La violencia y la difamación provocan enojo en la audiencia general, que se identifica con el mensaje del discurso."
+,4,DISCURSO_001_FR_005,DISCURSO_001,paradestinatario,indignación,realizada,"El discurso critica las operaciones difamadoras, lo que genera indignación en la ciudadanía."

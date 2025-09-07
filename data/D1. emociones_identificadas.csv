@@ -1,76 +1,12 @@
 ﻿experienciador,tipo_emocion,modo_existencia,justificacion,frase_idx,recorte_id,codigo
-Javier Milei,placer,Realizada,"La frase contiene la expresión 'es un placer', indicando que el enunciador experimenta placer al estar presente.",0,DISCURSO_001_FR_001,DISCURSO_001
-Javier Milei,confianza,Realizada,"El enunciador afirma que todavía conserva los reflejos, lo que indica confianza en su propia capacidad de reacción.",1,DISCURSO_001_FR_002,DISCURSO_001
-enunciador,placer,Realizada,"La frase declara explícitamente ""es un placer para mí"", indicando que el enunciador experimenta placer.",2,DISCURSO_001_FR_003,DISCURSO_001
-enunciador,gratitud,Realizada,"La frase contiene los verbos ""quiero agradecer"" y ""extiendo mi agradecimiento"", que indican un sentimiento de gratitud expresado por el enunciador.",3,DISCURSO_001_FR_004,DISCURSO_001
-Milei,indignación,Realizada,"El enunciador describe la situación como ""aberrante"" y menciona ""burdas operaciones difamadoras"", lo que indica una reacción de indignación frente a la violencia y la desinformación.",4,DISCURSO_001_FR_005,DISCURSO_001
-Milei,miedo,Realizada,"Se relata que ""un grupejo violento irrumpió por la fuerza y empezó a arrojar piedras hacia nosotros"", lo que implica una amenaza directa y genera miedo en el hablante.",4,DISCURSO_001_FR_005,DISCURSO_001
-Milei,frustración,Realizada,"La referencia a ""burdas operaciones difamadoras"" sugiere frustración ante la continua hostilidad y la falta de justicia.",4,DISCURSO_001_FR_005,DISCURSO_001
-nosotros,miedo,Realizada,"El grupo al que se refiere el hablante (""nosotros"") también experimenta la amenaza de la violencia descrita, generando miedo colectivo.",4,DISCURSO_001_FR_005,DISCURSO_001
-nosotros,ira,Realizada,"La descripción de la violencia y la difamación provoca ira en el grupo, evidenciada por la expresión de la situación como ""aberrante"".",4,DISCURSO_001_FR_005,DISCURSO_001
-nosotros,ansiedad,Realizada,El hecho de que el grupo sea atacado de forma inesperada y violenta genera ansiedad en los presentes.,4,DISCURSO_001_FR_005,DISCURSO_001
-Javier Milei,frustración,Realizada,sabíamos que esto iba a ser difícil,5,DISCURSO_001_FR_006,DISCURSO_001
-Javier Milei,miedo,Realizada,"se dedicarán a difamarnos, calumniarnos e injuriarnos",5,DISCURSO_001_FR_006,DISCURSO_001
-Javier Milei,indignación,Realizada,la casta está enquistada en el estado hace décadas y defiende sus privilegios,5,DISCURSO_001_FR_006,DISCURSO_001
-La Libertad Avanza,frustración,Realizada,sabíamos que esto iba a ser difícil,5,DISCURSO_001_FR_006,DISCURSO_001
-La Libertad Avanza,miedo,Realizada,"se dedicarán a difamarnos, calumniarnos e injuriarnos",5,DISCURSO_001_FR_006,DISCURSO_001
-La Libertad Avanza,indignación,Realizada,la casta está enquistada en el estado hace décadas y defiende sus privilegios,5,DISCURSO_001_FR_006,DISCURSO_001
-ciudadanía argentina,frustración,Realizada,sabíamos que esto iba a ser difícil,5,DISCURSO_001_FR_006,DISCURSO_001
-ciudadanía argentina,miedo,Realizada,"se dedicarán a difamarnos, calumniarnos e injuriarnos",5,DISCURSO_001_FR_006,DISCURSO_001
-ciudadanía argentina,indignación,Realizada,la casta está enquistada en el estado hace décadas y defiende sus privilegios,5,DISCURSO_001_FR_006,DISCURSO_001
-Javier Milei,indignación,Realizada,"El discurso indica que incluso cuando era solo un ciudadano, hablando públicamente, fue atacado por la casta, lo que genera indignación.",6,DISCURSO_001_FR_007,DISCURSO_001
-Javier Milei,frustración,Realizada,"El contexto menciona que la casta se dedicará a difamarnos, calumniarnos e injuriarnos, lo que provoca frustración.",6,DISCURSO_001_FR_007,DISCURSO_001
-Enunciador,indignación,realizada,"expresa indignación al afirmar que se inventaron salvajadas de venta de candidaturas y otras aberraciones, mostrando rechazo a la difamación.",7,DISCURSO_001_FR_008,DISCURSO_001
-Enunciador,enojo,realizada,muestra enojo al referirse a la casta que difama y al mencionar acusaciones absurdas.,7,DISCURSO_001_FR_008,DISCURSO_001
-Enunciador,frustración,realizada,muestra frustración al reconocer la dificultad de la política y las acusaciones absurdas.,7,DISCURSO_001_FR_008,DISCURSO_001
-Enunciador,disgusto,realizada,"muestra disgusto al mencionar incesto y zoofilia, manifestando repulsión.",7,DISCURSO_001_FR_008,DISCURSO_001
-congreso kirchnerista,cansancio,realizada,"""se cansaron"" indica que el congreso kirchnerista está cansado de decir barbaridades.",8,DISCURSO_001_FR_009,DISCURSO_001
-Javier Milei,indignación,realizada,"El enunciador describe la ""opereta"" de la casta como ""una nueva mentira"", expresando indignación ante la repetición de falsedades y engaños.",9,DISCURSO_001_FR_010,DISCURSO_001
-Javier Milei,desprecio,realizada,"Al calificar la acción de la casta como ""otro ítem"" y una ""mentira"", el discurso muestra un desprecio explícito hacia sus maniobras.",9,DISCURSO_001_FR_010,DISCURSO_001
-Javier Milei,frustración,realizada,"El contexto menciona repetidas ""barbaridades"" y aberraciones, lo que sugiere frustración ante la persistencia de dichas mentiras.",9,DISCURSO_001_FR_010,DISCURSO_001
-nosotros,esperanza,Realizada,"La frase ""esperamos que todo se aclare tan pronto como sea posible"" expresa una expectativa positiva y la emoción de esperanza del hablante.",10,DISCURSO_001_FR_011,DISCURSO_001
-enunciador,lamentación,Realizada,"El verbo ""lamentamos"" indica una expresión de tristeza/regret por parte del enunciador.",11,DISCURSO_001_FR_012,DISCURSO_001
-Javier Milei,indignación,Realizada,"El discurso critica las acciones de la casta como una embestida para frenar el cambio, lo que implica una indignación moral del orador.",12,DISCURSO_001_FR_013,DISCURSO_001
-Javier Milei,ira,Realizada,"El uso de la palabra ""embestida"" y la acusación de frenar el proceso de cambio reflejan una ira dirigida contra la casta.",12,DISCURSO_001_FR_013,DISCURSO_001
-la gente,pánico,Realizada,El discurso indica que el gobierno genera pánico en la gente.,13,DISCURSO_001_FR_014,DISCURSO_001
-la gente,miedo,Realizada,"El pánico implica miedo, por lo que la gente experimenta miedo.",13,DISCURSO_001_FR_014,DISCURSO_001
-enunciador,indignación,Realizada,"El enunciador expresa indignación al referirse a las ""acciones cobardes"" de la casta.",14,DISCURSO_001_FR_015,DISCURSO_001
-enunciador,determinación,Realizada,"La frase ""no nos vamos a dejar amedrentar"" muestra la resolución del enunciador de no ceder ante la intimidación.",14,DISCURSO_001_FR_015,DISCURSO_001
-enunciador,confianza,Realizada,"Al afirmar que ""ni la gente mastica vidrio"", el enunciador transmite confianza en la fortaleza de la gente.",14,DISCURSO_001_FR_015,DISCURSO_001
-enunciador,desprecio,Realizada,"El uso de ""cobardes"" denota desprecio hacia las acciones de la casta.",14,DISCURSO_001_FR_015,DISCURSO_001
-Javier Milei,valor,Realizada,"La frase indica que los oponentes 'nos envalentonan', lo que implica que el enunciador experimenta valor.",15,DISCURSO_001_FR_016,DISCURSO_001
-actores,miedo,Realizada,La frase menciona que los oponentes 'demuestran que tienen miedo'.,15,DISCURSO_001_FR_016,DISCURSO_001
-actores,desesperación,Realizada,La frase indica que los oponentes 'están desesperados'.,15,DISCURSO_001_FR_016,DISCURSO_001
-Javier Milei,anger,Realizada,"El discurso menciona ""regimen de mentiras, violencia, corrupción y extorsión"", expresando enojo hacia el kirchnerismo.",16,DISCURSO_001_FR_017,DISCURSO_001
-Javier Milei,determination,Realizada,"Milei afirma que ""los bonaerenses le van a poner fin"", mostrando determinación para acabar con el régimen.",16,DISCURSO_001_FR_017,DISCURSO_001
-Javier Milei,hope,Realizada,"La frase ""kirchnerismo nunca más"" indica esperanza de un futuro sin el régimen.",16,DISCURSO_001_FR_017,DISCURSO_001
-Javier Milei,confidence,Realizada,Milei muestra confianza en los bonaerenses al afirmar que acabarán con el régimen.,16,DISCURSO_001_FR_017,DISCURSO_001
-Javier Milei,indignation,Realizada,"El discurso expresa indignación al describir el régimen como ""mentiras, violencia, corrupción y extorsión"".",16,DISCURSO_001_FR_017,DISCURSO_001
-Javier Milei,contempt,Realizada,El uso de términos negativos y la crítica al kirchnerismo revelan desprecio.,16,DISCURSO_001_FR_017,DISCURSO_001
-Javier Milei,frustration,Realizada,"El contexto menciona ""no nos vamos a dejar amedrentar"", indicando frustración con las acciones del régimen.",16,DISCURSO_001_FR_017,DISCURSO_001
-Party La Libertad Avanza,hope,Potencial,El discurso de Milei puede inspirar esperanza en los miembros del partido al prometer un fin al régimen.,16,DISCURSO_001_FR_017,DISCURSO_001
-Party La Libertad Avanza,determination,Potencial,La llamada a la acción puede motivar determinación entre los miembros del partido.,16,DISCURSO_001_FR_017,DISCURSO_001
-Bonaerenses,determination,Realizada,"Milei atribuye a los bonaerenses la acción de poner fin al régimen, mostrando su determinación.",16,DISCURSO_001_FR_017,DISCURSO_001
-Bonaerenses,hope,Realizada,El discurso expresa esperanza de que los bonaerenses logren acabar con el régimen.,16,DISCURSO_001_FR_017,DISCURSO_001
-Bonaerenses,confidence,Realizada,Milei muestra confianza en la capacidad de los bonaerenses para terminar el régimen.,16,DISCURSO_001_FR_017,DISCURSO_001
-Kirchnerismo,anger,Realizada,El discurso muestra enojo hacia el kirchnerismo al describir su régimen.,16,DISCURSO_001_FR_017,DISCURSO_001
-Kirchnerismo,indignation,Realizada,"El discurso expresa indignación al referirse al régimen como ""mentiras, violencia, corrupción y extorsión"".",16,DISCURSO_001_FR_017,DISCURSO_001
-Kirchnerismo,contempt,Realizada,El discurso muestra desprecio hacia el kirchnerismo al usar términos negativos.,16,DISCURSO_001_FR_017,DISCURSO_001
-Kirchnerismo,frustration,Realizada,El discurso indica frustración con las acciones del kirchnerismo.,16,DISCURSO_001_FR_017,DISCURSO_001
-enunciador,determinación,Realizada,"El enunciador expresa una firme intención de actuar con la frase ""es ahora más que nunca que tenemos que decir: 'kirchnerismo nunca más'"", lo que indica una determinación clara y activa.",17,DISCURSO_001_FR_018,DISCURSO_001
-enunciador,urgencia,Realizada,"El uso de la expresión ""más que nunca"" subraya la necesidad inmediata de actuar, reflejando una emoción de urgencia presente en el discurso.",17,DISCURSO_001_FR_018,DISCURSO_001
-enunciador,indignación,Realizada,"La frase ""kirchnerismo nunca más"" es una declaración de rechazo y crítica hacia el kirchnerismo, lo que implica una indignación dirigida contra ese actor político.",17,DISCURSO_001_FR_018,DISCURSO_001
-enunciatarios,ansiedad,Realizada,"El ruido en el mercado generó ansiedad para la audiencia, según la frase ""generaba algún grado de ansiedad"".",18,DISCURSO_001_FR_019,DISCURSO_001
-Enunciador,desprecio,Realizada,"El enunciador (Milei) descarta el ruido como insignificante, mostrando una actitud de desprecio hacia la misma.",19,DISCURSO_001_FR_020,DISCURSO_001
-Enunciador,vindicación,Realizada,"El enunciador afirma que el tiempo le dio la razón, indicando que su plan fue correcto y lo valida.",20,DISCURSO_001_FR_021,DISCURSO_001
-Enunciador,satisfacción,Realizada,"El enunciador menciona que todo terminó acomodándose tal cual anticipó, mostrando satisfacción por el resultado.",20,DISCURSO_001_FR_021,DISCURSO_001
-Enunciador,confianza,Realizada,"Al afirmar que no se movió ni un centímetro de su plan, el enunciador demuestra confianza en su estrategia.",20,DISCURSO_001_FR_021,DISCURSO_001
-Enunciador,orgullo,Realizada,El enunciador se siente orgulloso al ver que su plan se cumplió sin desviaciones.,20,DISCURSO_001_FR_021,DISCURSO_001
-Javier Milei,orgullo,realizada,"El discurso menciona que Milei entregó una hoja de ruta de su gestión, indicando orgullo por haber establecido un plan claro y haber cumplido con su promesa.",21,DISCURSO_001_FR_022,DISCURSO_001
-Javier Milei,esperanza,potencial,"La frase 'quizás recordarán' sugiere una expectativa de que el público recuerde su hoja de ruta, lo que implica una esperanza de reconocimiento.",21,DISCURSO_001_FR_022,DISCURSO_001
-enunciador,confianza,realizada,"El enunciador articula un plan claro y objetivo, indicando confianza en la estrategia.",22,DISCURSO_001_FR_023,DISCURSO_001
-enunciador,determinación,realizada,"El enunciador describe una secuencia de pasos concretos, mostrando determinación para llevar a cabo el plan.",22,DISCURSO_001_FR_023,DISCURSO_001
-Javier Milei,orgullo,Realizada,"El enunciador afirma haber cumplido con eliminar el impuesto país y levantar el cepo cambiario, lo que indica un sentimiento de orgullo por la consecución de objetivos.",23,DISCURSO_001_FR_024,DISCURSO_001
-Javier Milei,satisfacción,Realizada,"La expresión ""podemos decir que hemos cumplido"" refleja satisfacción con los resultados alcanzados.",23,DISCURSO_001_FR_024,DISCURSO_001
-enunciador,orgullo,Realizada,"El enunciador expresa satisfacción y orgullo por el avance rápido en la eliminación de las retenciones, lo cual indica una valoración positiva de sus logros.",24,DISCURSO_001_FR_025,DISCURSO_001
-enunciador,entusiasmo,Realizada,La expresión de avanzar tan rápido como pueden sugiere entusiasmo y energía positiva hacia la consecución de los objetivos fiscales.,24,DISCURSO_001_FR_025,DISCURSO_001
+enunciador,placer,Realizada,"La frase contiene la expresión ""es un placer"", indicando que el enunciador experimenta placer.",0,DISCURSO_001_FR_001,DISCURSO_001
+Enunciador,confianza,Realizada,"El enunciador afirma que todavía conserva los reflejos, lo que implica una valoración positiva de su propia capacidad y, por tanto, una expresión de confianza en sí mismo.",1,DISCURSO_001_FR_002,DISCURSO_001
+Javier Milei,placer,Realizada,La frase indica que es un placer para mí volver a presentarme ante todos ustedes.,2,DISCURSO_001_FR_003,DISCURSO_001
+Javier Milei,gratitud,Realizada,"""quiero agradecer"" expresa gratitud directa del enunciador.",3,DISCURSO_001_FR_004,DISCURSO_001
+Javier Milei,agradecimiento,Realizada,"""extiendo mi agradecimiento"" indica un sentimiento de agradecimiento del enunciador.",3,DISCURSO_001_FR_004,DISCURSO_001
+Javier Milei,humildad,Realizada,"""por supuesto"" sugiere una actitud humilde y de cortesía del enunciador.",3,DISCURSO_001_FR_004,DISCURSO_001
+Javier Milei,cortesía,Realizada,"""por supuesto"" y la expresión de agradecimiento reflejan una actitud de cortesía y respeto.",3,DISCURSO_001_FR_004,DISCURSO_001
+Javier Milei,miedo,realizada,"El discurso describe una situación aberrante en la que un grupo violento arrojó piedras, lo que implica una amenaza directa y provoca miedo en el hablante.",4,DISCURSO_001_FR_005,DISCURSO_001
+Javier Milei,indignación,realizada,"El hablante menciona 'burdas operaciones difamadoras', evaluando negativamente la situación y mostrando indignación ante la violencia y la difamación.",4,DISCURSO_001_FR_005,DISCURSO_001
+Javier Milei,sorpresa,realizada,"Se describe la experiencia como 'situación aberrante', indicando que el hablante se sorprendió por la inesperada violencia.",4,DISCURSO_001_FR_005,DISCURSO_001
+grupo violento,hostilidad,realizada,"El grupo irrumpió por la fuerza y arrojó piedras, lo que sugiere una actitud hostil y agresiva.",4,DISCURSO_001_FR_005,DISCURSO_001

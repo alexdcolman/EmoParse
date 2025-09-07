@@ -1,0 +1,14 @@
+﻿experienciador,tipo_emocion,modo_existencia,justificacion,frase_idx,recorte_id,codigo
+Javier Milei,placer,Realizada,"El enunciador expresa explícitamente ""es un placer para mí"" al dirigirse al público, indicando una emoción de placer.",0,DISCURSO_001_FR_001,DISCURSO_001
+Javier Milei,placer,Realizada,"La frase ""es un placer para mí"" expresa claramente el sentimiento de placer.",1,DISCURSO_001_FR_002,DISCURSO_001
+Javier Milei,gratitud,Realizada,"Al decir ""es un placer para mí volver a presentarme ante todos ustedes"", Milei muestra gratitud hacia la audiencia.",1,DISCURSO_001_FR_002,DISCURSO_001
+Javier Milei,orgullo,Realizada,"La expresión ""por lo menos parece que todavía conservo los reflejos"" implica orgullo por su capacidad de mantener la resiliencia.",1,DISCURSO_001_FR_002,DISCURSO_001
+Javier Milei,confianza,Realizada,La misma frase sugiere confianza en su propia fortaleza y continuidad.,1,DISCURSO_001_FR_002,DISCURSO_001
+Javier Milei,placer,Realizada,"La frase ""es un placer para mí"" expresa directamente el sentimiento de placer del enunciador.",2,DISCURSO_001_FR_003,DISCURSO_001
+Javier Milei,gratitud,Realizada,"El enunciador expresa gratitud al decir ""quiero agradecer a la flamante presidente Bettina Bulgheroni por su cordial invitación"".",2,DISCURSO_001_FR_003,DISCURSO_001
+Javier Milei,gratitud,Realizada,"El enunciador expresa su agradecimiento mediante los verbos ""quiero agradecer"" y ""extiendo mi agradecimiento"", lo que indica una emoción de gratitud.",3,DISCURSO_001_FR_004,DISCURSO_001
+Javier Milei,indignación,Realizada,"El enunciador describe la violencia y las ""burdas operaciones difamadoras"", lo que sugiere indignación ante la injusticia y la hostilidad política.",4,DISCURSO_001_FR_005,DISCURSO_001
+Javier Milei,miedo,Realizada,"El grupo violento arrojó piedras, lo que implica temor por la seguridad personal y la de sus acompañantes.",4,DISCURSO_001_FR_005,DISCURSO_001
+Javier Milei,ira,Realizada,La agresión física y las acusaciones falsas generan ira en el enunciador ante la violencia y la difamación.,4,DISCURSO_001_FR_005,DISCURSO_001
+Javier Milei,frustración,Realizada,La resistencia política y las operaciones difamadoras provocan frustración al impedir la transformación que el pueblo ha elegido.,4,DISCURSO_001_FR_005,DISCURSO_001
+Javier Milei,sorpresa,Realizada,"La descripción de una ""situación aberrante"" y la violencia inesperada indican sorpresa ante la magnitud del ataque.",4,DISCURSO_001_FR_005,DISCURSO_001

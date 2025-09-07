@@ -1,0 +1,8 @@
+﻿root,frase_idx,recorte_id,codigo,experienciador,tipo_emocion,modo_existencia,justificacion
+,2,DISCURSO_001_FR_003,DISCURSO_001,La Libertad Avanza,orgullo,Potencial,"El discurso presenta al presidente como representante del partido, lo que puede generar orgullo en la organización al ver su liderazgo ante la audiencia."
+,2,DISCURSO_001_FR_003,DISCURSO_001,La Libertad Avanza,agradecimiento,Potencial,"El enunciador extiende su agradecimiento a las autoridades y a los presentes, lo que puede generar un sentimiento de agradecimiento en la organización."
+,2,DISCURSO_001_FR_003,DISCURSO_001,ciudadanía argentina,agradecimiento,Potencial,"El enunciador agradece a todos los presentes, lo que puede generar un sentimiento de agradecimiento en la ciudadanía."
+,2,DISCURSO_001_FR_003,DISCURSO_001,ciudadanía argentina,contento,Potencial,"El discurso expresa placer por volver a presentarse ante la audiencia, lo que puede generar contento en la ciudadanía al recibir la presencia del presidente."
+,2,DISCURSO_001_FR_003,DISCURSO_001,congreso kirchnerista,indignación,Potencial,"El discurso incluye críticas al Congreso kirchnerista, lo que puede generar indignación en sus miembros como respuesta a la crítica."
+,4,DISCURSO_001_FR_005,DISCURSO_001,nosotros,miedo,Realizada,"La frase describe una situación aberrante con un grupo violento que arroja piedras, lo que implica una amenaza directa, generando miedo en los presentes."
+,4,DISCURSO_001_FR_005,DISCURSO_001,un grupejo violento,ira,Realizada,"El discurso menciona que el grupo violento irrumpió y arrojó piedras, indicando una conducta agresiva que se asocia con ira."
