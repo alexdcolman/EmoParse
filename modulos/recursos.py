@@ -79,7 +79,7 @@ def analizar_generico(
     etiqueta_log=None,
     mostrar_prompts=False,
     path_errores=None,
-    timeout=30
+    timeout=60
 ):
     """
     Ejecuta LLM con prompt y parsea usando PydanticOutputParser de LangChain.

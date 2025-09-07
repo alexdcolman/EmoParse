@@ -200,6 +200,7 @@ def reprocesar_errores_identificacion(
     """
     import os
     import pandas as pd
+    import csv
     from datetime import datetime
 
     logger = ErrorLogger(path_errores)
@@ -253,6 +254,7 @@ def reprocesar_errores_identificacion(
 
             if isinstance(df_result, pd.DataFrame) and not df_result.empty:
                 df_result["INDEX"] = idx
+                df_result["codigo"] = df_result["codigo"].astype(str)
                 df_corr = pd.concat([df_corr, df_result], ignore_index=True)
                 exitosos.append(reg)
                 print(f"✅ Reprocesado INDEX={idx}")
@@ -270,8 +272,25 @@ def reprocesar_errores_identificacion(
 
     # Guardar CSV actualizado si se indicó path_salida
     if path_salida and not df_corr.empty:
+        # Columnas definitivas del CSV
+        columnas_finales = ["actor", "tipo", "modo", "justificacion", "frase_idx", "recorte_id", "codigo"]
+
+        # Asegurarse de que existan y estén en el orden correcto
+        for col in columnas_finales:
+            if col not in df_corr.columns:
+                df_corr[col] = ""
+        df_corr = df_corr[columnas_finales]
+
+        # Guardar CSV con quoting para evitar combinaciones accidentales
         modo = "a" if os.path.exists(path_salida) else "w"
-        df_corr.to_csv(path_salida, mode=modo, header=not os.path.exists(path_salida), index=False, encoding="utf-8-sig")
+        df_corr.to_csv(
+            path_salida,
+            mode=modo,
+            header=not os.path.exists(path_salida),
+            index=False,
+            encoding="utf-8-sig",
+            quoting=csv.QUOTE_ALL
+        )
         print(f"✅ CSV actualizado guardado en {path_salida}")
 
     # Guardar errores persistentes

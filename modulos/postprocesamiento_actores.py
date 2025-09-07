@@ -129,9 +129,11 @@ def validacion_actores(
 
         for actor_data in tqdm(actores, desc=f"Validando actores recorte {recorte_id}", leave=False):
             actor = actor_data["actor"]
-            prompt = PROMPT_VALIDAR_ACTORES.replace("<<FRASE>>", texto)\
-                                           .replace("<<ACTOR>>", actor)\
-                                           .replace("<<ONTOLOGIA>>", ontologia)
+            prompt = PROMPT_VALIDAR_ACTORES.format(
+                frase=texto,
+                actor=actor,
+                ontologia=ontologia
+            )
 
             # --- Llamar al modelo ---
             try:

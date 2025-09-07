@@ -26,6 +26,8 @@ actores_identificados = DATA_DIR / "C1. actores_identificados.csv"
 actores_validos = DATA_DIR / "C2. actores_validos.csv"
 actores_excluidos = DATA_DIR / "C3. actores_excluidos.csv"
 
+emociones_identificadas = DATA_DIR / "D1. emociones_identificadas.csv"
+
 # Carpeta de logs
 LOGS_DIR = BASE_DIR / "logs"
 
@@ -41,6 +43,7 @@ errores_metadatos = ERRORS_DIR / "errores_metadatos.jsonl"
 errores_enunciacion = ERRORS_DIR / "errores_enunciacion.jsonl"
 errores_identificacion_actores = ERRORS_DIR / "errores_identificar_actores.jsonl"
 errores_persistentes = ERRORS_DIR / "errores_persistentes.jsonl"
+errores_identificacion_emociones = ERRORS_DIR / "errores_identificar_emociones.jsonl"
 
 # Carpeta de prompts
 PROMPTS_DIR = BASE_DIR / "modulos" / "prompts"

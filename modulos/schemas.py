@@ -51,3 +51,18 @@ class ListaActoresSchema(RootModel[List[ActorSchema]]):
     @classmethod
     def get_langchain_parser(cls):
         return PydanticOutputParser(pydantic_object=cls)
+
+class EmocionSchema(BaseModel):
+    experienciador: str
+    tipo_emocion: str
+    modo_existencia: str
+    justificacion: str
+
+    @classmethod
+    def get_langchain_parser(cls):
+        return PydanticOutputParser(pydantic_object=cls)
+
+class ListaEmocionesSchema(RootModel[List[EmocionSchema]]):
+    @classmethod
+    def get_langchain_parser(cls):
+        return PydanticOutputParser(pydantic_object=cls)

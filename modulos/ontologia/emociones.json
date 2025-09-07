@@ -1,0 +1,20 @@
+{
+  "modos_existencia": {
+    "1": {
+      "nombre": "Realizada",
+      "descripcion": "La emoción se expresa o representa efectivamente en el discurso, de forma explícita o inferible."
+    },
+    "2": {
+      "nombre": "Potencial",
+      "descripcion": "La emoción se mantiene disponible como posibilidad activable o efecto pretendido sobre un enunciatario."
+    },
+    "3": {
+      "nombre": "Actual",
+      "descripcion": "La emoción es convocada como horizonte de sentido, presente en la interpretación, pero sin expresarse completamente."
+    },
+    "4": {
+      "nombre": "Virtual",
+      "descripcion": "La emoción se presenta como estructura posible o imaginada, como competencia emocional o potencial conceptual."
+    }
+  }
+}
