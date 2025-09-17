@@ -1,6 +1,6 @@
 # EmoParse
 
-**Sistema modular para el análisis automático de emociones en discursos**
+**Sistema modular para el análisis semiautomático de emociones en discursos**
 
 EmoParse es una arquitectura automatizada que integra herramientas de procesamiento de lenguaje natural, modelos de lenguaje de gran escala (LLMs) y reglas semióticas para detectar, caracterizar y visualizar emociones discursivas. Está diseñado para facilitar el análisis crítico de textos, tanto desde la perspectiva retórica como enunciativa y afectiva.
 
@@ -33,7 +33,7 @@ EmoParse está organizado como una cadena de módulos funcionales. Cada módulo 
 ### 5. Identificación de actores discursivos ([`identificacion_actores.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/identificacion_actores.py))
 - Usa LLM para detectar actores explícitos o inferibles por frase.
 
-### 6. Detección de emociones ([`deteccion_emociones.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/deteccion_emociones.py), en desarrollo)
+### 6. Detección de emociones ([`deteccion_emociones.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/deteccion_emociones.py))
 - Clasifica emociones **dichas, mostradas, sostenidas e inducidas**.
 - Asocia emociones a actores específicos.
 - Identifica efectos emocionales sobre el destinatario.
@@ -46,7 +46,7 @@ Detecta emociones del enunciador, enunciatarios y actores en un solo prompt. Per
 2) **Función separada por roles**  
 Detecta emociones del enunciador, enunciatarios y actores con prompts separados. Aporta mayor granularidad y efectividad en la detección, permitiendo un análisis más detallado de cada actor y su relación emocional con el discurso.
 
-### 7. Caracterización emocional (`caracterizacion_emociones.py`, en desarrollo)
+### 7. Caracterización emocional ([`caracterizacion_emociones.py`](https://github.com/alexdcolman/EmoParse/blob/main/modulos/caracterizacion_emociones.py))
 - Atributos (MVP): foria (tonalidad), dominancia, intensidad, fuente.
 - Expandible a otros atributos.
 - Categorización computacional basada en inferencias semióticas.
@@ -72,10 +72,11 @@ Detecta emociones del enunciador, enunciatarios y actores con prompts separados.
 
 Actualmente se encuentran optimizadas las funciones de:
 
-- Identificación de actores y tipos de discurso.
-- Posprocesamiento y validación de resultados.
+- Identificación de metadatos, actores y emociones.
+- Caracterización de emociones.
+- Reprocesamiento de errores y postprocesamiento.
 
-Próximamente se optimizarán las funciones específicas de los módulos `deteccion_emociones.py` y `caracterizacion_emociones.py` para detección y caracterización completa.
+Próximamente se optimizarán las funciones específicas de normalización de resultados, clusterización y clasificación, verificación y visualización.
 
 ---
 
@@ -96,11 +97,12 @@ EmoParse/
 ├── logs/ # Logs de ejecución
 ├── modulos/ # Módulos funcionales
 │ ├── init.py
-│ ├── caracterizacion_emociones.py # (Próximamente)
+│ ├── caracterizacion_emociones.py
 │ ├── deteccion_emociones.py
 │ ├── diccionario_compatibilidades.py # (Próximamente)
 │ ├── diccionario_conceptual.py # (Próximamente)
 │ ├── driver_utils.py
+│ ├── enunciacion.py
 │ ├── extraccion_fragmentos.py
 │ ├── identificacion_actores
 │ ├── metadatos
@@ -111,6 +113,7 @@ EmoParse/
 │ ├── preprocesamiento
 │ ├── prompts
 │ ├── recursos
+│ ├── reprocesamiento_emociones
 │ ├── reprocesamiento
 │ └── resumen
 │ └── schemas
@@ -224,9 +227,45 @@ jupyter lab
   1. Función general: detecta emociones de enunciador, enunciatarios y actores en un solo prompt. Útil para pruebas iniciales o textos de menor complejidad.
   2. Función separada por roles: detecta emociones con prompts distintos para enunciador, enunciatarios y actores. Aporta mayor granularidad y efectividad en la detección.
 
-**Reprocesamiento (reprocesar_errores_metadatos, reprocesar_enunciacion, reprocesar_errores_identificacion)** y **Postprocesamiento (propagar_actores_por_pronombres, validacion_actores)**
+**Caracterización emocional (caracterizar_emociones_todas)**
+
+- Clasifica y atribuye atributos emocionales a cada emoción detectada en el discurso.
+- Funciona sobre emociones ya identificadas, considerando el experienciador y la justificación de la emoción.
+- Atributos principales:
+  - Foria: tonalidad afectiva de la emoción (eufórico, disfórico, afórico, ambifórico).
+  - Dominancia: tipo de control o influencia de la emoción (corporal, cognoscitiva, mixta).
+  - Intensidad: fuerza de la emoción (alta, baja, neutra/ambivalente).
+  - Fuente: origen o desencadenante concreto de la emoción (actor, objeto, situación, experiencia o espacio).
+- Genera prompts dinámicos para cada atributo, usando heurísticas y ontologías internas.
+- Procesa emociones individualmente o en lote, permitiendo checkpoints y guardado incremental en CSV.
+- Función unificada `caracterizar_emociones_todas` permite construir un dataset final consolidado con todos los atributos por emoción, frase y experienciador.
+- Requiere LLM para inferencia y parseo de respuestas (soporta GPT-OSS:20b vía Ollama).
+
+**Reprocesamiento (reprocesar_metadatos_nan, reprocesar_enunciacion_nan, reprocesar_errores_identificacion)**, **Reprocesamiento emociones (reprocesar_errores_emociones)** y **Postprocesamiento (propagar_actores_por_pronombres, validacion_actores)**
 
 - Funciones de reprocesamiento y validación que aseguran consistencia y completitud de los resultados.
+
+**Schemas**
+
+- Define la estructura de los datos esperados en cada análisis: tipo de discurso, lugar, enunciación, actores, emociones y atributos emocionales (foria, dominancia, intensidad, fuente).
+- Permite parsear respuestas de LLMs en objetos Pydantic validados, garantizando consistencia y control sobre los formatos de salida.
+
+**Recursos**
+
+- Funciones auxiliares generales: manejo de timeouts, limpieza de memoria, carga de ontologías y heurísticas.
+- Manejador de errores (ErrorLogger) para registrar, cargar, filtrar y depurar incidencias en formato JSONL.
+- Incluye wrappers de ejecución LLM con reintentos, backoff y restart automático de Ollama.
+
+**Prompts**
+
+- Contiene todos los prompts base para LLMs, segmentados por tarea: resúmenes, tipo de discurso, enunciación, identificación de actores y detección/caracterización de emociones.
+- Diseñados para asegurar consistencia, exhaustividad y claridad en la respuesta de los modelos, evitando información inventada.
+
+**Modelo**
+
+- Wrapper para interactuar con Ollama o modelos locales de LLMs (GPT-OSS:20b, Mistral, etc.).
+- Devuelve funciones modelo_llm(prompt) listas para usar en cualquier módulo que requiera inferencia automática de LLMs.
+- Soporta parámetros de temperatura, concurrencia, formato de salida y control de errores.
 
 ## ¿Qué aporta EmoParse?
 
@@ -246,7 +285,7 @@ jupyter lab
 
 - Dependencia de calidad de prompts y cobertura del modelo.  
 - Requiere revisión manual para corroborar resultados.  
-- Consumo elevado de recursos y tiempos de cómputo intensos para identificación de actores por frase.  
+- Consumo elevado de recursos y tiempos de cómputo intensos para identificación por frase.  
 
 ## Licencia
 
