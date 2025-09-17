@@ -2,19 +2,23 @@
   "modos_existencia": {
     "1": {
       "nombre": "Realizada",
-      "descripcion": "La emoción se expresa o representa efectivamente en el discurso, de forma explícita o inferible."
+      "descripcion": "La emoción se expresa o representa efectivamente en el discurso, de forma explícita o inferible.",
+      "ejemplo": "\"Estoy feliz de estar aquí\" → felicidad realizada."
     },
     "2": {
       "nombre": "Potencial",
-      "descripcion": "La emoción se mantiene disponible como posibilidad activable o efecto pretendido sobre un enunciatario."
+      "descripcion": "La emoción se plantea como posibilidad futura o como efecto pretendido sobre un enunciatario.",
+      "ejemplo": "\"Quiero que se sientan orgullosos de nuestra nación\" → orgullo potencial de los enunciatarios."
     },
     "3": {
       "nombre": "Actual",
-      "descripcion": "La emoción es convocada como horizonte de sentido, presente en la interpretación, pero sin expresarse completamente."
+      "descripcion": "La emoción está activada en el discurso, presente en la selección y convocación semiótica, pero aún no se expresa plenamente ni se realiza efectivamente.",
+      "ejemplo": "\"Algunos privilegios parecen sostenerse sin cuestionamiento\" → indignación actual, activada en el recorrido generativo, pero no manifestada."
     },
     "4": {
       "nombre": "Virtual",
-      "descripcion": "La emoción se presenta como estructura posible o imaginada, como competencia emocional o potencial conceptual."
+      "descripcion": "La emoción se presenta como estructura posible o imaginada, como competencia emocional o potencial conceptual.",
+      "ejemplo": "\"Podríamos llegar a sentir temor si no actuamos ahora\" → miedo virtual."
     }
   }
 }

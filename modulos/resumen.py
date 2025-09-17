@@ -9,7 +9,6 @@ from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from modulos.recursos import limpiar_prompt
 from modulos.parsers import extraer_texto_respuesta
-from modulos.modelo import get_model_ollama
 from modulos.utils_io import guardar_csv, mostrar_tiempo_procesamiento
 from langchain_ollama import ChatOllama
 

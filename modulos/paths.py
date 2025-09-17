@@ -27,6 +27,14 @@ actores_validos = DATA_DIR / "C2. actores_validos.csv"
 actores_excluidos = DATA_DIR / "C3. actores_excluidos.csv"
 
 emociones_identificadas = DATA_DIR / "D1. emociones_identificadas.csv"
+emociones_enunciador = DATA_DIR / "D1. emociones_identificadas_enunciador.csv"
+emociones_enunciatarios = DATA_DIR / "D1. emociones_identificadas_enunciatarios.csv"
+emociones_actores = DATA_DIR / "D1. emociones_identificadas_actores.csv"
+emociones_caracterizadas = DATA_DIR / "D2. emociones_caracterizadas.csv"
+emociones_caracterizadas_enunciador = DATA_DIR / "D2. emociones_caracterizadas_enunciador.csv"
+emociones_caracterizadas_enunciatarios = DATA_DIR / "D2. emociones_caracterizadas_enunciatarios.csv"
+emociones_caracterizadas_actores = DATA_DIR / "D2. emociones_caracterizadas_actores.csv"
+emociones_completo = DATA_DIR / "D3. emociones_completo.csv"
 
 # Carpeta de logs
 LOGS_DIR = BASE_DIR / "logs"
@@ -44,14 +52,9 @@ errores_enunciacion = ERRORS_DIR / "errores_enunciacion.jsonl"
 errores_identificacion_actores = ERRORS_DIR / "errores_identificar_actores.jsonl"
 errores_persistentes = ERRORS_DIR / "errores_persistentes.jsonl"
 errores_identificacion_emociones = ERRORS_DIR / "errores_identificar_emociones.jsonl"
-
-# Carpeta de prompts
-PROMPTS_DIR = BASE_DIR / "modulos" / "prompts"
-PROMPTS_DIR.mkdir(parents=True, exist_ok=True)  # Por si necesitás crearla desde cero
-
-# Prompts específicos
-PROMPT_FRAGMENTO_PATH = PROMPTS_DIR / "resumir_fragmento.txt"
-PROMPT_DISCURSO_PATH = PROMPTS_DIR / "resumir_discurso.txt"
-PROMPT_TIPO_DISCURSO_PATH = PROMPTS_DIR / "identificar_tipo_discurso.txt"
-PROMPT_ENUNCIACION_PATH = PROMPTS_DIR / "identificar_instancias_enunciativas.txt"
-PROMPT_LUGAR_PATH = PROMPTS_DIR / "identificar_lugar.txt"
+errores_identificacion_emociones_enunciador = ERRORS_DIR / "errores_identificar_emociones_enunciador.jsonl"
+errores_identificacion_emociones_enunciatarios = ERRORS_DIR / "errores_identificar_emociones_enunciatarios.jsonl"
+errores_identificacion_emociones_actores = ERRORS_DIR / "errores_identificar_emociones_actores.jsonl"
+errores_caracterizacion_emociones_enunciador = ERRORS_DIR / "errores_caracterizar_emociones_enunciador.jsonl"
+errores_caracterizacion_emociones_enunciatarios = ERRORS_DIR / "errores_caracterizar_emociones_enunciatarios.jsonl"
+errores_caracterizacion_emociones_actores = ERRORS_DIR / "errores_caracterizar_emociones_actores.jsonl"

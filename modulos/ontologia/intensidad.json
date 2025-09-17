@@ -1,0 +1,20 @@
+{
+  "intensidad": {
+    "alta": {
+      "nombre": "Alta",
+      "descripcion": "Emoción fuertemente expresada o inferible.",
+      "ejemplo": "\"Estaba completamente eufórico\" → alta"
+    },
+    "baja": {
+      "nombre": "Baja",
+      "descripcion": "Emoción leve o sutil.",
+      "ejemplo": "\"Sentía un leve nerviosismo\" → baja"
+    },
+    "neutra_ambivalente": {
+      "nombre": "Neutra/Ambivalente",
+      "descripcion": "Emoción sin intensidad clara o con sentimientos contradictorios.",
+      "ejemplo": "\"Tenía sentimientos encontrados\" → neutra/ambivalente"
+    }
+  }
+}
+

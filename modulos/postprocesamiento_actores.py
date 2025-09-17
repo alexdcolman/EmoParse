@@ -6,7 +6,7 @@ import re
 import logging
 import pandas as pd
 from tqdm import tqdm
-from modulos.modelo import get_model_ollama
+from modulos.modelo import get_model_ollama_par
 from modulos.recursos import cargar_ontologia, ErrorLogger
 from modulos.identificacion_actores import procesar_una_frase
 from modulos.prompts import PROMPT_VALIDAR_ACTORES
@@ -100,7 +100,7 @@ def validacion_actores(
     """
     # --- Inicialización del LLM ---
     if modelo_llm is None:
-        modelo_llm = get_model_ollama(modelo="gpt-oss:20b", temperature=0.0, output_format="text")
+        modelo_llm = get_model_ollama_par(modelo="gpt-oss:20b", temperature=0.0, output_format="text")
 
     # --- Cargar archivos o usar DataFrames existentes ---
     if isinstance(path_df_actores, pd.DataFrame):

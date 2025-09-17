@@ -1,3 +1,5 @@
+# schemas.py
+
 from pydantic import BaseModel, RootModel
 from typing import List, Optional
 from langchain.output_parsers import PydanticOutputParser
@@ -63,6 +65,39 @@ class EmocionSchema(BaseModel):
         return PydanticOutputParser(pydantic_object=cls)
 
 class ListaEmocionesSchema(RootModel[List[EmocionSchema]]):
+    @classmethod
+    def get_langchain_parser(cls):
+        return PydanticOutputParser(pydantic_object=cls)
+
+class ForiaSchema(BaseModel):
+    foria: str
+    justificacion: str
+
+    @classmethod
+    def get_langchain_parser(cls):
+        return PydanticOutputParser(pydantic_object=cls)
+
+class DominanciaSchema(BaseModel):
+    dominancia: str
+    justificacion: str
+
+    @classmethod
+    def get_langchain_parser(cls):
+        return PydanticOutputParser(pydantic_object=cls)
+
+class IntensidadSchema(BaseModel):
+    intensidad: str
+    justificacion: str
+
+    @classmethod
+    def get_langchain_parser(cls):
+        return PydanticOutputParser(pydantic_object=cls)
+
+class FuenteSchema(BaseModel):
+    fuente: str
+    tipo_fuente: str
+    justificacion: str
+
     @classmethod
     def get_langchain_parser(cls):
         return PydanticOutputParser(pydantic_object=cls)

@@ -1,8 +1,9 @@
-# modulos/deteccion_emociones2.py
+# deteccion_emociones.py
 
 # IMPORTS Y FUNCIONES BASE
 
 import os
+import re
 import json
 import time
 import logging
@@ -17,7 +18,7 @@ from modulos.recursos import (
     cargar_heuristicas,
 )
 from modulos.utils_io import guardar_csv, mostrar_tiempo_procesamiento
-from modulos.modelo import get_model_ollama
+from modulos.modelo import get_model_ollama_par
 from modulos.schemas import ListaEmocionesSchema
 from modulos.paths import BASE_DIR
 from modulos.tipos_discurso import diccionario_tipos_discurso
@@ -35,13 +36,15 @@ def construir_prompt_emociones(
     heuristicas,
     ontologia,
     prompt_base,
-    diccionario=None
+    diccionario=None,
+    titulo=""
 ):
     """
     Arma el prompt para pedirle al LLM identificación de emociones discursivas.
     """
     return limpiar_prompt(
         prompt_base.format(
+            titulo=titulo,
             resumen_global=resumen_global,
             frase=frase,
             frases_contexto="\n".join(frases_contexto),
@@ -60,7 +63,8 @@ def construir_prompt_emociones(
 def extraer_contexto(df_recortes, frase_idx, window=3):
     idx_inicio = max(frase_idx - window, 0)
     idx_fin = min(frase_idx + window, len(df_recortes) - 1)
-    return df_recortes.loc[idx_inicio:idx_fin, "texto_limpio"].tolist()
+    # 🔹 usar iloc para asegurar posiciones absolutas
+    return df_recortes.iloc[idx_inicio:idx_fin+1]["texto_limpio"].tolist()
 
 def obtener_metadatos(df_discursos, df_actores, codigo):
     fila = df_discursos[df_discursos["codigo"] == codigo].iloc[0]
@@ -75,20 +79,27 @@ def obtener_metadatos(df_discursos, df_actores, codigo):
             enunciatarios.append(f"{actor} (tipo: {tipo})")
 
     actores = df_actores[df_actores["codigo"] == codigo]["actor"].tolist()
-    return fila, enunciatarios, actores
+    
+    titulo = fila.get("titulo", "")
+    return fila, enunciatarios, actores, titulo
 
 def llamar_llm_y_parsear(
-    modelo_llm, prompt, schema, mostrar_prompt=False, path_errores=None, index=None
+    modelo_llm, prompt, schema, mostrar_prompt=False, path_errores=None, index=None, recorte_id=None
 ):
     try:
+        campos = {"INDEX": str(index) if index is not None else None}
+        if recorte_id is not None:
+            campos["RECORTE_ID"] = str(recorte_id)
+
         data = analizar_generico(
             modelo_llm=modelo_llm,
             prompt_base=prompt,
-            campos={"INDEX": str(index) if index is not None else None},
+            campos=campos,
             default=[],
             schema=schema,
             mostrar_prompts=mostrar_prompt,
             path_errores=path_errores,
+            delay_between_calls=0.3,
             etiqueta_log=f"Emociones idx={index}",
         )
 
@@ -104,6 +115,8 @@ def llamar_llm_y_parsear(
 
         columnas = list(schema.__fields__.keys())
         df = pd.DataFrame([a.model_dump() for a in lista]) if lista else pd.DataFrame(columns=columnas)
+        if "root" in df.columns:
+            df = df.drop(columns=["root"])
         return df, lista
 
     except Exception as e:
@@ -112,7 +125,7 @@ def llamar_llm_y_parsear(
         return pd.DataFrame(columns=columnas), []
 
 def procesar_una_frase(
-    frase_idx,
+    recorte_id,
     df_recortes,
     df_discursos,
     df_actores,
@@ -124,50 +137,65 @@ def procesar_una_frase(
     path_errores=None,
     diccionario=None
 ):
-    frase = df_recortes.loc[frase_idx, "texto_limpio"]
-    recorte_id = df_recortes.loc[frase_idx, "recorte_id"]
-    codigo = df_recortes.loc[frase_idx, "codigo"]
+    """
+    Reprocesa una frase identificada por su recorte_id en lugar de usar frase_idx.
+    """
+    # buscar la fila correspondiente al recorte_id
+    fila = df_recortes[df_recortes["recorte_id"].astype(str) == str(recorte_id)]
+    if fila.empty:
+        raise ValueError(f"recorte_id={recorte_id} no encontrado en df_recortes")
+    fila = fila.iloc[0]
 
-    frases_contexto = extraer_contexto(df_recortes, frase_idx, window=max_context)
-    fila_disc, enunciatarios, actores = obtener_metadatos(df_discursos, df_actores, codigo)
+    frase = fila["texto_limpio"]
+    codigo = fila["codigo"]
 
-    actores_en_frase = [a for a in actores if a in frase]
+    # obtener contexto alrededor de la frase
+    idx_real = fila.name  # posición absoluta en df_recortes
+    frases_contexto = extraer_contexto(df_recortes, idx_real, window=max_context)
 
+    # obtener metadatos
+    fila_disc, enunciatarios, actores, titulo = obtener_metadatos(df_discursos, df_actores, codigo)
+
+    # actores detectados exactamente para esa frase
+    actores_en_frase = df_actores[df_actores["recorte_id"].astype(str) == str(recorte_id)]["actor"].dropna().tolist()
+    actores_prompt = ", ".join(actores_en_frase) if actores_en_frase else ""
+
+    # cargar heurísticas y ontología
     heuristicas_path = Path(BASE_DIR) / "modulos" / "heuristicas" / "inferencia_emociones.txt"
     heuristicas = cargar_heuristicas(path=str(heuristicas_path))
     ontologia_path = Path(BASE_DIR) / "modulos" / "ontologia" / "emociones.json"
-    ontologia = json.dumps(
-        cargar_ontologia(path=str(ontologia_path)),
-        indent=2,
-        ensure_ascii=False
-    )
+    ontologia = json.dumps(cargar_ontologia(path=str(ontologia_path)), indent=2, ensure_ascii=False)
 
+    # construir prompt
     prompt = construir_prompt_emociones(
         frase=frase,
         frases_contexto=frases_contexto,
+        titulo=titulo,
         resumen_global=fila_disc.get("resumen", ""),
         tipo_discurso=fila_disc.get("tipo_discurso", ""),
         fecha=fila_disc.get("fecha", ""),
         lugar_justificacion=fila_disc.get("lugar_justificacion", ""),
         enunciador=fila_disc.get("enunciador_actor", ""),
         enunciatarios="\n".join(enunciatarios),
-        actores="\n".join(actores_en_frase),
+        actores=actores_prompt,
         heuristicas=heuristicas,
         ontologia=ontologia,
         prompt_base=prompt_emociones,
         diccionario=diccionario
     )
 
+    # llamar al LLM
     df_emociones, data = llamar_llm_y_parsear(
         modelo_llm=modelo_llm,
         prompt=prompt,
         schema=schema,
         mostrar_prompt=mostrar_prompt,
         path_errores=path_errores,
-        index=frase_idx,
+        index=idx_real,
+        recorte_id=recorte_id,
     )
 
-    df_emociones["frase_idx"] = frase_idx
+    # asignar columnas finales correctas
     df_emociones["recorte_id"] = recorte_id
     df_emociones["codigo"] = codigo
 
@@ -190,21 +218,19 @@ def identificar_emociones_con_contexto(
     max_context=2,
     diccionario=None,
 ):
-    """
-    Loop sobre frases de df_recortes para identificar emociones con contexto.
-    """
     start_time = time.time()
     if modelo_llm is None:
-        modelo_llm = get_model_ollama(modelo="gpt-oss:20b", temperature=0.0, output_format="text")
+        modelo_llm = get_model_ollama_par(modelo="gpt-oss:20b", temperature=0.0, output_format="text")
     if procesador is None:
         procesador = procesar_una_frase
 
     resultados = []
 
-    for i in tqdm(range(len(df_recortes))):
+    # recorrer recorte_id en lugar de índice
+    for recorte_id in tqdm(df_recortes["recorte_id"].astype(str)):
         try:
             df_emociones, prompt, data = procesador(
-                frase_idx=i,
+                recorte_id=recorte_id,
                 df_recortes=df_recortes,
                 df_discursos=df_discursos,
                 df_actores=df_actores,
@@ -216,23 +242,25 @@ def identificar_emociones_con_contexto(
                 path_errores=path_errores,
                 diccionario=diccionario,
             )
-            resultados.append(df_emociones)
+            if not df_emociones.empty:
+                resultados.append(df_emociones)
 
-            if guardar and output_path and checkpoint_interval and (i + 1) % checkpoint_interval == 0:
+            # --- Guardado incremental ---
+            if guardar and output_path and checkpoint_interval and len(resultados) >= checkpoint_interval:
                 df_parcial = pd.concat(resultados, ignore_index=True)
                 checkpoint_path = Path(output_path)
                 checkpoint_path = checkpoint_path.with_name(checkpoint_path.stem + "_checkpoint.csv")
                 guardar_csv(df_parcial, checkpoint_path)
+                resultados = []  # limpiar memoria
+                logging.info(f"[checkpoint] Guardado parcial hasta recorte_id={recorte_id}")
 
         except Exception as e:
-            logging.warning(f"[identificar_emociones_con_contexto] Error en frase_idx={i}: {e}")
+            logging.warning(f"[identificar_emociones_con_contexto] Error en recorte_id={recorte_id}: {e}")
             continue
 
-    if not resultados:
-        raise ValueError("No se generaron resultados. Verificá si hubo errores.")
-
-    df_resultado = pd.concat(resultados, ignore_index=True)
-    if guardar and output_path:
+    # --- Guardado final de lo que quede ---
+    df_resultado = pd.concat(resultados, ignore_index=True) if resultados else pd.DataFrame()
+    if guardar and output_path and not df_resultado.empty:
         guardar_csv(df_resultado, output_path)
 
     if mostrar_tiempo:

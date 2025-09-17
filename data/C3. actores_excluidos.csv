@@ -1,2 +1,5 @@
-﻿actor,tipo,modo,justificacion,frase_idx,recorte_id,codigo
-nosotros,colectivo,inferido,Pronombre 'nosotros' indica un colectivo que experimentó la situación; se infiere que incluye al hablante y a su equipo de campaña.,4,DISCURSO_001_FR_005,DISCURSO_001
+﻿actor,tipo,modo,justificacion,recorte_id,codigo
+ustedes,colectivo,explícito,Pronombre de segunda persona plural que se refiere a los militares a los que se dirige el presidente en el discurso.,DISCURSO_048_FR_017,DISCURSO_048
+Política,colectivo,explícito,Frase objetivo menciona explícitamente 'la política'.,DISCURSO_048_FR_024,DISCURSO_048
+Dios,humano_individual,explícito,explicitly mentioned in the phrase,DISCURSO_048_FR_037,DISCURSO_048
+las fuerzas del cielo,colectivo,explícito,explicitly mentioned in the phrase,DISCURSO_048_FR_037,DISCURSO_048

@@ -1,26 +1,78 @@
-﻿actor,tipo,modo,justificacion,frase_idx,recorte_id,codigo
-audiencia presente,colectivo,inferido,"El pronombre 'todos ustedes' se refiere a la audiencia presente en el evento, un colectivo no nombrado explícitamente en la frase.",2,DISCURSO_001_FR_003,DISCURSO_001
-Bettina Bulgheroni,humano_individual,explícito,Mencionada explícitamente como 'la flamante presidente bettina bulgheroni'.,3,DISCURSO_001_FR_004,DISCURSO_001
-autoridades de la institución,colectivo,explícito,Mencionadas explícitamente como 'todas las autoridades de la institución'.,3,DISCURSO_001_FR_004,DISCURSO_001
-presentes,colectivo,explícito,Mencionados explícitamente como 'todos los presentes'.,3,DISCURSO_001_FR_004,DISCURSO_001
-grupo violento,colectivo,explícito,Mencionado explícitamente como 'un grupejo violento' que irrumpió y arrojó piedras.,4,DISCURSO_001_FR_005,DISCURSO_001
-nosotros,colectivo,inferido,Pronombre 'nosotros' indica un colectivo que experimentó la situación; se infiere que incluye al hablante y a su equipo de campaña.,4,DISCURSO_001_FR_005,DISCURSO_001
-la casta,colectivo,explícito,"referido explícitamente en la frase: ""la casta está enquistada en el estado""",5,DISCURSO_001_FR_006,DISCURSO_001
-los poderosos,colectivo,explícito,"referido explícitamente en la frase: ""los poderosos no se iban a rendir""",5,DISCURSO_001_FR_006,DISCURSO_001
-el círculo rojo,colectivo,explícito,"referido explícitamente en la frase: ""junto al círculo rojo""",5,DISCURSO_001_FR_006,DISCURSO_001
-la casta,colectivo,inferido,"El verbo 'inventaron' aparece en tercera persona plural sin sujeto explícito; el contexto del discurso menciona a 'la casta' como el grupo que actúa en la política y que produce las absurdidades, por lo tanto se infiere que el sujeto es 'la casta'.",7,DISCURSO_001_FR_008,DISCURSO_001
-los niños,colectivo,inferido,"En la cláusula 'permitiríamos que los niños compraran armas por internet', el sujeto de la acción es 'los niños', que se menciona explícitamente como el grupo que realizaría la acción.",7,DISCURSO_001_FR_008,DISCURSO_001
-la casta política,colectivo,inferido,"El sujeto tácito 'se' en la construcción pasiva ""se cansaron"" se refiere a los que inventaron las absurdas propuestas mencionadas en el contexto previo. Dado que dichos inventores pertenecen al grupo político que Milei critica como ""la casta política"", se infiere que el sujeto es ese colectivo.",8,DISCURSO_001_FR_009,DISCURSO_001
-la casta,colectivo,explícito,"referencia directa en la frase ""lista de artilugios de la casta""",9,DISCURSO_001_FR_010,DISCURSO_001
-la justicia,institucional,explícito,explicit mention in the phrase 'dependerá de la justicia esclarecerlo',10,DISCURSO_001_FR_011,DISCURSO_001
-los jueces,colectivo,explícito,"La frase menciona explícitamente a ""los jueces"" como sujeto de la acción.",11,DISCURSO_001_FR_012,DISCURSO_001
-la casta,colectivo,explícito,La frase menciona explícitamente 'la casta' como sujeto del comportamiento.,12,DISCURSO_001_FR_013,DISCURSO_001
-gobierno,institucional,explícito,"El término ""un gobierno"" aparece explícitamente en la frase y es el sujeto que realiza las acciones de generar pánico, infiltrarse, difamar y entorpecer el proceso de cambio.",13,DISCURSO_001_FR_014,DISCURSO_001
-la gente,colectivo,explícito,"El sustantivo ""la gente"" aparece explícitamente en la frase objetivo.",14,DISCURSO_001_FR_015,DISCURSO_001
-la casta política,colectivo,inferido,"El pronombre ""les"" se refiere a la entidad que realiza ""estas acciones cobardes""; el contexto indica que dicha entidad es la ""casta política"".",14,DISCURSO_001_FR_015,DISCURSO_001
-los bonaerenses,colectivo,explícito,explicitly mentioned as the subject performing the action.,16,DISCURSO_001_FR_017,DISCURSO_001
-"el régimen de mentiras, violencia, corrupción y extorsión del kirchnerismo",colectivo,explícito,explicitly mentioned as the object of the action.,16,DISCURSO_001_FR_017,DISCURSO_001
-kirchnerismo,colectivo,explícito,explicitly mentioned in the phrase,17,DISCURSO_001_FR_018,DISCURSO_001
-el gobierno,institucional,inferido,"El sujeto tácito 'podemos', 'hemos', 'levantamos' en primera persona plural indica que el sujeto es el gobierno o el equipo de Milei; el contexto del discurso indica que Milei habla como presidente, por lo que el sujeto implícito corresponde al gobierno.",23,DISCURSO_001_FR_024,DISCURSO_001
-miembros del partido,colectivo,inferido,"Sujeto tácito / elíptico: la forma verbal 'estamos' indica un grupo de hablantes, y en el contexto del discurso se refiere a los integrantes de la organización política del orador, es decir, los miembros del partido.",24,DISCURSO_001_FR_025,DISCURSO_001
-"los que vienen","colectivo","inferido","Sujeto tácito / elíptico: el verbo 'envalentonan' y 'demuestran' indica un sujeto no mencionado, que se infiere como 'los que vienen' a partir del contexto de la frase.","15","DISCURSO_001_FR_016","DISCURSO_001"
+﻿actor,tipo,modo,justificacion,recorte_id,codigo
+oficiales de las tres fuerzas militares,colectivo,explícito,explicitly mentioned as the audience of the speech,DISCURSO_048_FR_001,DISCURSO_048
+Nahuel Gallo,humano_individual,explícito,Mencionado explícitamente en la frase objetivo como objeto del secuestro.,DISCURSO_048_FR_002,DISCURSO_048
+Fuerzas de seguridad,colectivo,inferido,"La frase indica un secuestro ilegal; el contexto posterior menciona que fue detenido por las fuerzas de seguridad a cargo de Nicolás Maduro, lo que permite inferir que las fuerzas de seguridad fueron los responsables del secuestro.",DISCURSO_048_FR_002,DISCURSO_048
+Nicolás Maduro,humano_individual,inferido,"El contexto menciona a Nicolás Maduro como el dictador criminal responsable de la detención de Nahuel Gallo, lo que permite inferir su participación como autor del secuestro.",DISCURSO_048_FR_002,DISCURSO_048
+las fuerzas de seguridad,colectivo,explícito,Mencionado explícitamente como agente que detuvo,DISCURSO_048_FR_003,DISCURSO_048
+nicolás maduro,humano_individual,explícito,Mencionado explícitamente como dictador criminal a cargo de las fuerzas de seguridad,DISCURSO_048_FR_003,DISCURSO_048
+la persona detenida,humano_individual,inferido,Sujeto pasivo de la oración 'fue detenido' y referenciado por el pronombre 'su' en 'su pareja y su hijo',DISCURSO_048_FR_003,DISCURSO_048
+Nahuel Gallo,humano_individual,inferido,se refiere a 'su liberación' y 'devolverlo' en contexto del secuestro de Nahuel Gallo,DISCURSO_048_FR_004,DISCURSO_048
+Argentina,institucional,explícito,se menciona directamente como 'la argentina' en la frase,DISCURSO_048_FR_004,DISCURSO_048
+Luis Petri,humano_individual,explícito,El nombre del ministro de defensa aparece directamente en la frase.,DISCURSO_048_FR_005,DISCURSO_048
+Jefes del Estado Mayor Conjunto,colectivo,explícito,"La expresión ""señores jefes del estado mayor conjunto"" se menciona explícitamente.",DISCURSO_048_FR_005,DISCURSO_048
+Estados Mayores Generales de las Fuerzas Armadas,colectivo,explícito,"La frase incluye ""los estados mayores generales de las fuerzas armadas"" de forma explícita.",DISCURSO_048_FR_005,DISCURSO_048
+Integrantes del Poder Ejecutivo Nacional presentes,colectivo,explícito,"Se menciona directamente ""los integrantes del poder ejecutivo nacional presentes"".",DISCURSO_048_FR_005,DISCURSO_048
+Nuevos egresados en nuestras tres fuerzas,colectivo,explícito,"La frase indica explícitamente ""los nuevos egresados en nuestras tres fuerzas"".",DISCURSO_048_FR_005,DISCURSO_048
+Subtenientes,colectivo,explícito,"Se menciona directamente ""subtenientes"" como parte de los egresados.",DISCURSO_048_FR_005,DISCURSO_048
+Guardiamarinas,colectivo,explícito,"Se menciona directamente ""guardiamarinas"" como parte de los egresados.",DISCURSO_048_FR_005,DISCURSO_048
+Alféreces,colectivo,explícito,"Se menciona directamente ""alféreces"" como parte de los egresados.",DISCURSO_048_FR_005,DISCURSO_048
+Fuerzas Armadas,institucional,inferido,"La expresión ""nuestras tres fuerzas"" se refiere a las Fuerzas Armadas, inferido por el contexto militar.",DISCURSO_048_FR_005,DISCURSO_048
+"nuevos egresados de las tres fuerzas (subtenientes, guardiamarinas y alféreces)",colectivo,explícito,"El discurso menciona explícitamente a ""los nuevos egresados en nuestras tres fuerzas: subtenientes, guardiamarinas y alféreces"" antes de la frase objetivo.",DISCURSO_048_FR_006,DISCURSO_048
+personas que acompañaron a los egresados,colectivo,explícito,"La frase ""también a todos aquellos que han venido a acompañarlos"" se refiere a un grupo de personas que han venido a acompañar a los egresados, por lo que son actores explícitos en la oración.",DISCURSO_048_FR_006,DISCURSO_048
+los graduados,colectivo,explícito,"La frase menciona directamente a ""los graduados"" como destinatarios del discurso.",DISCURSO_048_FR_008,DISCURSO_048
+graduados,colectivo,explícito,"El pronombre 'ustedes' en la frase indica el sujeto que ha finalizado la formación básica, refiriéndose a los graduados.",DISCURSO_048_FR_009,DISCURSO_048
+graduados,colectivo,inferido,"Pronombres 'su' y 'les' refer to the graduates addressed in the speech; the phrase describes their transition from student life to professional life, implying they are the actors experiencing the actions.",DISCURSO_048_FR_010,DISCURSO_048
+graduados,colectivo,inferido,El pronombre 'su' y 'sus' en la frase se refieren a los graduados mencionados en el contexto previo; el sujeto tácito del verbo 'termina' se infiere como los graduados que experimentan la etapa.,DISCURSO_048_FR_011,DISCURSO_048
+graduados,colectivo,inferido,"El pronombre indirecto 'les' se refiere a los graduados del Colegio Militar, según el contexto previo.",DISCURSO_048_FR_012,DISCURSO_048
+héroes emancipadores,colectivo,explícito,"La frase menciona explícitamente 'nuestros héroes emancipadores', identificando a este colectivo como fuente de los principios y valores.",DISCURSO_048_FR_012,DISCURSO_048
+nuevos oficiales,colectivo,inferido,"Pronombres y correferencias: 'los' refers to the recipients of the sables, i.e., the new officers; context indicates they are the graduates.",DISCURSO_048_FR_013,DISCURSO_048
+nuevos oficiales,colectivo,inferido,El pronombre indirecto 'les' y el pronombre directo 'los' en la frase se refieren al grupo de nuevos oficiales mencionado en el contexto previo (entrega de sables). La acción de tomar el juramento se dirige a ellos.,DISCURSO_048_FR_014,DISCURSO_048
+nación,institucional,inferido,"La expresión 'servicio a la nación' indica que la nación es el receptor de la acción de servicio, por lo que se considera un actor institucional que experimenta la acción.",DISCURSO_048_FR_014,DISCURSO_048
+militares graduados,colectivo,inferido,"El imperativo ""recuerden"" y ""graben"" dirige a los destinatarios del discurso, que son los militares graduados presentes en el Colegio Militar.",DISCURSO_048_FR_015,DISCURSO_048
+ustedes,colectivo,explícito,Pronombre de segunda persona plural que se refiere a los militares a los que se dirige el presidente en el discurso.,DISCURSO_048_FR_017,DISCURSO_048
+el país,colectivo,explícito,"La frase ""como país"" hace referencia explícita al país como colectivo que atraviesa el momento histórico.",DISCURSO_048_FR_018,DISCURSO_048
+la casta política,colectivo,explícito,"El término ""la casta política"" aparece directamente en la frase objetivo como agente que impuso la realidad.",DISCURSO_048_FR_019,DISCURSO_048
+todos los argentinos,colectivo,explícito,"La expresión ""todos los argentinos"" se menciona explícitamente en la frase objetivo como receptores de la realidad impuesta.",DISCURSO_048_FR_019,DISCURSO_048
+la casta,colectivo,explícito,"El término ""la casta"" aparece directamente en la frase objetivo, indicando un grupo colectivo de políticos.",DISCURSO_048_FR_020,DISCURSO_048
+la política,colectivo,explícito,"La expresión ""la política"" se menciona explícitamente como parte de la relación fracturada.",DISCURSO_048_FR_020,DISCURSO_048
+nuestras queridas fuerzas armadas,colectivo,explícito,"La frase incluye ""nuestras queridas fuerzas armadas"" como el otro elemento de la relación fracturada.",DISCURSO_048_FR_020,DISCURSO_048
+la casta política,colectivo,inferido,"El pronombre 'los mismos' se refiere a la casta política, que se menciona en el contexto como el grupo que habla de soberanía y que se dedica a desprestigiar las fuerzas.",DISCURSO_048_FR_021,DISCURSO_048
+las fuerzas armadas,colectivo,inferido,"El objeto 'nuestras fuerzas' se refiere a las fuerzas armadas argentinas, mencionado en el discurso como el grupo que se desprestigia.",DISCURSO_048_FR_021,DISCURSO_048
+Gobierno,institucional,inferido,"El pronombre 'nosotros' en el discurso del presidente se refiere al gobierno que él representa, ya que el enunciador es el presidente y el grupo que incluye a la institución gubernamental.",DISCURSO_048_FR_023,DISCURSO_048
+Fuerzas Armadas,colectivo,explícito,El término 'nuestras fuerzas' se menciona explícitamente en la frase.,DISCURSO_048_FR_023,DISCURSO_048
+Sociedad,colectivo,inferido,El contexto menciona que la sociedad tiene afecto persistente por las fuerzas armadas y que el respeto y reconocimiento provienen de la sociedad.,DISCURSO_048_FR_023,DISCURSO_048
+Gobierno,institucional,inferido,"Sujeto tácito: el verbo 'estamos' indica un sujeto plural que, en el contexto del discurso del presidente, se refiere al Gobierno de Milei.",DISCURSO_048_FR_024,DISCURSO_048
+Fuerzas armadas,colectivo,explícito,Frase objetivo menciona explícitamente 'las fuerzas armadas'.,DISCURSO_048_FR_024,DISCURSO_048
+Política,colectivo,explícito,Frase objetivo menciona explícitamente 'la política'.,DISCURSO_048_FR_024,DISCURSO_048
+egresados,colectivo,explícito,"referido por ""ustedes"" y ""nueva camada de egresados""",DISCURSO_048_FR_025,DISCURSO_048
+camaradas de mayor experiencia y rango,colectivo,explícito,"referido por ""sus camaradas de mayor experiencia y rango""",DISCURSO_048_FR_025,DISCURSO_048
+gobierno,institucional,explícito,"referido por ""un gobierno""",DISCURSO_048_FR_025,DISCURSO_048
+tres fuerzas,colectivo,explícito,"referido por ""las tres fuerzas""",DISCURSO_048_FR_025,DISCURSO_048
+Roca,humano_individual,explícito,"referido por ""Roca"" en ""el legado que nos dejaron Roca y San Martín""",DISCURSO_048_FR_025,DISCURSO_048
+San Martín,humano_individual,explícito,"referido por ""San Martín"" en ""el legado que nos dejaron Roca y San Martín""",DISCURSO_048_FR_025,DISCURSO_048
+graduados,colectivo,inferido,"El pronombre indirecto ""les"" hace referencia a la ""nueva camada de egresados"" mencionada en el contexto previo, indicando que la exigencia se dirige a ese grupo.",DISCURSO_048_FR_026,DISCURSO_048
+cada cual,humano_individual,explícito,"El pronombre ""cada cual"" aparece directamente en la frase objetivo, refiriéndose a cada individuo dentro del grupo de graduados.",DISCURSO_048_FR_026,DISCURSO_048
+camaradas de armas,colectivo,explícito,"El sujeto de la oración 'tuvieron que estar a la altura...' es 'camaradas de armas como ustedes', un grupo de militares.",DISCURSO_048_FR_028,DISCURSO_048
+tiranía rosista,institucional,explícito,"El objeto de la acción 'prevalecer contra' es 'la tiranía rosista', que representa al régimen de Rosas, una entidad institucional.",DISCURSO_048_FR_028,DISCURSO_048
+camaradas de armas,colectivo,inferido,"la frase hace referencia a la memoria de los camaradas de armas mencionados en el contexto previo, por lo que se infiere que su memoria es el ejemplo citado.",DISCURSO_048_FR_029,DISCURSO_048
+nuevos oficiales,colectivo,inferido,"el pronombre 'ustedes' y 'los' se refieren a los nuevos oficiales que están recibiendo el discurso, por lo que se infiere que son los destinatarios del ejemplo y la motivación.",DISCURSO_048_FR_029,DISCURSO_048
+oficiales que hoy egresan,colectivo,explícito,"El texto menciona directamente a los ""estimados oficiales que hoy egresan"" y a ""ustedes"", refiriéndose al mismo grupo.",DISCURSO_048_FR_030,DISCURSO_048
+la nación,colectivo,explícito,"La frase ""la nación cuenta con ustedes"" menciona explícitamente a la nación como entidad que actúa sobre el grupo de oficiales.",DISCURSO_048_FR_030,DISCURSO_048
+nuevos oficiales,colectivo,inferido,"El pronombre 'ustedes' se refiere a los oficiales recién egresados, según el contexto previo del discurso.",DISCURSO_048_FR_031,DISCURSO_048
+nación,institucional,explícito,La palabra 'nación' aparece explícitamente en la frase objetivo.,DISCURSO_048_FR_031,DISCURSO_048
+hombres y mujeres de nuestras fuerzas armadas,colectivo,explícito,El texto menciona directamente a este grupo como sujeto de la acción de contribuir.,DISCURSO_048_FR_032,DISCURSO_048
+nuevos oficiales,colectivo,explícito,El texto menciona explícitamente a este grupo como objeto de la formación.,DISCURSO_048_FR_032,DISCURSO_048
+hombres y mujeres de nuestras fuerzas armadas,colectivo,inferido,"El pronombre 'ellos' en la frase se refiere a los 'hombres y mujeres de nuestras fuerzas armadas', inferido a partir del contexto previo donde se menciona a este grupo.",DISCURSO_048_FR_033,DISCURSO_048
+nueva camada,colectivo,explícito,El término 'nueva camada' aparece explícitamente en la frase como el objeto de la responsabilidad de educar.,DISCURSO_048_FR_033,DISCURSO_048
+graduados,colectivo,explícito,referencia explícita en la frase objetivo,DISCURSO_048_FR_034,DISCURSO_048
+hombres y mujeres de nuestras fuerzas armadas,colectivo,inferido,pronombre 'los' referenciado a 'hombres y mujeres de nuestras fuerzas armadas' en contexto previo,DISCURSO_048_FR_034,DISCURSO_048
+familiares de nuestros oficiales,colectivo,explícito,"El grupo de personas mencionado directamente en la frase como ""los familiares de nuestros oficiales"".",DISCURSO_048_FR_035,DISCURSO_048
+nuestros oficiales,colectivo,explícito,"El grupo de personas referido en la frase como ""nuestros oficiales"", al que pertenecen los familiares.",DISCURSO_048_FR_035,DISCURSO_048
+graduados,colectivo,inferido,"El pronombre 'les' en la frase 'les deseo' se refiere a los graduados presentes en el discurso, según el contexto del discurso donde se menciona la entrega de sables y la felicitación a los nuevos oficiales.",DISCURSO_048_FR_036,DISCURSO_048
+familias de los oficiales,colectivo,inferido,"El pronombre 'les' también se refiere a las familias de los oficiales, ya que el discurso incluye agradecimientos a los familiares por su apoyo, indicando que son parte de la audiencia a la que se dirige el deseo.",DISCURSO_048_FR_036,DISCURSO_048
+Dios,humano_individual,explícito,explicitly mentioned in the phrase,DISCURSO_048_FR_037,DISCURSO_048
+las fuerzas del cielo,colectivo,explícito,explicitly mentioned in the phrase,DISCURSO_048_FR_037,DISCURSO_048
+la patria,colectivo,explícito,"La frase contiene la expresión 'la patria', que se refiere a la nación como colectivo.",DISCURSO_048_FR_038,DISCURSO_048
+la casta,colectivo,inferido,sujeto tácito del verbo 'lograron' inferido del contexto previo que menciona 'la casta' como responsable de fracturar la relación entre la política y las fuerzas armadas.,DISCURSO_048_FR_022,DISCURSO_048
+la sociedad,colectivo,explícito,mencionada explícitamente en la frase como 'la sociedad' que tiene el afecto persistente.,DISCURSO_048_FR_022,DISCURSO_048
+las fuerzas armadas argentinas,institucional,explícito,mencionadas explícitamente en la frase como objeto del afecto.,DISCURSO_048_FR_022,DISCURSO_048

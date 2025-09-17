@@ -1,0 +1,10 @@
+Reglas heurísticas para la inferencia de fuente:
+
+Identificá el origen de la emoción en el experienciador:
+- Actor: personas o grupos que provocan la emoción.
+- Situación: eventos o circunstancias externas.
+- Objeto: elementos materiales que generan la emoción.
+- Experiencia: recuerdos o vivencias previas.
+- Espacio: lugar o entorno afectivo.
+Observá sustantivos, verbos y contexto para determinar la fuente.
+Si no lográs determinar la fuente con exactitud, devolvé: 'no se identifica'.

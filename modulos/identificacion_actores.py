@@ -10,7 +10,7 @@ from pathlib import Path
 from modulos.recursos import cargar_heuristicas, cargar_ontologia, limpiar_prompt, analizar_generico
 from modulos.schemas import ActorSchema, ListaActoresSchema
 from modulos.utils_io import guardar_csv, mostrar_tiempo_procesamiento
-from modulos.modelo import get_model_ollama
+from modulos.modelo import get_model_ollama_par
 
 def construir_prompt(
     frase,
@@ -41,7 +41,7 @@ def construir_prompt(
 def extraer_contexto(df_recortes, frase_idx, window=4):
     idx_inicio = max(frase_idx - window, 0)
     idx_fin = min(frase_idx + window, len(df_recortes) - 1)
-    return df_recortes.loc[idx_inicio:idx_fin, "texto_limpio"].tolist()
+    return df_recortes.iloc[idx_inicio:idx_fin + 1]["texto_limpio"].tolist()
 
 def obtener_metadatos(df_enunc, codigo):
     fila = df_enunc[df_enunc["codigo"] == codigo].iloc[0]
@@ -55,16 +55,21 @@ def obtener_metadatos(df_enunc, codigo):
             enunciatarios.append(f"{actor} (tipo: {tipo})")
     return fila, enunciatarios
 
-def llamar_llm_y_parsear(modelo_llm, prompt, schema, mostrar_prompt=False, path_errores=None, index=None):
+def llamar_llm_y_parsear(modelo_llm, prompt, schema, mostrar_prompt=False, path_errores=None, index=None, recorte_id=None):
     try:
+        campos = {"INDEX": str(index) if index is not None else "NA"}
+        if recorte_id is not None:
+            campos["RECORTE_ID"] = str(recorte_id)  # <-- aquí agregás recorte_id
+
         data = analizar_generico(
             modelo_llm=modelo_llm,
             prompt_base=prompt,
-            campos={"INDEX": str(index) if index is not None else None},
+            campos=campos,
             default=[],
             schema=schema,
             mostrar_prompts=mostrar_prompt,
             path_errores=path_errores,
+            delay_between_calls=0.3,
             etiqueta_log=f"Actores idx={index}"
         )
 
@@ -95,9 +100,11 @@ def procesar_una_frase(
     frase_idx, df_recortes, df_enunc, modelo_llm, prompt_actores, mostrar_prompt=False,
     max_context=2, path_errores=None
 ):
-    frase = df_recortes.loc[frase_idx, "texto_limpio"]
-    recorte_id = df_recortes.loc[frase_idx, "recorte_id"]
-    codigo = df_recortes.loc[frase_idx, "codigo"]
+    fila = df_recortes.iloc[frase_idx]
+
+    frase = fila["texto_limpio"]
+    recorte_id = fila["recorte_id"]
+    codigo = fila["codigo"]
 
     frases_contexto = extraer_contexto(df_recortes, frase_idx, window=max_context)
     fila_enunc, enunciatarios = obtener_metadatos(df_enunc, codigo)
@@ -116,7 +123,8 @@ def procesar_una_frase(
         modelo_llm, prompt, ListaActoresSchema,
         mostrar_prompt=mostrar_prompt,
         path_errores=path_errores,
-        index=frase_idx
+        index=frase_idx,
+        recorte_id=recorte_id
     )
 
     df_actores["frase_idx"] = frase_idx
@@ -133,7 +141,7 @@ def identificar_actores_con_contexto(
 ):
     start_time = time.time()
     if modelo_llm is None:
-        modelo_llm = get_model_ollama(modelo="gpt-oss:20b", temperature=0.0, output_format="text")
+        modelo_llm = get_model_ollama_par(modelo="gpt-oss:20b", temperature=0.0, output_format="text")
     if procesador is None:
         procesador = procesar_una_frase
 
@@ -151,25 +159,25 @@ def identificar_actores_con_contexto(
                 max_context=max_context,
                 path_errores=path_errores
             )
-            resultados.append(df_actores)
+            if not df_actores.empty:
+                resultados.append(df_actores)
 
-            # checkpoints periódicos
-            if guardar and output_path and checkpoint_interval and (i + 1) % checkpoint_interval == 0:
+            # --- Guardado incremental ---
+            if guardar and output_path and checkpoint_interval and (i + 1) % checkpoint_interval == 0 and resultados:
                 df_parcial = pd.concat(resultados, ignore_index=True)
                 checkpoint_path = Path(output_path)
                 checkpoint_path = checkpoint_path.with_name(checkpoint_path.stem + "_checkpoint.csv")
                 guardar_csv(df_parcial, checkpoint_path)
+                resultados = []  # limpiar memoria
+                logging.info(f"[checkpoint] Guardado parcial en frase_idx={i+1}")
 
         except Exception as e:
-            # Solo log a consola/archivo, sin escribir JSONL manual
-            logging.warning(f"[identificar_actores_con_contexto] Error en frase_idx={i}: {e}")
+            codigo = df_recortes.iloc[i]["codigo"]
+            logging.warning(f"[identificar_actores_con_contexto] Error en frase_idx={i}, codigo={codigo}: {e}")
             continue
 
-    if not resultados:
-        raise ValueError("No se generaron resultados. Verificá si hubo errores.")
-
-    df_resultado = pd.concat(resultados, ignore_index=True)
-    if guardar and output_path:
+    df_resultado = pd.concat(resultados, ignore_index=True) if resultados else pd.DataFrame()
+    if guardar and output_path and not df_resultado.empty:
         guardar_csv(df_resultado, output_path)
 
     if mostrar_tiempo:

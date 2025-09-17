@@ -1,0 +1,9 @@
+Reglas heurísticas para la inferencia de dominancia:
+
+Determiná si la emoción predomina en lo corporal, cognitivo o ambos:
+1. Corporal: manifestaciones físicas, gestos o sensaciones.
+2. Cognoscitiva: juicios, evaluaciones o pensamientos asociados a la emoción.
+3. Mixta: combinación de indicios corporales y cognitivos.
+Analizá verbos, adjetivos, sustantivos y contexto para inferir dominancia.
+En todas las emociones analizadas debe poder inferirse algún valor de esos tres.
+En caso de no encontrar elementos para inferir del contexto, considerá el tipo de emoción identificada de modo genérico. Por ejemplo: la paranoia suele tener dominancia mixta, el interés suele tener dominancia cognoscitiva y el disgusto suele tener dominancia corporal.

@@ -5,27 +5,6 @@ import logging
 from langchain_ollama import ChatOllama
 from modulos.parsers import extraer_texto_respuesta
 
-def get_model_ollama(modelo="gpt-oss:20b", temperature=0.0, output_format="text"):
-    """
-    Devuelve un callable modelo_llm(prompt).
-    """
-    llm = ChatOllama(model=modelo, temperature=temperature)
-
-    def modelo_llm(prompt: str):
-        try:
-            respuesta = llm.invoke([{"role": "user", "content": prompt}])
-            if output_format == "text":
-                return extraer_texto_respuesta(respuesta)
-            elif output_format == "raw":
-                return respuesta
-            else:
-                raise ValueError(f"Formato de salida desconocido: {output_format}")
-        except Exception as e:
-            logging.warning(f"[LLM wrapper] Error llamando al modelo: {e}")
-            return "[Error en LLM]"
-
-    return modelo_llm
-
 def get_model_ollama_par(
     modelo: str = "gpt-oss:20b",
     temperature: float = 0.0,

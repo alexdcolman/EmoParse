@@ -223,9 +223,11 @@ def procesar_textos(df, columna_texto, texto_limpio=True, tokens=True, lemmas=Tr
     # Convertir algunas columnas complejas a JSON string (opcional)
     if "entidades" in df_expandido.columns:
         df_expandido["entidades_json"] = df_expandido["entidades"].apply(lambda x: json.dumps(x, ensure_ascii=False))
+        df_expandido.drop(columns=["entidades"], inplace=True)
 
     if "dependencias" in df_expandido.columns:
         df_expandido["dependencias_json"] = df_expandido["dependencias"].apply(lambda x: json.dumps(x, ensure_ascii=False))
+        df_expandido.drop(columns=["dependencias"], inplace=True)
 
     df_final = pd.concat([df.reset_index(drop=True), df_expandido], axis=1)
 

@@ -1,0 +1,9 @@
+Reglas heurísticas para la inferencia de intensidad:
+
+Inferí el grado de fuerza de la emoción:
+1. Alta: emociones intensamente expresadas o inferibles.
+2. Baja: emociones leves o sutiles.
+3. Neutra/Ambivalente: emociones sin intensidad clara o mezcladas.
+Considerá adjetivos, adverbios, verbos y contexto discursivo.
+En todas las emociones analizadas debe poder inferirse algún valor de esos tres.
+En caso de no encontrar elementos para inferir del contexto, considerá el tipo de emoción identificada de modo genérico. Por ejemplo: el miedo suele tener una intensidad alta, el interés suele tener una intensidad neutra, la preocupación suele tener una intensidad baja, etc.

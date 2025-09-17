@@ -26,7 +26,8 @@ PROMPT_TIPO_DISCURSO = (
 
 PROMPT_LUGAR = (
     "Identificá desde dónde se pronunció este discurso (ciudad, provincia, país si se puede inferir).\n\n"
-    "Si no se menciona la ciudad, inferí de acuerdo al evento, institución o nombre de exposición. Para eso, utilizá solamente el título del discurso y focalizá en la información que brinda.\n\n"
+    "Si no se menciona la ciudad, inferí de acuerdo al evento, institución o nombre de exposición. Para eso, utilizá solamente el título del discurso y focalizá en la información que brinda.\n"
+    "Si el campo 'provincia' no aplica, podés agregar 'estado' o 'region' según el caso. En caso de no saber, indicá 'no aplica'.\n\n"
     "Solo considerá información que indique el lugar del discurso.\n\n"
     "### Título:\n<<TITULO>>\n\n"
     "### Resumen:\n<<RESUMEN>>\n\n"
@@ -70,7 +71,7 @@ PROMPT_IDENTIFICAR_ACTORES = (
 
 PROMPT_VALIDAR_ACTORES = (
     "Tarea:\n"
-    "Analizá si el siguiente actor mencionado en una frase representa a un ser humano individual, un grupo humano o una institución conformada por humanos.\n\n"
+    "Analizá si el siguiente actor mencionado en una frase representa a un ser humano individual, un grupo humano o una institución conformada por humanos. Los nombres de grupos humanos pueden ser míticos.\n\n"
     "Frase:\n\"{frase}\"\n\n"
     "Actor identificado:\n\"{actor}\"\n\n"
     "Ontología de actores válidos:\n{ontologia}\n\n"
@@ -79,6 +80,7 @@ PROMPT_VALIDAR_ACTORES = (
 )
 
 PROMPT_DETECCION_EMOCIONES = (
+    "Título del discurso: {titulo}\n"
     "Resumen global del discurso:\n{resumen_global}\n\n"
     "Fecha: {fecha} | Lugar: {lugar_justificacion} | Tipo de discurso: {tipo_discurso}\n"
     "Enunciador: {enunciador}\n"
@@ -86,7 +88,7 @@ PROMPT_DETECCION_EMOCIONES = (
     "Actores: {actores}\n\n"
     "Frase a analizar:\n{frase}\n\n"
     "Contexto (frases anteriores y posteriores):\n{frases_contexto}\n\n"
-    "Heurísticas disponibles:\n{heuristicas}\n\n"
+    "Heurísticas a considerar para identificar emociones:\n{heuristicas}\n\n"
     "Ontología de modos de existencia:\n{ontologia}\n\n"
     "Tarea: Identificá TODAS las emociones discursivas en esta frase, atribuidas a:\n"
     "- Enunciador\n"
@@ -102,6 +104,7 @@ PROMPT_DETECCION_EMOCIONES = (
 )
 
 PROMPT_EMOCIONES_ENUNCIADOR = (
+    "Título del discurso: {titulo}\n"
     "Resumen global del discurso:\n{resumen_global}\n\n"
     "Fecha: {fecha} | Lugar: {lugar_justificacion} | Tipo de discurso: {tipo_discurso}\n"
     "Enunciador: {enunciador}\n"
@@ -109,11 +112,11 @@ PROMPT_EMOCIONES_ENUNCIADOR = (
     "Actores: {actores}\n\n"
     "Frase a analizar:\n{frase}\n\n"
     "Contexto (frases anteriores y posteriores):\n{frases_contexto}\n\n"
-    "Heurísticas disponibles:\n{heuristicas}\n\n"
+    "Heurísticas a considerar para identificar emociones:\n{heuristicas}\n\n"
     "Ontología de modos de existencia:\n{ontologia}\n\n"
-    "Tarea: Identificá TODAS las emociones discursivas atribuibles EXCLUSIVAMENTE al ENUNCIADOR.\n\n"
+    "Tarea: Identificá TODAS las emociones discursivas atribuibles EXCLUSIVAMENTE al ENUNCIADOR en la frase a analizar.\n\n"
     "Para cada emoción, especificá:\n"
-    "- Enunciador\n"
+    "- Enunciador (conforme al enunciador ya definido: {enunciador})\n"
     "- Tipo de emoción\n"
     "- Modo de existencia (realizada, potencial, actual, virtual)\n"
     "- Justificación breve basada en la frase y contexto\n\n"
@@ -121,44 +124,112 @@ PROMPT_EMOCIONES_ENUNCIADOR = (
 )
 
 PROMPT_EMOCIONES_ENUNCIATARIOS = (
+    "Título del discurso: {titulo}\n"
     "Resumen global del discurso:\n{resumen_global}\n\n"
     "Fecha: {fecha} | Lugar: {lugar_justificacion} | Tipo de discurso: {tipo_discurso}\n"
     "Enunciador: {enunciador}\n"
     "Enunciatarios: {enunciatarios}\n"
     "Actores: {actores}\n\n"
-    "Tipo de discurso: {tipo_discurso}\n"
     "DICCIONARIO de tipos de enunciatarios:\n{diccionario}\n\n"
     "Frase a analizar:\n{frase}\n\n"
     "Contexto (frases anteriores y posteriores):\n{frases_contexto}\n\n"
-    "Heurísticas disponibles:\n{heuristicas}\n\n"
+    "Heurísticas a considerar para identificar emociones:\n{heuristicas}\n\n"
     "Ontología de modos de existencia:\n{ontologia}\n\n"
-    "Tarea: Identificá TODAS las emociones discursivas atribuibles a los ENUNCIATARIOS.\n\n"
+    "Tarea: Identificá TODAS las emociones discursivas atribuibles a los ENUNCIATARIOS en la frase a analizar.\n\n"
     "Para cada emoción, especificá:\n"
-    "- Enunciatario específico (conforme al diccionario y al texto)\n"
+    "- Enunciatario específico (conforme a cada uno de los enunciatarios proporcionados, si correspondiera identificar emoción: {enunciatarios})\n"
     "- Tipo de emoción\n"
     "- Modo de existencia (realizada, potencial, actual, virtual)\n"
     "- Justificación breve basada en la frase y contexto\n\n"
-    "Respondé en formato JSON válido."
-    "Sólo considerá las emociones de los enunciatarios proporcionados. No identifiques emociones del enunciador."
+    "Respondé en formato JSON válido.\n"
+    "Sólo considerá las emociones que se infieren de la frase a analizar, correspondientes a los enunciatarios proporcionados. No identifiques emociones del enunciador ni de los actores bajo ninguna circunstancia para este prompt.\n"
+    "Sé exhaustivo en la identificación de las emociones de los enunciatarios. Considerá qué emociones puede generar el discurso de la frase analizar en los enunciatarios identificados.\n"
+    "IMPORTANTE: Cuando atribuyas emociones a los enunciatarios, recordá que casi siempre suelen ser POTENCIALES, salvo que la frase indique que efectivamente ellos ya expresaron o realizaron esa emoción."
 )
 
 PROMPT_EMOCIONES_ACTORES = (
+    "Título del discurso: {titulo}\n"
     "Resumen global del discurso:\n{resumen_global}\n\n"
     "Fecha: {fecha} | Lugar: {lugar_justificacion} | Tipo de discurso: {tipo_discurso}\n"
     "Enunciador: {enunciador}\n"
     "Enunciatarios: {enunciatarios}\n"
-    "Actores: {actores}\n\n"
     "Frase a analizar:\n{frase}\n\n"
     "Actores en la frase:\n{actores}\n\n"
     "Contexto (frases anteriores y posteriores):\n{frases_contexto}\n\n"
-    "Heurísticas disponibles:\n{heuristicas}\n\n"
+    "Heurísticas a considerar para identificar emociones:\n{heuristicas}\n\n"
     "Ontología de modos de existencia:\n{ontologia}\n\n"
-    "Tarea: Identificá TODAS las emociones discursivas atribuibles a los ACTORES mencionados en la frase.\n\n"
+    "Tarea: Identificá TODAS las emociones discursivas atribuibles a los ACTORES mencionados en la frase a analizar.\n\n"
     "Para cada emoción, especificá:\n"
-    "- Actor concreto\n"
+    "- Actor concreto (conforme a cada uno de los actores proporcionados, si correspondiera identificar emoción: {actores})\n"
     "- Tipo de emoción\n"
     "- Modo de existencia (realizada, potencial, actual, virtual)\n"
     "- Justificación breve basada en la frase y contexto\n\n"
+    "Respondé en formato JSON válido.\n"
+    "Sólo considerá las emociones de los actores proporcionados en la lista de actores en la frase a analizar. No identifiques emociones del enunciador ni de los enunciatarios bajo ninguna circunstancia para este prompt. Tampoco consideres emociones que sólo aparezcan en las frases de contexto. No identifiques emociones de actores que no sean los siguientes: {actores}. Ojo: puede que no haya actores identificados en esta frase. En ese caso, ignorá este prompt."
+)
+
+PROMPT_FORIA = (
+    "Recorte de discurso: {recorte_id}\n"
+    "Experienciador: {experienciador}\n"
+    "Tipo de emoción: {tipo_emocion}\n"
+    "Frase: {frase}\n"
+    "Justificación previa de la emoción: {justificacion}\n\n"
+    "Tarea: Determinar la FORIA (carácter fórico) de la emoción identificada.\n"
+    "Valores posibles:\n"
+    "Eufórico\n"
+    "Disfórico\n"
+    "Afórico\n"
+    "Ambifórico\n\n"
+    "Heurísticas: {heuristicas}\n"
+    "Ontología: {ontologia}\n\n"
     "Respondé en formato JSON válido."
-    "Sólo considerá las emociones de los actores proporcionados. No identifiques emociones del enunciador ni de los enunciatarios."
+)
+
+PROMPT_DOMINANCIA = (
+    "Recorte de discurso: {recorte_id}\n"
+    "Experienciador: {experienciador}\n"
+    "Tipo de emoción: {tipo_emocion}\n"
+    "Frase: {frase}\n"
+    "Justificación previa de la emoción: {justificacion}\n\n"
+    "Tarea: Determinar la DOMINANCIA de la emoción identificada para el experienciador.\n"
+    "Valores posibles:\n"
+    "Corporal\n"
+    "Cognoscitiva\n"
+    "Mixta\n\n"
+    "Heurísticas: {heuristicas}\n"
+    "Ontología:\n{ontologia}\n\n"
+    "Respondé en formato JSON válido."
+)
+
+PROMPT_INTENSIDAD = (
+    "Recorte de discurso: {recorte_id}\n"
+    "Experienciador: {experienciador}\n"
+    "Tipo de emoción: {tipo_emocion}\n"
+    "Frase: {frase}\n"
+    "Justificación previa de la emoción: {justificacion}\n\n"
+    "Tarea: Determinar la INTENSIDAD de la emoción identificada.\n"
+    "Valores posibles:\n"
+    "Alta\n"
+    "Baja\n"
+    "Neutra/Ambivalente\n\n"
+    "Heurísticas: {heuristicas}\n"
+    "Ontología:\n{ontologia}\n\n"
+    "Respondé en formato JSON válido."
+)
+
+PROMPT_FUENTE = (
+    "Recorte de discurso: {recorte_id}\n"
+    "Experienciador: {experienciador}\n"
+    "Tipo de emoción: {tipo_emocion}\n"
+    "Frase: {frase}\n"
+    "Justificación previa de la emoción: {justificacion}\n\n"
+    "Tarea: Identificar la FUENTE de la emoción.\n"
+    "- fuente: actor, objeto, situación, experiencia o espacio CONCRETO que produce la emoción.\n"
+    "- tipo_fuente: clase de fuente según la ontología.\n"
+    "- justificacion: breve explicación.\n\n"
+    "Heurísticas: {heuristicas}\n"
+    "Ontología:\n{ontologia}\n\n"
+    "Respondé en formato JSON válido.\n"
+    "IMPORTANTE: la fuente es aquello que desencadena una emoción. Es distinta del experienciador, que es quien siente la emoción. No confundas fuente con experienciador. La fuente identificada debe ser distinta del experienciador suministrado.\n"
+    "Cuando identifiques la fuente, es necesario que identifiques la entidad concreta que desencadena la emoción. No devuelvas deícticos como 'yo' o 'nosotros'. Cuando identifiques tipo_fuente, corresponde a la clase de fuente según la ontología. No confundas ambas cuestiones"
 )

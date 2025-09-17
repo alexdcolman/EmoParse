@@ -8,9 +8,15 @@ import re
 import signal
 import threading
 import platform
+import gc
+import time
+import torch
+import subprocess
+import requests
 from datetime import datetime
 from langchain.output_parsers import PydanticOutputParser
 from modulos.parsers import extraer_texto_respuesta
+
 
 # Base path relativo al archivo actual (recursos.py)
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -79,12 +85,19 @@ def analizar_generico(
     etiqueta_log=None,
     mostrar_prompts=False,
     path_errores=None,
-    timeout=60
+    timeout=60,
+    recorte_id=None,
+    delay_between_calls: float = 0.0,
+    max_retries: int = 3,
+    backoff_factor: float = 1.0,
+    restart_ollama: bool = True   # <--- nuevo flag
 ):
-    """
-    Ejecuta LLM con prompt y parsea usando PydanticOutputParser de LangChain.
-    Si hay error, timeout o se devuelve default, se guarda un JSONL si path_errores está definido.
-    """
+    import time
+    import os
+    import json
+    import logging
+    from datetime import datetime
+
     if schema is None:
         logging.warning("[analizar_generico] No se pasó schema, devolviendo default")
         return default
@@ -104,30 +117,122 @@ def analizar_generico(
     respuesta = ""
     resultado = default
 
-    try:
-        respuesta = ejecutar_con_timeout(lambda: modelo_llm(prompt), timeout=timeout)
-        resultado = parser.parse(respuesta)
+    for intento in range(1, max_retries + 1):
+        # --- healthcheck antes de cada request ---
+        if not check_and_restart_ollama(restart_if_down=restart_ollama):
+            logging.error("[analizar_generico] Ollama no disponible ni tras restart.")
+            break
 
-    except Exception as e:
-        logging.warning(f"[analizar_generico] Excepción en {etiqueta_log}: {e}")
-        resultado = default
+        try:
+            respuesta = ejecutar_con_timeout(lambda: modelo_llm(prompt), timeout=timeout)
+            resultado = parser.parse(respuesta)
+            break  # éxito, salir del loop
+
+        except Exception as e:
+            logging.warning(f"[analizar_generico] Excepción en {etiqueta_log} (intento {intento}): {e}")
+            resultado = default
+
+            if intento < max_retries:
+                sleep_time = backoff_factor * (2 ** (intento - 1))
+                logging.info(f"[analizar_generico] Reintentando en {sleep_time:.1f}s...")
+                time.sleep(sleep_time)
+            else:
+                logging.warning(f"[analizar_generico] Fallaron todos los {max_retries} intentos.")
+
+    # --- mantenimiento/pausa que NO cuenta para el timeout ---
+    try:
+        if delay_between_calls and delay_between_calls > 0:
+            time.sleep(delay_between_calls)
+        limpiar(cada_n=5)
+    except Exception:
+        pass
 
     # --- Registro de errores si se devuelve default ---
     if resultado == default and path_errores:
         os.makedirs(os.path.dirname(path_errores), exist_ok=True)
         registro_error = {
             "etiqueta": etiqueta_log,
-            "error": "Default devuelto (timeout, parseo fallido o respuesta vacía)",
+            "error": f"Default devuelto tras {max_retries} intentos (timeout, parseo fallido o respuesta vacía)",
             "prompt_usado": prompt,
             "respuesta_cruda": respuesta,
             "campos": campos,
             "timestamp": datetime.now().isoformat(),
             "INDEX": campos.get("INDEX")
         }
+        if recorte_id is not None:
+            registro_error["recorte_id"] = recorte_id
         with open(path_errores, "a", encoding="utf-8-sig") as f:
             f.write(json.dumps(registro_error, ensure_ascii=False) + "\n")
 
     return resultado
+
+# Función de limpieza
+_llamadas_limpiar = 0 # Contador global para saber cuántas veces se llamó a limpiar()
+
+def limpiar(cada_n=5):
+    """
+    Libera memoria RAM y VRAM, pero solo se ejecuta
+    realmente cada 'cada_n' llamadas.
+    
+    - cada_n=1  -> limpia siempre
+    - cada_n=5  -> limpia cada 5 llamadas
+    """
+    global _llamadas_limpiar
+    _llamadas_limpiar += 1
+
+    if _llamadas_limpiar % cada_n != 0:
+        return  # no limpia todavía
+
+    # --- limpieza real ---
+    try:
+        gc.collect()
+    except Exception:
+        pass
+
+    try:
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except Exception:
+        pass
+
+# Función helper con healthcheck y restart opcional
+def check_and_restart_ollama(restart_if_down: bool = True, sleep_after_restart: int = 5) -> bool:
+    """
+    Hace un healthcheck a Ollama y, si no responde, opcionalmente lo reinicia.
+
+    Parámetros:
+    - restart_if_down: si True, intenta reiniciar Ollama si está caído.
+    - sleep_after_restart: segundos a dormir tras reiniciar antes de devolver control.
+
+    Devuelve:
+    - True si Ollama está operativo tras la verificación/restart.
+    - False si no se pudo verificar ni reiniciar.
+    """
+    try:
+        # Healthcheck vía API local
+        resp = requests.get("http://localhost:11434/api/tags", timeout=3)
+        if resp.status_code == 200:
+            return True
+    except Exception:
+        pass  # no responde
+
+    logging.warning("[ollama] Ollama no responde al healthcheck")
+
+    if restart_if_down:
+        try:
+            logging.info("[ollama] Intentando reiniciar Ollama...")
+            subprocess.run(["pkill", "-9", "ollama"], check=False)
+            subprocess.Popen(["ollama", "serve"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            time.sleep(sleep_after_restart)
+            # Reintentar healthcheck
+            resp = requests.get("http://localhost:11434/api/tags", timeout=5)
+            if resp.status_code == 200:
+                logging.info("[ollama] Reinicio exitoso")
+                return True
+        except Exception as e:
+            logging.error(f"[ollama] Error al reiniciar Ollama: {e}")
+
+    return False
 
 # Preparación de fragmentos y limpieza de prompts
 def preparar_fragmentos_str(fragmentos):
