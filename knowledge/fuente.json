@@ -1,0 +1,29 @@
+{
+  "tipo_fuente": {
+    "actor": {
+      "nombre": "Actor",
+      "descripcion": "Persona o grupo que provoca la emoción.",
+      "ejemplo": "\"Juan la hizo enojar\" → actor"
+    },
+    "situacion": {
+      "nombre": "Situación",
+      "descripcion": "Evento o circunstancia externa que provoca la emoción.",
+      "ejemplo": "\"El accidente la asustó\" → situación"
+    },
+    "objeto": {
+      "nombre": "Objeto",
+      "descripcion": "Elemento material que genera la emoción.",
+      "ejemplo": "\"El regalo la sorprendió\" → objeto"
+    },
+    "experiencia": {
+      "nombre": "Experiencia",
+      "descripcion": "Recuerdo o vivencia previa que provoca la emoción.",
+      "ejemplo": "\"Recordó su infancia con nostalgia\" → experiencia"
+    },
+    "espacio": {
+      "nombre": "Espacio",
+      "descripcion": "Lugar o entorno que genera la emoción.",
+      "ejemplo": "\"Se sintió cómodo en el jardín\" → espacio"
+    }
+  }
+}

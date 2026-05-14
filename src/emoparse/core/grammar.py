@@ -1,0 +1,357 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  emoparse.core.grammar
+#
+#  Convertidor de Pydantic v2 → GBNF.
+# ══════════════════════════════════════════════════════════════════════════════
+
+from __future__ import annotations
+
+from typing import Any
+
+from pydantic import BaseModel
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Reglas primitivas reutilizables
+# ══════════════════════════════════════════════════════════════════════════════
+
+PRIMITIVE_RULES = r"""
+boolean ::= "true" | "false"
+null ::= "null"
+
+#: Whitespace permitido entre tokens JSON (no dentro de strings).
+ws ::= ([ \t\n] ws)?
+
+#: String JSON: comillas + (char escapado | unicode-escape | char permitido)+
+string ::= "\"" (
+        [^"\\\x7F\x00-\x1F] |
+        "\\" (["\\bfnrt] | "u" [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F])
+      )+ "\""
+
+#: Números JSON: enteros, fracciones, exponentes, signo opcional.
+integer ::= ("-"? ([0-9] | [1-9] [0-9]*))
+number ::= ("-"? ([0-9] | [1-9] [0-9]*)) ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
+""".strip()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Errores
+# ══════════════════════════════════════════════════════════════════════════════
+
+class GrammarError(ValueError):
+    """Schema no traducible a GBNF. Incluye path problemático para debugging."""
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  API pública
+# ══════════════════════════════════════════════════════════════════════════════
+
+def schema_to_gbnf(schema: type[BaseModel]) -> str:
+    """Convierte un schema Pydantic v2 a GBNF.
+
+    Root de la gramática: regla `root`.  
+    Raises:
+        GrammarError: si el schema usa features no soportadas.
+    """
+    js = schema.model_json_schema()
+    return _build_grammar(js)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Builder interno
+# ══════════════════════════════════════════════════════════════════════════════
+
+class _GrammarBuilder:
+    """Construcción de gramática GBNF a partir de JSON Schema.
+
+    Mantiene dict `rules` nombre → cuerpo. Método `_visit` recorre schema y
+    emite reglas. Resolución de referencias locales desde `$defs`.
+    """
+
+    def __init__(self, root_schema: dict[str, Any]) -> None:
+        self._root = root_schema
+        self._defs: dict[str, dict[str, Any]] = root_schema.get("$defs", {})
+        self._rules: dict[str, str] = {}
+        # Al resolver un $ref, la regla creada por _visit_object/_visit_array
+        # usa el nombre original para evitar indirecciones tipo `Foo ::= Foo_2`.
+        self._reserved_name: str | None = None
+
+    # ── Entry point ──────────────────────────────────────────────────────────
+
+    def build(self) -> str:
+        # Se reserva `root` como nombre para que el top-level object/array cree
+        # directamente la regla `root` en lugar de derivar otro nombre.
+        self._reserved_name = "root"
+        root_body = self._visit(self._root, path="#")
+
+        if root_body != "root":
+            self._rules["root"] = root_body
+
+        for name, body in list(self._rules.items()):
+            if body == "<<resolving>>":
+                raise GrammarError(f"Regla '{name}' quedó sin resolver")
+
+        lines: list[str] = []
+        # Root primero — convención GBNF.
+        lines.append(f"root ::= {self._rules.pop('root')}")
+        for name, body in self._rules.items():
+            lines.append(f"{name} ::= {body}")
+        # Primitivas al final, separadas por una línea en blanco.
+        lines.append("")
+        lines.append(PRIMITIVE_RULES)
+        return "\n".join(lines)
+
+    # ── Visitor principal ────────────────────────────────────────────────────
+
+    def _visit(self, node: dict[str, Any], *, path: str) -> str:
+        """Devuelve cuerpo de regla GBNF para `node`.
+
+        Objetos/arrays generan regla nombrada y referencia. Primitivos
+        devuelven cuerpo inline.
+        """
+        # Resolver $ref locales primero.
+        if "$ref" in node:
+            ref_name = self._resolve_ref(node["$ref"], path=path)
+            return ref_name
+
+        # anyOf [T, null] representa campo opcional nullable.
+        if "anyOf" in node:
+            return self._visit_anyof(node["anyOf"], path=path)
+
+        # enum (típicamente strings).
+        if "enum" in node:
+            return self._visit_enum(node["enum"], path=path)
+
+        node_type = node.get("type")
+
+        if node_type == "object":
+            return self._visit_object(node, path=path)
+        if node_type == "array":
+            return self._visit_array(node, path=path)
+        if node_type == "string":
+            return "string"
+        if node_type == "integer":
+            return "integer"
+        if node_type == "number":
+            return "number"
+        if node_type == "boolean":
+            return "boolean"
+        if node_type == "null":
+            return "null"
+
+        # Caso allOf con único $ref: se desempaqueta.
+        if "allOf" in node and len(node["allOf"]) == 1:
+            return self._visit(node["allOf"][0], path=path + "/allOf/0")
+
+        raise GrammarError(
+            f"Schema no soportado en {path}: keys={list(node.keys())}, type={node_type}"
+        )
+
+    # ── object → secuencia de campos ─────────────────────────────────────────
+
+    def _visit_object(self, node: dict[str, Any], *, path: str) -> str:
+        """Genera regla GBNF para un objeto JSON.
+
+        Crea regla nombrada con propiedades requeridas; campos opcionales se omiten.
+        """
+        # Captura y limpia reserved_name al entrar; aplica solo a este nivel.
+        reserved = self._reserved_name
+        self._reserved_name = None
+
+        properties: dict[str, dict[str, Any]] = node.get("properties", {})
+        required: set[str] = set(node.get("required", []))
+
+        if not properties:
+            return r'"{" ws "}"'
+
+        prop_names = sorted(
+            properties.keys(),
+            key=lambda k: (k not in required, k),
+        )
+
+        emitted: list[str] = []
+        for i, name in enumerate(prop_names):
+            if name not in required:
+                continue
+            prop_schema = properties[name]
+            value_rule = self._visit(prop_schema, path=f"{path}/properties/{name}")
+            sep = " " if i == 0 else r' "," ws '
+            # Nombre escapado como literal JSON.
+            key_literal = self._json_string_literal(name)
+            emitted.append(f'{sep}{key_literal} ws ":" ws {value_rule}')
+
+        if not emitted:
+            return r'"{" ws "}"'
+
+        body = r'"{" ws ' + " ".join(emitted) + r' ws "}"'
+        # Si se resuelve un $ref, usar nombre reservado en lugar de generar
+        # uno nuevo.
+        if reserved is not None:
+            rule_name = reserved
+        else:
+            rule_name = self._make_rule_name(node, path=path, prefix="obj")
+        self._rules[rule_name] = body
+        return rule_name
+
+    # ── array ────────────────────────────────────────────────────────────────
+
+    def _visit_array(self, node: dict[str, Any], *, path: str) -> str:
+        """Genera regla GBNF para un array JSON.
+
+        Crea regla nombrada con patrón estándar de lista separada por comas.
+        """
+        reserved = self._reserved_name
+        self._reserved_name = None
+
+        items = node.get("items")
+        if items is None:
+            raise GrammarError(f"Array sin `items` en {path}: no soportado")
+        if isinstance(items, list):
+            raise GrammarError(
+                f"Array con `prefixItems`/tuple en {path}: no soportado"
+            )
+
+        item_rule = self._visit(items, path=f"{path}/items")
+        # Lista posiblemente vacía con elementos separados por coma.
+        # Patrón GBNF estándar para `[item (, item)*]`:
+        #   "[" ws ( item (ws "," ws item)* )? ws "]"
+        body = (
+            r'"[" ws '
+            r'( ' + item_rule + r' (ws "," ws ' + item_rule + r')* )? '
+            r'ws "]"'
+        )
+        if reserved is not None:
+            rule_name = reserved
+            self._rules[rule_name] = body
+            return rule_name
+        # Sin reserved name: root_body se asigna a `root`. Arrays siempre
+        # generan regla nombrada para consistencia.
+        rule_name = self._make_rule_name(node, path=path, prefix="arr")
+        self._rules[rule_name] = body
+        return rule_name
+
+    # ── enum ─────────────────────────────────────────────────────────────────
+
+    def _visit_enum(self, values: list[Any], *, path: str) -> str:
+        """Genera regla GBNF para un enum.
+
+        Soporta únicamente enums de strings; otros tipos lanzan error.
+        """
+        if not values:
+            raise GrammarError(f"Enum vacío en {path}")
+        for v in values:
+            if not isinstance(v, str):
+                raise GrammarError(
+                    f"Enum con valor no-string en {path}: {v!r} ({type(v).__name__})"
+                )
+        alternatives = " | ".join(self._json_string_literal(v) for v in values)
+        return f"({alternatives})"
+
+    # ── anyOf ────────────────────────────────────────────────────────────────
+
+    def _visit_anyof(self, options: list[dict[str, Any]], *, path: str) -> str:
+        """Genera regla GBNF para anyOf.
+
+        Caso especial: [T, null] → campo opcional nullable.  
+        Caso general: alternativas entre todas las opciones.
+        """
+        non_null = [o for o in options if o.get("type") != "null"]
+        has_null = any(o.get("type") == "null" for o in options)
+
+        if has_null and len(non_null) == 1:
+            inner = self._visit(non_null[0], path=f"{path}/anyOf/0")
+            return f"({inner} | null)"
+
+        rules = [self._visit(o, path=f"{path}/anyOf/{i}") for i, o in enumerate(options)]
+        return "(" + " | ".join(rules) + ")"
+
+    # ── Resolución de $ref ───────────────────────────────────────────────────
+
+    def _resolve_ref(self, ref: str, *, path: str) -> str:
+        """Convierte $ref local en nombre de regla GBNF.
+
+        Soporta solo refs locales `#/$defs/Name`. Refs externos no aplican.
+        """
+        prefix = "#/$defs/"
+        if not ref.startswith(prefix):
+            raise GrammarError(f"$ref no-local en {path}: {ref}")
+
+        def_name = ref[len(prefix):]
+        if def_name not in self._defs:
+            raise GrammarError(f"$ref a definición inexistente en {path}: {ref}")
+
+        rule_name = _sanitize_rule_name(def_name)
+        if rule_name in self._rules:
+            return rule_name
+
+        # Reserva nombre para evitar recursión infinita en schemas cíclicos; usa
+        # placeholder hasta definir.
+        self._rules[rule_name] = "<<resolving>>"
+
+        # Asigna reserved_name; _visit_object/_visit_array lo capturan localmente.
+        self._reserved_name = rule_name
+        body = self._visit(self._defs[def_name], path=f"#/$defs/{def_name}")
+
+        # Si body coincide con nombre reservado, la regla ya se registró durante
+        # el visit.
+        if body == rule_name:
+            return rule_name
+
+        # Si body es distinto, el visit devolvió cuerpo inline; se registra como
+        # alias.
+        self._rules[rule_name] = body
+        return rule_name
+
+    # ── Helpers de naming ────────────────────────────────────────────────────
+
+    def _make_rule_name(self, node: dict[str, Any], *, path: str, prefix: str) -> str:
+        """Genera nombre de regla único basado en `title` o `path`.
+
+        Si existe `title`, se usa. En caso contrario, se deriva del path.
+        """
+        title = node.get("title")
+        if title:
+            base = _sanitize_rule_name(title)
+        else:
+            # Path tipo "#/properties/name" → "properties_name".
+            base = _sanitize_rule_name(path.replace("#/", "").replace("/", "_") or prefix)
+            base = f"{prefix}_{base}"
+
+        # Garantiza unicidad si ya existe.
+        if base in self._rules:
+            i = 2
+            while f"{base}_{i}" in self._rules:
+                i += 1
+            base = f"{base}_{i}"
+        return base
+
+    @staticmethod
+    def _json_string_literal(s: str) -> str:
+        """Escapa cadena como literal JSON entre comillas para GBNF."""
+        # GBNF permite comillas dobles para literales.
+        # Escapa backslash y comillas internas.
+        escaped = s.replace("\\", "\\\\").replace('"', '\\"')
+        # Caracteres de control no permitidos en literales GBNF.
+        if any(ord(c) < 0x20 for c in escaped):
+            raise GrammarError(f"String con caracteres de control: {s!r}")
+        return f'"\\"{escaped}\\""'
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Helpers
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _sanitize_rule_name(name: str) -> str:
+    """Convierte nombre arbitrario en identificador GBNF válido."""
+    out: list[str] = []
+    for ch in name:
+        if ch.isalnum() or ch in "_-":
+            out.append(ch)
+        else:
+            out.append("_")
+    sanitized = "".join(out).lstrip("_")
+    return sanitized or "rule"
+
+
+def _build_grammar(schema: dict[str, Any]) -> str:
+    """Wrapper que opera sobre dict y devuelve gramática GBNF."""
+    return _GrammarBuilder(schema).build()

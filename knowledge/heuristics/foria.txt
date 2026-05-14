@@ -1,0 +1,10 @@
+Reglas heurísticas para la inferencia de foria:
+
+Identificá el carácter fórico de la emoción según la tonalidad afectiva:
+1. Eufórico: expresiones de alegría, entusiasmo o satisfacción.
+2. Disfórico: emociones negativas o de malestar.
+3. Afórico: emociones neutras, sin polaridad clara.
+4. Ambifórico: mezcla de tonalidades positiva y negativa.
+Considerá sustantivos, adjetivos, verbos afectivos y contexto discursivo.
+En todas las emociones analizadas debe poder inferirse algún valor de esos cuatro.
+En caso de no encontrar elementos para inferir del contexto, considerá el tipo de emoción identificada de modo genérico. Por ejemplo: la paranoia suele tener disfórica, el interés suele ser afórico, la alegría suele ser eufórica.

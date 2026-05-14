@@ -1,0 +1,60 @@
+# ── UI ─────────────────────────────────────────────────────────
+streamlit==1.55.0
+plotly==6.6.0
+altair==6.0.0
+
+# ── NLP ────────────────────────────────────────────────────────
+spacy==3.8.11
+
+es_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0-py3-none-any.whl#sha256=e451a83d6df79b87e9eed0cb553f03e99e36a3bab18a7b79f0dcfd1fdf875e12
+
+es_core_news_md @ https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl#sha256=478b8bb3f3e8eb149192f7d80e7cd64f990b7e9bccbc5329df41a57e86326be2
+
+# ── LLM / agentes ──────────────────────────────────────────────
+langchain==1.2.12
+langchain-community==0.4.1
+langgraph==1.1.2
+
+# ── Core ───────────────────────────────────────────────────────
+pandas==2.3.3
+numpy==1.26.4
+pyarrow==23.0.1
+
+# ── HuggingFace ────────────────────────────────────────────────
+huggingface_hub==1.6.0
+
+# ── DB / cache ─────────────────────────────────────────────────
+SQLAlchemy==2.0.48
+diskcache==5.6.3
+
+# ── HTTP / scraping ────────────────────────────────────────────
+httpx==0.28.1
+requests==2.32.5
+
+beautifulsoup4==4.13.5
+lxml==5.4.0
+
+selenium==4.41.0
+webdriver-manager==4.0.2
+
+# ── Config / logging ───────────────────────────────────────────
+python-dotenv==1.2.2
+PyYAML==6.0.3
+loguru==0.7.3
+GitPython==3.1.46
+
+# ── Pydantic ───────────────────────────────────────────────────
+pydantic==2.12.5
+pydantic-settings==2.11.0
+
+# ── Testing ────────────────────────────────────────────────────
+pytest==8.4.2
+pytest-cov==7.0.0
+pytest-mock==3.15.1
+
+# ── Quality ────────────────────────────────────────────────────
+ruff==0.12.0
+mypy==1.18.2
+
+# ── DataFrame contracts ────────────────────────────────────────
+pandera==0.31.1

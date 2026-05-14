@@ -1,0 +1,24 @@
+{
+  "foria": {
+    "euforico": {
+      "nombre": "Eufórico",
+      "descripcion": "Emoción de tono positivo, alegría o satisfacción.",
+      "ejemplo": "\"Estoy contento con los resultados\" → eufórico"
+    },
+    "disforico": {
+      "nombre": "Disfórico",
+      "descripcion": "Emoción de tono negativo, malestar o desagrado.",
+      "ejemplo": "\"Me preocupa la situación\" → disfórico"
+    },
+    "aforico": {
+      "nombre": "Afórico",
+      "descripcion": "Emoción neutra, sin polaridad positiva ni negativa clara.",
+      "ejemplo": "\"Observé los hechos\" → afórico"
+    },
+    "ambiforico": {
+      "nombre": "Ambifórico",
+      "descripcion": "Emoción con mezcla de tonalidades positiva y negativa.",
+      "ejemplo": "\"Estoy feliz pero preocupado\" → ambifórico"
+    }
+  }
+}

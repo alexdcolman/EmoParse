@@ -1,0 +1,150 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  EmoParse — config.example.yaml
+#
+#  Template comentado con TODOS los campos disponibles. Copialo a
+#  `config.yaml` y ajustalo para tu setup.
+#
+#  Cualquier valor puede usar referencias a variables de entorno con
+#  la sintaxis ${VAR} o ${VAR:-default}. Útil para no hardcodear paths.
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  models
+#
+#  Diccionario de alias → configuración del modelo. Cada alias se
+#  referencia desde `pipeline.stages` para asignar modelos a etapas.
+#
+#  Backends soportados:
+#    - llama_cpp:  GGUFs locales, llama-cpp-python.
+#    - lmstudio:   API OpenAI-compatible expuesta por LM Studio.
+#                  En este caso, en lugar de `path`, usar `base_url`.
+# ──────────────────────────────────────────────────────────────────────────────
+
+models:
+  qwen3-14b:
+    backend: llama_cpp
+    # Path al GGUF. Relativo al CWD o absoluto.
+    path: ${EMOPARSE_MODELS_DIR:-models}/qwen3-14b-q4_k_m.gguf
+    # Tamaño del context window. Subir solo si tus prompts lo requieren
+    # (más context = más VRAM).
+    context_length: 8192
+    # -1 = todas las layers a GPU. 0 = solo CPU. Valor intermedio = split.
+    n_gpu_layers: -1
+    # 0.0 = greedy (determinístico). Qwen3 recomienda 0.6 para razonamiento.
+    temperature: 0.6
+    max_tokens: 2048
+    # Seed del sampler. Cambiar solo para explorar variaciones.
+    seed: 42
+
+  # Modelo más chico, útil para etapas con schemas simples.
+  phi4-mini:
+    backend: llama_cpp
+    path: ${EMOPARSE_MODELS_DIR:-models}/phi-4-mini-instruct-q4_k_m.gguf
+    context_length: 4096
+    n_gpu_layers: -1
+    temperature: 0.0
+    max_tokens: 1024
+    seed: 42
+
+  # Ejemplo con LM Studio (descomentar si usás).
+  # mi-modelo-lmstudio:
+  #   backend: lmstudio
+  #   base_url: http://localhost:1234/v1
+  #   model_name: nombre_del_modelo_en_lmstudio
+  #   temperature: 0.0
+  #   max_tokens: 2048
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  pipeline
+#
+#  Asignación de etapa → alias de modelo. La clave de cada entrada
+#  debe matchear un nombre de stage del pipeline.
+#
+#  Stages disponibles:
+#    summarizer, metadata, enunciation, actors, emotions,
+#    emotions_pass2, characterizer.
+#
+#  La stage `explode_emociones` es interna (sin LLM) y no requiere modelo.
+# ──────────────────────────────────────────────────────────────────────────────
+
+pipeline:
+  stages:
+    summarizer:      qwen3-14b
+    metadata:        phi4-mini
+    enunciation:     qwen3-14b
+    actors:          qwen3-14b
+    emotions:        qwen3-14b
+    # emotions_pass2 es opt-in: declarar acá deja la stage configurada,
+    # pero no se ejecuta por default. Activarla con `--stages` en CLI.
+    emotions_pass2:  qwen3-14b
+    characterizer:   qwen3-14b
+
+  # Si false, los backends no se envuelven con CachedBackend. Útil
+  # solo para benchmarks; en producción dejar siempre true.
+  cache_enabled: true
+
+  max_retries: 3
+  retry_delays_seconds: [2, 8, 15]
+  timeout_seconds: 90
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  paths
+#
+#  Directorios del proyecto. Se resuelven relativos al CWD donde corras
+#  `emoparse run`. Recomendable usar variables de entorno para evitar
+#  hardcodear rutas absolutas.
+# ──────────────────────────────────────────────────────────────────────────────
+
+paths:
+  runs_dir:      ${EMOPARSE_RUNS_DIR:-runs}
+  models_dir:    ${EMOPARSE_MODELS_DIR:-models}
+  knowledge_dir: ${EMOPARSE_KNOWLEDGE_DIR:-knowledge}
+  inputs_dir:    ${EMOPARSE_INPUTS_DIR:-data}
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  versions
+#
+#  Strings opacos para invalidar el cache LLM selectivamente. Bumpear
+#  cuando cambian las cosas correspondientes:
+#
+#    - knowledge:  datos base que afectan TODO (raro de cambiar).
+#    - prompt:     templates en core/prompts/.
+#    - ontology:   archivos JSON en knowledge/ (emociones, foria, etc.).
+#    - schema:     schemas Pydantic en core/schemas.py.
+#
+#  Bumpear es manual. Cualquier cambio en estos archivos sin bumpear
+#  → el cache va a devolver respuestas viejas (pre-cambio).
+# ──────────────────────────────────────────────────────────────────────────────
+
+versions:
+  knowledge: v1
+  prompt:    v1
+  ontology:  v1
+  schema:    v1
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  logging
+# ──────────────────────────────────────────────────────────────────────────────
+
+logging:
+  level: INFO          # DEBUG | INFO | WARNING | ERROR
+  log_to_file: true
+  rotation: 10 MB
+  retention: 7 days
+
+
+# ──────────────────────────────────────────────────────────────────────────────
+#  notes
+#
+#  Texto libre que se guarda en runs.notes de la DB. Útil para describir
+#  qué intentás con este run.
+# ──────────────────────────────────────────────────────────────────────────────
+
+notes: |
+  Ejemplo: "Análisis de discursos presidenciales 2024 con qwen3-14b.
+  Versión inicial — bumpear prompt_version si cambian los prompts."

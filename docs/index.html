@@ -1,0 +1,3072 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EmoParse — Documentación</title>
+<meta name="description" content="EmoParse: análisis emocional semiótico de discursos políticos con LLMs locales.">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=EB+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&family=JetBrains+Mono:wght@400;500;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+/* ─────────────────────────────────────────────────────────────────
+   EmoParse docs — editorial / archivo lingüístico
+   Paleta: papel + tinta + bermellón. Serif para lectura,
+   mono para código, sans para nav. Sin gradientes baratos.
+   ───────────────────────────────────────────────────────────────── */
+
+:root {
+  --paper:        #f4efe6;
+  --paper-deep:   #ebe4d4;
+  --paper-card:   #faf6ec;
+  --ink:          #1a1814;
+  --ink-soft:     #3d3830;
+  --ink-mute:     #6b6358;
+  --rule:         #c9c0ad;
+  --rule-soft:    #ddd5c3;
+  --accent:       #b8331f;      /* bermellón de imprenta */
+  --accent-deep:  #8a2415;
+  --accent-soft:  #f0d8d2;
+  --hl:           #ead9a8;      /* highlighter ocre */
+  --code-bg:      #221f1a;
+  --code-fg:      #e8e2d2;
+  --code-mute:    #8a8475;
+  --code-accent:  #e89a4f;
+  --code-string:  #a4c97a;
+  --code-key:     #6fb1c4;
+  --shadow:       0 1px 0 rgba(0,0,0,0.04), 0 4px 24px -8px rgba(60,40,20,0.18);
+
+  --serif:  'EB Garamond', 'Iowan Old Style', Georgia, serif;
+  --sans:   'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mono:   'JetBrains Mono', 'SF Mono', Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; scroll-padding-top: 2rem; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  background-image:
+    radial-gradient(ellipse at top left, rgba(184,51,31,0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, rgba(60,40,20,0.04) 0%, transparent 50%);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 19px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1, "liga" 1, "onum" 1;
+}
+
+/* Grano sutil */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.35;
+  z-index: 1;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 0.1, 0 0 0 0 0.08, 0 0 0 0 0.05, 0 0 0 0.08 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  mix-blend-mode: multiply;
+}
+
+/* ─── Layout ───────────────────────────────────────────────────── */
+
+.shell {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  gap: 0;
+  max-width: 1480px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+}
+
+/* ─── Sidebar ──────────────────────────────────────────────────── */
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  padding: 2.5rem 1.5rem 2rem 2rem;
+  border-right: 1px solid var(--rule);
+  overflow-y: auto;
+  font-family: var(--sans);
+  background: transparent;
+}
+
+.sidebar::-webkit-scrollbar { width: 6px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+
+.brand {
+  margin-bottom: 2rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 2px solid var(--ink);
+}
+.brand .logo {
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 1.85rem;
+  letter-spacing: -0.02em;
+  line-height: 1;
+  color: var(--ink);
+}
+.brand .logo .accent {
+  color: var(--accent);
+  font-style: italic;
+}
+.brand .tag {
+  margin-top: 0.5rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--ink-mute);
+  font-weight: 500;
+}
+
+.nav-section {
+  margin-bottom: 1.5rem;
+}
+.nav-section-title {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--ink-mute);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  padding-left: 0.25rem;
+}
+.nav-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.nav-section li a {
+  display: block;
+  padding: 0.32rem 0.5rem 0.32rem 0.6rem;
+  font-size: 0.88rem;
+  color: var(--ink-soft);
+  text-decoration: none;
+  border-left: 2px solid transparent;
+  transition: all 0.15s ease;
+  border-radius: 0 3px 3px 0;
+}
+.nav-section li a:hover {
+  color: var(--accent);
+  border-left-color: var(--accent);
+  background: rgba(184,51,31,0.04);
+}
+.nav-section li a.depth-2 {
+  padding-left: 1.3rem;
+  font-size: 0.82rem;
+  color: var(--ink-mute);
+}
+
+/* ─── Main content ────────────────────────────────────────────── */
+
+main {
+  padding: 4rem 4rem 8rem 5rem;
+  max-width: 920px;
+}
+
+/* ─── Hero ─────────────────────────────────────────────────────── */
+
+.hero {
+  margin-bottom: 5rem;
+  position: relative;
+}
+.hero-eyebrow {
+  font-family: var(--sans);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+.hero-eyebrow::before {
+  content: "";
+  width: 32px;
+  height: 1px;
+  background: var(--accent);
+}
+.hero h1 {
+  font-family: var(--serif);
+  font-size: clamp(3rem, 7vw, 5.25rem);
+  line-height: 0.95;
+  letter-spacing: -0.035em;
+  margin: 0 0 1rem 0;
+  font-weight: 600;
+}
+.hero h1 .em {
+  font-style: italic;
+  font-weight: 500;
+  color: var(--accent);
+}
+.hero-lede {
+  font-family: var(--serif);
+  font-size: 1.45rem;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  max-width: 38em;
+  margin: 1.5rem 0 2rem 0;
+  font-weight: 400;
+}
+.hero-lede em { color: var(--ink); font-style: italic; }
+
+.hero-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 2rem;
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  color: var(--ink-mute);
+  padding: 1rem 0;
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  margin-top: 2.5rem;
+}
+.hero-meta dt {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  font-weight: 600;
+  font-size: 0.7rem;
+  color: var(--ink-mute);
+  margin-right: 0.5rem;
+}
+.hero-meta dd {
+  margin: 0;
+  display: inline;
+  color: var(--ink);
+  font-weight: 500;
+}
+.hero-meta .group { display: flex; align-items: baseline; }
+
+/* ─── Sections ─────────────────────────────────────────────────── */
+
+section {
+  margin-bottom: 5rem;
+  scroll-margin-top: 2rem;
+}
+
+h2 {
+  font-family: var(--serif);
+  font-size: 2.4rem;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+  position: relative;
+}
+h2::before {
+  content: "§";
+  position: absolute;
+  left: -2.2rem;
+  top: 0.1em;
+  color: var(--accent);
+  font-style: italic;
+  font-weight: 400;
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+.section-eyebrow {
+  font-family: var(--sans);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+}
+.section-intro {
+  font-family: var(--serif);
+  font-size: 1.15rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  max-width: 36em;
+  margin: 1rem 0 2.5rem 0;
+}
+
+h3 {
+  font-family: var(--serif);
+  font-size: 1.55rem;
+  line-height: 1.2;
+  letter-spacing: -0.015em;
+  margin: 2.75rem 0 0.75rem 0;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+h4 {
+  font-family: var(--sans);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+  color: var(--ink-mute);
+  margin: 2rem 0 0.75rem 0;
+}
+
+p { margin: 0 0 1.2rem 0; max-width: 38em; }
+p:last-child { margin-bottom: 0; }
+
+a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: var(--accent-soft);
+  text-underline-offset: 0.18em;
+  text-decoration-thickness: 1.5px;
+  transition: text-decoration-color 0.15s;
+}
+a:hover {
+  text-decoration-color: var(--accent);
+}
+
+strong { font-weight: 600; color: var(--ink); }
+em { font-style: italic; }
+
+ul, ol {
+  max-width: 38em;
+  padding-left: 1.4rem;
+  margin: 0 0 1.4rem 0;
+}
+li {
+  margin-bottom: 0.45rem;
+  padding-left: 0.25rem;
+}
+li::marker { color: var(--accent); }
+ul li::marker { content: "›  "; font-family: var(--sans); }
+
+/* ─── Code ─────────────────────────────────────────────────────── */
+
+code, kbd, samp {
+  font-family: var(--mono);
+  font-size: 0.85em;
+}
+p code, li code, td code, h3 code, h4 code {
+  background: var(--paper-deep);
+  padding: 0.1em 0.4em;
+  border-radius: 3px;
+  font-size: 0.82em;
+  color: var(--accent-deep);
+  border: 1px solid var(--rule-soft);
+  white-space: nowrap;
+}
+
+pre {
+  background: var(--code-bg);
+  color: var(--code-fg);
+  padding: 1.4rem 1.6rem;
+  border-radius: 4px;
+  overflow-x: auto;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  line-height: 1.65;
+  margin: 1.4rem 0 1.8rem 0;
+  position: relative;
+  max-width: 100%;
+  box-shadow: var(--shadow);
+  border: 1px solid #2c2922;
+}
+pre::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: 0.6rem;
+  right: 0.9rem;
+  font-family: var(--sans);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--code-mute);
+  font-weight: 600;
+}
+pre code {
+  background: transparent;
+  padding: 0;
+  border: 0;
+  color: inherit;
+  font-size: inherit;
+  white-space: pre;
+}
+pre::-webkit-scrollbar { height: 8px; }
+pre::-webkit-scrollbar-track { background: #1a1814; }
+pre::-webkit-scrollbar-thumb { background: #44403a; border-radius: 4px; }
+
+/* Mini syntax highlight via spans */
+.c-comment { color: var(--code-mute); font-style: italic; }
+.c-key     { color: var(--code-key); }
+.c-str     { color: var(--code-string); }
+.c-acc     { color: var(--code-accent); }
+.c-flag    { color: var(--code-accent); }
+.c-kw      { color: #d97070; }
+
+/* ─── Callouts ─────────────────────────────────────────────────── */
+
+.callout {
+  border-left: 3px solid var(--accent);
+  background: var(--paper-card);
+  padding: 1.2rem 1.4rem 1.2rem 1.6rem;
+  margin: 1.6rem 0 1.8rem 0;
+  border-radius: 0 4px 4px 0;
+  font-size: 0.98em;
+}
+.callout p { max-width: none; margin-bottom: 0.6rem; }
+.callout p:last-child { margin-bottom: 0; }
+.callout-label {
+  font-family: var(--sans);
+  font-size: 0.66rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+  display: block;
+}
+.callout.note {
+  border-left-color: var(--ink-mute);
+}
+.callout.note .callout-label {
+  color: var(--ink-mute);
+}
+.callout.warn {
+  border-left-color: #c87a1e;
+  background: #f8eed8;
+}
+.callout.warn .callout-label {
+  color: #a05f10;
+}
+
+/* ─── Tables ───────────────────────────────────────────────────── */
+
+.table-wrap {
+  overflow-x: auto;
+  margin: 1.6rem 0 2rem 0;
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  background: var(--paper-card);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--sans);
+  font-size: 0.86rem;
+}
+th {
+  text-align: left;
+  padding: 0.85rem 1.1rem;
+  background: var(--paper-deep);
+  border-bottom: 2px solid var(--ink);
+  font-weight: 600;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+td {
+  padding: 0.7rem 1.1rem;
+  border-bottom: 1px solid var(--rule-soft);
+  vertical-align: top;
+  color: var(--ink-soft);
+}
+tr:last-child td { border-bottom: 0; }
+td code { white-space: nowrap; font-size: 0.78rem; }
+
+/* ─── File tree ─────────────────────────────────────────────────── */
+
+.tree {
+  font-family: var(--mono);
+  font-size: 0.78rem;
+  line-height: 1.7;
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  padding: 1.6rem 1.8rem;
+  margin: 1.4rem 0 1.8rem 0;
+  color: var(--ink-soft);
+  white-space: pre;
+  overflow-x: auto;
+}
+.tree .dir { color: var(--ink); font-weight: 600; }
+.tree .file { color: var(--ink-soft); }
+.tree .comment { color: var(--ink-mute); font-style: italic; }
+.tree .new { color: var(--accent); font-weight: 600; }
+
+/* ─── Cards (feature grid) ─────────────────────────────────────── */
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 2rem 0;
+}
+.card {
+  padding: 1.25rem 1.35rem;
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  font-family: var(--sans);
+}
+.card h4 {
+  margin: 0 0 0.5rem 0;
+  font-family: var(--serif);
+  font-size: 1.1rem;
+  text-transform: none;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  font-weight: 600;
+}
+.card p {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+/* ─── Diagrams ─────────────────────────────────────────────────── */
+
+.diagram {
+  margin: 2rem 0;
+  padding: 2.5rem 1.5rem;
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  border-radius: 4px;
+  overflow-x: auto;
+}
+.diagram svg { display: block; margin: 0 auto; max-width: 100%; height: auto; }
+.diagram-caption {
+  font-family: var(--sans);
+  font-size: 0.8rem;
+  color: var(--ink-mute);
+  text-align: center;
+  margin-top: 1rem;
+  font-style: italic;
+}
+
+/* ─── Pills / badges ─────────────────────────────────────────── */
+
+.pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin: 0.5rem 0 1.5rem 0;
+}
+.pill {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  font-family: var(--mono);
+  font-size: 0.72rem;
+  font-weight: 500;
+  background: var(--paper-card);
+  border: 1px solid var(--rule);
+  border-radius: 2px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+.pill.accent {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent-deep);
+}
+
+/* ─── CTA / actions ─────────────────────────────────────────── */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 1.5rem 0 0 0;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.65rem 1.1rem;
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  border-radius: 2px;
+  transition: all 0.15s ease;
+  border: 1px solid var(--ink);
+  letter-spacing: 0.01em;
+}
+.btn.primary {
+  background: var(--ink);
+  color: var(--paper);
+}
+.btn.primary:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+.btn.secondary {
+  background: transparent;
+  color: var(--ink);
+}
+.btn.secondary:hover {
+  background: var(--ink);
+  color: var(--paper);
+}
+
+/* ─── Numbered steps ─────────────────────────────────────────── */
+
+.steps {
+  list-style: none;
+  padding: 0;
+  margin: 1.5rem 0 2rem 0;
+  counter-reset: step;
+}
+.steps > li {
+  counter-increment: step;
+  padding: 0 0 1.4rem 3rem;
+  position: relative;
+  max-width: 38em;
+}
+.steps > li::before {
+  content: counter(step, decimal-leading-zero);
+  position: absolute;
+  left: 0;
+  top: -0.1em;
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  font-size: 1.4rem;
+  color: var(--accent);
+  font-feature-settings: "onum" 1;
+}
+
+/* ─── Definitions / glossary ───────────────────────────────────── */
+
+dl.terms {
+  margin: 1.5rem 0 2rem 0;
+}
+dl.terms dt {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-style: italic;
+  font-size: 1.05rem;
+  color: var(--ink);
+  margin-top: 1rem;
+}
+dl.terms dt:first-child { margin-top: 0; }
+dl.terms dd {
+  margin: 0.3rem 0 0 0;
+  color: var(--ink-soft);
+  font-size: 0.98rem;
+  max-width: 38em;
+}
+
+/* ─── Footer ───────────────────────────────────────────────────── */
+
+footer {
+  margin-top: 6rem;
+  padding: 2.5rem 0 1.5rem 0;
+  border-top: 2px solid var(--ink);
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  color: var(--ink-mute);
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+footer .mark {
+  font-family: var(--serif);
+  font-style: italic;
+  font-weight: 500;
+  color: var(--ink);
+}
+
+/* ─── Responsive ───────────────────────────────────────────────── */
+
+@media (max-width: 1024px) {
+  .shell { grid-template-columns: 1fr; }
+  .sidebar {
+    position: relative;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--rule);
+    padding: 1.5rem 1.5rem;
+  }
+  main { padding: 2.5rem 1.5rem 4rem 1.5rem; }
+  h2::before { display: none; }
+  body { font-size: 17px; }
+}
+
+@media (max-width: 600px) {
+  .hero h1 { font-size: clamp(2.4rem, 12vw, 3.5rem); }
+  .hero-lede { font-size: 1.15rem; }
+  h2 { font-size: 1.9rem; }
+  pre { padding: 1rem 1.1rem; font-size: 0.74rem; }
+  main { padding: 2rem 1.2rem 3rem 1.2rem; }
+}
+
+/* ─── Print ──────────────────────────────────────────────────── */
+
+@media print {
+  .sidebar { display: none; }
+  .shell { grid-template-columns: 1fr; }
+  main { padding: 1cm; max-width: none; }
+  body { font-size: 11pt; }
+  pre { font-size: 8pt; }
+}
+
+/* ─── Anchor hover ───────────────────────────────────────────── */
+
+h2, h3 { position: relative; }
+.anchor {
+  position: absolute;
+  left: -1.4rem;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0;
+  font-family: var(--mono);
+  color: var(--ink-mute);
+  text-decoration: none;
+  font-weight: 400;
+  font-size: 0.7em;
+  transition: opacity 0.15s;
+}
+h2:hover .anchor, h3:hover .anchor { opacity: 0.5; }
+.anchor:hover { opacity: 1 !important; color: var(--accent); }
+
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+<!-- ════════════════════════════════════════════════════════════════
+     SIDEBAR
+     ════════════════════════════════════════════════════════════════ -->
+<aside class="sidebar">
+  <div class="brand">
+    <div class="logo">Emo<span class="accent">Parse</span></div>
+    <div class="tag">Docs · v0.2.0</div>
+  </div>
+
+  <nav>
+    <div class="nav-section">
+      <div class="nav-section-title">Empezar</div>
+      <ul>
+        <li><a href="#about">Qué es EmoParse</a></li>
+        <li><a href="#install">Instalación</a></li>
+        <li><a href="#quickstart">Quickstart</a></li>
+        <li><a href="#end-to-end">Ejemplo end-to-end</a></li>
+      </ul>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">Conceptos</div>
+      <ul>
+        <li><a href="#arquitectura">Arquitectura</a></li>
+        <li><a href="#pipeline">El pipeline</a></li>
+        <li><a href="#backends">Backends LLM</a></li>
+        <li><a href="#cache">Cache y versionado</a></li>
+        <li><a href="#generos">Géneros</a></li>
+        <li><a href="#validacion">Validación</a></li>
+      </ul>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">CLI</div>
+      <ul>
+        <li><a href="#cli-overview">Comandos disponibles</a></li>
+        <li><a href="#cli-run" class="depth-2">run</a></li>
+        <li><a href="#cli-scrape" class="depth-2">scrape</a></li>
+        <li><a href="#cli-status" class="depth-2">status</a></li>
+        <li><a href="#cli-inspect" class="depth-2">inspect</a></li>
+        <li><a href="#cli-retry" class="depth-2">retry</a></li>
+        <li><a href="#cli-validate" class="depth-2">validate</a></li>
+        <li><a href="#cli-judge" class="depth-2">judge</a></li>
+        <li><a href="#cli-metrics" class="depth-2">metrics</a></li>
+        <li><a href="#cli-stats" class="depth-2">stats</a></li>
+        <li><a href="#cli-export" class="depth-2">export</a></li>
+      </ul>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">Dashboard</div>
+      <ul>
+        <li><a href="#dashboard">Streamlit UI</a></li>
+      </ul>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">Extending</div>
+      <ul>
+        <li><a href="#extend-source">Agregar una source de scraping</a></li>
+        <li><a href="#extend-genre">Agregar un género</a></li>
+        <li><a href="#extend-agent">Agregar un agente</a></li>
+        <li><a href="#extend-stage">Agregar una stage</a></li>
+        <li><a href="#extend-backend">Agregar un backend (OpenAI, etc.)</a></li>
+        <li><a href="#extend-validator">Agregar un validator</a></li>
+      </ul>
+    </div>
+
+    <div class="nav-section">
+      <div class="nav-section-title">Referencia</div>
+      <ul>
+        <li><a href="#estructura">Estructura del repo</a></li>
+        <li><a href="#design">Decisiones de diseño</a></li>
+        <li><a href="#schema-db">Esquema de la DB</a></li>
+        <li><a href="#troubleshooting">Troubleshooting</a></li>
+        <li><a href="#license">Licencia y contacto</a></li>
+      </ul>
+    </div>
+  </nav>
+</aside>
+
+<!-- ════════════════════════════════════════════════════════════════
+     MAIN
+     ════════════════════════════════════════════════════════════════ -->
+<main>
+
+<!-- HERO ─────────────────────────────────────────────────────── -->
+<header class="hero">
+  <div class="hero-eyebrow">Documentación oficial · v0.2.0 · Beta</div>
+  <h1>Emo<span class="em">Parse</span></h1>
+  <p class="hero-lede">
+    Un sistema reproducible de <em>análisis emocional semiótico</em> sobre discursos
+    políticos, construido con LLMs locales. Pensado para investigadores en
+    lingüística, ciencias del lenguaje y análisis del discurso que quieren
+    procesar corpus extensos sin renunciar a la trazabilidad ni a la teoría.
+  </p>
+  <div class="actions">
+    <a class="btn primary" href="#quickstart">Quickstart</a>
+    <a class="btn secondary" href="https://github.com/alexdcolman/EmoParse" target="_blank" rel="noopener">Ver en GitHub →</a>
+  </div>
+  <dl class="hero-meta">
+    <div class="group"><dt>Lenguaje</dt><dd>Python ≥ 3.11</dd></div>
+    <div class="group"><dt>Licencia</dt><dd>MIT</dd></div>
+    <div class="group"><dt>Estado</dt><dd>Beta</dd></div>
+    <div class="group"><dt>Backends</dt><dd>llama.cpp · LM Studio</dd></div>
+  </dl>
+</header>
+
+<!-- ═══════ ABOUT ═══════════════════════════════════════════════════ -->
+<section id="about">
+  <div class="section-eyebrow">01 · Qué es</div>
+  <h2>Qué es EmoParse<a class="anchor" href="#about">#</a></h2>
+  <p class="section-intro">
+    EmoParse toma un corpus de discursos en texto plano y devuelve, para cada
+    frase, una caracterización semiótica de las emociones que la atraviesan:
+    qué actor las experimenta, en qué <em>modo de existencia</em>, con qué
+    <em>foria</em>, <em>dominancia</em>, <em>intensidad</em>, y desde qué fuente.
+  </p>
+
+  <p>
+    El sistema está pensado bajo cuatro principios:
+  </p>
+
+  <div class="cards">
+    <div class="card">
+      <h4>Reproducibilidad</h4>
+      <p>Cada corrida vive en su propia base SQLite, con versionado fino de prompts, ontologías y schemas. Volver a ejecutar el mismo corpus produce los mismos resultados.</p>
+    </div>
+    <div class="card">
+      <h4>Trazabilidad</h4>
+      <p>Cada emoción detectada incluye su justificación textual, su fuente, y queda enlazada a la frase original. No hay caja negra.</p>
+    </div>
+    <div class="card">
+      <h4>Local-first</h4>
+      <p>Funciona con modelos GGUF locales (llama.cpp) o vía LM Studio. No es obligatorio enviar datos a servicios externos. La arquitectura admite además backends de API (OpenAI, Anthropic, etc.).</p>
+    </div>
+    <div class="card">
+      <h4>Extensible</h4>
+      <p>El pipeline está organizado como un DAG declarativo. Sumar un género nuevo, una source de scraping, un agente o una stage es código aislado, no parches transversales.</p>
+    </div>
+  </div>
+
+  <h3 id="que-no-es">Qué <em>no</em> es EmoParse</h3>
+  <ul>
+    <li><strong>No es un detector de sentimiento</strong> tipo <code>positivo/negativo/neutro</code>. Trabaja con una ontología semiótica de emociones (modo de existencia, foria, dominancia, intensidad, fuente) que reconstruye la <em>configuración</em> emocional del discurso.</li>
+    <li><strong>No es un servicio cloud.</strong> Es un paquete Python que corrés en tu máquina, idealmente con GPU. El dashboard es Streamlit local.</li>
+    <li><strong>No reemplaza la lectura analítica.</strong> Está pensado como herramienta de <em>asistencia</em>: procesa corpus grandes, expone resultados estructurados, y deja la interpretación final al investigador.</li>
+  </ul>
+
+  <div class="callout">
+    <span class="callout-label">Marco teórico</span>
+    <p>
+      Las categorías semióticas (modos de existencia, foria, los tipos de enunciatario
+      tipo prodestinatario / paradestinatario / contradestinatario) provienen de la
+      tradición de la semiótica de Greimas, Fontanille y Verón. EmoParse no impone
+      una teoría: la <em>operacionaliza</em> en ontologías y heurísticas editables
+      que viven en <code>knowledge/</code>.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════ INSTALL ═══════════════════════════════════════════════════ -->
+<section id="install">
+  <div class="section-eyebrow">02 · Setup</div>
+  <h2>Instalación<a class="anchor" href="#install">#</a></h2>
+  <p class="section-intro">
+    EmoParse se instala clonando el repositorio. Requiere Python 3.11 o superior.
+    Para uso con GPU local conviene además tener CUDA configurado.
+  </p>
+
+  <h3 id="install-requisitos">Requisitos previos</h3>
+  <ul>
+    <li><strong>Python 3.11+</strong></li>
+    <li><strong>git</strong></li>
+    <li><strong>GPU recomendada</strong> (NVIDIA con CUDA, AMD con ROCm) para correr los modelos GGUF localmente. CPU funciona pero es muy lento para corpus grandes.</li>
+    <li><strong>~24 GB VRAM</strong> para la configuración de producción sugerida (Qwen3-14B + Phi-4-mini en GPU). Modelos más chicos corren en placas más modestas.</li>
+  </ul>
+
+  <h3 id="install-clone">Instalación desde GitHub</h3>
+
+<pre data-lang="bash"><code><span class="c-comment"># 1. Clonar el repositorio</span>
+git clone https://github.com/alexdcolman/EmoParse.git
+<span class="c-kw">cd</span> EmoParse
+
+<span class="c-comment"># 2. Crear entorno virtual</span>
+python -m venv .venv
+<span class="c-kw">source</span> .venv/bin/activate   <span class="c-comment"># Linux/macOS</span>
+<span class="c-comment"># .venv\Scripts\activate    # Windows</span>
+
+<span class="c-comment"># 3. Instalar el paquete</span>
+pip install -e .</code></pre>
+
+  <p>
+    El comando <code>pip install -e .</code> hace una instalación
+    <em>editable</em> (los cambios al código fuente se reflejan al instante)
+    y registra el comando <code>emoparse</code> en tu PATH.
+  </p>
+
+  <h3 id="install-extras">Extras opcionales</h3>
+  <p>
+    El proyecto declara grupos de dependencias opcionales. Instalá los que necesites:
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Grupo</th><th>Para qué</th><th>Comando</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>llamacpp</code></td>
+          <td>Backend de modelos GGUF locales</td>
+          <td><code>pip install -e ".[llamacpp]"</code></td>
+        </tr>
+        <tr>
+          <td><code>lmstudio</code></td>
+          <td>Backend vía LM Studio (API OpenAI-compatible)</td>
+          <td><code>pip install -e ".[lmstudio]"</code></td>
+        </tr>
+        <tr>
+          <td><code>ui</code></td>
+          <td>Dashboard Streamlit con visualizaciones Plotly</td>
+          <td><code>pip install -e ".[ui]"</code></td>
+        </tr>
+        <tr>
+          <td><code>scraping</code></td>
+          <td>Scraping HTTP de sitios públicos (requests + bs4)</td>
+          <td><code>pip install -e ".[scraping]"</code></td>
+        </tr>
+        <tr>
+          <td><code>scraping_selenium</code></td>
+          <td>Fallback Selenium para sitios que requieren JS</td>
+          <td><code>pip install -e ".[scraping_selenium]"</code></td>
+        </tr>
+        <tr>
+          <td><code>nlp</code></td>
+          <td>spaCy + modelos en español</td>
+          <td><code>pip install -e ".[nlp]"</code></td>
+        </tr>
+        <tr>
+          <td><code>agents</code></td>
+          <td>LangChain / LangGraph (orquestación avanzada opcional)</td>
+          <td><code>pip install -e ".[agents]"</code></td>
+        </tr>
+        <tr>
+          <td><code>data</code></td>
+          <td>pyarrow (lectura/escritura Parquet)</td>
+          <td><code>pip install -e ".[data]"</code></td>
+        </tr>
+        <tr>
+          <td><code>utils</code></td>
+          <td>GitPython, huggingface_hub</td>
+          <td><code>pip install -e ".[utils]"</code></td>
+        </tr>
+        <tr>
+          <td><code>dev</code></td>
+          <td>Tests, lint, mypy</td>
+          <td><code>pip install -e ".[dev]"</code></td>
+        </tr>
+        <tr>
+          <td><code>all</code></td>
+          <td>Todo lo anterior</td>
+          <td><code>pip install -e ".[all]"</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    Para el caso de uso típico — pipeline completo con LLMs locales y dashboard —
+    alcanza con:
+  </p>
+
+<pre data-lang="bash"><code>pip install -e <span class="c-str">".[llamacpp,ui,scraping]"</span></code></pre>
+
+  <h3 id="install-docker">Docker</h3>
+  <!-- TODO: imagen Docker en preparación. Reemplazar este bloque cuando esté lista. -->
+  <div class="callout warn">
+    <span class="callout-label">En preparación</span>
+    <p>
+      La imagen Docker oficial está en desarrollo. Cuando esté disponible, el
+      uso será del tipo:
+    </p>
+<pre data-lang="bash" style="margin-top:0.8rem"><code>docker pull ghcr.io/alexdcolman/emoparse:latest
+docker run --gpus all -v <span class="c-acc">$PWD</span>/data:/data -v <span class="c-acc">$PWD</span>/models:/models \
+  ghcr.io/alexdcolman/emoparse run --config /data/config.yaml --input /data/discursos.csv</code></pre>
+  </div>
+
+  <h3 id="install-modelos">Descargar modelos</h3>
+  <p>
+    EmoParse no incluye modelos. Necesitás bajar GGUFs y ponerlos en el directorio
+    <code>models/</code> del proyecto (o en el path que configures en
+    <code>paths.models_dir</code>). Recomendaciones:
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Modelo</th><th>Tamaño</th><th>Para qué stage</th><th>Origen</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>qwen3-14b</code></td><td>~9 GB Q4_K_M</td><td>emotions, actors, enunciation, characterizer</td><td>Hugging Face</td></tr>
+        <tr><td><code>qwen3-30b-a3b</code> (MoE)</td><td>~18 GB Q4_K_M</td><td>summarizer (textos largos)</td><td>Hugging Face</td></tr>
+        <tr><td><code>phi-4-mini-instruct</code></td><td>~2 GB Q4_K_M</td><td>metadata (schema simple)</td><td>Hugging Face</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    Para descargarlos:
+  </p>
+
+<pre data-lang="bash"><code><span class="c-comment"># Ejemplo con huggingface-cli (incluido en el extra utils)</span>
+huggingface-cli download Qwen/Qwen3-14B-Instruct-GGUF \
+  qwen3-14b-q4_k_m.gguf --local-dir ./models</code></pre>
+
+  <div class="callout note">
+    <span class="callout-label">Tip</span>
+    <p>
+      Si no querés mantener modelos locales podés usar
+      <strong>LM Studio</strong> como backend, o configurar un backend de API
+      remoto (OpenAI, etc.). Ver <a href="#extend-backend">Agregar un backend</a>.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════ QUICKSTART ═══════════════════════════════════════════════════ -->
+<section id="quickstart">
+  <div class="section-eyebrow">03 · Empezar</div>
+  <h2>Quickstart<a class="anchor" href="#quickstart">#</a></h2>
+  <p class="section-intro">
+    Asumiendo que ya instalaste el paquete y tenés al menos un GGUF en
+    <code>models/</code>, el flujo mínimo es: configurar, preparar input,
+    correr, explorar.
+  </p>
+
+  <ol class="steps">
+    <li>
+      <strong>Copiá el config de ejemplo.</strong>
+      <p>El repo incluye <code>config.example.yaml</code> con todos los campos comentados.</p>
+<pre data-lang="bash"><code>cp config.example.yaml config.yaml
+<span class="c-comment"># Editá config.yaml: ajustá paths y aliases de modelos</span></code></pre>
+    </li>
+
+    <li>
+      <strong>Prepará tu input.</strong>
+      <p>EmoParse acepta CSV o JSON. Las columnas mínimas son <code>codigo</code> (id único) y <code>contenido</code> (texto del discurso). Opcionales recomendadas: <code>titulo</code>, <code>fecha</code>, <code>url</code>.</p>
+<pre data-lang="bash"><code><span class="c-comment"># Opción A: input propio</span>
+ls data/mi_corpus.csv
+
+<span class="c-comment"># Opción B: scrapear discursos de Casa Rosada</span>
+emoparse scrape --source casarosada \
+  --out data/discursos.csv \
+  --from 2024-01-01 --to 2024-12-31</code></pre>
+    </li>
+
+    <li>
+      <strong>Corré el pipeline.</strong>
+<pre data-lang="bash"><code>emoparse run \
+  --config config.yaml \
+  --input data/discursos.csv \
+  --run-id corrida_2024_q1</code></pre>
+      <p>El pipeline crea <code>runs/corrida_2024_q1/run.sqlite</code> con todos los resultados.</p>
+    </li>
+
+    <li>
+      <strong>Mirá el progreso.</strong>
+<pre data-lang="bash"><code>emoparse status --db runs/corrida_2024_q1/run.sqlite</code></pre>
+    </li>
+
+    <li>
+      <strong>Explorá los resultados.</strong>
+<pre data-lang="bash"><code><span class="c-comment"># Dashboard interactivo (Streamlit)</span>
+streamlit run -m emoparse.app
+
+<span class="c-comment"># O exportar a CSV</span>
+emoparse export --db runs/corrida_2024_q1/run.sqlite --out exports/</code></pre>
+    </li>
+  </ol>
+</section>
+
+<!-- ═══════ END-TO-END ═══════════════════════════════════════════════════ -->
+<section id="end-to-end">
+  <div class="section-eyebrow">04 · Ejemplo completo</div>
+  <h2>Ejemplo end-to-end<a class="anchor" href="#end-to-end">#</a></h2>
+  <p class="section-intro">
+    Caso real: querés analizar las emociones en los discursos del presidente
+    argentino durante el primer trimestre de 2024. De cero a dashboard.
+  </p>
+
+  <h3>0. Setup inicial</h3>
+
+<pre data-lang="bash"><code>git clone https://github.com/alexdcolman/EmoParse.git
+<span class="c-kw">cd</span> EmoParse
+python -m venv .venv && <span class="c-kw">source</span> .venv/bin/activate
+pip install -e <span class="c-str">".[llamacpp,ui,scraping]"</span>
+
+<span class="c-comment"># Bajar modelo</span>
+mkdir -p models
+huggingface-cli download Qwen/Qwen3-14B-Instruct-GGUF \
+  qwen3-14b-q4_k_m.gguf --local-dir ./models</code></pre>
+
+  <h3>1. Configurar</h3>
+  <p>
+    Copiá el template y editalo:
+  </p>
+
+<pre data-lang="bash"><code>cp config.example.yaml config.yaml</code></pre>
+
+  <p>
+    Editá <code>config.yaml</code> dejando lo esencial:
+  </p>
+
+<pre data-lang="yaml"><code><span class="c-key">models:</span>
+  <span class="c-key">qwen3-14b:</span>
+    <span class="c-key">backend:</span> llama_cpp
+    <span class="c-key">path:</span> models/qwen3-14b-q4_k_m.gguf
+    <span class="c-key">context_length:</span> 8192
+    <span class="c-key">n_gpu_layers:</span> -1     <span class="c-comment"># -1 = todo a GPU</span>
+    <span class="c-key">temperature:</span> 0.6
+    <span class="c-key">seed:</span> 42
+
+  <span class="c-key">phi4-mini:</span>
+    <span class="c-key">backend:</span> llama_cpp
+    <span class="c-key">path:</span> models/phi-4-mini-instruct-Q4_K_M.gguf
+    <span class="c-key">context_length:</span> 4096
+    <span class="c-key">n_gpu_layers:</span> -1
+    <span class="c-key">temperature:</span> 0.0
+    <span class="c-key">seed:</span> 42
+
+<span class="c-key">pipeline:</span>
+  <span class="c-key">stages:</span>
+    <span class="c-key">summarizer:</span>      qwen3-14b
+    <span class="c-key">metadata:</span>        phi4-mini
+    <span class="c-key">enunciation:</span>     qwen3-14b
+    <span class="c-key">actors:</span>          qwen3-14b
+    <span class="c-key">emotions:</span>        qwen3-14b
+    <span class="c-key">characterizer:</span>   qwen3-14b
+  <span class="c-key">cache_enabled:</span> true
+  <span class="c-key">max_retries:</span> 3
+  <span class="c-key">timeout_seconds:</span> 90
+
+<span class="c-key">paths:</span>
+  <span class="c-key">runs_dir:</span>      runs
+  <span class="c-key">models_dir:</span>    models
+  <span class="c-key">knowledge_dir:</span> knowledge
+  <span class="c-key">inputs_dir:</span>    data
+
+<span class="c-key">versions:</span>
+  <span class="c-key">knowledge:</span> v1
+  <span class="c-key">prompt:</span>    v1
+  <span class="c-key">ontology:</span>  v1
+  <span class="c-key">schema:</span>    v1
+
+<span class="c-key">notes:</span> |
+  Análisis de discursos Q1 2024. Run inicial.</code></pre>
+
+  <h3>2. Scrapear el corpus</h3>
+
+<pre data-lang="bash"><code>emoparse scrape \
+  --source casarosada \
+  --out data/discursos_q1_2024.csv \
+  --from 2024-01-01 \
+  --to   2024-03-31</code></pre>
+
+  <p>El scraper produce un CSV con las columnas obligatorias (<code>codigo</code>, <code>contenido</code>, <code>titulo</code>, <code>fecha</code>, <code>url</code>, <code>fuente</code>) y dedup por URL.</p>
+
+  <h3>3. Correr el pipeline</h3>
+
+<pre data-lang="bash"><code>emoparse run \
+  --config config.yaml \
+  --input  data/discursos_q1_2024.csv \
+  --run-id presidencial_q1_2024 \
+  --genre  discurso_presidencial</code></pre>
+
+  <p>Lo que pasa internamente:</p>
+  <ol>
+    <li>Se ingieren los discursos al storage SQLite.</li>
+    <li>Se chunkean en frases (porque <code>discurso_presidencial.unit == "frase"</code>).</li>
+    <li>Se corren las stages en orden topológico: <code>summarizer → metadata → enunciation → actors → emotions → explode_emociones → characterizer</code>.</li>
+    <li>Cada llamada al LLM pasa por el cache. Si una stage falla, el discurso queda marcado como failed y el resto sigue.</li>
+    <li>Al final se imprime un reporte con conteos por stage.</li>
+  </ol>
+
+  <h3>4. Reintentar lo que falló</h3>
+  <p>Si alguna stage tuvo fallas (por ejemplo emotions falló en 8 frases por timeout), no hace falta recorrer todo:</p>
+
+<pre data-lang="bash"><code><span class="c-comment"># Ver qué quedó pendiente</span>
+emoparse status --db runs/presidencial_q1_2024/run.sqlite
+
+<span class="c-comment"># Reintentar solo los failed de la stage emotions</span>
+emoparse retry --db runs/presidencial_q1_2024/run.sqlite --stage emotions
+
+<span class="c-comment"># Reanudar el pipeline (saltea lo ya completado)</span>
+emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
+  --run-id presidencial_q1_2024</code></pre>
+
+  <h3>5. Activar el segundo pase y el juez (opcionales)</h3>
+
+<pre data-lang="bash"><code><span class="c-comment"># emotions_pass2 refina la primera pasada con contexto del discurso</span>
+emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
+  --run-id presidencial_q1_2024 \
+  --stages emotions_pass2
+
+<span class="c-comment"># judge evalúa la coherencia de las caracterizaciones</span>
+emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
+  --run-id presidencial_q1_2024 \
+  --stages judge</code></pre>
+
+  <h3>6. Validar coherencia semiótica</h3>
+
+<pre data-lang="bash"><code>emoparse validate --db runs/presidencial_q1_2024/run.sqlite
+<span class="c-comment"># Imprime resumen de issues detectadas por los domain validators</span></code></pre>
+
+  <h3>7. Explorar resultados</h3>
+
+<pre data-lang="bash"><code><span class="c-comment"># Dashboard Streamlit</span>
+streamlit run -m emoparse.app
+
+<span class="c-comment"># El sidebar lista todos los runs disponibles bajo runs/</span>
+<span class="c-comment"># El run activo se elige ahí. No hace falta pasar --db.</span></code></pre>
+
+  <h3>8. Exportar a CSV</h3>
+
+<pre data-lang="bash"><code>emoparse export \
+  --db  runs/presidencial_q1_2024/run.sqlite \
+  --out exports/presidencial_q1_2024/
+
+<span class="c-comment"># Produce:</span>
+<span class="c-comment">#   exports/presidencial_q1_2024/discursos.csv</span>
+<span class="c-comment">#   exports/presidencial_q1_2024/frases.csv</span>
+<span class="c-comment">#   exports/presidencial_q1_2024/emociones.csv</span></code></pre>
+
+  <div class="callout">
+    <span class="callout-label">Por qué tres CSVs</span>
+    <p>
+      No hay un join consolidado porque cada nivel tiene su propia
+      <em>granularidad</em>. <code>discursos.csv</code> es un row por discurso
+      (metadata, resumen, enunciación); <code>frases.csv</code> es un row por
+      frase (texto, actores y emociones como JSON); <code>emociones.csv</code>
+      es un row por emoción individual con caracterización aplanada. Cada uno
+      es el formato natural para su tipo de análisis.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════ ARQUITECTURA ═══════════════════════════════════════════════════ -->
+<section id="arquitectura">
+  <div class="section-eyebrow">05 · Conceptos</div>
+  <h2>Arquitectura<a class="anchor" href="#arquitectura">#</a></h2>
+  <p class="section-intro">
+    EmoParse está organizado en capas con dependencias unidireccionales. Las
+    capas superiores conocen a las inferiores, no al revés.
+  </p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 760 460" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagrama de capas">
+      <defs>
+        <style>
+          .lay { fill: #faf6ec; stroke: #1a1814; stroke-width: 1.5; }
+          .lay-accent { fill: #f0d8d2; stroke: #b8331f; stroke-width: 2; }
+          .lay-title { font-family: 'EB Garamond', Georgia, serif; font-size: 17px; font-weight: 600; fill: #1a1814; }
+          .lay-sub { font-family: 'Inter', sans-serif; font-size: 11px; fill: #6b6358; }
+          .lay-tag { font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 600; fill: #b8331f; letter-spacing: 0.1em; text-transform: uppercase; }
+          .arr { stroke: #6b6358; stroke-width: 1; fill: none; }
+          .arr-head { fill: #6b6358; }
+          .grp-label { font-family: 'Inter', sans-serif; font-size: 10px; font-weight: 700; fill: #6b6358; letter-spacing: 0.1em; text-transform: uppercase; }
+        </style>
+        <marker id="ah" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" class="arr-head"/>
+        </marker>
+      </defs>
+
+      <!-- UI layer -->
+      <text x="30" y="40" class="grp-label">Interfaces</text>
+      <rect x="30" y="50" width="200" height="68" rx="3" class="lay-accent"/>
+      <text x="48" y="76" class="lay-tag">UI</text>
+      <text x="48" y="94" class="lay-title">app/</text>
+      <text x="48" y="110" class="lay-sub">Dashboard Streamlit</text>
+
+      <rect x="250" y="50" width="200" height="68" rx="3" class="lay-accent"/>
+      <text x="268" y="76" class="lay-tag">CLI</text>
+      <text x="268" y="94" class="lay-title">cli/</text>
+      <text x="268" y="110" class="lay-sub">run · scrape · status · ...</text>
+
+      <rect x="470" y="50" width="260" height="68" rx="3" class="lay-accent"/>
+      <text x="488" y="76" class="lay-tag">I/O</text>
+      <text x="488" y="94" class="lay-title">scraping/ · io/ · inputs/</text>
+      <text x="488" y="110" class="lay-sub">Sources · exporters · loaders</text>
+
+      <!-- Pipeline layer -->
+      <text x="30" y="160" class="grp-label">Orquestación</text>
+      <rect x="30" y="170" width="350" height="68" rx="3" class="lay"/>
+      <text x="48" y="196" class="lay-tag">Pipeline</text>
+      <text x="48" y="214" class="lay-title">pipeline/</text>
+      <text x="48" y="230" class="lay-sub">Runner · Stages · DAG · Contracts · Retry</text>
+
+      <rect x="400" y="170" width="330" height="68" rx="3" class="lay"/>
+      <text x="418" y="196" class="lay-tag">Géneros</text>
+      <text x="418" y="214" class="lay-title">genres/</text>
+      <text x="418" y="230" class="lay-sub">Plugin API · Discurso · Tuit · Schema factory</text>
+
+      <!-- Agents layer -->
+      <text x="30" y="280" class="grp-label">Agentes</text>
+      <rect x="30" y="290" width="350" height="68" rx="3" class="lay"/>
+      <text x="48" y="316" class="lay-tag">Agentes LLM</text>
+      <text x="48" y="334" class="lay-title">agents/</text>
+      <text x="48" y="350" class="lay-sub">Summarizer · Metadata · Enunciation · Actors · ...</text>
+
+      <rect x="400" y="290" width="330" height="68" rx="3" class="lay"/>
+      <text x="418" y="316" class="lay-tag">Dominio</text>
+      <text x="418" y="334" class="lay-title">domain/</text>
+      <text x="418" y="350" class="lay-sub">Validators semióticos · Rules</text>
+
+      <!-- Core layer -->
+      <text x="30" y="400" class="grp-label">Core</text>
+      <rect x="30" y="410" width="700" height="44" rx="3" class="lay"/>
+      <text x="48" y="430" class="lay-title">core/</text>
+      <text x="100" y="430" class="lay-sub">Backend · Cache · Schemas · Prompts · Grammar (GBNF)</text>
+
+      <!-- Storage layer -->
+      <text x="30" y="380" class="grp-label" style="display:none">Persistencia</text>
+
+      <!-- Connecting arrows -->
+      <line x1="130" y1="118" x2="130" y2="168" class="arr" marker-end="url(#ah)"/>
+      <line x1="350" y1="118" x2="350" y2="168" class="arr" marker-end="url(#ah)"/>
+      <line x1="205" y1="238" x2="205" y2="288" class="arr" marker-end="url(#ah)"/>
+      <line x1="560" y1="238" x2="560" y2="288" class="arr" marker-end="url(#ah)"/>
+      <line x1="380" y1="358" x2="380" y2="408" class="arr" marker-end="url(#ah)"/>
+    </svg>
+    <div class="diagram-caption">Capas de EmoParse · cada capa depende solo de las inferiores</div>
+  </div>
+
+  <p>
+    Por debajo de todo lo anterior está <code>storage/</code> con la persistencia
+    SQLite por run, y <code>knowledge/</code> con la carga de ontologías y
+    heurísticas. <code>config/</code> resuelve el YAML con validación Pydantic.
+  </p>
+
+  <h3 id="cuatro-pilares">Cuatro pilares</h3>
+  <dl class="terms">
+    <dt>Una DB por run</dt>
+    <dd>Cada corrida produce un archivo SQLite independiente en <code>runs/&lt;run_id&gt;/run.sqlite</code>. Esto da reproducibilidad, comparabilidad entre corridas, y permite que el dashboard lea sin bloquear al pipeline (WAL mode).</dd>
+
+    <dt>Generación estructurada</dt>
+    <dd>Cada agente declara un schema Pydantic. <strong>llama.cpp</strong> usa GBNF (compilado desde el schema) que restringe el sampler a nivel token. <strong>LM Studio</strong> usa <code>response_format: json_schema</code> en modo estricto. En ambos casos, la salida del LLM es válida por construcción.</dd>
+
+    <dt>Cache versionado</dt>
+    <dd>Las respuestas se cachean en la misma DB con una clave que incluye versiones de knowledge, prompts, ontología y schema. Bumpear cualquier versión invalida selectivamente el cache. Reejecuciones idénticas son gratis.</dd>
+
+    <dt>DAG declarativo</dt>
+    <dd>Las stages forman un grafo dirigido acíclico explícito. Pedir solo <code>--stages emotions</code> automáticamente valida que <code>actors</code> (su dependencia) ya esté completa.</dd>
+  </dl>
+</section>
+
+<!-- ═══════ PIPELINE ═══════════════════════════════════════════════════ -->
+<section id="pipeline">
+  <h2>El pipeline<a class="anchor" href="#pipeline">#</a></h2>
+
+  <p>
+    Un discurso atraviesa nueve stages. Las primeras tres operan sobre el
+    discurso completo; las siguientes sobre frases; las últimas sobre
+    emociones individuales.
+  </p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 800 320" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Pipeline DAG">
+      <defs>
+        <style>
+          .stage { fill: #faf6ec; stroke: #1a1814; stroke-width: 1.2; }
+          .stage-opt { fill: #faf6ec; stroke: #b8331f; stroke-width: 1.2; stroke-dasharray: 4 3; }
+          .stage-text { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500; fill: #1a1814; text-anchor: middle; }
+          .stage-tier { font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 700; fill: #6b6358; letter-spacing: 0.1em; text-transform: uppercase; }
+          .ed { stroke: #6b6358; stroke-width: 1.2; fill: none; }
+        </style>
+        <marker id="eh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
+          <path d="M0,0 L7,4 L0,8 Z" fill="#6b6358"/>
+        </marker>
+      </defs>
+
+      <!-- Tier labels -->
+      <text x="20" y="60" class="stage-tier">discurso</text>
+      <text x="20" y="160" class="stage-tier">frase</text>
+      <text x="20" y="260" class="stage-tier">emoción</text>
+
+      <!-- Discurso tier -->
+      <rect x="100" y="40" width="120" height="40" rx="3" class="stage"/>
+      <text x="160" y="65" class="stage-text">summarizer</text>
+
+      <rect x="260" y="40" width="120" height="40" rx="3" class="stage"/>
+      <text x="320" y="65" class="stage-text">metadata</text>
+
+      <rect x="420" y="40" width="120" height="40" rx="3" class="stage"/>
+      <text x="480" y="65" class="stage-text">enunciation</text>
+
+      <!-- Frase tier -->
+      <rect x="100" y="140" width="120" height="40" rx="3" class="stage"/>
+      <text x="160" y="165" class="stage-text">actors</text>
+
+      <rect x="260" y="140" width="120" height="40" rx="3" class="stage"/>
+      <text x="320" y="165" class="stage-text">emotions</text>
+
+      <rect x="420" y="140" width="140" height="40" rx="3" class="stage-opt"/>
+      <text x="490" y="165" class="stage-text">emotions_pass2</text>
+
+      <!-- Emoción tier -->
+      <rect x="100" y="240" width="160" height="40" rx="3" class="stage"/>
+      <text x="180" y="265" class="stage-text">explode_emociones</text>
+
+      <rect x="300" y="240" width="120" height="40" rx="3" class="stage"/>
+      <text x="360" y="265" class="stage-text">characterizer</text>
+
+      <rect x="460" y="240" width="120" height="40" rx="3" class="stage-opt"/>
+      <text x="520" y="265" class="stage-text">judge</text>
+
+      <!-- Edges discurso tier -->
+      <line x1="220" y1="60" x2="258" y2="60" class="ed" marker-end="url(#eh)"/>
+      <line x1="380" y1="60" x2="418" y2="60" class="ed" marker-end="url(#eh)"/>
+
+      <!-- enunciation → actors (drop) -->
+      <path d="M 480,80 Q 480,110 160,110 L 160,138" class="ed" marker-end="url(#eh)"/>
+
+      <!-- actors → emotions -->
+      <line x1="220" y1="160" x2="258" y2="160" class="ed" marker-end="url(#eh)"/>
+
+      <!-- emotions → emotions_pass2 (opt) -->
+      <line x1="380" y1="160" x2="418" y2="160" class="ed" marker-end="url(#eh)"/>
+
+      <!-- emotions → explode (drop) -->
+      <path d="M 320,180 Q 320,210 180,210 L 180,238" class="ed" marker-end="url(#eh)"/>
+
+      <!-- explode → characterizer -->
+      <line x1="260" y1="260" x2="298" y2="260" class="ed" marker-end="url(#eh)"/>
+
+      <!-- characterizer → judge (opt) -->
+      <line x1="420" y1="260" x2="458" y2="260" class="ed" marker-end="url(#eh)"/>
+
+      <!-- Legend -->
+      <g transform="translate(610, 40)">
+        <rect x="0" y="0" width="160" height="80" fill="#faf6ec" stroke="#ddd5c3"/>
+        <text x="80" y="16" class="stage-tier" text-anchor="middle">Leyenda</text>
+        <rect x="12" y="28" width="16" height="10" class="stage"/>
+        <text x="34" y="37" class="stage-text" text-anchor="start" style="font-size:10px">default ON</text>
+        <rect x="12" y="48" width="16" height="10" class="stage-opt"/>
+        <text x="34" y="57" class="stage-text" text-anchor="start" style="font-size:10px">opt-in</text>
+      </g>
+    </svg>
+    <div class="diagram-caption">Pipeline DAG · línea continua = activa por default · línea punteada = opt-in</div>
+  </div>
+
+  <h3>Las stages</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Stage</th><th>Nivel</th><th>Qué hace</th><th>Default</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>summarizer</code></td>
+          <td>discurso</td>
+          <td>Resumen en dos pasos: parcial por fragmento + global consolidado.</td>
+          <td>on</td>
+        </tr>
+        <tr>
+          <td><code>metadata</code></td>
+          <td>discurso</td>
+          <td>Tipo de discurso y ubicación geográfica (ciudad, provincia, país).</td>
+          <td>on</td>
+        </tr>
+        <tr>
+          <td><code>enunciation</code></td>
+          <td>discurso</td>
+          <td>Identifica enunciador y enunciatarios con sus roles (prodest./paradest./contradest. para discurso político).</td>
+          <td>on</td>
+        </tr>
+        <tr>
+          <td><code>actors</code></td>
+          <td>frase</td>
+          <td>Detecta actores (individuales, colectivos, institucionales) mencionados o inferidos por frase.</td>
+          <td>on</td>
+        </tr>
+        <tr>
+          <td><code>emotions</code></td>
+          <td>frase</td>
+          <td>Primera pasada de detección de emociones por frase, con la ontología y heurísticas. Inyecta los actores ya detectados.</td>
+          <td>on</td>
+        </tr>
+        <tr>
+          <td><code>emotions_pass2</code></td>
+          <td>frase</td>
+          <td>Segunda pasada con contexto (rolling/full summary) de las emociones anteriores. Refina la pasada inicial.</td>
+          <td>opt-in</td>
+        </tr>
+        <tr>
+          <td><code>explode_emociones</code></td>
+          <td>emoción</td>
+          <td>Stage sin LLM: explota la lista de emociones por frase en filas individuales en la tabla <code>emociones</code>.</td>
+          <td>on</td>
+        </tr>
+        <tr>
+          <td><code>characterizer</code></td>
+          <td>emoción</td>
+          <td>Caracteriza cada emoción según foria, dominancia, intensidad y fuente.</td>
+          <td>on</td>
+        </tr>
+        <tr>
+          <td><code>judge</code></td>
+          <td>emoción</td>
+          <td>LLM-as-judge: evalúa la coherencia de las caracterizaciones y produce veredictos con confianza.</td>
+          <td>opt-in</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout note">
+    <span class="callout-label">Por qué dos pasadas de emociones</span>
+    <p>
+      La primera pasada analiza cada frase de forma aislada — esto evita
+      alucinaciones por inducción contextual. La segunda pasada (opt-in)
+      revisita las mismas frases <em>con</em> contexto de las anteriores,
+      lo que permite detectar continuidades, contrastes, escaladas y
+      emociones inducidas. La elección es del investigador.
+    </p>
+  </div>
+
+  <h3 id="chunking">Chunking</h3>
+  <p>
+    Cada género declara una <em>unidad</em>: <code>frase</code>,
+    <code>parrafo</code> o <code>documento</code>. El splitter se elige según
+    esto. Para discurso presidencial usamos frase (una idea por unidad);
+    para tuit usamos documento (no se chunkea, cada tuit es una unidad).
+    El splitter de frases es regex-puro, respeta abreviaciones del español,
+    combina oraciones muy cortas y subdivide oraciones muy largas por
+    <code>;</code> o <code>,</code>.
+  </p>
+</section>
+
+<!-- ═══════ BACKENDS ═══════════════════════════════════════════════════ -->
+<section id="backends">
+  <h2>Backends LLM<a class="anchor" href="#backends">#</a></h2>
+  <p>
+    EmoParse define un contrato común <code>LLMBackend</code> que los
+    backends concretos implementan. Hoy hay dos: <code>llama_cpp</code> y
+    <code>lmstudio</code>. El contrato deja la puerta abierta a otros (OpenAI,
+    Anthropic, vLLM, etc.) — ver <a href="#extend-backend">Agregar un backend</a>.
+  </p>
+
+  <h3>llama_cpp</h3>
+  <p>
+    Modelos GGUF locales vía <code>llama-cpp-python</code>. Generación
+    estructurada con GBNF compilada desde el schema Pydantic (cacheada por
+    modelo, ya que compilar GBNF es costoso). Soporta seed fija para
+    determinismo bit-a-bit.
+  </p>
+
+<pre data-lang="yaml"><code><span class="c-key">models:</span>
+  <span class="c-key">qwen3-14b:</span>
+    <span class="c-key">backend:</span> llama_cpp
+    <span class="c-key">path:</span> models/qwen3-14b-q4_k_m.gguf
+    <span class="c-key">context_length:</span> 8192
+    <span class="c-key">n_gpu_layers:</span> -1        <span class="c-comment"># -1 = todo a GPU; 0 = todo a CPU</span>
+    <span class="c-key">temperature:</span> 0.6
+    <span class="c-key">max_tokens:</span> 2048
+    <span class="c-key">seed:</span> 42</code></pre>
+
+  <h3>lmstudio</h3>
+  <p>
+    Cualquier servidor OpenAI-compatible local. Útil si ya tenés LM Studio
+    corriendo o si querés gestionar modelos desde una UI. Usa
+    <code>response_format: json_schema</code> en modo strict.
+  </p>
+
+<pre data-lang="yaml"><code><span class="c-key">models:</span>
+  <span class="c-key">qwen-local:</span>
+    <span class="c-key">backend:</span> lmstudio
+    <span class="c-key">base_url:</span> http://localhost:1234/v1
+    <span class="c-key">model_name:</span> qwen3-14b-instruct
+    <span class="c-key">temperature:</span> 0.0
+    <span class="c-key">max_tokens:</span> 2048
+    <span class="c-key">seed:</span> 42
+    <span class="c-key">timeout:</span> 90</code></pre>
+
+  <h3 id="backends-mixto">Configuración mixta: usar varios backends en el mismo run</h3>
+  <p>
+    Nada impide tener modelos con backends distintos en el mismo
+    <code>config.yaml</code>. Cada stage puede apuntar al alias que prefiera:
+  </p>
+
+<pre data-lang="yaml"><code><span class="c-key">models:</span>
+  <span class="c-comment"># GGUF local pesado para stages sensibles</span>
+  <span class="c-key">qwen3-14b-local:</span>
+    <span class="c-key">backend:</span> llama_cpp
+    <span class="c-key">path:</span> models/qwen3-14b-q4_k_m.gguf
+    <span class="c-key">n_gpu_layers:</span> -1
+
+  <span class="c-comment"># LM Studio para stages medianas</span>
+  <span class="c-key">phi4-lmstudio:</span>
+    <span class="c-key">backend:</span> lmstudio
+    <span class="c-key">base_url:</span> http://localhost:1234/v1
+    <span class="c-key">model_name:</span> phi-4-mini-instruct
+
+<span class="c-key">pipeline:</span>
+  <span class="c-key">stages:</span>
+    <span class="c-key">summarizer:</span>    qwen3-14b-local      <span class="c-comment"># pesado en local</span>
+    <span class="c-key">metadata:</span>      phi4-lmstudio        <span class="c-comment"># liviano en LM Studio</span>
+    <span class="c-key">enunciation:</span>   qwen3-14b-local
+    <span class="c-key">actors:</span>        qwen3-14b-local
+    <span class="c-key">emotions:</span>      qwen3-14b-local
+    <span class="c-key">characterizer:</span> phi4-lmstudio</code></pre>
+
+  <p>
+    El runner es lo suficientemente inteligente como para descargar
+    automáticamente el modelo actual de VRAM si la próxima stage usa otro
+    alias incompatible. Esto permite secuenciar modelos grandes en GPUs
+    limitadas.
+  </p>
+
+  <h3 id="backends-openai">¿Y usar OpenAI / Anthropic / APIs pagas?</h3>
+  <p>
+    No viene built-in, pero la arquitectura lo soporta sin cambios al core.
+    El contrato <code>LLMBackend</code> es la única superficie que un backend
+    nuevo necesita implementar. Mirá <a href="#extend-backend">Agregar un
+    backend</a> para el patrón completo.
+  </p>
+
+  <div class="callout warn">
+    <span class="callout-label">Consideración importante</span>
+    <p>
+      Las APIs cloud no garantizan determinismo bit-a-bit aún con seed fija.
+      Si la reproducibilidad es crítica para tu investigación, conviene usar
+      backends locales y declarar el modelo + seed en <code>versions</code>.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════ CACHE ═══════════════════════════════════════════════════ -->
+<section id="cache">
+  <h2>Cache y versionado<a class="anchor" href="#cache">#</a></h2>
+  <p>
+    Toda llamada al LLM pasa por <code>CachedBackend</code>, que decora al
+    backend real con un cache transparente. La clave es un hash de:
+  </p>
+
+  <ul>
+    <li>El alias del modelo</li>
+    <li>El system prompt (hash SHA-256)</li>
+    <li>El user prompt (hash SHA-256)</li>
+    <li>El qualname del schema esperado</li>
+    <li>La seed</li>
+    <li>Las cuatro versiones: <code>knowledge</code>, <code>prompt</code>, <code>ontology</code>, <code>schema</code></li>
+  </ul>
+
+  <p>
+    Bumpear una version en <code>config.yaml</code> invalida selectivamente
+    todo lo que dependa de eso:
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Bumpeás</th><th>Invalida</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>knowledge</code></td><td>Todo (datos base del proyecto)</td></tr>
+        <tr><td><code>prompt</code></td><td>Stages cuyos templates Jinja2 cambiaron</td></tr>
+        <tr><td><code>ontology</code></td><td>Stages que consumen ontologías (emotions, characterizer)</td></tr>
+        <tr><td><code>schema</code></td><td>Stages con schema modificado</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout">
+    <span class="callout-label">Práctica recomendada</span>
+    <p>
+      Bumpeá <strong>al menos</strong> la version correspondiente cada vez
+      que toques un prompt o una ontología. Si no, el cache devuelve
+      respuestas viejas (pre-cambio). El bumpeo es manual a propósito: te
+      obliga a decidir qué cambio invalida qué.
+    </p>
+  </div>
+
+  <p>
+    Para inspeccionar el estado del cache:
+  </p>
+
+<pre data-lang="bash"><code>emoparse stats --db runs/&lt;run_id&gt;/run.sqlite</code></pre>
+
+  <p>
+    Imprime conteo de entradas, hit rate de la sesión, y desglose por modelo.
+  </p>
+</section>
+
+<!-- ═══════ GÉNEROS ═══════════════════════════════════════════════════ -->
+<section id="generos">
+  <h2>Géneros<a class="anchor" href="#generos">#</a></h2>
+  <p>
+    Un <em>género</em> es un descriptor declarativo de cómo varía el pipeline
+    para un tipo de discurso. Cada género define:
+  </p>
+
+  <ul>
+    <li><strong>Unidad de chunking</strong>: <code>frase</code>, <code>parrafo</code> o <code>documento</code>.</li>
+    <li><strong>Roles enunciativos válidos</strong>: tupla cerrada de strings (ej. <code>prodestinatario</code> para discurso político vs. <code>seguidor</code> para tuit).</li>
+    <li><strong>Overrides opcionales</strong>: modelos por stage, tamaño de batch, summarizer on/off, prompts custom.</li>
+  </ul>
+
+  <p>
+    EmoParse trae dos géneros built-in:
+  </p>
+
+  <div class="cards">
+    <div class="card">
+      <h4>discurso_presidencial</h4>
+      <p>Unit <code>frase</code>; roles <code>prodestinatario</code>, <code>paradestinatario</code>, <code>contradestinatario</code> (Verón). Default si no pasás <code>--genre</code>.</p>
+    </div>
+    <div class="card">
+      <h4>tuit</h4>
+      <p>Unit <code>documento</code>; roles <code>seguidor</code>, <code>oponente</code>, <code>audiencia_general</code>. Sin summarizer. Batch sizes más grandes (10).</p>
+    </div>
+  </div>
+
+  <p>
+    El género se elige con <code>--genre &lt;id&gt;</code> en el CLI. Los roles
+    declarados se inyectan dinámicamente en el schema Pydantic
+    <code>EnunciatarioSchema.tipo</code> (vía <code>pydantic.create_model</code>),
+    lo que hace que el GBNF restrinja la salida del LLM exactamente al universo
+    permitido por el género. El qualname del schema dinámico incluye el
+    <code>genre_id</code>, así que el cache mantiene buckets separados por género.
+  </p>
+
+  <p>
+    Para crear un género nuevo, ver <a href="#extend-genre">Agregar un género</a>.
+  </p>
+</section>
+
+<!-- ═══════ VALIDACIÓN ═══════════════════════════════════════════════════ -->
+<section id="validacion">
+  <h2>Validación en tres capas<a class="anchor" href="#validacion">#</a></h2>
+  <p class="section-intro">
+    EmoParse valida la salida del LLM en tres niveles complementarios. Cada
+    capa atrapa errores que las anteriores no pueden.
+  </p>
+
+  <h3>Capa 1 — Forma (token-level)</h3>
+  <p>
+    GBNF (en llama.cpp) o JSON Schema estricto (en LM Studio) restringen el
+    sampler a producir salidas estructuralmente válidas. Es imposible que el
+    LLM devuelva JSON malformado o con campos extra.
+  </p>
+
+  <h3>Capa 2 — DataFrame contracts (entre stages)</h3>
+  <p>
+    Cada stage valida su entrada y salida contra un contrato Pandera
+    (<code>DiscursoInputContract</code>, <code>FraseConActoresContract</code>,
+    <code>EmocionExplodedContract</code>, etc.). Esto atrapa errores de
+    integración: una stage que produce columnas mal nombradas, tipos
+    inesperados, índices duplicados.
+  </p>
+
+  <h3>Capa 3 — Coherencia semiótica (domain validators)</h3>
+  <p>
+    Los <code>RowValidators</code> y <code>DiscursoValidators</code> ejecutan
+    reglas teóricas sobre las emociones caracterizadas. Detectan
+    incoherencias del tipo:
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>ID</th><th>Regla</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>V01</code></td><td>Modo <em>virtual</em> o <em>potencial</em> no puede tener al enunciador como experienciador.</td></tr>
+        <tr><td><code>V02</code></td><td>Fuente <em>no identificada</em> con intensidad <em>alta</em> es tensión semiótica.</td></tr>
+        <tr><td><code>V04</code></td><td>Foria <em>afórica</em> incompatible con intensidad <em>alta</em>.</td></tr>
+        <tr><td><code>V05</code></td><td>Foria <em>ambifórica</em> no coexiste con intensidad <em>baja</em>.</td></tr>
+        <tr><td><code>V06</code></td><td>Modo <em>virtual</em> con foria <em>afórica</em> es contradictorio.</td></tr>
+        <tr><td><code>V07</code></td><td>Tipo de fuente <em>actor</em> sin actor nombrado.</td></tr>
+        <tr><td><code>V08</code></td><td>Experienciador coincide con enunciador identificado.</td></tr>
+        <tr><td><code>V09</code></td><td>Emoción duplicada del mismo actor en la misma frase.</td></tr>
+        <tr><td><code>V10</code></td><td>Modo <em>potencial</em> con experienciador que no es enunciatario.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    Los issues se persisten en la tabla <code>validation_issues</code>. Se
+    corren con <code>emoparse validate</code> y son consultables desde el
+    dashboard.
+  </p>
+
+  <h3>Capa 3 bis — LLM-as-judge (opcional)</h3>
+  <p>
+    El stage opt-in <code>judge</code> usa otro LLM para evaluar la coherencia
+    global de cada caracterización. Devuelve un veredicto
+    (<code>coherente: bool</code>, <code>issues: str</code>,
+    <code>confianza: alta/media/baja</code>) que se persiste en la tabla
+    <code>judgments</code>. Complementa los domain validators con una lectura
+    más holística.
+  </p>
+</section>
+
+<!-- ═══════ CLI OVERVIEW ═══════════════════════════════════════════════════ -->
+<section id="cli-overview">
+  <div class="section-eyebrow">06 · CLI</div>
+  <h2>Comandos disponibles<a class="anchor" href="#cli-overview">#</a></h2>
+  <p class="section-intro">
+    El binario <code>emoparse</code> agrupa todos los subcomandos del proyecto.
+    Cada uno se documenta abajo con sus flags principales.
+  </p>
+
+  <div class="pills">
+    <span class="pill"><code>run</code></span>
+    <span class="pill"><code>scrape</code></span>
+    <span class="pill"><code>status</code></span>
+    <span class="pill"><code>inspect</code></span>
+    <span class="pill"><code>retry</code></span>
+    <span class="pill"><code>validate</code></span>
+    <span class="pill"><code>judge</code></span>
+    <span class="pill"><code>metrics</code></span>
+    <span class="pill"><code>stats</code></span>
+    <span class="pill"><code>export</code></span>
+  </div>
+
+  <p>
+    Flags globales (válidas para cualquier subcomando):
+  </p>
+
+<pre data-lang="bash"><code><span class="c-flag">--verbose</span>, -v     Logging DEBUG
+<span class="c-flag">--quiet</span>,   -q     Logging WARNING+
+<span class="c-flag">--help</span>,    -h     Ayuda del comando</code></pre>
+
+<!-- ───── run ───────────────────────────────────────────────────────── -->
+<h3 id="cli-run"><code>emoparse run</code></h3>
+<p>Orquesta el pipeline completo. Es el comando principal.</p>
+
+<pre data-lang="bash"><code>emoparse run \
+  <span class="c-flag">--config</span>    config.yaml \
+  <span class="c-flag">--input</span>     data/discursos.csv \
+  <span class="c-flag">--run-id</span>    mi_corrida \
+  [<span class="c-flag">--genre</span>     discurso_presidencial] \
+  [<span class="c-flag">--db</span>        runs/mi_corrida/run.sqlite] \
+  [<span class="c-flag">--stages</span>    summarizer,metadata,emotions]</code></pre>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Flag</th><th>Qué hace</th></tr></thead>
+    <tbody>
+      <tr><td><code>--config</code></td><td>Path al YAML de configuración. Requerido.</td></tr>
+      <tr><td><code>--input</code></td><td>CSV o JSON con los discursos. Requerido.</td></tr>
+      <tr><td><code>--run-id</code></td><td>Identificador del run. Define el directorio bajo <code>runs/</code>.</td></tr>
+      <tr><td><code>--genre</code></td><td>Género del corpus. Default: <code>discurso_presidencial</code>.</td></tr>
+      <tr><td><code>--db</code></td><td>Path explícito a la DB. Si no se pasa, se resuelve como <code>runs/&lt;run_id&gt;/run.sqlite</code>.</td></tr>
+      <tr><td><code>--stages</code></td><td>Lista de stages a ejecutar, separada por coma. Si no se pasa, corre todas las stages default del género.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>
+  El runner es <em>idempotente</em>: re-ejecutarlo sobre la misma DB salta lo
+  ya completado. Si querés reprocesar algo, primero usá <code>retry</code>.
+</p>
+
+<!-- ───── scrape ──────────────────────────────────────────────────── -->
+<h3 id="cli-scrape"><code>emoparse scrape</code></h3>
+<p>Scrapea discursos de una fuente registrada hacia CSV, con dedupe por URL y filtros de fecha.</p>
+
+<pre data-lang="bash"><code>emoparse scrape \
+  <span class="c-flag">--source</span>     casarosada \
+  <span class="c-flag">--out</span>        data/discursos.csv \
+  [<span class="c-flag">--from</span>      2024-01-01] \
+  [<span class="c-flag">--to</span>        2024-12-31] \
+  [<span class="c-flag">--max-items</span> 100]</code></pre>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Flag</th><th>Qué hace</th></tr></thead>
+    <tbody>
+      <tr><td><code>--source</code></td><td>ID de la fuente (ej. <code>casarosada</code>). Ver <a href="#extend-source">sources</a>.</td></tr>
+      <tr><td><code>--out</code></td><td>Path al CSV de salida. Append-only con dedupe por URL.</td></tr>
+      <tr><td><code>--from</code> / <code>--to</code></td><td>Filtros de fecha (formato <code>YYYY-MM-DD</code>).</td></tr>
+      <tr><td><code>--max-items</code></td><td>Límite superior de discursos a extraer.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ───── status ──────────────────────────────────────────────────── -->
+<h3 id="cli-status"><code>emoparse status</code></h3>
+<p>Tabla ASCII con conteos de pendientes / fallidos / completados por stage.</p>
+
+<pre data-lang="bash"><code>emoparse status <span class="c-flag">--db</span> runs/mi_corrida/run.sqlite</code></pre>
+
+<p>Salida típica:</p>
+
+<pre data-lang="text"><code>STAGE              PENDING  FAILED  COMPLETED  TOTAL
+─────────────────  ───────  ──────  ─────────  ─────
+summarizer              0       0         42     42
+metadata                0       0         42     42
+enunciation             0       0         42     42
+actors                  0       3        756    759
+emotions               12       2        745    759
+explode_emociones      14       0       2308   2322
+characterizer         128       0       2194   2322</code></pre>
+
+<!-- ───── inspect ─────────────────────────────────────────────────── -->
+<h3 id="cli-inspect"><code>emoparse inspect</code></h3>
+<p>Imprime el estado completo de un discurso particular: input, payloads de cada stage, frases y emociones detectadas.</p>
+
+<pre data-lang="bash"><code>emoparse inspect \
+  <span class="c-flag">--db</span>     runs/mi_corrida/run.sqlite \
+  <span class="c-flag">--codigo</span> 2024-03-15-anuncio-medida</code></pre>
+
+<p>
+  Útil para entender por qué falló un discurso o auditar un resultado puntual.
+</p>
+
+<!-- ───── retry ───────────────────────────────────────────────────── -->
+<h3 id="cli-retry"><code>emoparse retry</code></h3>
+<p>Limpia errores de stages para que el próximo <code>run</code> los reintente. Dos modos:</p>
+
+<h4>Modo legacy — por stage</h4>
+
+<pre data-lang="bash"><code><span class="c-comment"># Limpia todos los errores de la stage emotions</span>
+emoparse retry \
+  <span class="c-flag">--db</span>    runs/mi_corrida/run.sqlite \
+  <span class="c-flag">--stage</span> emotions</code></pre>
+
+<h4>Modo policy — declarativo</h4>
+<p>
+  Definí un YAML con policies (qué reprocesar, con qué filtros, opcionalmente
+  con qué modelo distinto):
+</p>
+
+<pre data-lang="yaml"><code><span class="c-comment"># retry.yaml</span>
+<span class="c-key">policies:</span>
+  - <span class="c-key">stage:</span> emotions
+    <span class="c-key">target:</span> failed
+    <span class="c-key">override_model:</span> qwen3-30b-moe
+
+  - <span class="c-key">stage:</span> metadata
+    <span class="c-key">target:</span> completed
+    <span class="c-key">filters:</span>
+      - <span class="c-key">field:</span> tipo_discurso
+        <span class="c-key">op:</span> eq
+        <span class="c-key">value:</span> <span class="c-str">"no identificado"</span></code></pre>
+
+<pre data-lang="bash"><code><span class="c-comment"># Aplicar policies (marca filas como pending)</span>
+emoparse retry \
+  <span class="c-flag">--db</span>     runs/mi_corrida/run.sqlite \
+  <span class="c-flag">--policy</span> retry.yaml
+
+<span class="c-comment"># O aplicar policies Y ejecutar el pipeline en el mismo paso</span>
+emoparse retry \
+  <span class="c-flag">--db</span>     runs/mi_corrida/run.sqlite \
+  <span class="c-flag">--policy</span> retry.yaml \
+  <span class="c-flag">--config</span> config.yaml \
+  <span class="c-flag">--input</span>  data/discursos.csv</code></pre>
+
+<p>
+  Ops soportadas en filtros: <code>eq</code>, <code>ne</code>, <code>in</code>,
+  <code>contains</code>, <code>is_null</code>, <code>is_not_null</code>.
+</p>
+
+<!-- ───── validate ────────────────────────────────────────────────── -->
+<h3 id="cli-validate"><code>emoparse validate</code></h3>
+<p>Corre los <em>domain validators</em> sobre las emociones caracterizadas e imprime resumen.</p>
+
+<pre data-lang="bash"><code>emoparse validate \
+  <span class="c-flag">--db</span> runs/mi_corrida/run.sqlite \
+  [<span class="c-flag">--detail</span>]    <span class="c-comment"># imprime cada issue, no solo agregados</span></code></pre>
+
+<p>
+  Los issues se guardan en la tabla <code>validation_issues</code> y son
+  consultables desde el dashboard.
+</p>
+
+<!-- ───── judge ───────────────────────────────────────────────────── -->
+<h3 id="cli-judge"><code>emoparse judge</code></h3>
+<p>Imprime resumen de los juicios persistidos por el stage <code>judge</code>. No ejecuta nada — para correr el juez, usá <code>emoparse run --stages judge</code>.</p>
+
+<pre data-lang="bash"><code>emoparse judge \
+  <span class="c-flag">--db</span> runs/mi_corrida/run.sqlite \
+  [<span class="c-flag">--incoherent</span>]   <span class="c-comment"># lista solo veredictos incoherente=true</span>
+  [<span class="c-flag">--coherent</span>]     <span class="c-comment"># lista solo veredictos coherente=true</span></code></pre>
+
+<!-- ───── metrics ─────────────────────────────────────────────────── -->
+<h3 id="cli-metrics"><code>emoparse metrics</code></h3>
+<p>Métricas persistidas por stage: items OK/failed, latencias (p50, p99), tokens, cache hits.</p>
+
+<pre data-lang="bash"><code>emoparse metrics <span class="c-flag">--db</span> runs/mi_corrida/run.sqlite</code></pre>
+
+<p>
+  Muestra la última ejecución registrada para cada stage. Útil para diagnosticar
+  cuellos de botella y planificar overrides de modelo.
+</p>
+
+<!-- ───── stats ───────────────────────────────────────────────────── -->
+<h3 id="cli-stats"><code>emoparse stats</code></h3>
+<p>Estadísticas del cache LLM: total de entradas, hit rate de la sesión, distribución por modelo.</p>
+
+<pre data-lang="bash"><code>emoparse stats <span class="c-flag">--db</span> runs/mi_corrida/run.sqlite</code></pre>
+
+<!-- ───── export ──────────────────────────────────────────────────── -->
+<h3 id="cli-export"><code>emoparse export</code></h3>
+<p>Exporta las tres tablas principales a CSV.</p>
+
+<pre data-lang="bash"><code>emoparse export \
+  <span class="c-flag">--db</span>  runs/mi_corrida/run.sqlite \
+  <span class="c-flag">--out</span> exports/mi_corrida/</code></pre>
+
+<p>Produce:</p>
+<ul>
+  <li><code>discursos.csv</code> — un row por discurso, payloads de summarizer/metadata/enunciation aplanados.</li>
+  <li><code>frases.csv</code> — un row por frase, con actores y emociones como JSON.</li>
+  <li><code>emociones.csv</code> — un row por emoción, caracterización aplanada.</li>
+</ul>
+
+<p>
+  Los CSVs se exportan en UTF-8 con BOM para compatibilidad con Excel.
+</p>
+</section>
+
+<!-- ═══════ DASHBOARD ═══════════════════════════════════════════════════ -->
+<section id="dashboard">
+  <div class="section-eyebrow">07 · Visualización</div>
+  <h2>Dashboard Streamlit<a class="anchor" href="#dashboard">#</a></h2>
+  <p class="section-intro">
+    Un dashboard local para explorar los resultados de cualquier run. No
+    requiere base de datos extra: lee directamente los SQLite que produjo
+    el pipeline en modo read-only.
+  </p>
+
+<pre data-lang="bash"><code><span class="c-comment"># Lanzar el dashboard (escanea automáticamente runs/)</span>
+streamlit run -m emoparse.app
+
+<span class="c-comment"># Alternativa</span>
+python -m emoparse.app</code></pre>
+
+  <p>
+    El sidebar lista todos los runs disponibles bajo <code>runs/</code> con
+    badges de estado (running / completed / failed). Elegís el run y aparecen
+    cinco tabs:
+  </p>
+
+  <div class="cards">
+    <div class="card">
+      <h4>📈 Curva emocional</h4>
+      <p>Scatter plot frase-a-frase de las emociones detectadas. Comparación opcional entre dos discursos.</p>
+    </div>
+    <div class="card">
+      <h4>👥 Por actor</h4>
+      <p>Heatmap actor × emoción y scatter foria × intensidad. Resumen tabular de los actores más activos.</p>
+    </div>
+    <div class="card">
+      <h4>📋 Tabla</h4>
+      <p>Exploración tabular con filtros dinámicos a tres niveles (discurso, frase, emoción). Exporta a CSV.</p>
+    </div>
+    <div class="card">
+      <h4>↔ Comparar discursos</h4>
+      <p>Perfil emocional, radar, trayectoria temporal y distribución comparada entre múltiples discursos.</p>
+    </div>
+    <div class="card">
+      <h4>🔁 Estado del run</h4>
+      <p>Progreso de cada stage con pendientes / errores / completados y lista de códigos fallidos.</p>
+    </div>
+  </div>
+
+  <div class="callout note">
+    <span class="callout-label">Recomendación</span>
+    <p>
+      El dashboard es estrictamente de lectura. Si querés modificar
+      resultados, hacelo desde el CLI (<code>retry</code>, <code>run</code>)
+      sobre la misma DB; el dashboard reflejará los cambios al recargar.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════ EXTENDING ═══════════════════════════════════════════════════ -->
+<section id="extend-source">
+  <div class="section-eyebrow">08 · Extending</div>
+  <h2>Agregar una source de scraping<a class="anchor" href="#extend-source">#</a></h2>
+  <p class="section-intro">
+    Una <em>source</em> es un adapter que sabe (a) listar URLs de discursos
+    en una fuente y (b) extraer el contenido de cada uno. La fuente built-in
+    es <code>casarosada</code>. Para agregar otra, implementás
+    <code>SourceAdapter</code>.
+  </p>
+
+  <ol class="steps">
+    <li>
+      <strong>Crear el módulo del adapter.</strong>
+      <p>Bajo <code>src/emoparse/scraping/sources/mi_fuente.py</code>:</p>
+
+<pre data-lang="python"><code><span class="c-kw">from</span> __future__ <span class="c-kw">import</span> annotations
+<span class="c-kw">from</span> collections.abc <span class="c-kw">import</span> Iterator
+<span class="c-kw">from</span> datetime <span class="c-kw">import</span> date
+
+<span class="c-kw">from</span> emoparse.scraping.base <span class="c-kw">import</span> DiscursoRecord, SourceAdapter
+<span class="c-kw">from</span> emoparse.scraping.http_client <span class="c-kw">import</span> HttpClient
+<span class="c-kw">from</span> emoparse.scraping.normalize <span class="c-kw">import</span> clean_whitespace, normalize_date
+
+
+<span class="c-kw">class</span> <span class="c-acc">MiFuenteAdapter</span>(SourceAdapter):
+    source_id = <span class="c-str">"mi_fuente"</span>
+    requires_selenium = <span class="c-acc">False</span>
+
+    <span class="c-kw">def</span> <span class="c-acc">__init__</span>(self, timeout: <span class="c-acc">float</span> = 20.0, max_retries: <span class="c-acc">int</span> = 3) -> <span class="c-acc">None</span>:
+        self.http = HttpClient(timeout=timeout, max_retries=max_retries)
+
+    <span class="c-kw">def</span> <span class="c-acc">list_discursos</span>(
+        self,
+        max_items: <span class="c-acc">int</span> | <span class="c-acc">None</span> = <span class="c-acc">None</span>,
+        from_date: date | <span class="c-acc">None</span> = <span class="c-acc">None</span>,
+        to_date: date | <span class="c-acc">None</span> = <span class="c-acc">None</span>,
+    ) -> Iterator[<span class="c-acc">str</span>]:
+        <span class="c-comment"># Iterá URLs absolutas a discursos individuales</span>
+        ...
+
+    <span class="c-kw">def</span> <span class="c-acc">fetch_discurso</span>(self, url: <span class="c-acc">str</span>) -> DiscursoRecord | <span class="c-acc">None</span>:
+        <span class="c-comment"># Descargá y parseá el discurso. Normalizá antes de devolver.</span>
+        html = self.http.get(url).text
+        <span class="c-comment"># ... extraer título, fecha, contenido ...</span>
+        <span class="c-kw">return</span> DiscursoRecord(
+            codigo=<span class="c-str">"..."</span>,
+            url=url,
+            titulo=<span class="c-str">"..."</span>,
+            fecha=normalize_date(<span class="c-str">"..."</span>),
+            contenido=clean_whitespace(<span class="c-str">"..."</span>),
+            fuente=self.source_id,
+            extras=(),
+        )
+
+    <span class="c-kw">def</span> <span class="c-acc">close</span>(self) -> <span class="c-acc">None</span>:
+        self.http.close()</code></pre>
+    </li>
+
+    <li>
+      <strong>Registrar en el SOURCES registry.</strong>
+      <p>En <code>src/emoparse/scraping/sources/__init__.py</code>:</p>
+
+<pre data-lang="python"><code><span class="c-kw">from</span> emoparse.scraping.sources.mi_fuente <span class="c-kw">import</span> MiFuenteAdapter
+
+SOURCES: <span class="c-acc">dict</span>[<span class="c-acc">str</span>, <span class="c-acc">type</span>[SourceAdapter]] = {
+    CasaRosadaAdapter.source_id: CasaRosadaAdapter,
+    MiFuenteAdapter.source_id:   MiFuenteAdapter,   <span class="c-comment"># ← nuevo</span>
+}</code></pre>
+    </li>
+
+    <li>
+      <strong>Usarla desde el CLI.</strong>
+
+<pre data-lang="bash"><code>emoparse scrape --source mi_fuente --out data/discursos.csv</code></pre>
+    </li>
+  </ol>
+
+  <div class="callout">
+    <span class="callout-label">Diseño</span>
+    <p>
+      Los adapters <em>no</em> escriben a disco; devuelven
+      <code>DiscursoRecord</code>. La persistencia la maneja el CLI vía
+      <code>CsvAppender</code>. Esto permite testear adapters con fixtures
+      HTML y reusarlos desde notebooks o jobs externos.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════ EXTEND GÉNERO ═══════════════════════════════════════════════════ -->
+<section id="extend-genre">
+  <h2>Agregar un género<a class="anchor" href="#extend-genre">#</a></h2>
+  <p class="section-intro">
+    Un género nuevo se distribuye como módulo Python y se registra vía
+    <em>entry-points</em>. No requiere modificar el core de EmoParse.
+  </p>
+
+  <ol class="steps">
+    <li>
+      <strong>Crear el módulo del género.</strong>
+      <p>Puede vivir en EmoParse mismo (<code>src/emoparse/genres_examples/</code>) o en un paquete externo.</p>
+
+<pre data-lang="python"><code><span class="c-comment"># mi_paquete/genres/comunicado.py</span>
+<span class="c-kw">from</span> emoparse.genres.base <span class="c-kw">import</span> Genre
+
+
+<span class="c-kw">def</span> <span class="c-acc">get_genre</span>() -> Genre:
+    <span class="c-kw">return</span> Genre(
+        genre_id=<span class="c-str">"comunicado"</span>,
+        display_name=<span class="c-str">"Comunicado institucional"</span>,
+        unit=<span class="c-str">"parrafo"</span>,
+        enunciation_roles=(
+            <span class="c-str">"destinatario_directo"</span>,
+            <span class="c-str">"audiencia_amplia"</span>,
+            <span class="c-str">"contraparte"</span>,
+        ),
+        models={},              <span class="c-comment"># sin overrides</span>
+        batch_size={<span class="c-str">"emotions"</span>: 8},
+        summarizer=<span class="c-acc">True</span>,
+        prompt_overrides={},
+    )</code></pre>
+    </li>
+
+    <li>
+      <strong>Registrar el entry-point.</strong>
+      <p>En el <code>pyproject.toml</code> del paquete que lo expone:</p>
+
+<pre data-lang="toml"><code>[project.entry-points.<span class="c-str">"emoparse.genres"</span>]
+comunicado = <span class="c-str">"mi_paquete.genres.comunicado:get_genre"</span></code></pre>
+    </li>
+
+    <li>
+      <strong>Reinstalar para registrar entry-points.</strong>
+
+<pre data-lang="bash"><code>pip install -e .</code></pre>
+    </li>
+
+    <li>
+      <strong>Usarlo.</strong>
+
+<pre data-lang="bash"><code>emoparse run --config config.yaml --input data/x.csv \
+  --run-id corrida --genre comunicado</code></pre>
+    </li>
+  </ol>
+
+  <div class="callout note">
+    <span class="callout-label">Qué pasa internamente</span>
+    <p>
+      El registry descubre el género vía <code>importlib.metadata.entry_points</code>.
+      Los <code>enunciation_roles</code> se inyectan en un schema Pydantic
+      dinámico que restringe la salida del LLM exactamente a esos roles.
+      El qualname del schema dinámico incluye el <code>genre_id</code>, así
+      que el cache LLM mantiene buckets separados por género — un análisis
+      de <code>discurso_presidencial</code> y otro de <code>comunicado</code>
+      sobre el mismo texto NO comparten hit, lo cual es correcto.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════ EXTEND AGENT ═══════════════════════════════════════════════════ -->
+<section id="extend-agent">
+  <h2>Agregar un agente<a class="anchor" href="#extend-agent">#</a></h2>
+  <p class="section-intro">
+    Un agente es la unidad mínima que ejecuta un prompt sobre un dataframe.
+    Hay dos clases base: <code>BaseAgent</code> (una fila por llamada) y
+    <code>BaseBatchAgent</code> (varias filas por llamada, correlacionadas
+    con <code>unit_idx</code>).
+  </p>
+
+  <h3>Estructura de un agente nuevo</h3>
+
+<pre data-lang="python"><code><span class="c-comment"># src/emoparse/agents/mi_agente.py</span>
+<span class="c-kw">from</span> __future__ <span class="c-kw">import</span> annotations
+<span class="c-kw">import</span> pandas <span class="c-kw">as</span> pd
+
+<span class="c-kw">from</span> emoparse.agents.base <span class="c-kw">import</span> BaseBatchAgent
+<span class="c-kw">from</span> emoparse.core.backend <span class="c-kw">import</span> LLMBackend
+<span class="c-kw">from</span> emoparse.core.schemas <span class="c-kw">import</span> MiSchemaBatch, MiBatchItem
+<span class="c-kw">from</span> emoparse.core.prompts <span class="c-kw">import</span> mi_agente <span class="c-kw">as</span> tpl
+
+
+<span class="c-kw">class</span> <span class="c-acc">MiAgente</span>(BaseBatchAgent):
+    SCHEMA = MiSchemaBatch
+    BATCH_SIZE = 5
+
+    <span class="c-kw">def</span> <span class="c-acc">__init__</span>(self, backend: LLMBackend, titulo: <span class="c-acc">str</span> = <span class="c-str">""</span>) -> <span class="c-acc">None</span>:
+        self.titulo = titulo
+        <span class="c-acc">super</span>().__init__(backend=backend)
+
+    <span class="c-kw">def</span> <span class="c-acc">_build_system</span>(self) -> <span class="c-acc">str</span>:
+        <span class="c-kw">return</span> tpl.render_system(titulo=self.titulo)
+
+    <span class="c-kw">def</span> <span class="c-acc">_build_user</span>(self, batch: pd.DataFrame) -> <span class="c-acc">str</span>:
+        unidades = <span class="c-str">"\n"</span>.join(
+            <span class="c-str">f"[{idx}] {row.frase}"</span>
+            <span class="c-kw">for</span> idx, row <span class="c-kw">in</span> batch.iterrows()
+        )
+        <span class="c-kw">return</span> tpl.render_user(unidades_block=unidades)
+
+    <span class="c-kw">def</span> <span class="c-acc">_map_item_to_columns</span>(
+        self, item: MiBatchItem, row: pd.Series
+    ) -> <span class="c-acc">dict</span>:
+        <span class="c-kw">return</span> {<span class="c-str">"mi_resultado"</span>: item.valor}</code></pre>
+
+  <h3>Pasos completos</h3>
+
+  <ol class="steps">
+    <li>
+      <strong>Definir el schema Pydantic</strong> en <code>core/schemas.py</code>
+      (heredar de <code>StrictBase</code> con <code>extra="forbid"</code>).
+    </li>
+    <li>
+      <strong>Crear los templates Jinja2</strong> en
+      <code>core/prompts/templates/</code> (system + user) y un wrapper
+      <code>core/prompts/mi_agente.py</code> con
+      <code>render_system()</code> y <code>render_user()</code>.
+    </li>
+    <li>
+      <strong>Implementar la clase del agente</strong> heredando de
+      <code>BaseAgent</code> o <code>BaseBatchAgent</code>.
+    </li>
+    <li>
+      <strong>Para que se ejecute en el pipeline</strong>, además hay que
+      crear una <a href="#extend-stage">stage</a> que lo invoque.
+    </li>
+  </ol>
+
+  <div class="callout">
+    <span class="callout-label">Buena práctica</span>
+    <p>
+      Mantené el agente <em>puro</em>: recibe un <code>LLMBackend</code> y un
+      DataFrame, devuelve un DataFrame con columnas nuevas. No toca DB ni
+      filesystem. La persistencia es responsabilidad de la stage que lo usa.
+      Eso permite testear el agente con backends fake y fixtures CSV.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════ EXTEND STAGE ═══════════════════════════════════════════════════ -->
+<section id="extend-stage">
+  <h2>Agregar una stage<a class="anchor" href="#extend-stage">#</a></h2>
+  <p class="section-intro">
+    Una stage es el wrapper de orquestación que conecta un agente con el
+    storage. Sabe cargar pendientes, ejecutar el agente, validar contratos
+    y persistir resultados o errores.
+  </p>
+
+  <ol class="steps">
+    <li>
+      <strong>Implementar la stage.</strong> Heredá de <code>Stage</code>,
+      <code>_DiscursoStage</code> o <code>_FraseStage</code> según el nivel.
+
+<pre data-lang="python"><code><span class="c-comment"># src/emoparse/pipeline/stages.py (o un módulo aparte)</span>
+<span class="c-kw">class</span> <span class="c-acc">MiStage</span>(_FraseStage):
+    NAME = <span class="c-str">"mi_stage"</span>
+    STAGE_KEY = <span class="c-str">"mi_stage"</span>
+
+    <span class="c-kw">def</span> <span class="c-acc">_build_agent</span>(self, input_data, codigo) -> MiAgente:
+        <span class="c-kw">return</span> MiAgente(
+            backend=self.backend,
+            titulo=input_data.get(<span class="c-str">"titulo"</span>, <span class="c-str">""</span>),
+        )
+
+    <span class="c-kw">def</span> <span class="c-acc">_extract_payload</span>(self, row) -> <span class="c-acc">dict</span>:
+        <span class="c-kw">return</span> {<span class="c-str">"valor"</span>: row.mi_resultado}</code></pre>
+    </li>
+
+    <li>
+      <strong>Declararla en el DAG.</strong> Editá
+      <code>pipeline/dag.py</code> agregando el nodo y sus dependencias:
+
+<pre data-lang="python"><code>EMOPARSE_DAG = StageDAG([
+    <span class="c-comment"># ... nodos existentes ...</span>
+    StageNode(<span class="c-str">"mi_stage"</span>, deps=(<span class="c-str">"emotions"</span>,)),
+])</code></pre>
+    </li>
+
+    <li>
+      <strong>Registrarla en el runner.</strong> Agregá una rama en
+      <code>PipelineRunner._build_stage()</code> que sepa instanciar
+      <code>MiStage</code>.
+    </li>
+
+    <li>
+      <strong>Persistencia.</strong> Si necesita columnas nuevas en alguna
+      tabla, editá <code>storage/schema.py</code> y agregá una migración
+      aditiva en <code>storage/runs.py:_apply_additive_migrations</code>.
+    </li>
+
+    <li>
+      <strong>Usarla.</strong> El runner la corre automáticamente cuando
+      esté en <code>enabled_stages</code>.
+
+<pre data-lang="bash"><code>emoparse run --config config.yaml --input data/x.csv \
+  --run-id corrida --stages mi_stage</code></pre>
+    </li>
+  </ol>
+</section>
+
+<!-- ═══════ EXTEND BACKEND ═══════════════════════════════════════════════════ -->
+<section id="extend-backend">
+  <h2>Agregar un backend<a class="anchor" href="#extend-backend">#</a></h2>
+  <p class="section-intro">
+    Caso típico: querés usar la API de OpenAI, Anthropic, Groq, o un endpoint
+    de inferencia propio. El contrato <code>LLMBackend</code> es la única
+    superficie a implementar.
+  </p>
+
+  <h3>Patrón general</h3>
+
+<pre data-lang="python"><code><span class="c-comment"># src/emoparse/core/backend/openai_api.py</span>
+<span class="c-kw">from</span> __future__ <span class="c-kw">import</span> annotations
+<span class="c-kw">from</span> typing <span class="c-kw">import</span> Any, TypeVar
+<span class="c-kw">import</span> time
+
+<span class="c-kw">from</span> pydantic <span class="c-kw">import</span> BaseModel
+<span class="c-kw">from</span> openai <span class="c-kw">import</span> OpenAI, APITimeoutError, APIConnectionError
+
+<span class="c-kw">from</span> emoparse.core.backend.base <span class="c-kw">import</span> LLMBackend, LLMResponse, TokenUsage
+<span class="c-kw">from</span> emoparse.core.backend.exceptions <span class="c-kw">import</span> (
+    BackendTimeoutError, BackendUnavailableError,
+    ContextLengthExceededError, SchemaViolationError,
+)
+
+T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
+
+
+<span class="c-kw">class</span> <span class="c-acc">OpenAIBackend</span>(LLMBackend):
+    <span class="c-kw">def</span> <span class="c-acc">__init__</span>(self, alias: <span class="c-acc">str</span>, model_config: <span class="c-acc">dict</span>[<span class="c-acc">str</span>, Any]) -> <span class="c-acc">None</span>:
+        self.alias = alias
+        self.model_id = model_config[<span class="c-str">"model_name"</span>]
+        self.client = OpenAI(api_key=model_config[<span class="c-str">"api_key"</span>])
+        self.temperature = model_config.get(<span class="c-str">"temperature"</span>, 0.0)
+        self.max_tokens = model_config.get(<span class="c-str">"max_tokens"</span>, 2048)
+        self.seed = model_config.get(<span class="c-str">"seed"</span>)
+        self.timeout = model_config.get(<span class="c-str">"timeout"</span>, 90)
+
+    <span class="c-kw">def</span> <span class="c-acc">healthcheck</span>(self) -> <span class="c-acc">bool</span>:
+        <span class="c-kw">try</span>:
+            self.client.models.retrieve(self.model_id, timeout=10)
+            <span class="c-kw">return</span> <span class="c-acc">True</span>
+        <span class="c-kw">except</span> Exception:
+            <span class="c-kw">return</span> <span class="c-acc">False</span>
+
+    <span class="c-kw">def</span> <span class="c-acc">generate</span>(
+        self, system, user, schema=<span class="c-acc">None</span>, max_tokens=<span class="c-acc">None</span>,
+        temperature=<span class="c-acc">None</span>, seed=<span class="c-acc">None</span>, stop=<span class="c-acc">None</span>, reset_before=<span class="c-acc">False</span>,
+    ) -> LLMResponse:
+        kwargs = {
+            <span class="c-str">"model"</span>: self.model_id,
+            <span class="c-str">"messages"</span>: [
+                {<span class="c-str">"role"</span>: <span class="c-str">"system"</span>, <span class="c-str">"content"</span>: system},
+                {<span class="c-str">"role"</span>: <span class="c-str">"user"</span>,   <span class="c-str">"content"</span>: user},
+            ],
+            <span class="c-str">"temperature"</span>: temperature <span class="c-kw">or</span> self.temperature,
+            <span class="c-str">"max_tokens"</span>: max_tokens <span class="c-kw">or</span> self.max_tokens,
+            <span class="c-str">"seed"</span>: seed <span class="c-kw">or</span> self.seed,
+            <span class="c-str">"timeout"</span>: self.timeout,
+        }
+        <span class="c-kw">if</span> schema:
+            kwargs[<span class="c-str">"response_format"</span>] = {
+                <span class="c-str">"type"</span>: <span class="c-str">"json_schema"</span>,
+                <span class="c-str">"json_schema"</span>: {
+                    <span class="c-str">"name"</span>: schema.__name__,
+                    <span class="c-str">"schema"</span>: schema.model_json_schema(),
+                    <span class="c-str">"strict"</span>: <span class="c-acc">True</span>,
+                },
+            }
+        t0 = time.perf_counter()
+        <span class="c-kw">try</span>:
+            r = self.client.chat.completions.create(**kwargs)
+        <span class="c-kw">except</span> APITimeoutError <span class="c-kw">as</span> e:
+            <span class="c-kw">raise</span> BackendTimeoutError(<span class="c-acc">str</span>(e)) <span class="c-kw">from</span> e
+        <span class="c-kw">except</span> APIConnectionError <span class="c-kw">as</span> e:
+            <span class="c-kw">raise</span> BackendUnavailableError(<span class="c-acc">str</span>(e)) <span class="c-kw">from</span> e
+
+        raw = r.choices[0].message.content <span class="c-kw">or</span> <span class="c-str">""</span>
+        parsed = schema.model_validate_json(raw) <span class="c-kw">if</span> schema <span class="c-kw">else</span> <span class="c-acc">None</span>
+
+        <span class="c-kw">return</span> LLMResponse(
+            parsed=parsed,
+            raw=raw,
+            usage=TokenUsage(
+                prompt_tokens=r.usage.prompt_tokens,
+                completion_tokens=r.usage.completion_tokens,
+            ),
+            latency_ms=(time.perf_counter() - t0) * 1000,
+            model_alias=self.alias,
+            cache_hit=<span class="c-acc">False</span>,
+            finish_reason=r.choices[0].finish_reason <span class="c-kw">or</span> <span class="c-str">"stop"</span>,
+        )
+
+    <span class="c-kw">def</span> <span class="c-acc">close</span>(self) -> <span class="c-acc">None</span>: <span class="c-kw">pass</span>
+    <span class="c-kw">def</span> <span class="c-acc">reset_state</span>(self) -> <span class="c-acc">None</span>: <span class="c-kw">pass</span></code></pre>
+
+  <h3>Registrarlo en el factory</h3>
+  <p>Editá <code>src/emoparse/core/backend/registry.py:build_backend</code>:</p>
+
+<pre data-lang="python"><code><span class="c-kw">def</span> <span class="c-acc">build_backend</span>(alias: <span class="c-acc">str</span>, model_config: <span class="c-acc">dict</span>[<span class="c-acc">str</span>, Any]) -> LLMBackend:
+    backend_name = model_config.get(<span class="c-str">"backend"</span>)
+
+    <span class="c-kw">if</span> backend_name == <span class="c-str">"llama_cpp"</span>:
+        <span class="c-kw">return</span> LlamaCppBackend(alias, model_config)
+    <span class="c-kw">elif</span> backend_name == <span class="c-str">"lmstudio"</span>:
+        <span class="c-kw">return</span> LMStudioBackend(alias, model_config)
+    <span class="c-kw">elif</span> backend_name == <span class="c-str">"openai"</span>:                  <span class="c-comment"># ← nuevo</span>
+        <span class="c-kw">return</span> OpenAIBackend(alias, model_config)
+    <span class="c-kw">else</span>:
+        <span class="c-kw">raise</span> BackendConfigError(<span class="c-str">f"Backend desconocido: {backend_name}"</span>)</code></pre>
+
+  <h3>Usarlo en config.yaml</h3>
+
+<pre data-lang="yaml"><code><span class="c-key">models:</span>
+  <span class="c-key">gpt-4o-mini:</span>
+    <span class="c-key">backend:</span> openai
+    <span class="c-key">model_name:</span> gpt-4o-mini
+    <span class="c-key">api_key:</span> <span class="c-str">"${OPENAI_API_KEY}"</span>
+    <span class="c-key">temperature:</span> 0.0
+    <span class="c-key">max_tokens:</span> 2048
+    <span class="c-key">seed:</span> 42
+    <span class="c-key">timeout:</span> 60
+
+<span class="c-key">pipeline:</span>
+  <span class="c-key">stages:</span>
+    <span class="c-key">metadata:</span> gpt-4o-mini       <span class="c-comment"># API para metadata (rápido y barato)</span>
+    <span class="c-key">emotions:</span> qwen3-14b-local   <span class="c-comment"># Local para emociones (sensible)</span></code></pre>
+
+  <div class="callout warn">
+    <span class="callout-label">Privacidad</span>
+    <p>
+      Si trabajás con discursos sensibles o corpus académicos privados,
+      considerá las implicaciones de enviar texto a APIs externas. Los
+      backends locales (llama.cpp, LM Studio) garantizan que los datos no
+      salen de tu máquina.
+    </p>
+  </div>
+
+  <div class="callout note">
+    <span class="callout-label">Errores a mapear</span>
+    <p>
+      Convertí los errores específicos del SDK a la jerarquía de excepciones
+      de EmoParse: <code>BackendTimeoutError</code> y
+      <code>BackendUnavailableError</code> son <em>transitorios</em> y
+      activan retry; <code>ContextLengthExceededError</code>,
+      <code>SchemaViolationError</code> y <code>BackendConfigError</code> son
+      <em>permanentes</em>.
+    </p>
+  </div>
+</section>
+
+<!-- ═══════ EXTEND VALIDATOR ═══════════════════════════════════════════════════ -->
+<section id="extend-validator">
+  <h2>Agregar un validator semiótico<a class="anchor" href="#extend-validator">#</a></h2>
+  <p class="section-intro">
+    Los validators codifican reglas de coherencia teórica que el LLM debería
+    respetar. Hay dos tipos: <code>RowValidator</code> (una emoción) y
+    <code>DiscursoValidator</code> (todas las emociones de un discurso).
+  </p>
+
+  <ol class="steps">
+    <li>
+      <strong>Implementar la regla.</strong>
+      <p>En <code>src/emoparse/domain/validators/rules.py</code>:</p>
+
+<pre data-lang="python"><code><span class="c-kw">from</span> emoparse.domain.validators.base <span class="c-kw">import</span> RowValidator, ValidationIssue
+
+
+<span class="c-kw">class</span> <span class="c-acc">V11_MiRegla</span>(RowValidator):
+    VALIDATOR_ID = <span class="c-str">"V11_mi_regla"</span>
+
+    <span class="c-kw">def</span> <span class="c-acc">validate</span>(
+        self, codigo, frase_idx, emocion_idx,
+        experienciador, tipo_emocion, modo_existencia,
+        foria, dominancia, intensidad, tipo_fuente, fuente,
+        enunciador, enunciatarios,
+    ) -> <span class="c-acc">list</span>[ValidationIssue]:
+
+        <span class="c-comment"># Ejemplo: foria eufórica con dominancia corporal y baja intensidad</span>
+        <span class="c-comment"># suele ser ruido del modelo, no un patrón válido.</span>
+        <span class="c-kw">if</span> (foria == <span class="c-str">"euforico"</span>
+                <span class="c-kw">and</span> dominancia == <span class="c-str">"corporal"</span>
+                <span class="c-kw">and</span> intensidad == <span class="c-str">"baja"</span>):
+            <span class="c-kw">return</span> [ValidationIssue(
+                validator_id=self.VALIDATOR_ID,
+                mensaje=<span class="c-str">"Combinación inusual: eufórico + corporal + baja intensidad"</span>,
+                codigo=codigo,
+                frase_idx=frase_idx,
+                emocion_idx=emocion_idx,
+                contexto={<span class="c-str">"foria"</span>: foria, <span class="c-str">"dominancia"</span>: dominancia},
+            )]
+        <span class="c-kw">return</span> []</code></pre>
+    </li>
+
+    <li>
+      <strong>Registrarla.</strong> Agregala al registro canónico al final del mismo archivo:
+
+<pre data-lang="python"><code>ROW_VALIDATORS = [
+    V01_ModoPotencialVirtualExperienciador(),
+    V02_FuenteNoIdentificadaConIntensidadAlta(),
+    <span class="c-comment"># ...</span>
+    V11_MiRegla(),    <span class="c-comment"># ← nuevo</span>
+]</code></pre>
+    </li>
+
+    <li>
+      <strong>Correrla.</strong>
+
+<pre data-lang="bash"><code>emoparse validate --db runs/mi_corrida/run.sqlite --detail</code></pre>
+    </li>
+  </ol>
+</section>
+
+<!-- ═══════ ESTRUCTURA DEL REPO ═══════════════════════════════════════════════════ -->
+<section id="estructura">
+  <div class="section-eyebrow">09 · Referencia</div>
+  <h2>Estructura del repositorio<a class="anchor" href="#estructura">#</a></h2>
+  <p class="section-intro">
+    Mapa completo del paquete. Cada submódulo está documentado en su propio
+    docstring; este árbol es solo una referencia visual.
+  </p>
+
+<div class="tree">EmoParse/
+├── <span class="dir">src/emoparse/</span>
+│   ├── <span class="file">__init__.py</span>          <span class="comment"># versión del paquete</span>
+│   ├── <span class="file">__main__.py</span>          <span class="comment"># python -m emoparse</span>
+│   ├── <span class="file">version.py</span>           <span class="comment"># __version__ canónico</span>
+│   │
+│   ├── <span class="dir">agents/</span>              <span class="comment"># Agentes LLM (un prompt por archivo)</span>
+│   │   ├── <span class="file">base.py</span>          <span class="comment"># BaseAgent · BaseBatchAgent</span>
+│   │   ├── <span class="file">summarizer.py</span>
+│   │   ├── <span class="file">metadata.py</span>
+│   │   ├── <span class="file">enunciation.py</span>
+│   │   ├── <span class="file">actors.py</span>
+│   │   ├── <span class="file">emotions.py</span>       <span class="comment"># pase 1 + helpers de rolling</span>
+│   │   ├── <span class="file">emotions_pass2.py</span> <span class="comment"># pase 2 con contexto</span>
+│   │   ├── <span class="file">characterizer.py</span>
+│   │   └── <span class="file">judge.py</span>
+│   │
+│   ├── <span class="dir">app/</span>                 <span class="comment"># Dashboard Streamlit</span>
+│   │   ├── <span class="file">__main__.py</span>
+│   │   ├── <span class="file">main.py</span>
+│   │   ├── <span class="file">data.py</span>          <span class="comment"># acceso read-only a SQLite</span>
+│   │   ├── <span class="file">styles.py</span>
+│   │   └── <span class="dir">components/</span>
+│   │       ├── <span class="file">run_selector.py</span>
+│   │       ├── <span class="file">tab_curva.py</span>
+│   │       ├── <span class="file">tab_actores.py</span>
+│   │       ├── <span class="file">tab_tabla.py</span>
+│   │       ├── <span class="file">tab_comparacion.py</span>
+│   │       └── <span class="file">tab_estado.py</span>
+│   │
+│   ├── <span class="dir">cli/</span>                 <span class="comment"># Comandos de consola</span>
+│   │   ├── <span class="file">__main__.py</span>
+│   │   └── <span class="dir">commands/</span>
+│   │       ├── <span class="file">run_cmd.py</span>
+│   │       ├── <span class="file">scrape_cmd.py</span>
+│   │       ├── <span class="file">status_cmd.py</span>
+│   │       ├── <span class="file">inspect_cmd.py</span>
+│   │       ├── <span class="file">retry_cmd.py</span>
+│   │       ├── <span class="file">validate_cmd.py</span>
+│   │       ├── <span class="file">judge_cmd.py</span>
+│   │       ├── <span class="file">metrics_cmd.py</span>
+│   │       ├── <span class="file">stats_cmd.py</span>
+│   │       └── <span class="file">export_cmd.py</span>
+│   │
+│   ├── <span class="dir">config/</span>              <span class="comment"># YAML loading + Pydantic models</span>
+│   │   ├── <span class="file">loader.py</span>
+│   │   └── <span class="file">models.py</span>
+│   │
+│   ├── <span class="dir">core/</span>                <span class="comment"># Plumería del LLM</span>
+│   │   ├── <span class="dir">backend/</span>
+│   │   │   ├── <span class="file">base.py</span>      <span class="comment"># LLMBackend (ABC) + tipos</span>
+│   │   │   ├── <span class="file">llamacpp.py</span>
+│   │   │   ├── <span class="file">lmstudio.py</span>
+│   │   │   ├── <span class="file">registry.py</span>  <span class="comment"># lazy loader + circuit breaker</span>
+│   │   │   ├── <span class="file">exceptions.py</span>
+│   │   │   └── <span class="file">retry.py</span>
+│   │   ├── <span class="dir">cache/</span>
+│   │   │   ├── <span class="file">backend.py</span>   <span class="comment"># CachedBackend (decorator)</span>
+│   │   │   ├── <span class="file">keys.py</span>      <span class="comment"># hashing de cache keys</span>
+│   │   │   └── <span class="file">repository.py</span>
+│   │   ├── <span class="dir">prompts/</span>
+│   │   │   ├── <span class="file">_loader.py</span>   <span class="comment"># Jinja2 environment</span>
+│   │   │   ├── <span class="file">*.py</span>         <span class="comment"># wrappers tipados por agente</span>
+│   │   │   └── <span class="dir">templates/</span>
+│   │   │       └── <span class="file">*.jinja2</span>
+│   │   ├── <span class="file">grammar.py</span>       <span class="comment"># Pydantic v2 → GBNF</span>
+│   │   └── <span class="file">schemas.py</span>       <span class="comment"># Salidas estructuradas del LLM</span>
+│   │
+│   ├── <span class="dir">domain/</span>              <span class="comment"># Capa de coherencia semiótica</span>
+│   │   └── <span class="dir">validators/</span>
+│   │       ├── <span class="file">base.py</span>
+│   │       ├── <span class="file">rules.py</span>     <span class="comment"># V01...V10</span>
+│   │       └── <span class="file">runner.py</span>
+│   │
+│   ├── <span class="dir">genres/</span>              <span class="comment"># Plugin API de géneros</span>
+│   │   ├── <span class="file">base.py</span>          <span class="comment"># Genre (Pydantic model)</span>
+│   │   ├── <span class="file">registry.py</span>      <span class="comment"># Discovery vía entry-points</span>
+│   │   ├── <span class="file">schema_factory.py</span> <span class="comment"># schemas Pydantic dinámicos por género</span>
+│   │   └── <span class="file">discurso_presidencial.py</span>
+│   │
+│   ├── <span class="dir">genres_examples/</span>     <span class="comment"># Ejemplos para terceros</span>
+│   │   └── <span class="file">tuit.py</span>
+│   │
+│   ├── <span class="dir">inputs/</span>              <span class="comment"># Carga de CSV/JSON</span>
+│   │   └── <span class="file">loader.py</span>
+│   │
+│   ├── <span class="dir">io/</span>                  <span class="comment"># Exportadores</span>
+│   │   └── <span class="file">exporters.py</span>
+│   │
+│   ├── <span class="dir">knowledge/</span>           <span class="comment"># Ontologías y heurísticas</span>
+│   │   └── <span class="file">loader.py</span>
+│   │
+│   ├── <span class="dir">pipeline/</span>            <span class="comment"># Orquestación</span>
+│   │   ├── <span class="file">runner.py</span>        <span class="comment"># PipelineRunner</span>
+│   │   ├── <span class="file">stages.py</span>        <span class="comment"># Stage + concretas</span>
+│   │   ├── <span class="file">dag.py</span>           <span class="comment"># EMOPARSE_DAG</span>
+│   │   ├── <span class="file">contracts.py</span>     <span class="comment"># Pandera DataFrame contracts</span>
+│   │   ├── <span class="file">chunking.py</span>      <span class="comment"># split_into_sentences</span>
+│   │   ├── <span class="file">unit_dispatch.py</span> <span class="comment"># elige splitter según genre.unit</span>
+│   │   └── <span class="file">retry_policies.py</span> <span class="comment"># YAML retry policies</span>
+│   │
+│   ├── <span class="dir">scraping/</span>            <span class="comment"># Source adapters</span>
+│   │   ├── <span class="file">base.py</span>          <span class="comment"># SourceAdapter (ABC) + DiscursoRecord</span>
+│   │   ├── <span class="file">http_client.py</span>   <span class="comment"># requests con tenacity retries</span>
+│   │   ├── <span class="file">selenium_client.py</span>
+│   │   ├── <span class="file">normalize.py</span>     <span class="comment"># clean_whitespace, normalize_date</span>
+│   │   ├── <span class="file">persist.py</span>       <span class="comment"># CsvAppender</span>
+│   │   └── <span class="dir">sources/</span>
+│   │       └── <span class="file">casarosada.py</span>
+│   │
+│   ├── <span class="dir">storage/</span>             <span class="comment"># SQLite por run</span>
+│   │   ├── <span class="file">db.py</span>            <span class="comment"># sqlite3 wrapper, WAL, conn-per-thread</span>
+│   │   ├── <span class="file">schema.py</span>        <span class="comment"># DDLs canónicos</span>
+│   │   ├── <span class="file">models.py</span>        <span class="comment"># RunContext, Versions</span>
+│   │   ├── <span class="file">runs.py</span>
+│   │   ├── <span class="file">discursos.py</span>
+│   │   ├── <span class="file">frases.py</span>
+│   │   ├── <span class="file">emociones.py</span>
+│   │   ├── <span class="file">judgments.py</span>
+│   │   ├── <span class="file">metrics.py</span>
+│   │   └── <span class="file">validation.py</span>
+│   │
+│   └── <span class="dir">viz/</span>                 <span class="comment"># Visualizaciones Plotly</span>
+│       └── <span class="file">charts.py</span>
+│
+├── <span class="dir">knowledge/</span>              <span class="comment"># Ontologías, diccionarios, heurísticas</span>
+│   ├── <span class="file">emociones.json</span>
+│   ├── <span class="file">tipos_discurso.json</span>
+│   └── <span class="file">heuristicas.md</span>
+│
+├── <span class="dir">models/</span>                 <span class="comment"># GGUFs (no versionados)</span>
+├── <span class="dir">runs/</span>                   <span class="comment"># SQLite databases (una por run)</span>
+├── <span class="dir">data/</span>                   <span class="comment"># Inputs CSV/JSON</span>
+├── <span class="dir">exports/</span>                <span class="comment"># Salidas CSV de emoparse export</span>
+│
+├── <span class="file">config.yaml</span>             <span class="comment"># Tu configuración (gitignored)</span>
+├── <span class="file">config.example.yaml</span>     <span class="comment"># Template comentado</span>
+├── <span class="file">pyproject.toml</span>
+└── <span class="file">README.md</span></div>
+</section>
+
+<!-- ═══════ DESIGN DECISIONS ═══════════════════════════════════════════════════ -->
+<section id="design">
+  <h2>Decisiones de diseño<a class="anchor" href="#design">#</a></h2>
+  <p class="section-intro">
+    Las decisiones de arquitectura más importantes están justificadas
+    explícitamente. Si te preguntás por qué algo está hecho de cierta forma,
+    probablemente la respuesta esté acá.
+  </p>
+
+  <h3>Una DB SQLite por run, no una compartida</h3>
+  <p>
+    Cada corrida produce un archivo independiente en
+    <code>runs/&lt;run_id&gt;/run.sqlite</code>. Esto da reproducibilidad
+    (cada run lleva su versión de prompts, ontologías, schemas), permite
+    comparar corridas trivialmente, y evita lock contention con el dashboard
+    (gracias a WAL mode). La alternativa — una DB global con una columna
+    <code>run_id</code> — generaría queries más complejos sin beneficios.
+  </p>
+
+  <h3>Sin ORM</h3>
+  <p>
+    Usamos <code>sqlite3</code> de la stdlib con wrappers finitos. Un solo
+    backend, sin migrations complejas, schemas simples: SQLAlchemy
+    introduciría complejidad sin pagar su costo.
+  </p>
+
+  <h3>Pydantic + GBNF para garantizar la forma del output</h3>
+  <p>
+    Toda salida estructurada del LLM se restringe a nivel sampler: para
+    llama.cpp compilamos GBNF desde el schema Pydantic v2; para LM Studio
+    usamos <code>response_format: json_schema</code> strict. El JSON inválido
+    es imposible por construcción. Esto saca una fuente entera de bugs.
+  </p>
+
+  <h3>Cache versionado con granularidad fina</h3>
+  <p>
+    Cuatro versions independientes (<code>knowledge</code>, <code>prompt</code>,
+    <code>ontology</code>, <code>schema</code>) permiten invalidar
+    selectivamente. Cambiar solo un prompt no invalida los datos del
+    summarizer. Bumpear es manual a propósito: te obliga a decidir qué
+    cambio invalida qué.
+  </p>
+
+  <h3>DAG declarativo en lugar de lista hardcodeada</h3>
+  <p>
+    <code>EMOPARSE_DAG</code> declara las dependencias de cada stage. Eso
+    permite validar subsets habilitados (no podés correr <code>emotions</code>
+    sin <code>actors</code>) y abre la puerta a paralelización entre stages
+    independientes en el futuro.
+  </p>
+
+  <h3>Roles enunciativos restringidos por género a nivel sampler</h3>
+  <p>
+    En lugar de tener un <code>Literal[*all_possible_roles]</code> global
+    (donde el modelo podría devolver "prodestinatario" en un análisis de tuit),
+    el schema <code>EnunciatarioSchema</code> se genera dinámicamente con
+    <code>pydantic.create_model</code> restringiendo el <code>Literal</code>
+    al subset del género activo. La GBNF resultante hace que la salida
+    inválida sea imposible.
+  </p>
+
+  <h3>Tres CSVs en la exportación, no un join</h3>
+  <p>
+    Cada nivel tiene granularidad propia. <code>discursos.csv</code> aplana
+    payloads de stages a nivel discurso. <code>frases.csv</code> mantiene
+    actores/emociones como JSON (aplanarlos explotaría el número de columnas).
+    <code>emociones.csv</code> aplana la caracterización porque a ese nivel
+    cada emoción <em>sí</em> tiene un set fijo de atributos.
+  </p>
+
+  <h3>Splitter de oraciones propio en lugar de NLTK/spaCy</h3>
+  <p>
+    El pipeline downstream necesita una idea por unidad — más granular que
+    el splitter del summarizer. Pero NLTK/spaCy son dependencias pesadas para
+    una tarea de regex extendido. Implementamos un splitter por oraciones
+    con tolerancia a abreviaciones en español, combinación de oraciones cortas
+    y subdivisión de oraciones largas. Se puede sustituir inyectando un
+    splitter custom al Runner si un corpus específico lo requiere.
+  </p>
+
+  <h3>Stdlib + finitos wrappers en todo el proyecto</h3>
+  <p>
+    Donde otros agregarían un framework, EmoParse usa stdlib + un wrapper:
+    sqlite3 en lugar de SQLAlchemy, regex extendido en lugar de spaCy,
+    toposort propio en lugar de networkx, argparse en lugar de click. Esto
+    baja drásticamente la superficie de mantenimiento y la cantidad de cosas
+    que pueden romperse al actualizar dependencias.
+  </p>
+
+  <h3>Two-pass emotions con rolling summary</h3>
+  <p>
+    El primer pase analiza cada frase aislada para evitar alucinaciones por
+    inducción contextual. El segundo pase (opt-in) usa contexto de las
+    emociones anteriores del mismo discurso para detectar continuidades,
+    contrastes y escaladas. Dos pasadas con propósitos distintos es más
+    robusto que una sola con todo el contexto.
+  </p>
+
+  <h3>Validación en tres capas independientes</h3>
+  <p>
+    Forma (GBNF/JSON Schema), tipo (Pandera contracts entre stages),
+    coherencia semiótica (domain validators + LLM-as-judge). Cada capa
+    atrapa lo que las anteriores no pueden. Las tres son baratas comparadas
+    con el costo del LLM.
+  </p>
+</section>
+
+<!-- ═══════ SCHEMA DB ═══════════════════════════════════════════════════ -->
+<section id="schema-db">
+  <h2>Esquema de la base de datos<a class="anchor" href="#schema-db">#</a></h2>
+  <p class="section-intro">
+    Lectura del SQLite directamente (con <code>sqlite3</code> CLI o desde un
+    notebook) es perfectamente válida. Estas son las tablas principales.
+  </p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Tabla</th><th>Grain</th><th>Contiene</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>runs</code></td>
+          <td>1 row</td>
+          <td>Metadata del run: run_id, timestamps, estado, versions, config, notes.</td>
+        </tr>
+        <tr>
+          <td><code>discursos</code></td>
+          <td>1 row × discurso</td>
+          <td>Input original (JSON) y outputs por stage a nivel discurso (summarizer, metadata, enunciation).</td>
+        </tr>
+        <tr>
+          <td><code>frases</code></td>
+          <td>1 row × (codigo, unit_idx)</td>
+          <td>Texto de la frase y outputs por stage a nivel frase (actors, emociones, emociones_pass2).</td>
+        </tr>
+        <tr>
+          <td><code>emociones</code></td>
+          <td>1 row × emoción individual</td>
+          <td>Una fila por emoción explotada: experienciador, tipo, modo, justificación + payload de caracterización.</td>
+        </tr>
+        <tr>
+          <td><code>llm_cache</code></td>
+          <td>1 row × cache key</td>
+          <td>Respuestas cacheadas con metadata (tokens, latencia, finish_reason, hits).</td>
+        </tr>
+        <tr>
+          <td><code>validation_issues</code></td>
+          <td>1 row × issue</td>
+          <td>Issues detectadas por los domain validators.</td>
+        </tr>
+        <tr>
+          <td><code>judgments</code></td>
+          <td>1 row × emoción juzgada</td>
+          <td>Veredictos del JudgeStage (coherente, issues, confianza).</td>
+        </tr>
+        <tr>
+          <td><code>run_metrics</code></td>
+          <td>1 row × stage × ejecución</td>
+          <td>Snapshot de métricas: items OK/failed, latencias (p50, p99), tokens, cache hits/misses.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    Los payloads se guardan como JSON en columnas <code>TEXT</code>. Esto
+    evita migraciones cuando un agente agrega un campo: lo que cambia es el
+    contenido del JSON, no el schema de la DB. La versión del agente se
+    guarda en columnas separadas (<code>summarizer_version</code>, etc.)
+    para auditoría.
+  </p>
+
+  <p>
+    Query ad-hoc desde sqlite3:
+  </p>
+
+<pre data-lang="bash"><code>sqlite3 runs/mi_corrida/run.sqlite \
+  <span class="c-str">"SELECT codigo, COUNT(*) FROM frases WHERE emociones_payload IS NOT NULL GROUP BY codigo;"</span></code></pre>
+</section>
+
+<!-- ═══════ TROUBLESHOOTING ═══════════════════════════════════════════════════ -->
+<section id="troubleshooting">
+  <h2>Troubleshooting<a class="anchor" href="#troubleshooting">#</a></h2>
+
+  <h3>Out of memory al cargar el modelo</h3>
+  <p>
+    Bajá <code>n_gpu_layers</code> en el modelo afectado (de <code>-1</code> a un
+    número concreto), bajá <code>context_length</code>, o usá un modelo
+    cuantizado más chico (Q4_K_S en lugar de Q4_K_M). El runner descarga
+    automáticamente el modelo actual de VRAM cuando la próxima stage usa
+    otro alias, así que mezclar modelos grandes funciona si se secuencian
+    bien.
+  </p>
+
+  <h3>El cache no parece estar funcionando</h3>
+  <p>
+    Chequeá que <code>cache_enabled: true</code> esté en <code>config.yaml</code>.
+    Mirá <code>emoparse stats</code> para ver hit rate y conteos por modelo.
+    Si bumpeaste alguna version sin querer, el cache no encuentra hits porque
+    la clave cambió.
+  </p>
+
+  <h3>Algunas frases salen con <code>emociones: []</code></h3>
+  <p>
+    Es legítimo: si el modelo no detecta emociones, devuelve lista vacía. Si
+    eso ocurre de manera sistemática en frases donde claramente hay emoción,
+    chequeá: (1) que la ontología esté completa para el tipo de emoción,
+    (2) que las heurísticas cubran el caso, (3) que el modelo no esté siendo
+    sub-dimensionado para la tarea. Una opción es activar <code>emotions_pass2</code>
+    que revisita con contexto.
+  </p>
+
+  <h3>Errores de schema "extra fields not permitted"</h3>
+  <p>
+    Los schemas Pydantic son strict (<code>extra="forbid"</code>). Si un
+    backend nuevo devuelve campos extra, los va a rechazar. Asegurate que
+    el backend implemente correctamente strict mode (en LM Studio,
+    <code>strict: true</code> en el response_format).
+  </p>
+
+  <h3>El dashboard no encuentra mi run</h3>
+  <p>
+    El sidebar escanea <code>paths.runs_dir</code> de tu config (default:
+    <code>./runs</code>). Verificá que el dashboard se lance desde el mismo
+    directorio donde corriste el pipeline, o setea
+    <code>EMOPARSE_RUNS_DIR</code> apuntando al lugar correcto.
+  </p>
+
+  <h3>Casa Rosada me bloquea</h3>
+  <p>
+    El adapter <code>casarosada</code> tiene fallback automático a Selenium
+    si detecta bloqueo HTTP. Asegurate de tener el extra
+    <code>scraping_selenium</code> instalado:
+  </p>
+
+<pre data-lang="bash"><code>pip install -e <span class="c-str">".[scraping_selenium]"</span></code></pre>
+</section>
+
+<!-- ═══════ LICENSE & CONTACTO ═══════════════════════════════════════════════════ -->
+<section id="license">
+  <h2>Licencia y contacto<a class="anchor" href="#license">#</a></h2>
+
+  <p>
+    EmoParse se distribuye bajo licencia <strong>MIT</strong>. Podés usarlo
+    para investigación académica, proyectos personales o desarrollos
+    comerciales sin restricciones, siempre que mantengas el aviso de
+    copyright.
+  </p>
+
+  <p>
+    Si lo usás en una publicación académica, una citación al repositorio
+    es bienvenida y ayuda a sostener el proyecto.
+  </p>
+
+  <h3>Contribuciones</h3>
+  <p>
+    Pull requests, issues y géneros nuevos son bienvenidos en
+    <a href="https://github.com/alexdcolman/EmoParse" target="_blank" rel="noopener">github.com/alexdcolman/EmoParse</a>.
+    Para contribuir código, instalá el extra <code>dev</code>
+    (<code>pip install -e ".[dev]"</code>) y corré <code>pytest</code>,
+    <code>ruff check</code> y <code>mypy src/</code> antes de abrir el PR.
+  </p>
+
+  <div class="actions">
+    <a class="btn primary" href="https://github.com/alexdcolman/EmoParse" target="_blank" rel="noopener">GitHub →</a>
+    <a class="btn secondary" href="https://github.com/alexdcolman/EmoParse/issues" target="_blank" rel="noopener">Reportar issue</a>
+  </div>
+</section>
+
+<footer>
+  <div>
+    <span class="mark">EmoParse</span> · documentación v0.2.0 · licencia MIT
+  </div>
+  <div>
+    Análisis emocional semiótico de discursos · LLMs locales · Reproducible
+  </div>
+</footer>
+
+</main>
+</div>
+
+</body>
+</html>

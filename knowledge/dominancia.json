@@ -1,0 +1,19 @@
+{
+  "dominancia": {
+    "corporal": {
+      "nombre": "Corporal",
+      "descripcion": "La emoción se manifiesta principalmente en sensaciones físicas o gestos.",
+      "ejemplo": "\"Se le aceleró el corazón\" → corporal"
+    },
+    "cognoscitiva": {
+      "nombre": "Cognoscitiva",
+      "descripcion": "La emoción se basa en juicios, evaluaciones o pensamientos.",
+      "ejemplo": "\"Considero injusta la decisión\" → cognoscitiva"
+    },
+    "mixta": {
+      "nombre": "Mixta",
+      "descripcion": "La emoción combina indicios corporales y cognitivos.",
+      "ejemplo": "\"Temía y estaba nervioso\" → mixta"
+    }
+  }
+}

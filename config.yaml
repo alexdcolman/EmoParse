@@ -1,0 +1,67 @@
+models:
+  qwen3-30b-moe:
+    backend: llama_cpp
+    path: ${EMOPARSE_MODELS_DIR:-models}/qwen3-30b-a3b-q4_k_m.gguf
+    context_length: 8192
+    n_gpu_layers: -1
+    temperature: 0.6
+    max_tokens: 2048
+    seed: 42
+
+  qwen3-14b:
+    backend: llama_cpp
+    path: ${EMOPARSE_MODELS_DIR:-models}/qwen3-14b-q4_k_m.gguf
+    context_length: 8192
+    n_gpu_layers: -1
+    temperature: 0.6
+    max_tokens: 2048
+    seed: 42
+
+  phi4-mini:
+    backend: llama_cpp
+    path: ${EMOPARSE_MODELS_DIR:-models}/phi-4-mini-instruct-Q4_K_M.gguf
+    context_length: 4096
+    n_gpu_layers: -1
+    temperature: 0.0
+    max_tokens: 1024
+    seed: 42
+
+pipeline:
+  stages:
+    summarizer:      qwen3-30b-moe
+    metadata:        phi4-mini
+    enunciation:     qwen3-14b
+    actors:          qwen3-14b
+    emotions:        qwen3-14b
+    emotions_pass2:  qwen3-14b
+    characterizer:   qwen3-14b
+    judge:           qwen3-14b
+  cache_enabled: true
+  max_retries: 3
+  retry_delays_seconds: [2, 8, 15]
+  timeout_seconds: 90
+
+paths:
+  runs_dir:      ${EMOPARSE_RUNS_DIR:-runs}
+  models_dir:    ${EMOPARSE_MODELS_DIR:-models}
+  knowledge_dir: ${EMOPARSE_KNOWLEDGE_DIR:-knowledge}
+  inputs_dir:    ${EMOPARSE_INPUTS_DIR:-data}
+
+versions:
+  knowledge: v1
+  prompt:    v1
+  ontology:  v1
+  schema:    v1
+
+logging:
+  level: INFO
+  log_to_file: true
+  rotation: 10 MB
+  retention: 7 days
+
+notes: |
+  Run de producción. Bumpear versions cuando cambien:
+    - knowledge:  datos base del proyecto.
+    - prompt:     templates de los agentes.
+    - ontology:   archivos JSON de knowledge/.
+    - schema:     schemas Pydantic de salida.

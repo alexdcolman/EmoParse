@@ -1,0 +1,244 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  EmoParse v2 — Project metadata
+# ══════════════════════════════════════════════════════════════════════════════
+
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "emoparse"
+dynamic = ["version"]
+description = "Análisis semiótico de emociones en discursos con LLMs locales"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+
+authors = [
+    { name = "Alex Colman" },
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+
+# ── Dependencias core ────────────────────────────────────────────────────────
+dependencies = [
+    "pydantic>=2.12,<3",
+    "pydantic-settings>=2.6,<3",
+    "PyYAML>=6.0",
+    "loguru>=0.7",
+    "pandas>=2.3,<3",
+    "numpy>=1.26,<3",
+    "tenacity>=9.0",
+
+    # Templates de prompts (T-20)
+    "jinja2>=3.1,<4",
+
+    # HTTP
+    "requests>=2.32,<3",
+    "httpx>=0.28,<1",
+
+    # DataFrame contracts
+    "pandera>=0.20,<1",
+
+    # DB / cache
+    "SQLAlchemy>=2.0,<3",
+    "diskcache>=5.6,<6",
+
+    # env
+    "python-dotenv>=1.0,<2",
+]
+
+[project.optional-dependencies]
+
+# ── llama.cpp local ──────────────────────────────────────────────────────────
+llamacpp = [
+    "llama-cpp-python>=0.3,<0.4",
+]
+
+# ── OpenAI-compatible APIs / LM Studio ──────────────────────────────────────
+lmstudio = [
+    "openai>=1.50,<2",
+]
+
+# ── UI ───────────────────────────────────────────────────────────────────────
+ui = [
+    "streamlit>=1.55,<2",
+    "plotly>=6,<7",
+    "altair>=6,<7",
+]
+
+# ── NLP ──────────────────────────────────────────────────────────────────────
+nlp = [
+    "spacy>=3.8,<4",
+
+    # modelos español
+    "es_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/es_core_news_sm-3.8.0/es_core_news_sm-3.8.0-py3-none-any.whl",
+    "es_core_news_md @ https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl",
+]
+
+# ── LangChain / agentes ──────────────────────────────────────────────────────
+agents = [
+    "langchain>=1.0,<2",
+    "langchain-community>=0.4,<1",
+    "langgraph>=1.1,<2",
+]
+
+# ── Scraping HTTP-only ───────────────────────────────────────────────────────
+scraping = [
+    "requests>=2.31,<3",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+]
+
+# ── Selenium fallback ────────────────────────────────────────────────────────
+scraping_selenium = [
+    "selenium>=4.41,<5",
+    "webdriver-manager>=4,<5",
+]
+
+# ── Visualización / data extra ───────────────────────────────────────────────
+data = [
+    "pyarrow>=23,<24",
+]
+
+# ── Utilidades ───────────────────────────────────────────────────────────────
+utils = [
+    "GitPython>=3.1,<4",
+    "huggingface_hub>=1.6,<2",
+]
+
+# ── Desarrollo ───────────────────────────────────────────────────────────────
+dev = [
+    "pytest>=8,<9",
+    "pytest-cov>=5,<6",
+    "pytest-mock>=3.14,<4",
+
+    "ruff>=0.11",
+    "mypy>=1.13",
+]
+
+# ── Instalación completa ─────────────────────────────────────────────────────
+all = [
+    "emoparse[llamacpp,lmstudio,ui,nlp,agents,scraping,scraping_selenium,data,utils,dev]",
+]
+
+[project.scripts]
+emoparse = "emoparse.cli:main"
+
+# ── Entry-points: plugins de género (T-8) ────────────────────────────────────
+# Cualquier paquete externo puede registrar géneros adicionales bajo el grupo
+# `emoparse.genres`. Cada entry-point apunta a una factory `() -> Genre`.
+# Los géneros listados acá son los que vienen con el propio paquete:
+#   - discurso_presidencial: built-in canónico (default si no se pasa --genre).
+#   - tuit: ejemplo en `genres_examples/`, documenta el patrón de plugin.
+[project.entry-points."emoparse.genres"]
+discurso_presidencial = "emoparse.genres.discurso_presidencial:get_genre"
+tuit = "emoparse.genres_examples.tuit:get_genre"
+
+[project.urls]
+Repository = "https://github.com/alexdcolman/emoparse"
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Hatch
+# ══════════════════════════════════════════════════════════════════════════════
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/emoparse"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.version]
+path = "src/emoparse/version.py"
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Pytest
+# ══════════════════════════════════════════════════════════════════════════════
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+
+testpaths = ["tests"]
+
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+    "--showlocals",
+]
+
+markers = [
+    "unit: tests rápidos sin red ni GPU",
+    "integration: requieren backend real",
+    "slow: tests > 5s",
+]
+
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:pydantic.*",
+    "ignore::PendingDeprecationWarning",
+]
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Ruff
+# ══════════════════════════════════════════════════════════════════════════════
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "B",
+    "UP",
+    "SIM",
+    "RUF",
+]
+
+ignore = [
+    "E501",
+    "B008",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+    "B011",
+    "F841",
+]
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Mypy
+# ══════════════════════════════════════════════════════════════════════════════
+
+[tool.mypy]
+python_version = "3.11"
+
+strict = true
+
+warn_unused_ignores = true
+warn_return_any = true
+
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = [
+    "llama_cpp.*",
+    "loguru.*",
+]
+ignore_missing_imports = true

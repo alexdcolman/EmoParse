@@ -1,0 +1,20 @@
+{
+  "ontologia_actores": [
+    {
+      "tipo": "humano_individual",
+      "descripcion": "Personas individuales con identidad propia (por ejemplo, Carlos Pellegrini, un asistente, un líder)"
+    },
+    {
+      "tipo": "colectivo",
+      "descripcion": "Grupos de personas que actúan o sienten como unidad (por ejemplo, \"gente\", \"ciudadanos\", \"seguidores\", \"enemigos\", \"críticos\", \"partidarios\")"
+    },
+    {
+      "tipo": "institucional",
+      "descripcion": "Organizaciones o entidades que actúan institucionalmente (por ejemplo, \"Congreso\", \"Gobierno\", \"La Libertad Avanza\", \"Presidencia de la Nación\")"
+    }
+  ],
+  "reglas_adicionales": [
+    "Incluir únicamente actores que puedan ser experienciadores de emociones o acciones sociales (por ejemplo, no incluir \"la economía\", \"la situación\", \"el pasado\")",
+    "Excluir siempre al enunciador y a los enunciatarios, incluso si son referidos indirectamente"
+  ]
+}
