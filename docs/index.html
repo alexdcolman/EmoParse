@@ -2641,148 +2641,48 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
   <div class="section-eyebrow">09 · Referencia</div>
   <h2>Estructura del repositorio<a class="anchor" href="#estructura">#</a></h2>
   <p class="section-intro">
-    Mapa completo del paquete. Cada submódulo está documentado en su propio
-    docstring; este árbol es solo una referencia visual.
+    Estructura de directorios del repositorio.
   </p>
 
 <div class="tree">EmoParse/
 ├── <span class="dir">src/emoparse/</span>
-│   ├── <span class="file">__init__.py</span>          <span class="comment"># versión del paquete</span>
-│   ├── <span class="file">__main__.py</span>          <span class="comment"># python -m emoparse</span>
-│   ├── <span class="file">version.py</span>           <span class="comment"># __version__ canónico</span>
-│   │
-│   ├── <span class="dir">agents/</span>              <span class="comment"># Agentes LLM (un prompt por archivo)</span>
-│   │   ├── <span class="file">base.py</span>          <span class="comment"># BaseAgent · BaseBatchAgent</span>
-│   │   ├── <span class="file">summarizer.py</span>
-│   │   ├── <span class="file">metadata.py</span>
-│   │   ├── <span class="file">enunciation.py</span>
-│   │   ├── <span class="file">actors.py</span>
-│   │   ├── <span class="file">emotions.py</span>       <span class="comment"># pase 1 + helpers de rolling</span>
-│   │   ├── <span class="file">emotions_pass2.py</span> <span class="comment"># pase 2 con contexto</span>
-│   │   ├── <span class="file">characterizer.py</span>
-│   │   └── <span class="file">judge.py</span>
-│   │
-│   ├── <span class="dir">app/</span>                 <span class="comment"># Dashboard Streamlit</span>
-│   │   ├── <span class="file">__main__.py</span>
-│   │   ├── <span class="file">main.py</span>
-│   │   ├── <span class="file">data.py</span>          <span class="comment"># acceso read-only a SQLite</span>
-│   │   ├── <span class="file">styles.py</span>
-│   │   └── <span class="dir">components/</span>
-│   │       ├── <span class="file">run_selector.py</span>
-│   │       ├── <span class="file">tab_curva.py</span>
-│   │       ├── <span class="file">tab_actores.py</span>
-│   │       ├── <span class="file">tab_tabla.py</span>
-│   │       ├── <span class="file">tab_comparacion.py</span>
-│   │       └── <span class="file">tab_estado.py</span>
-│   │
-│   ├── <span class="dir">cli/</span>                 <span class="comment"># Comandos de consola</span>
-│   │   ├── <span class="file">__main__.py</span>
-│   │   └── <span class="dir">commands/</span>
-│   │       ├── <span class="file">run_cmd.py</span>
-│   │       ├── <span class="file">scrape_cmd.py</span>
-│   │       ├── <span class="file">status_cmd.py</span>
-│   │       ├── <span class="file">inspect_cmd.py</span>
-│   │       ├── <span class="file">retry_cmd.py</span>
-│   │       ├── <span class="file">validate_cmd.py</span>
-│   │       ├── <span class="file">judge_cmd.py</span>
-│   │       ├── <span class="file">metrics_cmd.py</span>
-│   │       ├── <span class="file">stats_cmd.py</span>
-│   │       └── <span class="file">export_cmd.py</span>
-│   │
-│   ├── <span class="dir">config/</span>              <span class="comment"># YAML loading + Pydantic models</span>
-│   │   ├── <span class="file">loader.py</span>
-│   │   └── <span class="file">models.py</span>
-│   │
-│   ├── <span class="dir">core/</span>                <span class="comment"># Plumería del LLM</span>
-│   │   ├── <span class="dir">backend/</span>
-│   │   │   ├── <span class="file">base.py</span>      <span class="comment"># LLMBackend (ABC) + tipos</span>
-│   │   │   ├── <span class="file">llamacpp.py</span>
-│   │   │   ├── <span class="file">lmstudio.py</span>
-│   │   │   ├── <span class="file">registry.py</span>  <span class="comment"># lazy loader + circuit breaker</span>
-│   │   │   ├── <span class="file">exceptions.py</span>
-│   │   │   └── <span class="file">retry.py</span>
-│   │   ├── <span class="dir">cache/</span>
-│   │   │   ├── <span class="file">backend.py</span>   <span class="comment"># CachedBackend (decorator)</span>
-│   │   │   ├── <span class="file">keys.py</span>      <span class="comment"># hashing de cache keys</span>
-│   │   │   └── <span class="file">repository.py</span>
-│   │   ├── <span class="dir">prompts/</span>
-│   │   │   ├── <span class="file">_loader.py</span>   <span class="comment"># Jinja2 environment</span>
-│   │   │   ├── <span class="file">*.py</span>         <span class="comment"># wrappers tipados por agente</span>
-│   │   │   └── <span class="dir">templates/</span>
-│   │   │       └── <span class="file">*.jinja2</span>
-│   │   ├── <span class="file">grammar.py</span>       <span class="comment"># Pydantic v2 → GBNF</span>
-│   │   └── <span class="file">schemas.py</span>       <span class="comment"># Salidas estructuradas del LLM</span>
-│   │
-│   ├── <span class="dir">domain/</span>              <span class="comment"># Capa de coherencia semiótica</span>
-│   │   └── <span class="dir">validators/</span>
-│   │       ├── <span class="file">base.py</span>
-│   │       ├── <span class="file">rules.py</span>     <span class="comment"># V01...V10</span>
-│   │       └── <span class="file">runner.py</span>
-│   │
-│   ├── <span class="dir">genres/</span>              <span class="comment"># Plugin API de géneros</span>
-│   │   ├── <span class="file">base.py</span>          <span class="comment"># Genre (Pydantic model)</span>
-│   │   ├── <span class="file">registry.py</span>      <span class="comment"># Discovery vía entry-points</span>
-│   │   ├── <span class="file">schema_factory.py</span> <span class="comment"># schemas Pydantic dinámicos por género</span>
-│   │   └── <span class="file">discurso_presidencial.py</span>
-│   │
-│   ├── <span class="dir">genres_examples/</span>     <span class="comment"># Ejemplos para terceros</span>
-│   │   └── <span class="file">tuit.py</span>
-│   │
-│   ├── <span class="dir">inputs/</span>              <span class="comment"># Carga de CSV/JSON</span>
-│   │   └── <span class="file">loader.py</span>
-│   │
-│   ├── <span class="dir">io/</span>                  <span class="comment"># Exportadores</span>
-│   │   └── <span class="file">exporters.py</span>
-│   │
-│   ├── <span class="dir">knowledge/</span>           <span class="comment"># Ontologías y heurísticas</span>
-│   │   └── <span class="file">loader.py</span>
-│   │
-│   ├── <span class="dir">pipeline/</span>            <span class="comment"># Orquestación</span>
-│   │   ├── <span class="file">runner.py</span>        <span class="comment"># PipelineRunner</span>
-│   │   ├── <span class="file">stages.py</span>        <span class="comment"># Stage + concretas</span>
-│   │   ├── <span class="file">dag.py</span>           <span class="comment"># EMOPARSE_DAG</span>
-│   │   ├── <span class="file">contracts.py</span>     <span class="comment"># Pandera DataFrame contracts</span>
-│   │   ├── <span class="file">chunking.py</span>      <span class="comment"># split_into_sentences</span>
-│   │   ├── <span class="file">unit_dispatch.py</span> <span class="comment"># elige splitter según genre.unit</span>
-│   │   └── <span class="file">retry_policies.py</span> <span class="comment"># YAML retry policies</span>
-│   │
-│   ├── <span class="dir">scraping/</span>            <span class="comment"># Source adapters</span>
-│   │   ├── <span class="file">base.py</span>          <span class="comment"># SourceAdapter (ABC) + DiscursoRecord</span>
-│   │   ├── <span class="file">http_client.py</span>   <span class="comment"># requests con tenacity retries</span>
-│   │   ├── <span class="file">selenium_client.py</span>
-│   │   ├── <span class="file">normalize.py</span>     <span class="comment"># clean_whitespace, normalize_date</span>
-│   │   ├── <span class="file">persist.py</span>       <span class="comment"># CsvAppender</span>
-│   │   └── <span class="dir">sources/</span>
-│   │       └── <span class="file">casarosada.py</span>
-│   │
-│   ├── <span class="dir">storage/</span>             <span class="comment"># SQLite por run</span>
-│   │   ├── <span class="file">db.py</span>            <span class="comment"># sqlite3 wrapper, WAL, conn-per-thread</span>
-│   │   ├── <span class="file">schema.py</span>        <span class="comment"># DDLs canónicos</span>
-│   │   ├── <span class="file">models.py</span>        <span class="comment"># RunContext, Versions</span>
-│   │   ├── <span class="file">runs.py</span>
-│   │   ├── <span class="file">discursos.py</span>
-│   │   ├── <span class="file">frases.py</span>
-│   │   ├── <span class="file">emociones.py</span>
-│   │   ├── <span class="file">judgments.py</span>
-│   │   ├── <span class="file">metrics.py</span>
-│   │   └── <span class="file">validation.py</span>
-│   │
-│   └── <span class="dir">viz/</span>                 <span class="comment"># Visualizaciones Plotly</span>
-│       └── <span class="file">charts.py</span>
+│   ├── <span class="dir">agents/</span>              <span class="comment"># un agente por stage; system prompt + schema de salida</span>
+│   ├── <span class="dir">app/</span>                 <span class="comment"># dashboard Streamlit (read-only sobre la SQLite)</span>
+│   │   └── <span class="dir">components/</span>      <span class="comment"># tabs: curva, actores, tabla, comparación, estado</span>
+│   ├── <span class="dir">cli/</span>                 <span class="comment"># binario emoparse; argparse, entrada/salida</span>
+│   │   └── <span class="dir">commands/</span>         <span class="comment"># un archivo por subcomando (run, scrape, export…)</span>
+│   ├── <span class="dir">config/</span>              <span class="comment"># carga YAML + modelos Pydantic de configuración</span>
+│   ├── <span class="dir">core/</span>                <span class="comment"># plumería LLM: backends, cache, prompts</span>
+│   │   ├── <span class="dir">backend/</span>          <span class="comment"># LLMBackend ABC + llama.cpp, LM Studio, circuit breaker</span>
+│   │   ├── <span class="dir">cache/</span>            <span class="comment"># CachedBackend; clave = modelo + prompts + versiones</span>
+│   │   └── <span class="dir">prompts/</span>          <span class="comment"># wrappers tipados por agente + entorno Jinja2</span>
+│   │       └── <span class="dir">templates/</span>    <span class="comment"># plantillas *.jinja2 de system/user prompt</span>
+│   ├── <span class="dir">domain/</span>              <span class="comment"># reglas semióticas independientes del pipeline</span>
+│   │   └── <span class="dir">validators/</span>       <span class="comment"># RowValidator / DiscursoValidator (V01…V10)</span>
+│   ├── <span class="dir">genres/</span>              <span class="comment"># plugin API de géneros; discovery por entry-points</span>
+│   ├── <span class="dir">genres_examples/</span>     <span class="comment"># géneros de ejemplo para terceros (tuit, etc.)</span>
+│   ├── <span class="dir">inputs/</span>              <span class="comment"># lectura y validación de CSV/JSON de entrada</span>
+│   ├── <span class="dir">io/</span>                  <span class="comment"># exportadores: discursos / frases / emociones CSV</span>
+│   ├── <span class="dir">knowledge/</span>           <span class="comment"># loader de ontologías y heurísticas desde knowledge/</span>
+│   ├── <span class="dir">pipeline/</span>            <span class="comment"># runner, DAG, stages, chunking, contratos Pandera</span>
+│   ├── <span class="dir">scraping/</span>            <span class="comment"># cliente HTTP/Selenium, normalización, CsvAppender</span>
+│   │   └── <span class="dir">sources/</span>          <span class="comment"># un adapter por sitio (casarosada, …)</span>
+│   ├── <span class="dir">storage/</span>             <span class="comment"># SQLite por run: schema, repositorios, migraciones</span>
+│   └── <span class="dir">viz/</span>                 <span class="comment"># charts Plotly usados por el dashboard</span>
 │
-├── <span class="dir">knowledge/</span>              <span class="comment"># Ontologías, diccionarios, heurísticas</span>
-│   ├── <span class="file">emociones.json</span>
-│   ├── <span class="file">tipos_discurso.json</span>
-│   └── <span class="file">heuristicas.md</span>
+├── <span class="dir">tests/</span>                  <span class="comment"># suite pytest</span>
+│   ├── <span class="dir">unit/</span>                <span class="comment"># por módulo, sin I/O externo ni LLM</span>
+│   └── <span class="dir">integration/</span>         <span class="comment"># pipeline end-to-end con SQLite real</span>
 │
-├── <span class="dir">models/</span>                 <span class="comment"># GGUFs (no versionados)</span>
-├── <span class="dir">runs/</span>                   <span class="comment"># SQLite databases (una por run)</span>
-├── <span class="dir">data/</span>                   <span class="comment"># Inputs CSV/JSON</span>
-├── <span class="dir">exports/</span>                <span class="comment"># Salidas CSV de emoparse export</span>
+├── <span class="dir">knowledge/</span>              <span class="comment"># ontologías y heurísticas editables (JSON/MD)</span>
+├── <span class="dir">models/</span>                 <span class="comment"># GGUFs; no versionados en git</span>
+├── <span class="dir">runs/</span>                   <span class="comment"># una SQLite por corrida (runs/&lt;run_id&gt;/run.sqlite)</span>
+├── <span class="dir">data/</span>                   <span class="comment"># corpus de entrada CSV/JSON</span>
+├── <span class="dir">exports/</span>                <span class="comment"># salidas de emoparse export</span>
 │
-├── <span class="file">config.yaml</span>             <span class="comment"># Tu configuración (gitignored)</span>
-├── <span class="file">config.example.yaml</span>     <span class="comment"># Template comentado</span>
-├── <span class="file">pyproject.toml</span>
+├── <span class="file">config.yaml</span>             
+├── <span class="file">config.example.yaml</span>     <span class="comment"># template con todos los campos comentados</span>
+├── <span class="file">pyproject.toml</span>          <span class="comment"># dependencias y extras opcionales (llamacpp, ui, dev…)</span>
 └── <span class="file">README.md</span></div>
 </section>
 
