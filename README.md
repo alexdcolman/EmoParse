@@ -95,7 +95,10 @@ emoparse run --help
 
 ## Documentación
 
-La documentación completa (arquitectura, conceptos, CLI con todos los flags, guías de extensión para sources / géneros / agentes / stages / backends / validators, esquema de la DB y troubleshooting) está en `docs/index.html`. Para verla en el navegador:
+
+Disponible [aquí](https://alexdcolman.github.io/EmoParse/)
+
+Para verla localmente:
 
 ```bash
 # Cualquier server local sirve
