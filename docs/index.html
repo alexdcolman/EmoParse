@@ -1444,7 +1444,7 @@ huggingface-cli download Qwen/Qwen3-14B-Instruct-GGUF \
   <ol>
     <li>Se ingieren los discursos al storage SQLite.</li>
     <li>Se chunkean en frases (porque <code>discurso_presidencial.unit == "frase"</code>).</li>
-    <li>Se corren las stages en orden topológico: <code>summarizer → metadata → enunciation → actors → emotions → explode_emociones → characterizer</code>.</li>
+    <li>Se corren las stages activas por defecto en orden topológico: <code>summarizer → metadata → enunciation → actors → emotions → explode_emociones → normalize_emotions → characterizer</code>.</li>
     <li>Cada llamada al LLM pasa por el cache. Si una stage falla, el discurso queda marcado como failed y el resto sigue.</li>
     <li>Al final se imprime un reporte con conteos por stage.</li>
   </ol>
@@ -1462,14 +1462,32 @@ emoparse retry --db runs/presidencial_q1_2024.sqlite --stage emotions
 emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
   --run-id presidencial_q1_2024</code></pre>
 
-  <h3>5. Activar el segundo pase y el juez (opcionales)</h3>
+  <h3>5. Activar etapas opcionales</h3>
 
-<pre data-lang="bash"><code><span class="c-comment"># emotions_pass2 refina la primera pasada con contexto del discurso</span>
+<pre data-lang="bash"><code><span class="c-comment"># normalize_actors: unifica menciones de un mismo actor y detecta desconocidos</span>
+emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
+  --run-id presidencial_q1_2024 \
+  --stages normalize_actors
+
+<span class="c-comment"># Revisar y resolver los actores no reconocidos</span>
+emoparse discoveries list   --db runs/presidencial_q1_2024.sqlite
+emoparse discoveries promote --db runs/presidencial_q1_2024.sqlite --id 3 \
+  --canonical-id milei_javier --display-name <span class="c-str">"Javier Milei"</span> --tipo persona
+emoparse discoveries merge   --db runs/presidencial_q1_2024.sqlite --id 7 --into milei_javier
+emoparse discoveries discard --db runs/presidencial_q1_2024.sqlite --id 12
+emoparse discoveries apply   --db runs/presidencial_q1_2024.sqlite --kb knowledge/actors.json
+
+<span class="c-comment"># emotions_pass2: segunda lectura de emociones con contexto del discurso</span>
 emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
   --run-id presidencial_q1_2024 \
   --stages emotions_pass2
 
-<span class="c-comment"># judge evalúa la coherencia de las caracterizaciones</span>
+<span class="c-comment"># actants: análisis actancial de cada emoción (mediador, verificadores, operador)</span>
+emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
+  --run-id presidencial_q1_2024 \
+  --stages actants
+
+<span class="c-comment"># judge: evalúa la coherencia de las caracterizaciones</span>
 emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
   --run-id presidencial_q1_2024 \
   --stages judge</code></pre>
@@ -1633,66 +1651,141 @@ streamlit run src/emoparse/app/__main__.py
   </p>
 
   <div class="diagram">
-    <svg viewBox="0 0 820 420" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagrama del pipeline">
+    <!--
+      Layout de tres bandas horizontales (discurso / frase / emoción).
+      Cada banda tiene sus nodos alineados de izquierda a derecha.
+      Los opcionales (stroke-dasharray) se ramifican hacia abajo del nodo
+      que los habilita, en la misma columna.
+
+      Coordenadas clave:
+        Banda DISCURSO  y_center=60   (nodos y=41, h=38)
+        Banda FRASE     y_center=175  (nodos y=156, h=38)
+        Banda EMOCIÓN   y_center=310  (nodos y=291 / 351, h=38)
+
+      Nodos:
+        summarizer        x=110  w=120  cx=170
+        metadata          x=260  w=110  cx=315
+        enunciation       x=400  w=125  cx=462
+
+        actors            x=110  w=100  cx=160
+        normalize_actors  x=240  w=155  cx=317  [opt, bajo actors]
+        emotions          x=110  w=100  cx=160  (segunda fila de frase)
+        emotions_pass2    x=240  w=150  cx=315  [opt, bajo emotions]
+
+        explode_emociones x=110  w=160  cx=190
+        normalize_emoc.   x=300  w=165  cx=382
+        characterizer     x=110  w=135  cx=177  (segunda fila emoción)
+        actants           x=275  w=110  cx=330  [opt]
+        judge             x=415  w=90   cx=460  [opt]
+    -->
+    <svg viewBox="0 0 700 490" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagrama del pipeline">
       <defs>
         <style>
-          .stage { fill: #faf6ec; stroke: #1a1814; stroke-width: 1.2; }
-          .stage-opt { fill: #faf6ec; stroke: #b8331f; stroke-width: 1.2; stroke-dasharray: 4 3; }
-          .stage-text { font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 500; fill: #1a1814; text-anchor: middle; }
-          .stage-tier { font-family: 'Inter', sans-serif; font-size: 9px; font-weight: 700; fill: #6b6358; letter-spacing: 0.1em; text-transform: uppercase; }
-          .ed { stroke: #6b6358; stroke-width: 1.2; fill: none; }
+          .st  { fill: #faf6ec; stroke: #1a1814; stroke-width: 1.3; }
+          .sto { fill: #faf6ec; stroke: #b8331f; stroke-width: 1.3; stroke-dasharray: 5 3; }
+          .stx { font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 500; fill: #1a1814; text-anchor: middle; dominant-baseline: middle; }
+          .tier { font-family: 'Inter', sans-serif; font-size: 8.5px; font-weight: 700; fill: #6b6358; letter-spacing: 0.12em; text-transform: uppercase; }
+          .sep  { stroke: #ddd5c3; stroke-width: 1; stroke-dasharray: 3 4; }
+          .ar   { stroke: #6b6358; stroke-width: 1.3; fill: none; }
         </style>
-        <marker id="eh" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto">
-          <path d="M0,0 L7,4 L0,8 Z" fill="#6b6358"/>
+        <marker id="arr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0,0 L6,3.5 L0,7 Z" fill="#6b6358"/>
         </marker>
       </defs>
-      <text x="20" y="55" class="stage-tier">discurso</text>
-      <text x="20" y="170" class="stage-tier">frase</text>
-      <text x="20" y="320" class="stage-tier">emoción</text>
-      <rect x="95" y="35" width="115" height="38" rx="3" class="stage"/>
-      <text x="152" y="59" class="stage-text">summarizer</text>
-      <rect x="245" y="35" width="115" height="38" rx="3" class="stage"/>
-      <text x="302" y="59" class="stage-text">metadata</text>
-      <rect x="395" y="35" width="120" height="38" rx="3" class="stage"/>
-      <text x="455" y="59" class="stage-text">enunciation</text>
-      <rect x="95" y="150" width="105" height="38" rx="3" class="stage"/>
-      <text x="147" y="174" class="stage-text">actors</text>
-      <rect x="235" y="150" width="150" height="38" rx="3" class="stage-opt"/>
-      <text x="310" y="174" class="stage-text">normalize_actors</text>
-      <rect x="95" y="210" width="105" height="38" rx="3" class="stage"/>
-      <text x="147" y="234" class="stage-text">emotions</text>
-      <rect x="235" y="210" width="150" height="38" rx="3" class="stage-opt"/>
-      <text x="310" y="234" class="stage-text">emotions_pass2</text>
-      <rect x="95" y="300" width="160" height="38" rx="3" class="stage"/>
-      <text x="175" y="324" class="stage-text">explode_emociones</text>
-      <rect x="285" y="300" width="170" height="38" rx="3" class="stage"/>
-      <text x="370" y="324" class="stage-text">normalize_emotions</text>
-      <rect x="95" y="360" width="135" height="38" rx="3" class="stage"/>
-      <text x="162" y="384" class="stage-text">characterizer</text>
-      <rect x="260" y="360" width="105" height="38" rx="3" class="stage-opt"/>
-      <text x="312" y="384" class="stage-text">actants</text>
-      <rect x="395" y="360" width="95" height="38" rx="3" class="stage-opt"/>
-      <text x="442" y="384" class="stage-text">judge</text>
-      <line x1="210" y1="54" x2="243" y2="54" class="ed" marker-end="url(#eh)"/>
-      <line x1="360" y1="54" x2="393" y2="54" class="ed" marker-end="url(#eh)"/>
-      <path d="M 455,73 Q 455,115 147,115 L 147,148" class="ed" marker-end="url(#eh)"/>
-      <line x1="200" y1="169" x2="233" y2="169" class="ed" marker-end="url(#eh)"/>
-      <path d="M 130,188 L 130,208" class="ed" marker-end="url(#eh)"/>
-      <line x1="200" y1="229" x2="233" y2="229" class="ed" marker-end="url(#eh)"/>
-      <path d="M 147,248 Q 147,275 175,275 L 175,298" class="ed" marker-end="url(#eh)"/>
-      <line x1="255" y1="319" x2="283" y2="319" class="ed" marker-end="url(#eh)"/>
-      <path d="M 175,338 Q 175,352 312,352 L 312,358" class="ed" marker-end="url(#eh)"/>
-      <path d="M 330,338 Q 330,352 162,352 L 162,358" class="ed" marker-end="url(#eh)"/>
-      <path d="M 230,379 L 393,379" class="ed" marker-end="url(#eh)"/>
-      <g transform="translate(610, 35)">
-        <rect x="0" y="0" width="180" height="78" fill="#faf6ec" stroke="#ddd5c3"/>
-        <text x="90" y="16" class="stage-tier" text-anchor="middle">Leyenda</text>
-        <rect x="14" y="28" width="16" height="10" class="stage"/>
-        <text x="36" y="37" class="stage-text" text-anchor="start" style="font-size:10px">activa por defecto</text>
-        <rect x="14" y="50" width="16" height="10" class="stage-opt"/>
-        <text x="36" y="59" class="stage-text" text-anchor="start" style="font-size:10px">opcional</text>
-      </g>
+
+      <!-- ── separadores de banda ── -->
+      <line x1="90" y1="118" x2="700" y2="118" class="sep"/>
+      <line x1="90" y1="280" x2="700" y2="280" class="sep"/>
+
+      <!-- ── etiquetas de banda ── -->
+      <text x="14" y="75"  class="tier" writing-mode="tb" transform="rotate(-90,14,75)">discurso</text>
+      <text x="14" y="210" class="tier" writing-mode="tb" transform="rotate(-90,14,210)">frase</text>
+      <text x="14" y="400" class="tier" writing-mode="tb" transform="rotate(-90,14,400)">emoción</text>
+
+      <!-- ══ BANDA DISCURSO ══ -->
+      <!-- summarizer -->
+      <rect x="95"  y="41" width="120" height="36" rx="3" class="st"/>
+      <text x="155" y="59" class="stx">summarizer</text>
+      <!-- metadata -->
+      <rect x="240" y="41" width="110" height="36" rx="3" class="st"/>
+      <text x="295" y="59" class="stx">metadata</text>
+      <!-- enunciation -->
+      <rect x="375" y="41" width="125" height="36" rx="3" class="st"/>
+      <text x="437" y="59" class="stx">enunciation</text>
+
+      <!-- summarizer → metadata -->
+      <line x1="215" y1="59" x2="238" y2="59" class="ar" marker-end="url(#arr)"/>
+      <!-- metadata → enunciation -->
+      <line x1="350" y1="59" x2="373" y2="59" class="ar" marker-end="url(#arr)"/>
+      <!-- enunciation → actors (baja a la banda frase, columna izquierda) -->
+      <path d="M 437,77 Q 437,105 155,105 L 155,130" class="ar" marker-end="url(#arr)"/>
+
+      <!-- ══ BANDA FRASE (fila 1: actors + normalize_actors opcional) ══ -->
+      <!-- actors -->
+      <rect x="95"  y="130" width="100" height="36" rx="3" class="st"/>
+      <text x="145" y="148" class="stx">actors</text>
+      <!-- normalize_actors [opt] -->
+      <rect x="220" y="130" width="160" height="36" rx="3" class="sto"/>
+      <text x="300" y="148" class="stx">normalize_actors</text>
+
+      <!-- actors → normalize_actors -->
+      <line x1="195" y1="148" x2="218" y2="148" class="ar" marker-end="url(#arr)"/>
+      <!-- actors → emotions (baja dentro de la misma banda) -->
+      <line x1="145" y1="166" x2="145" y2="188" class="ar" marker-end="url(#arr)"/>
+
+      <!-- BANDA FRASE (fila 2: emotions + emotions_pass2 opcional) -->
+      <!-- emotions -->
+      <rect x="95"  y="188" width="100" height="36" rx="3" class="st"/>
+      <text x="145" y="206" class="stx">emotions</text>
+      <!-- emotions_pass2 [opt] -->
+      <rect x="220" y="188" width="150" height="36" rx="3" class="sto"/>
+      <text x="295" y="206" class="stx">emotions_pass2</text>
+
+      <!-- emotions → emotions_pass2 -->
+      <line x1="195" y1="206" x2="218" y2="206" class="ar" marker-end="url(#arr)"/>
+      <!-- emotions → explode_emociones (baja a banda emoción) -->
+      <path d="M 145,224 Q 145,258 190,258 L 190,289" class="ar" marker-end="url(#arr)"/>
+
+      <!-- ══ BANDA EMOCIÓN (fila 1: explode + normalize) ══ -->
+      <!-- explode_emociones -->
+      <rect x="95"  y="289" width="165" height="36" rx="3" class="st"/>
+      <text x="177" y="307" class="stx">explode_emociones</text>
+      <!-- normalize_emotions -->
+      <rect x="285" y="289" width="165" height="36" rx="3" class="st"/>
+      <text x="367" y="307" class="stx">normalize_emotions</text>
+
+      <!-- explode → normalize_emotions -->
+      <line x1="260" y1="307" x2="283" y2="307" class="ar" marker-end="url(#arr)"/>
+      <!-- normalize_emotions → characterizer (baja fila 2) -->
+      <path d="M 367,325 Q 367,344 177,344 L 177,349" class="ar" marker-end="url(#arr)"/>
+
+      <!-- BANDA EMOCIÓN (fila 2: characterizer + actants [opt] + judge [opt]) -->
+      <!-- characterizer -->
+      <rect x="95"  y="349" width="135" height="36" rx="3" class="st"/>
+      <text x="162" y="367" class="stx">characterizer</text>
+      <!-- actants [opt] -->
+      <rect x="255" y="349" width="105" height="36" rx="3" class="sto"/>
+      <text x="307" y="367" class="stx">actants</text>
+      <!-- judge [opt] -->
+      <rect x="385" y="349" width="90"  height="36" rx="3" class="sto"/>
+      <text x="430" y="367" class="stx">judge</text>
+
+      <!-- characterizer → actants -->
+      <line x1="230" y1="367" x2="253" y2="367" class="ar" marker-end="url(#arr)"/>
+      <!-- actants → judge -->
+      <line x1="360" y1="367" x2="383" y2="367" class="ar" marker-end="url(#arr)"/>
+
     </svg>
+    <div style="display:flex;align-items:center;gap:1.5rem;justify-content:center;margin-top:0.9rem;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:0.5rem;">
+        <svg width="28" height="16" style="flex-shrink:0"><rect x="1" y="1" width="26" height="14" rx="2" fill="#faf6ec" stroke="#1a1814" stroke-width="1.2"/></svg>
+        <span style="font-family:'Inter',sans-serif;font-size:0.78rem;color:#3d3830;">activa por defecto</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.5rem;">
+        <svg width="28" height="16" style="flex-shrink:0"><rect x="1" y="1" width="26" height="14" rx="2" fill="#faf6ec" stroke="#b8331f" stroke-width="1.2" stroke-dasharray="4 3"/></svg>
+        <span style="font-family:'Inter',sans-serif;font-size:0.78rem;color:#3d3830;">opcional</span>
+      </div>
+    </div>
     <div class="diagram-caption">Recorrido de un discurso · línea continua = etapa activa por defecto · línea punteada = etapa opcional</div>
   </div>
 
@@ -1793,7 +1886,7 @@ streamlit run src/emoparse/app/__main__.py
   </div>
 
   <div class="callout note">
-    <span class="callout-label">Cómo se porta una emoción en el texto</span>
+    <span class="callout-label">Cómo se expresa una emoción en el texto</span>
     <p>
       Una emoción puede aparecer en una frase de maneras muy distintas:
       nombrada con un sustantivo ("la <em>alegría</em> del pueblo"),
@@ -1803,7 +1896,7 @@ streamlit run src/emoparse/app/__main__.py
       una valoración, una descripción narrativa, o una situación que
       cualquiera reconocería como cargada emocionalmente. EmoParse
       clasifica cada emoción detectada según cuál de estas formas la
-      porta. Esto permite estudiar regularidades del modo de expresión
+      expresa. Esto permite estudiar regularidades del modo de expresión
       emocional según el orador, el tipo de discurso o la emoción
       misma. Las definiciones son editables y viven en la carpeta de
       conocimiento del proyecto.
