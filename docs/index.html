@@ -1898,8 +1898,8 @@ streamlit run src/emoparse/app/__main__.py
       clasifica cada emoción detectada según cuál de estas formas la
       expresa. Esto permite estudiar regularidades del modo de expresión
       emocional según el orador, el tipo de discurso o la emoción
-      misma. Las definiciones son editables y viven en la carpeta de
-      conocimiento del proyecto.
+      misma. Las definiciones son editables y viven en la carpeta 
+      knowledge del proyecto.
     </p>
   </div>
 
@@ -2466,7 +2466,7 @@ emoparse retry \
   registró como hallazgos (<em>discoveries</em>). Flujo típico: revisar con
   <code>list</code>, registrar decisiones con <code>promote</code> /
   <code>merge</code> / <code>discard</code>, y aplicarlas al JSON de la base de
-  conocimiento con <code>apply</code>.
+  knowledge con <code>apply</code>.
 </p>
 
 <h4>list — listar discoveries pendientes</h4>
@@ -2556,7 +2556,7 @@ emoparse retry \
   Pendiente de aplicar con <code>apply</code>.
 </p>
 
-<h4>apply — aplicar decisiones a la base de conocimiento</h4>
+<h4>apply — aplicar decisiones a la base de knowledge</h4>
 
 <pre data-lang="bash"><code>emoparse discoveries apply \
   <span class="c-flag">--db</span>       runs/mi_run.sqlite \
@@ -2567,7 +2567,7 @@ emoparse retry \
   <table>
     <thead><tr><th>Flag</th><th>Qué hace</th></tr></thead>
     <tbody>
-      <tr><td><code>--kb</code></td><td>Path al JSON de la base de conocimiento de actores. Requerido.</td></tr>
+      <tr><td><code>--kb</code></td><td>Path al JSON de la base de knowledge de actores. Requerido.</td></tr>
       <tr><td><code>--dry-run</code></td><td>Lista las decisiones que se aplicarían sin tocar la KB.</td></tr>
     </tbody>
   </table>
