@@ -13,8 +13,13 @@ from typing import Any, Literal
 
 from emoparse.storage.db import Database
 
-FraseStage = Literal["actores", "emociones", "emociones_pass2"]
-_VALID_STAGES: tuple[FraseStage, ...] = ("actores", "emociones", "emociones_pass2")
+FraseStage = Literal["actores", "emociones", "emociones_pass2", "actores_canonicos"]
+_VALID_STAGES: tuple[FraseStage, ...] = (
+    "actores",
+    "emociones",
+    "emociones_pass2",
+    "actores_canonicos",
+)
 
 
 class FrasesRepository:

@@ -10,6 +10,19 @@ ONTOLOGÍA DE EMOCIONES (referencia):
 
 {{ ontologia }}
 
+CONFIGURACIONES DEL SIMULACRO EMOCIONAL (TIPO_CONF):
+
+Cada emoción detectada debe asignarse a UNA de las 8 configuraciones
+siguientes según cómo es portada en la unidad textual. Elegí la
+configuración predominante; si hay varias activas, priorizá la marca
+léxica/sintáctica más directa (sustantivo > adjetivo > verbo
+psicológico) por sobre las inferenciales. La configuración 8
+(transposicion_situacion_reconocimiento_potencial) se usa cuando
+ninguna marca léxica o conductual la determina con claridad y la
+emoción se reconstruye desde la situación enunciativa.
+
+{{ configuraciones }}
+
 HEURÍSTICAS DE INFERENCIA:
 
 {{ heuristicas }}
@@ -17,17 +30,19 @@ HEURÍSTICAS DE INFERENCIA:
 REGLAS:
 
 - Por cada emoción identificada, indicá:
-    * experienciador:   actor que experimenta la emoción (puede ser
-                        enunciador, enunciatario o actor mencionado).
-    * tipo_emocion:     nombre concreto (ej. miedo, alegría, indignación).
-                        NO uses categorías abstractas tipo "negativa".
-    * modo_existencia:  realizada | potencial | actual | virtual | inducida_proyectada
-                        - realizada:           efectivamente sentida en el discurso.
-                        - potencial:           susceptible de aparecer pero no manifiesta.
-                        - actual:              ocurriendo en el presente del enunciado.
-                        - virtual:             presupuesta sin manifestarse.
-                        - inducida_proyectada: provocada/atribuida por el discurso a otros.
-    * justificacion:    evidencia semiótica concreta del texto.
+    * experienciador:     actor que experimenta la emoción (puede ser
+                          enunciador, enunciatario o actor mencionado).
+    * tipo_emocion:       nombre concreto (ej. miedo, alegría, indignación).
+                          NO uses categorías abstractas tipo "negativa".
+    * modo_existencia:    realizada | potencial | actual | virtual | inducida_proyectada
+                          - realizada:           efectivamente sentida en el discurso.
+                          - potencial:           susceptible de aparecer pero no manifiesta.
+                          - actual:              ocurriendo en el presente del enunciado.
+                          - virtual:             presupuesta sin manifestarse.
+                          - inducida_proyectada: provocada/atribuida por el discurso a otros.
+    * tipo_configuracion: una de las 8 configuraciones listadas arriba
+                          (usá exactamente el nombre canónico de la clave).
+    * justificacion:      evidencia semiótica concreta del texto.
 
 - Identificá emociones de cualquier actor mencionado en la unidad,
   incluyendo enunciador y enunciatarios.

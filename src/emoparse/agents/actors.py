@@ -3,18 +3,6 @@
 #
 #  Batch agent para identificación de actores en unidades textuales
 #  (frases o párrafos) de un discurso.
-#
-#  Cada fila de entrada representa una unidad textual individual y debe
-#  contener al menos el texto y su referencia de discurso. El agente no
-#  opera sobre discursos completos sino sobre estas unidades segmentadas.
-#
-#  El contexto global del discurso (título, tipo y enunciador) se inyecta
-#  en el system prompt al instanciar el agente. Por diseño, este contexto
-#  debe corresponder a un único discurso por instancia.
-#
-#  Output:
-#  agrega la columna `actores`, con una lista JSON serializada de:
-#  {actor, tipo, modo, justificacion}
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -55,6 +43,7 @@ class ActorsAgent(BaseBatchAgent[ListaActoresBatchSchema]):
         titulo: str = "",
         tipo_discurso: str = "",
         enunciador: str = "",
+        heuristicas: str | None = None,
         retry_config: Any | None = None,
         genre: Genre | None = None,
     ) -> None:
@@ -65,6 +54,8 @@ class ActorsAgent(BaseBatchAgent[ListaActoresBatchSchema]):
             titulo: Contexto global del discurso.
             tipo_discurso: Tipo o género del discurso.
             enunciador: Orador principal del discurso.
+            heuristicas: Reglas heurísticas para identificación de actores.
+                Si None, no se inyectan heurísticas en el system prompt.
             retry_config: Configuración de reintentos.
             genre: Permite sobrescribir `BATCH_SIZE` si define
                 `batch_size["actors"]`.
@@ -72,6 +63,7 @@ class ActorsAgent(BaseBatchAgent[ListaActoresBatchSchema]):
         self._titulo = titulo
         self._tipo_discurso = tipo_discurso
         self._enunciador = enunciador
+        self._heuristicas = heuristicas
         self._genre = genre
 
         # Permite override de batch size desde el género.
@@ -87,6 +79,7 @@ class ActorsAgent(BaseBatchAgent[ListaActoresBatchSchema]):
             titulo=self._titulo,
             tipo_discurso=self._tipo_discurso,
             enunciador=self._enunciador,
+            heuristicas=self._heuristicas,
         )
 
     def _build_user(self, batch: pd.DataFrame) -> str:

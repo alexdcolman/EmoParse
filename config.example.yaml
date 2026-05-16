@@ -1,11 +1,11 @@
 # ══════════════════════════════════════════════════════════════════════════════
 #  EmoParse — config.example.yaml
 #
-#  Template comentado con TODOS los campos disponibles. Copialo a
+#  Template comentado con todos los campos disponibles. Copialo a
 #  `config.yaml` y ajustalo para tu setup.
 #
 #  Cualquier valor puede usar referencias a variables de entorno con
-#  la sintaxis ${VAR} o ${VAR:-default}. Útil para no hardcodear paths.
+#  la sintaxis $ {VAR} o $ {VAR:-default}. Útil para no hardcodear paths.
 # ══════════════════════════════════════════════════════════════════════════════
 
 
@@ -16,9 +16,9 @@
 #  referencia desde `pipeline.stages` para asignar modelos a etapas.
 #
 #  Backends soportados:
-#    - llama_cpp:  GGUFs locales, llama-cpp-python.
-#    - lmstudio:   API OpenAI-compatible expuesta por LM Studio.
-#                  En este caso, en lugar de `path`, usar `base_url`.
+#  - llama_cpp: GGUFs locales, llama-cpp-python.
+#  - lmstudio: API OpenAI-compatible expuesta por LM Studio. En este caso, en
+#    lugar de `path`, usar `base_url`.
 # ──────────────────────────────────────────────────────────────────────────────
 
 models:
@@ -60,13 +60,20 @@ models:
 #  pipeline
 #
 #  Asignación de etapa → alias de modelo. La clave de cada entrada
-#  debe matchear un nombre de stage del pipeline.
+#  debe matchear un nombre de etapa del pipeline.
 #
-#  Stages disponibles:
-#    summarizer, metadata, enunciation, actors, emotions,
-#    emotions_pass2, characterizer.
+#  Etapas disponibles (en orden de ejecución):
 #
-#  La stage `explode_emociones` es interna (sin LLM) y no requiere modelo.
+#    Activas por defecto:
+#      summarizer, metadata, enunciation, actors, emotions,
+#      explode_emociones, normalize_emotions, characterizer.
+#
+#    Opcionales (se declaran acá para asignarles modelo, pero solo
+#    se ejecutan si se piden con `--stages` en la CLI):
+#      normalize_actors, emotions_pass2, actants, judge.
+#
+#  Las etapas `explode_emociones` y `normalize_emotions` son internas
+#  (sin LLM) y no requieren modelo asignado.
 # ──────────────────────────────────────────────────────────────────────────────
 
 pipeline:
@@ -76,10 +83,26 @@ pipeline:
     enunciation:     qwen3-14b
     actors:          qwen3-14b
     emotions:        qwen3-14b
-    # emotions_pass2 es opt-in: declarar acá deja la stage configurada,
-    # pero no se ejecuta por default. Activarla con `--stages` en CLI.
-    emotions_pass2:  qwen3-14b
     characterizer:   qwen3-14b
+
+    # ── Etapas opcionales ─────────────────────────────────────────────
+    # Declararlas acá deja el modelo asignado, pero NO se ejecutan por
+    # default. Para correrlas, pasarlas en `--stages` al invocar
+    # `emoparse run` (junto con sus dependencias).
+
+    # Unifica las menciones de un mismo actor (correferencia intra
+    # discurso + vínculo contra la base de actores conocidos).
+    normalize_actors: qwen3-14b
+
+    # Segunda lectura de emociones con contexto de las frases previas.
+    emotions_pass2:  qwen3-14b
+
+    # Análisis actancial de cada emoción: mediador, verificadores y
+    # operador de modificación.
+    actants:         qwen3-14b
+
+    # Un segundo modelo evalúa la coherencia de las caracterizaciones.
+    judge:           qwen3-14b
 
   # Si false, los backends no se envuelven con CachedBackend. Útil
   # solo para benchmarks; en producción dejar siempre true.
@@ -108,16 +131,35 @@ paths:
 # ──────────────────────────────────────────────────────────────────────────────
 #  versions
 #
-#  Strings opacos para invalidar el cache LLM selectivamente. Bumpear
-#  cuando cambian las cosas correspondientes:
+#  Strings opacos que invalidan el cache LLM de forma selectiva. El
+#  cache de cada respuesta se indexa, entre otras cosas, por estos
+#  valores: si cambiás algo que afecta la salida del modelo pero no
+#  subís el número correspondiente, el sistema devolverá respuestas
+#  cacheadas anteriores al cambio.
 #
-#    - knowledge:  datos base que afectan TODO (raro de cambiar).
-#    - prompt:     templates en core/prompts/.
-#    - ontology:   archivos JSON en knowledge/ (emociones, foria, etc.).
-#    - schema:     schemas Pydantic en core/schemas.py.
+#  Subir (bump) es manual. Criterio por número:
 #
-#  Bumpear es manual. Cualquier cambio en estos archivos sin bumpear
-#  → el cache va a devolver respuestas viejas (pre-cambio).
+#    knowledge — Subir cuando cambian datos base que afectan a todo el
+#                pipeline de forma transversal. Es el menos frecuente.
+#
+#    prompt    — Subir cuando cambia CÓMO se le pide algo al modelo:
+#                  · plantillas de prompt de cualquier agente, o
+#                  · archivos de heurísticas por agente.
+#
+#    ontology  — Subir cuando cambian los datos semióticos de
+#                referencia: ontología de emociones, archivo de
+#                configuraciones emocionales, base de actores conocidos,
+#                o cualquier otro JSON de datos del proyecto.
+#
+#    schema    — Subir cuando cambia la ESTRUCTURA de salida que se le
+#                exige al modelo: los esquemas de datos (por ejemplo, al
+#                agregar o quitar campos de una etapa).
+#
+#  Regla práctica: si tocaste un archivo de prompt o heurística, subí
+#  `prompt`. Si tocaste un JSON de knowledge, subí `ontology`. Si
+#  cambiaste la forma de un esquema de salida, subí `schema`. Ante la
+#  duda, subir de más solo cuesta recomputar cache (correcto y seguro);
+#  subir de menos deja resultados viejos mezclados con nuevos.
 # ──────────────────────────────────────────────────────────────────────────────
 
 versions:
@@ -147,4 +189,5 @@ logging:
 
 notes: |
   Ejemplo: "Análisis de discursos presidenciales 2024 con qwen3-14b.
-  Versión inicial — bumpear prompt_version si cambian los prompts."
+  Versión inicial — subir el número de prompt si cambian los prompts
+  o las heurísticas."

@@ -26,6 +26,7 @@ from emoparse.domain.validators.base import (
 from emoparse.domain.validators.rules import (
     DISCURSO_VALIDATORS,
     ROW_VALIDATORS,
+    V11_DesviacionOntologica,
 )
 from emoparse.storage.db import Database
 from emoparse.storage.validation import ValidationRepository
@@ -38,6 +39,10 @@ class ValidationRunner:
         db: base de datos del run a validar.
         row_validators: lista de RowValidators. Default: ROW_VALIDATORS.
         discurso_validators: lista de DiscursoValidators. Default: DISCURSO_VALIDATORS.
+        emotion_ontology: dict crudo cargado por
+            KnowledgeLoader.load_emotion_ontology(). Si se provee, se
+            construye V11_DesviacionOntologica y se agrega al final de
+            row_validators. Si es None, V11 no se ejecuta.
     """
 
     def __init__(
@@ -45,10 +50,17 @@ class ValidationRunner:
         db: Database,
         row_validators: list[RowValidator] | None = None,
         discurso_validators: list[DiscursoValidator] | None = None,
+        emotion_ontology: dict[str, Any] | None = None,
     ) -> None:
         self._db = db
         self._repo = ValidationRepository(db)
-        self._row_validators = row_validators if row_validators is not None else ROW_VALIDATORS
+
+        row = list(row_validators) if row_validators is not None else list(ROW_VALIDATORS)
+        if emotion_ontology is not None:
+            row.append(V11_DesviacionOntologica(emotion_ontology))
+            logger.debug("[ValidationRunner] V11_DesviacionOntologica registrado.")
+
+        self._row_validators = row
         self._discurso_validators = (
             discurso_validators if discurso_validators is not None else DISCURSO_VALIDATORS
         )
@@ -92,7 +104,6 @@ class ValidationRunner:
     def _run_discurso(self, codigo: str) -> list[ValidationIssue]:
         """Valida un discurso completo. Devuelve sus issues."""
         enunciador, enunciatarios = self._load_enunciacion(codigo)
-
         emociones = self._load_emociones_con_caracterizacion(codigo)
         if not emociones:
             return []

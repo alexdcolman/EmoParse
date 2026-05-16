@@ -56,6 +56,7 @@ class _MockBackend(LLMBackend):
             EmocionesBatchItemSchema(unit_idx=i, emociones=[
                 EmocionSchema(experienciador="orador",
                               tipo_emocion="esperanza_refinada",
+                              tipo_configuracion="sostenido_en_sustantivos",
                               modo_existencia="realizada",
                               justificacion="j refinada"),
             ]) for i in range(n)
@@ -94,6 +95,7 @@ def setup(tmp_path: Path) -> tuple[Database, DiscursosRepository, FrasesReposito
         f_repo.set_payload("D1", idx, "emociones", [{
             "experienciador": "orador",
             "tipo_emocion": tipo,
+            "tipo_configuracion": "sostenido_en_sustantivos",
             "modo_existencia": "realizada",
             "justificacion": "j",
         }], version="v1")

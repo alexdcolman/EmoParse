@@ -521,11 +521,17 @@ class TestExportFullRun:
         assert (out_dir / "discursos.csv").is_file()
         assert (out_dir / "frases.csv").is_file()
         assert (out_dir / "emociones.csv").is_file()
+        assert (out_dir / "discoveries.csv").is_file()
 
     def test_returns_correct_counts(self, populated_db: Database, tmp_path: Path) -> None:
         counts = export_full_run(populated_db, tmp_path / "out")
 
-        assert counts == {"discursos": 1, "frases": 2, "emociones": 2}
+        assert counts == {
+            "discursos": 1,
+            "discoveries": 0,
+            "frases": 2,
+            "emociones": 2,
+        }
 
     def test_creates_output_dir_if_missing(self, populated_db: Database, tmp_path: Path) -> None:
         out_dir = tmp_path / "does" / "not" / "exist"
@@ -539,4 +545,9 @@ class TestExportFullRun:
     def test_empty_db_still_produces_files(self, empty_db: Database, tmp_path: Path) -> None:
         counts = export_full_run(empty_db, tmp_path / "out")
 
-        assert counts == {"discursos": 0, "frases": 0, "emociones": 0}
+        assert counts == {
+            "discursos": 0,
+            "discoveries": 0,
+            "frases": 0,
+            "emociones": 0,
+        }

@@ -65,6 +65,77 @@ class KnowledgeLoader:
         logger.debug(f"[Knowledge] Cargadas heurísticas: {path.name} ({len(content)} chars)")
         return content
 
+    def load_emotion_ontology(self, filename: str = "emociones_ontologia.json") -> dict[str, Any]:
+        """Devuelve el dict crudo de la ontología de emociones, sin formateo."""
+        path = self._resolve(filename)
+        data = self._read_json(path)
+        logger.debug(
+            f"[Knowledge] Cargada ontología de emociones: {path.name} "
+            f"({len(data.get('emociones', {}))} entradas)"
+        )
+        return data
+
+    def load_actors_kb(self, filename: str = "actors_kb.json") -> dict[str, Any]:
+        """Devuelve el dict crudo de la KB de actores, sin formateo.
+
+        Estructura esperada: `{"version": "...", "actors": {<canonical_id>: {...}}}`.
+        """
+        path = self._resolve(filename)
+        data = self._read_json(path)
+        logger.debug(
+            f"[Knowledge] Cargada KB de actores: {path.name} "
+            f"({len(data.get('actors', {}))} entradas)"
+        )
+        return data
+
+    def load_emotion_configurations(
+        self,
+        filename: str = "configuraciones_emocion.json",
+    ) -> str:
+        """Carga los ocho tipos de configuraciones de simulacro emocional.
+
+        Devuelve un string formateado para inyectar directamente en el
+        system prompt del agente de emociones. Cada configuración aparece
+        con su nombre canónico (la clave del Literal `TipoConfiguracion`),
+        su definición operativa, la heurística de detección y 1-N ejemplos.
+        """
+        path = self._resolve(filename)
+        cached = self._cache.get(path)
+        if cached is not None:
+            return cached
+
+        data = self._read_json(path)
+        configs = data.get("configuraciones") or {}
+        if not isinstance(configs, dict) or not configs:
+            raise KnowledgeError(
+                f"El JSON de {path} no contiene una clave 'configuraciones' "
+                f"con entradas válidas."
+            )
+
+        lines: list[str] = []
+        for key, entry in configs.items():
+            if not isinstance(entry, dict):
+                continue
+            id_ = entry.get("id", "?")
+            definicion = entry.get("definicion", "")
+            heuristica = entry.get("heuristica_deteccion", "")
+            ejemplos = entry.get("ejemplos") or []
+
+            lines.append(f"- {key} (id {id_}): {definicion}")
+            if heuristica:
+                lines.append(f"  Detección: {heuristica}")
+            if ejemplos:
+                ejemplos_str = "; ".join(str(e) for e in ejemplos)
+                lines.append(f"  Ejemplos: {ejemplos_str}")
+
+        formatted = "\n".join(lines)
+        self._cache[path] = formatted
+        logger.debug(
+            f"[Knowledge] Cargadas configuraciones de emoción: "
+            f"{path.name} ({len(configs)} entradas)"
+        )
+        return formatted
+
     def clear_cache(self) -> None:
         """Limpia el cache."""
         self._cache.clear()

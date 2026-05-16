@@ -94,6 +94,51 @@ class RunsRepository:
             column="latency_ms",
             type_def="REAL",
         )
+        self._add_column_if_missing(
+            table="emociones",
+            column="tipo_emocion_canonico",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="emociones",
+            column="normalize_emotions_version",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="emociones",
+            column="tipo_configuracion",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="frases",
+            column="actores_canonicos_payload",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="frases",
+            column="actores_canonicos_version",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="frases",
+            column="actores_canonicos_error",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="emociones",
+            column="actantes_payload",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="emociones",
+            column="actantes_version",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="emociones",
+            column="actantes_error",
+            type_def="TEXT",
+        )
 
     def _add_column_if_missing(
         self,

@@ -60,6 +60,7 @@ class _FakeBackend(LLMBackend):
 def _make_caracterizacion(**overrides: str) -> CaracterizacionEmocionSchema:
     """Helper para construir una caracterización con defaults."""
     base: dict[str, str] = {
+        # originales
         "foria": "disforico",
         "foria_justificacion": "tono negativo claro",
         "dominancia": "cognoscitiva",
@@ -69,6 +70,15 @@ def _make_caracterizacion(**overrides: str) -> CaracterizacionEmocionSchema:
         "fuente": "el adversario político",
         "tipo_fuente": "actor",
         "fuente_justificacion": "se nombra explícitamente como causa",
+        # nuevas — valores dentro del Literal del schema
+        "duracion": "instantanea",
+        "duracion_justificacion": "sin marcas de persistencia",
+        "modo_semiotizacion": "dicha",
+        "modo_semiotizacion_justificacion": "nombre de emoción explícito",
+        "modo_identificacion": "directa",
+        "modo_identificacion_justificacion": "el hablante se nombra a sí mismo",
+        "tipo_atribucion": "auto_atribucion",
+        "tipo_atribucion_justificacion": "el hablante se atribuye la emoción en primera persona",
     }
     base.update(overrides)
     return CaracterizacionEmocionSchema(**base)  # type: ignore[arg-type]
@@ -139,7 +149,7 @@ class TestUserPrompt:
 
 class TestOutputMapping:
 
-    def test_all_nine_columns_added(self) -> None:
+    def test_all_output_columns_added(self) -> None:
         backend = _FakeBackend([
             ListaCaracterizacionBatchSchema(root=[
                 CaracterizacionBatchItemSchema(
@@ -188,12 +198,7 @@ class TestOutputMapping:
 
 class TestPreservesEmotionMetadata:
     """Las columnas de la emoción original (experienciador, tipo, modo)
-    se preservan en el output.
-
-    Esto es crítico porque el output del Characterizer se va a JOIN-ear
-    de vuelta con las frases para visualizaciones; necesitamos saber
-    qué emoción específica se caracterizó.
-    """
+    se preservan en el output."""
 
     def test_original_columns_preserved(self) -> None:
         backend = _FakeBackend([

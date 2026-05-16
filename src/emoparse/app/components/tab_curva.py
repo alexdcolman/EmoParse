@@ -68,6 +68,33 @@ def render(db_path: Path) -> None:
             key="curva_maxfr",
         )
 
+    # Toggle canónico: visible solo si la columna existe y tiene datos.
+    _has_canonico = (
+        "tipo_emocion_canonico" in df_em.columns
+        and df_em["tipo_emocion_canonico"].notna().any()
+    )
+    usar_canonico = False
+    if _has_canonico:
+        usar_canonico = st.toggle(
+            "Usar tipo canónico (ontología)",
+            value=False,
+            key="curva_canonico",
+            help=(
+                "Agrupa emociones por su nombre canónico según la ontología "
+                "(columna `tipo_emocion_canonico`). "
+                "Las emociones sin canónico asignado aparecen con su nombre original."
+            ),
+        )
+
+    # Columna efectiva de emoción para los charts.
+    if usar_canonico:
+        df_em = df_em.copy()
+        # Fallback al tipo original si el canónico es nulo.
+        df_em["tipo_emocion"] = df_em["tipo_emocion_canonico"].where(
+            df_em["tipo_emocion_canonico"].notna(),
+            df_em["tipo_emocion"],
+        )
+
     codigo_b: str | None = None
     if comparar:
         otros = [c for c in codigos if c != codigo_sel]
@@ -114,6 +141,14 @@ def _render_chips(df_sel: pd.DataFrame) -> None:
         color = charts.emo_color(emo)
         ficon = _FORIA_ICONS.get(foria, "")
 
+        canonico_raw = row.get("tipo_emocion_canonico")
+        canonico = str(canonico_raw) if canonico_raw and canonico_raw != emo else ""
+        canonico_badge = (
+            f"<span class='badge badge-dim' style='font-size:0.64rem;"
+            f"color:#7c9ec8;border-color:#7c9ec840;'>≡ {canonico}</span>"
+            if canonico else ""
+        )
+
         r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
         chips_html.append(
             f"<div style='display:flex;align-items:center;gap:0.6rem;"
@@ -122,6 +157,7 @@ def _render_chips(df_sel: pd.DataFrame) -> None:
             f"color:#3a3d4e;min-width:2.4rem;'>#{pos}</span>"
             f"<span class='emo-chip' style='background:rgba({r},{g},{b},0.15);"
             f"color:{color};border-color:{color}40;'>{emo}</span>"
+            f"{canonico_badge}"
             f"<span style='font-size:0.76rem;color:#8a8799;'>{exp}</span>"
             f"<span class='badge badge-dim' style='font-size:0.66rem;'>{modo}</span>"
             f"<span style='color:{color};margin-left:auto;font-size:0.82rem;'>{ficon}</span>"

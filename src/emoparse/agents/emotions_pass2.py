@@ -58,6 +58,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         backend: LLMBackend,
         ontologia: str,
         heuristicas: str,
+        configuraciones: str = "",
         titulo: str = "",
         tipo_discurso: str = "",
         enunciador: str = "",
@@ -70,6 +71,9 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
             backend: Backend LLM utilizado para generación estructurada.
             ontologia: Ontología emocional utilizada por el prompt.
             heuristicas: Reglas heurísticas de interpretación emocional.
+            configuraciones: Texto formateado con las 8 configuraciones del
+                simulacro emocional (TIPO_CONF). Si es string vacío, el
+                template lo renderiza como bloque sin contenido.
             titulo: Título del discurso.
             tipo_discurso: Tipo o clasificación del discurso.
             enunciador: Sujeto principal de enunciación del discurso.
@@ -82,6 +86,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
 
         self._ontologia = ontologia
         self._heuristicas = heuristicas
+        self._configuraciones = configuraciones
         self._titulo = titulo
         self._tipo_discurso = tipo_discurso
         self._enunciador = enunciador
@@ -107,6 +112,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         return prompts.render_system(
             ontologia=self._ontologia,
             heuristicas=self._heuristicas,
+            configuraciones=self._configuraciones,
             titulo=self._titulo,
             tipo_discurso=self._tipo_discurso,
             enunciador=self._enunciador,

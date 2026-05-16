@@ -71,6 +71,7 @@ def _df_emocion_valido() -> pd.DataFrame:
             "emocion_idx": 0,
             "experienciador": "hablante",
             "tipo_emocion": "alegria",
+            "tipo_configuracion": "sostenido_en_sustantivos",
             "modo_existencia": "actualizado",
         },
     ])
@@ -505,6 +506,7 @@ class TestContractActivoEnStages:
                 "frase": "X",
                 "experienciador": "Y",
                 "tipo_emocion": "Z",
+                "tipo_configuracion": "sostenido_en_sustantivos",
                 "modo_existencia": "W",
             }])
 

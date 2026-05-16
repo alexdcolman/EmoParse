@@ -9,7 +9,11 @@ from __future__ import annotations
 from emoparse.core.prompts._loader import render
 
 
-def render_system(titulo: str, tipo_discurso: str) -> str:
+def render_system(
+    titulo: str,
+    tipo_discurso: str,
+    heuristicas: str | None = None,
+) -> str:
     """SYSTEM del juez.
     
     Si titulo/tipo_discurso vienen vacíos, los reemplaza por la convención
@@ -19,6 +23,7 @@ def render_system(titulo: str, tipo_discurso: str) -> str:
         "judge_system",
         titulo=titulo or "no identificado",
         tipo_discurso=tipo_discurso or "no identificado",
+        heuristicas=heuristicas,
     )
 
 

@@ -5,15 +5,6 @@
 #
 #  Evalúa la coherencia de atributos previamente asignados a una emoción
 #  individual (foria, dominancia, intensidad y fuente).
-#
-#  Cada fila de entrada representa una emoción ya caracterizada, junto
-#  con el contexto de su frase de origen y los datos de detección
-#  emocional previos.
-#
-#  El output agrega:
-#  - coherente
-#  - issues
-#  - confianza
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -50,6 +41,7 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
         backend: LLMBackend,
         titulo: str = "",
         tipo_discurso: str = "",
+        heuristicas: str | None = None,
         retry_config: Any | None = None,
         genre: Genre | None = None,
     ) -> None:
@@ -58,12 +50,15 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
             backend: Backend LLM utilizado para generación estructurada.
             titulo: Título del discurso, usado como contexto del prompt.
             tipo_discurso: Clasificación o tipo del discurso.
+            heuristicas: Reglas heurísticas para evaluación de coherencia.
+                Si None, no se inyectan heurísticas en el system prompt.
             retry_config: Política de reintentos ante errores transitorios.
             genre: Configuración opcional de género discursivo. Puede
                 ajustar parámetros como `BATCH_SIZE`.
         """
         self._titulo = titulo
         self._tipo_discurso = tipo_discurso
+        self._heuristicas = heuristicas
         self._genre = genre
 
         if genre is not None and "judge" in genre.batch_size:
@@ -77,6 +72,7 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
         return prompts.render_system(
             titulo=self._titulo,
             tipo_discurso=self._tipo_discurso,
+            heuristicas=self._heuristicas,
         )
 
     def _build_user(self, batch: pd.DataFrame) -> str:

@@ -90,6 +90,13 @@ CREATE TABLE IF NOT EXISTS frases (
     emociones_pass2_version TEXT,
     emociones_pass2_error   TEXT,
 
+    -- Output de NormalizeActorsStage (opt-in).
+    -- JSON con el linking de cada actor mencionado en la frase contra la
+    -- KB de actores conocidos. NULL = stage no corrida.
+    actores_canonicos_payload TEXT,
+    actores_canonicos_version TEXT,
+    actores_canonicos_error   TEXT,
+
     created_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -116,12 +123,29 @@ CREATE TABLE IF NOT EXISTS emociones (
     experienciador          TEXT NOT NULL,
     tipo_emocion            TEXT NOT NULL,
     modo_existencia         TEXT NOT NULL,
+    -- Configuración del simulacro emocional (TIPO_CONF, 1..8).
+    -- Emitido por EmotionsAgent junto con la detección. NULL solo en bases
+    -- pre-V0.3.0 que aún no han re-ejecutado emotions con la versión nueva.
+    tipo_configuracion      TEXT,
     deteccion_justificacion TEXT,
+
+    -- Output de NormalizeEmotionsStage. Canónico según ontología.
+    -- NULL = stage no corrida o emoción no cubierta por la ontología.
+    tipo_emocion_canonico       TEXT,
+    normalize_emotions_version  TEXT,
 
     -- Output del CharacterizerAgent. JSON con los 4 atributos.
     caracterizacion_payload TEXT,
     caracterizacion_version TEXT,
     caracterizacion_error   TEXT,
+
+    -- Output del ActantsAgent (opt-in). JSON con la configuración
+    -- actancial completa: mediador, verificadores normativo y
+    -- observacional, y operador de modificación. NULL = stage no
+    -- corrida sobre esta emoción.
+    actantes_payload        TEXT,
+    actantes_version        TEXT,
+    actantes_error          TEXT,
 
     created_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -252,6 +276,67 @@ CREATE INDEX IF NOT EXISTS idx_judgments_codigo
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  Tabla `actors_kb_discoveries`: actores detectados como nuevos por el
+#  agente de linking, para revisión posterior.
+# ══════════════════════════════════════════════════════════════════════════════
+
+CREATE_ACTORS_KB_DISCOVERIES = """
+CREATE TABLE IF NOT EXISTS actors_kb_discoveries (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo              TEXT NOT NULL,
+    unit_idx            INTEGER NOT NULL,
+    actor_mencionado    TEXT NOT NULL,
+    contexto            TEXT,
+    confianza           TEXT NOT NULL,
+    justificacion       TEXT,
+    discovered_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reviewed            INTEGER NOT NULL DEFAULT 0
+)
+""".strip()
+
+
+CREATE_ACTORS_KB_DISCOVERIES_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_actors_kb_discoveries_codigo
+    ON actors_kb_discoveries(codigo)
+""".strip()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Tabla `actors_kb_decisions`: decisiones de triage sobre discoveries.
+# ══════════════════════════════════════════════════════════════════════════════
+
+CREATE_ACTORS_KB_DECISIONS = """
+CREATE TABLE IF NOT EXISTS actors_kb_decisions (
+    discovery_id        INTEGER PRIMARY KEY,
+    decision            TEXT NOT NULL,    -- 'promote' | 'merge' | 'discard'
+    -- Para 'promote': canonical_id sugerido (debe ser slug válido).
+    -- Para 'merge':   canonical_id destino (debe existir en la KB al aplicar).
+    -- Para 'discard': NULL.
+    canonical_id        TEXT,
+    -- Solo para 'promote': metadatos del nuevo canónico.
+    display_name        TEXT,
+    tipo                TEXT,
+    rol                 TEXT,
+    -- Estado de aplicación.
+    status              TEXT NOT NULL DEFAULT 'pending',  -- 'pending' | 'applied' | 'failed'
+    error_message       TEXT,
+    -- Auditoría.
+    origin              TEXT NOT NULL DEFAULT 'cli',      -- 'dashboard' | 'cli'
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    applied_at          TIMESTAMP,
+    FOREIGN KEY (discovery_id) REFERENCES actors_kb_discoveries(id)
+        ON DELETE CASCADE
+)
+""".strip()
+
+
+CREATE_ACTORS_KB_DECISIONS_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_actors_kb_decisions_status
+    ON actors_kb_decisions(status)
+""".strip()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  Lista canónica de DDLs en orden de creación
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -269,4 +354,8 @@ ALL_TABLES_DDL: list[str] = [
     CREATE_RUN_METRICS_INDEX,
     CREATE_JUDGMENTS,
     CREATE_JUDGMENTS_INDEX,
+    CREATE_ACTORS_KB_DISCOVERIES,
+    CREATE_ACTORS_KB_DISCOVERIES_INDEX,
+    CREATE_ACTORS_KB_DECISIONS,
+    CREATE_ACTORS_KB_DECISIONS_INDEX,
 ]

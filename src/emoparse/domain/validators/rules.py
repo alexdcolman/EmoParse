@@ -6,11 +6,14 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from emoparse.domain.validators.base import (
     DiscursoValidator,
     RowValidator,
     ValidationIssue,
 )
+from emoparse.knowledge.normalization import build_emotion_alias_lookup, strip_accents
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -486,10 +489,144 @@ class V10_ModoPotencialConExperienciadorNoEnunciatario(DiscursoValidator):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  V11 — Desviación ontológica por dimensión
+# ══════════════════════════════════════════════════════════════════════════════
+
+
+class V11_DesviacionOntologica(RowValidator):
+    """V-11: caracterización de una emoción fuera de los valores esperados
+    según la ontología de emociones del proyecto.
+
+    Fuente ontológica:
+      knowledge/emociones_ontologia.json — constraints por emoción y dimensión.
+
+    Regla: para cada emoción conocida (matcheada por nombre canónico o
+    alias, con tolerancia de tildes), se verifican las cuatro dimensiones
+    de caracterización: foria, intensidad, dominancia y modo_existencia.
+    Si el valor asignado no aparece en "esperado" ni en "tolerado", se
+    emite un warning.
+
+    Comportamiento ante emociones desconocidas: si el tipo_emocion no
+    matchea ninguna entrada de la ontología, el validator no emite issue.
+    Esto evita penalizar emociones válidas que aún no están catalogadas.
+    """
+
+    VALIDATOR_ID = "V11_desviacion_ontologica"
+
+    _DIMS: tuple[tuple[str, str], ...] = (
+        ("foria",           "foria"),
+        ("intensidad",      "intensidad"),
+        ("dominancia",      "dominancia"),
+        ("modo_existencia", "modo_existencia"),
+    )
+
+    def __init__(self, ontologia: dict[str, Any]) -> None:
+        """
+        Args:
+            ontologia: Dict crudo retornado por
+                KnowledgeLoader.load_emotion_ontology().
+        """
+        self._lookup = self._build_lookup(ontologia)
+
+    @staticmethod
+    def _normalize(s: str) -> str:
+        """Normaliza para comparación: lowercase + sin tildes + strip."""
+        return strip_accents(s.strip().lower())
+
+    @classmethod
+    def _build_lookup(cls, ont: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        """Construye mapping alias_normalizado → entrada de la ontología.
+
+        Delega en ``build_emotion_alias_lookup`` (con normalize_accents=True)
+        para obtener el mapping alias → canonical_id, luego lo traduce a
+        alias → entry completa (necesaria para acceder a constraints por
+        dimensión). El nombre canónico tiene prioridad; aliases de emociones
+        posteriores no sobreescriben entradas previas.
+        """
+        alias_to_canonical = build_emotion_alias_lookup(ont, normalize_accents=True)
+        emociones: dict[str, Any] = ont.get("emociones", {})
+        canonical_to_entry = {
+            k: v for k, v in emociones.items() if isinstance(v, dict)
+        }
+        lookup: dict[str, dict[str, Any]] = {}
+        for alias_norm, canonical in alias_to_canonical.items():
+            entry = canonical_to_entry.get(canonical)
+            if entry is not None:
+                lookup[alias_norm] = entry
+        return lookup
+
+    def validate(
+        self,
+        *,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+        experienciador: str,
+        tipo_emocion: str,
+        modo_existencia: str,
+        foria: str,
+        dominancia: str,
+        intensidad: str,
+        tipo_fuente: str,
+        fuente: str,
+        enunciador: str,
+        enunciatarios: list[dict[str, Any]],
+    ) -> list[ValidationIssue]:
+        entry = self._lookup.get(self._normalize(tipo_emocion))
+        if entry is None:
+            return []  # emoción no cubierta → no penalizar
+
+        dim_values: dict[str, str] = {
+            "foria":           foria,
+            "intensidad":      intensidad,
+            "dominancia":      dominancia,
+            "modo_existencia": modo_existencia,
+        }
+
+        issues: list[ValidationIssue] = []
+        for dim_key, kwarg in self._DIMS:
+            constraints = entry.get(dim_key)
+            if not constraints:
+                continue
+
+            value = dim_values[kwarg]
+            if not value:
+                continue
+
+            value_norm = self._normalize(value)
+            esperado  = [self._normalize(v) for v in constraints.get("esperado", [])]
+            tolerado  = [self._normalize(v) for v in constraints.get("tolerado", [])]
+
+            if value_norm not in esperado and value_norm not in tolerado:
+                issues.append(ValidationIssue(
+                    validator_id=self.VALIDATOR_ID,
+                    mensaje=(
+                        f"{tipo_emocion}: {dim_key}='{value}' fuera de "
+                        f"esperado={constraints.get('esperado', [])} y "
+                        f"tolerado={constraints.get('tolerado', [])}"
+                    ),
+                    codigo=codigo,
+                    frase_idx=frase_idx,
+                    emocion_idx=emocion_idx,
+                    contexto={
+                        "dim": dim_key,
+                        "value": value,
+                        "tipo_emocion": tipo_emocion,
+                        "esperado": constraints.get("esperado", []),
+                        "tolerado": constraints.get("tolerado", []),
+                    },
+                ))
+
+        return issues
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  Registro canónico
 # ══════════════════════════════════════════════════════════════════════════════
 
 #: Lista de RowValidators activos. El runner los aplica en orden.
+#: V11_DesviacionOntologica no se incluye aquí porque requiere inyección
+#: de la ontología en el constructor.
 ROW_VALIDATORS: list[RowValidator] = [
     V01_ModoPotencialVirtualExperienciador(),
     V02_FuenteNoIdentificadaConIntensidadAlta(),

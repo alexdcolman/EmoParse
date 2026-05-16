@@ -17,6 +17,7 @@ from typing import Callable
 from loguru import logger
 
 from emoparse.cli.commands import (
+    discoveries_cmd,
     inspect_cmd,
     judge_cmd,
     metrics_cmd,
@@ -86,8 +87,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--stages",
         help=(
             "Lista comma-separated de stages a correr (subset de "
-            "summarizer,metadata,enunciation,actors,emotions,"
-            "explode_emociones,characterizer). Default: todas."
+            "summarizer,metadata,enunciation,actors,normalize_actors,"
+            "emotions,emotions_pass2,explode_emociones,normalize_emotions,"
+            "characterizer,actants,judge). Default: las stages por default "
+            "(opt-in: normalize_actors, emotions_pass2, actants, judge)."
         ),
     )
     p_run.add_argument(
@@ -138,7 +141,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "--stage",
         help=(
             "Modo legacy: stage cuyos errors limpiar. Una de: summarizer, "
-            "metadata, enunciation, actores, emociones, characterizer."
+            "metadata, enunciation, actores, emociones, characterizer, "
+            "normalize_actors, actants."
         ),
     )
     p_retry.add_argument(
@@ -266,7 +270,163 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="verbose_issues",
         help="Mostrar detalle de cada issue aunque sean muchas.",
     )
+    p_validate.add_argument(
+        "--knowledge-dir",
+        dest="knowledge_dir",
+        help=(
+            "Directorio de knowledge files. Permite cargar la ontología "
+            "de emociones para activar V11_DesviacionOntologica."
+        ),
+    )
+    p_validate.add_argument(
+        "--ontology-file",
+        default="emociones_ontologia.json",
+        dest="ontology_file",
+        help=(
+            "Nombre del archivo de ontología de emociones dentro de "
+            "--knowledge-dir. Default: emociones_ontologia.json."
+        ),
+    )
     p_validate.set_defaults(handler=validate_cmd.handle)
+
+    # ── discoveries ──────────────────────────────────────────────────────────
+    p_disc = sub.add_parser(
+        "discoveries",
+        help="Gestiona discoveries de actores nuevos detectados por normalize_actors.",
+        description=(
+            "Triage de actores marcados como nuevos por la stage "
+            "normalize_actors. Subverbos: list, export, promote, merge, "
+            "discard, apply.\n\n"
+            "Flujo recomendado:\n"
+            "  1. `list` para ver los discoveries pendientes.\n"
+            "  2. Para cada uno: `promote` (nuevo canónico), `merge` "
+            "(alias de existente) o `discard` (ruido). Estos verbos "
+            "solo registran la decisión en la DB. No modifican la KB.\n"
+            "  3. `apply` materializa todas las decisiones pendientes "
+            "sobre el JSON de la KB, con backup automático."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    sub_disc = p_disc.add_subparsers(
+        title="acciones",
+        dest="action",
+        required=True,
+    )
+
+    p_list = sub_disc.add_parser(
+        "list",
+        help="Lista discoveries pendientes de revisión.",
+    )
+    p_list.add_argument("--db", required=True, help="Path al .sqlite del run.")
+    p_list.add_argument(
+        "--codigo",
+        default=None,
+        help="Filtrar por código de discurso.",
+    )
+    p_list.add_argument(
+        "--confianza",
+        default=None,
+        choices=("alta", "media", "baja"),
+        help="Filtrar por nivel de confianza.",
+    )
+    p_list.set_defaults(handler=discoveries_cmd.handle)
+
+    p_disc_exp = sub_disc.add_parser(
+        "export",
+        help="Exporta discoveries pendientes a CSV (incluye decisión actual si existe).",
+    )
+    p_disc_exp.add_argument("--db", required=True, help="Path al .sqlite del run.")
+    p_disc_exp.add_argument(
+        "--output",
+        required=True,
+        help="Path al CSV de salida.",
+    )
+    p_disc_exp.add_argument(
+        "--codigo",
+        default=None,
+        help="Filtrar por código de discurso.",
+    )
+    p_disc_exp.set_defaults(handler=discoveries_cmd.handle)
+
+    p_prom = sub_disc.add_parser(
+        "promote",
+        help="Registra decisión de promover un discovery a canónico nuevo.",
+        description=(
+            "Registra la intención de crear un canónico nuevo a partir "
+            "de un discovery. La KB se modifica recién en `apply`."
+        ),
+    )
+    p_prom.add_argument("--db", required=True)
+    p_prom.add_argument("--id", required=True, type=int, help="ID del discovery.")
+    p_prom.add_argument(
+        "--canonical-id",
+        required=True,
+        dest="canonical_id",
+        help="Slug del canónico nuevo (ej: 'javier_milei').",
+    )
+    p_prom.add_argument(
+        "--display-name",
+        required=True,
+        dest="display_name",
+        help="Nombre para display (ej: 'Javier Milei').",
+    )
+    p_prom.add_argument(
+        "--tipo",
+        default="desconocido",
+        help="Tipo del actor (ej: 'individuo', 'institucion', 'colectivo').",
+    )
+    p_prom.add_argument(
+        "--rol",
+        default=None,
+        help="Rol opcional (ej: 'estado', 'politico').",
+    )
+    p_prom.set_defaults(handler=discoveries_cmd.handle)
+
+    p_merge = sub_disc.add_parser(
+        "merge",
+        help="Registra decisión de mergear discovery como alias de un canónico existente.",
+    )
+    p_merge.add_argument("--db", required=True)
+    p_merge.add_argument("--id", required=True, type=int, help="ID del discovery.")
+    p_merge.add_argument(
+        "--into",
+        required=True,
+        help="canonical_id destino al que se agrega como alias.",
+    )
+    p_merge.set_defaults(handler=discoveries_cmd.handle)
+
+    p_disc_d = sub_disc.add_parser(
+        "discard",
+        help="Registra decisión de descartar un discovery (ruido, no entra a la KB).",
+    )
+    p_disc_d.add_argument("--db", required=True)
+    p_disc_d.add_argument("--id", required=True, type=int, help="ID del discovery.")
+    p_disc_d.set_defaults(handler=discoveries_cmd.handle)
+
+    p_apply = sub_disc.add_parser(
+        "apply",
+        help="Aplica todas las decisiones pendientes al JSON de la KB.",
+        description=(
+            "Procesa cada decisión pendiente, modificando "
+            "knowledge/actors_kb.json. Hace backup automático antes de "
+            "tocar nada. Idempotente: re-correr es seguro. Si una "
+            "decisión falla, queda con status='failed' y no bloquea al "
+            "resto."
+        ),
+    )
+    p_apply.add_argument("--db", required=True, help="Path al .sqlite del run.")
+    p_apply.add_argument(
+        "--kb",
+        required=True,
+        help="Path al archivo JSON de la KB (típicamente knowledge/actors_kb.json).",
+    )
+    p_apply.add_argument(
+        "--dry-run",
+        action="store_true",
+        dest="dry_run",
+        help="Imprime las acciones que se ejecutarían sin modificar nada.",
+    )
+    p_apply.set_defaults(handler=discoveries_cmd.handle)
 
     # ── scrape ───────────────────────────────────────────────────────────────
     p_scrape = sub.add_parser(

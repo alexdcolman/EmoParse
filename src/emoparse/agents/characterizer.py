@@ -2,18 +2,6 @@
 #  emoparse.agents.characterizer
 #
 #  Agente batch para caracterización de emociones detectadas.
-#
-#  Cada fila de entrada representa una emoción individual ya extraída
-#  desde una frase del discurso, con su contexto y atributos previos
-#  (por ejemplo: experienciador, tipo_emocion, modo_existencia).
-#
-#  El agente agrega atributos de caracterización:
-#  - foria
-#  - dominancia
-#  - intensidad
-#  - fuente
-#
-#  junto con sus justificaciones y metadatos asociados.
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -33,13 +21,7 @@ from emoparse.genres.base import Genre
 
 
 class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
-    """Agente batch que caracteriza emociones individuales.
-
-    Cada fila de entrada representa una emoción previamente detectada en una
-    frase del discurso. El agente enriquece esa fila con atributos de
-    caracterización como foria, dominancia, intensidad y fuente, junto con
-    sus justificaciones correspondientes.
-    """
+    """Agente batch que caracteriza emociones individuales."""
 
     NAME = "characterizer"
     SCHEMA = ListaCaracterizacionBatchSchema
@@ -53,6 +35,14 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
         "fuente",
         "tipo_fuente",
         "fuente_justificacion",
+        "duracion",
+        "duracion_justificacion",
+        "modo_semiotizacion",
+        "modo_semiotizacion_justificacion",
+        "modo_identificacion",
+        "modo_identificacion_justificacion",
+        "tipo_atribucion",
+        "tipo_atribucion_justificacion",
     )
     BATCH_SIZE = 5
 
@@ -61,6 +51,7 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
         backend: LLMBackend,
         titulo: str = "",
         tipo_discurso: str = "",
+        heuristicas: str | None = None,
         retry_config: Any | None = None,
         genre: Genre | None = None,
     ) -> None:
@@ -70,6 +61,8 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
             titulo: Título del discurso, usado como contexto para el prompt.
             tipo_discurso: Clasificación o tipo del discurso, usado como
                 contexto.
+            heuristicas: Reglas heurísticas para caracterización de emociones.
+                Si None, no se inyectan heurísticas en el system prompt.
             retry_config: Política de reintentos ante errores transitorios
                 del backend.
             genre: Configuración opcional de género discursivo. Puede
@@ -78,6 +71,7 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
 
         self._titulo = titulo
         self._tipo_discurso = tipo_discurso
+        self._heuristicas = heuristicas
         self._genre = genre
 
         if genre is not None and "characterizer" in genre.batch_size:
@@ -91,6 +85,7 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
         return prompts.render_system(
             titulo=self._titulo,
             tipo_discurso=self._tipo_discurso,
+            heuristicas=self._heuristicas,
         )
 
     def _build_user(self, batch: pd.DataFrame) -> str:
@@ -128,4 +123,12 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
             "fuente": c.fuente,
             "tipo_fuente": c.tipo_fuente,
             "fuente_justificacion": c.fuente_justificacion,
+            "duracion": c.duracion,
+            "duracion_justificacion": c.duracion_justificacion,
+            "modo_semiotizacion": c.modo_semiotizacion,
+            "modo_semiotizacion_justificacion": c.modo_semiotizacion_justificacion,
+            "modo_identificacion": c.modo_identificacion,
+            "modo_identificacion_justificacion": c.modo_identificacion_justificacion,
+            "tipo_atribucion": c.tipo_atribucion,
+            "tipo_atribucion_justificacion": c.tipo_atribucion_justificacion,
         }

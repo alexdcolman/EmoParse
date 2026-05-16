@@ -9,9 +9,16 @@ from __future__ import annotations
 from emoparse.core.prompts._loader import render
 
 
-def render_system(diccionario: str) -> str:
+def render_system(
+    diccionario: str,
+    heuristicas: str | None = None,
+) -> str:
     """SYSTEM de enunciation con el diccionario de tipos de discurso inyectado."""
-    return render("enunciation_system", diccionario=diccionario)
+    return render(
+    "enunciation_system",
+    diccionario=diccionario,
+    heuristicas=heuristicas,
+)
 
 
 def render_user(codigo: str, resumen: str, fragmentos: str) -> str:

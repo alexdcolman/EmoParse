@@ -51,6 +51,21 @@ class FraseConActoresContract(DataFrameModel):
         coerce = False
 
 
+class FraseParaLinkingContract(DataFrameModel):
+    """DF de frases con actores y subset de menciones a linkear (T5)."""
+
+    codigo: Series[str] = pa.Field(nullable=False)
+    unit_idx: Series[int] = pa.Field(nullable=False, ge=0)
+    frase: Series[str] = pa.Field(nullable=False)
+    # Lista JSON-serializada de actores a normalizar para esa unidad.
+    actores_a_linkear: Series[object] = pa.Field(nullable=False)
+
+    class Config:
+        name = "FraseParaLinkingContract"
+        strict = False
+        coerce = False
+
+
 class FraseConEmocionesContract(DataFrameModel):
     """DF de frases con emociones de pase 1 ya detectadas."""
 
@@ -74,6 +89,7 @@ class EmocionExplodedContract(DataFrameModel):
     experienciador: Series[str] = pa.Field(nullable=False)
     tipo_emocion: Series[str] = pa.Field(nullable=False)
     modo_existencia: Series[str] = pa.Field(nullable=False)
+    tipo_configuracion: Series[str] = pa.Field(nullable=True)
 
     class Config:
         name = "EmocionExplodedContract"

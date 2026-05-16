@@ -147,7 +147,55 @@ def populated_setup(
         }),
         encoding="utf-8",
     )
-    (kdir / "heuristicas.md").write_text("Heurísticas.", encoding="utf-8")
+    (kdir / "emociones_ontologia.json").write_text(
+        json.dumps({
+            "miedo": {
+                "canonico": "miedo",
+                "aliases": ["miedo"]
+            }
+        }),
+        encoding="utf-8",
+    )
+    (kdir / "configuraciones_emocion.json").write_text(
+        json.dumps({
+            "version": "v1",
+            "configuraciones": {
+                "miedo": {
+                    "foria": ["disforico"],
+                    "dominancia": ["cognoscitiva"],
+                    "intensidad": ["alta"],
+                }
+            }
+        }),
+        encoding="utf-8",
+    )
+    heur_dir = kdir / "heuristicas"
+    heur_dir.mkdir()
+
+    (heur_dir / "enunciation.md").write_text(
+        "Heurísticas de enunciación.",
+        encoding="utf-8",
+    )
+    (heur_dir / "actors.md").write_text(
+    "Heurísticas de actores.",
+    encoding="utf-8",
+    )
+    (heur_dir / "characterizer.md").write_text(
+        "Heurísticas de caracterización.",
+        encoding="utf-8",
+    )
+    (heur_dir / "emotions.md").write_text(
+        "Heurísticas de emociones.",
+        encoding="utf-8",
+    )
+    (heur_dir / "emotions_pass2.md").write_text(
+        "Heurísticas de emociones (pase 2).",
+        encoding="utf-8",
+    )
+    (heur_dir / "judge.md").write_text(
+        "Heurísticas de judge.",
+        encoding="utf-8",
+    )
 
     # Input CSV.
     input_path = tmp_path / "input.csv"

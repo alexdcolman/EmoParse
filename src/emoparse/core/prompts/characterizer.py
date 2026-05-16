@@ -9,12 +9,17 @@ from __future__ import annotations
 from emoparse.core.prompts._loader import render
 
 
-def render_system(titulo: str, tipo_discurso: str) -> str:
+def render_system(
+    titulo: str,
+    tipo_discurso: str,
+    heuristicas: str | None = None,
+) -> str:
     """SYSTEM del characterizer con contexto del discurso."""
     return render(
         "characterizer_system",
         titulo=titulo,
         tipo_discurso=tipo_discurso,
+        heuristicas=heuristicas,
     )
 
 

@@ -69,11 +69,25 @@ _STAGE_REGISTRY: dict[str, dict[str, Any]] = {
         "version_col": "emociones_pass2_version",
         "pk": ("codigo", "unit_idx"),
     },
+    "normalize_actors": {
+        "table": "frases",
+        "payload_col": "actores_canonicos_payload",
+        "error_col": "actores_canonicos_error",
+        "version_col": "actores_canonicos_version",
+        "pk": ("codigo", "unit_idx"),
+    },
     "characterizer": {
         "table": "emociones",
         "payload_col": "caracterizacion_payload",
         "error_col": "caracterizacion_error",
         "version_col": "caracterizacion_version",
+        "pk": ("codigo", "frase_idx", "emocion_idx"),
+    },
+    "actants": {
+        "table": "emociones",
+        "payload_col": "actantes_payload",
+        "error_col": "actantes_error",
+        "version_col": "actantes_version",
         "pk": ("codigo", "frase_idx", "emocion_idx"),
     },
 }

@@ -159,6 +159,7 @@ class TestOutputMapping:
                         EmocionSchema(
                             experienciador="el presidente",
                             tipo_emocion="orgullo",
+                            tipo_configuracion="cualificacion_por_indicadores_comportamiento",
                             modo_existencia="realizada",
                             justificacion="Habla con voz firme y sonríe.",
                         ),

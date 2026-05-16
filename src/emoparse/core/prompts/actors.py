@@ -9,13 +9,19 @@ from __future__ import annotations
 from emoparse.core.prompts._loader import render
 
 
-def render_system(titulo: str, tipo_discurso: str, enunciador: str) -> str:
+def render_system(
+    titulo: str,
+    tipo_discurso: str,
+    enunciador: str,
+    heuristicas: str | None = None,
+) -> str:
     """SYSTEM de actors con contexto del discurso."""
     return render(
         "actors_system",
         titulo=titulo,
         tipo_discurso=tipo_discurso,
         enunciador=enunciador,
+        heuristicas=heuristicas,
     )
 
 

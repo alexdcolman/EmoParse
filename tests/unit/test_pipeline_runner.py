@@ -140,6 +140,7 @@ class _MockBackend(LLMBackend):
             return ListaEmocionesBatchSchema(root=[
                 EmocionesBatchItemSchema(unit_idx=i, emociones=[
                     EmocionSchema(experienciador="X", tipo_emocion="miedo",
+                                  tipo_configuracion="sostenido_en_sustantivos",
                                   modo_existencia="realizada", justificacion="j"),
                 ]) for i in range(3)
             ])
@@ -148,10 +149,15 @@ class _MockBackend(LLMBackend):
                 CaracterizacionBatchItemSchema(
                     unit_idx=i,
                     caracterizacion=CaracterizacionEmocionSchema(
-                        foria="disforico", foria_justificacion="j",
-                        dominancia="cognoscitiva", dominancia_justificacion="j",
-                        intensidad="alta", intensidad_justificacion="j",
+                        foria="disforico",             foria_justificacion="j",
+                        dominancia="cognoscitiva",     dominancia_justificacion="j",
+                        intensidad="alta",             intensidad_justificacion="j",
                         fuente="X", tipo_fuente="actor", fuente_justificacion="j",
+                        # nuevas dimensiones — literales válidos según el schema
+                        duracion="instantanea",        duracion_justificacion="j",
+                        modo_semiotizacion="dicha",    modo_semiotizacion_justificacion="j",
+                        modo_identificacion="directa", modo_identificacion_justificacion="j",
+                        tipo_atribucion="auto_atribucion", tipo_atribucion_justificacion="j",
                     ),
                 ) for i in range(5)
             ])
@@ -179,19 +185,182 @@ def knowledge_dir(tmp_path: Path) -> Path:
     """Directorio con archivos de knowledge mínimos."""
     d = tmp_path / "knowledge"
     d.mkdir()
+
     (d / "tipos_discurso.json").write_text(
         json.dumps({"asuncion": "Discurso de toma de posesión."}),
         encoding="utf-8",
     )
+
     (d / "emociones.json").write_text(
         json.dumps({
             "modos_existencia": {
-                "realizada": {"nombre": "Realizada", "descripcion": "Manifiesta."},
+                "realizada": {
+                    "nombre": "Realizada",
+                    "descripcion": "Manifiesta."
+                },
             }
         }),
         encoding="utf-8",
     )
-    (d / "heuristicas.md").write_text("Heurísticas.", encoding="utf-8")
+
+    (d / "emociones_ontologia.json").write_text(
+        json.dumps({
+            "version": "v1",
+            "emociones": {
+                "ira": {
+                    "aliases": ["enojo", "rabia", "furia", "indignacion", "indignación", "cólera", "colera", "bronca", "irritación", "irritacion"],
+                    "foria": {"esperado": ["disforico"], "tolerado": ["ambiforico"]},
+                    "intensidad": {"esperado": ["alta"], "tolerado": ["neutra_ambivalente"]},
+                    "dominancia": {"esperado": ["corporal", "mixta"], "tolerado": ["cognoscitiva"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial"]}
+                },
+                "miedo": {
+                    "aliases": ["temor", "terror", "panico", "pánico", "angustia", "aprensión", "aprension", "susto"],
+                    "foria": {"esperado": ["disforico"], "tolerado": ["ambiforico"]},
+                    "intensidad": {"esperado": ["alta"], "tolerado": ["neutra_ambivalente"]},
+                    "dominancia": {"esperado": ["corporal", "mixta"], "tolerado": ["cognoscitiva"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial", "virtual"]}
+                },
+                "tristeza": {
+                    "aliases": ["pena", "dolor", "melancolía", "melancolia", "pesar", "duelo", "luto", "abatimiento", "depresión", "depresion"],
+                    "foria": {"esperado": ["disforico"], "tolerado": ["ambiforico"]},
+                    "intensidad": {"esperado": ["alta", "neutra_ambivalente"], "tolerado": ["baja"]},
+                    "dominancia": {"esperado": ["cognoscitiva", "mixta"], "tolerado": ["corporal"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial", "virtual"]}
+                },
+                "alegria": {
+                    "aliases": ["alegría", "felicidad", "júbilo", "jubilo", "gozo", "contento", "euforia", "entusiasmo", "satisfacción", "satisfaccion"],
+                    "foria": {"esperado": ["euforico"], "tolerado": ["ambiforico"]},
+                    "intensidad": {"esperado": ["alta", "neutra_ambivalente"], "tolerado": ["baja"]},
+                    "dominancia": {"esperado": ["corporal", "mixta"], "tolerado": ["cognoscitiva"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial"]}
+                },
+                "sorpresa": {
+                    "aliases": ["asombro", "estupor", "extrañeza", "extranieza", "perplejidad", "desconcierto", "shock"],
+                    "foria": {"esperado": ["aforico", "ambiforico"], "tolerado": ["euforico", "disforico"]},
+                    "intensidad": {"esperado": ["alta", "neutra_ambivalente"], "tolerado": ["baja"]},
+                    "dominancia": {"esperado": ["corporal", "cognoscitiva"], "tolerado": ["mixta"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial"]}
+                },
+                "asco": {
+                    "aliases": ["repugnancia", "repulsion", "repulsión", "disgusto", "aversión", "aversion", "náusea", "nausea", "rechazo"],
+                    "foria": {"esperado": ["disforico"], "tolerado": ["ambiforico"]},
+                    "intensidad": {"esperado": ["alta"], "tolerado": ["neutra_ambivalente"]},
+                    "dominancia": {"esperado": ["corporal", "mixta"], "tolerado": ["cognoscitiva"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial"]}
+                },
+                "amor": {
+                    "aliases": ["cariño", "carino", "afecto", "ternura", "apego", "adoración", "adoracion"],
+                    "foria": {"esperado": ["euforico"], "tolerado": ["ambiforico"]},
+                    "intensidad": {"esperado": ["alta", "neutra_ambivalente"], "tolerado": ["baja"]},
+                    "dominancia": {"esperado": ["corporal", "mixta"], "tolerado": ["cognoscitiva"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial", "virtual"]}
+                },
+                "confianza": {
+                    "aliases": ["fe", "seguridad", "certeza", "convicción", "conviccion", "credibilidad"],
+                    "foria": {"esperado": ["euforico"], "tolerado": ["aforico"]},
+                    "intensidad": {"esperado": ["alta", "neutra_ambivalente"], "tolerado": ["baja"]},
+                    "dominancia": {"esperado": ["cognoscitiva"], "tolerado": ["mixta"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial", "virtual"]}
+                },
+                "culpa": {
+                    "aliases": ["remordimiento", "arrepentimiento", "vergüenza_moral", "verguenza_moral"],
+                    "foria": {"esperado": ["disforico"], "tolerado": ["ambiforico"]},
+                    "intensidad": {"esperado": ["alta", "neutra_ambivalente"], "tolerado": ["baja"]},
+                    "dominancia": {"esperado": ["cognoscitiva", "mixta"], "tolerado": ["corporal"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial"]}
+                },
+                "vergüenza": {
+                    "aliases": ["verguenza", "humillación", "humillacion", "bochorno", "pudor"],
+                    "foria": {"esperado": ["disforico"], "tolerado": ["ambiforico"]},
+                    "intensidad": {"esperado": ["alta", "neutra_ambivalente"], "tolerado": ["baja"]},
+                    "dominancia": {"esperado": ["corporal", "cognoscitiva"], "tolerado": ["mixta"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial"]}
+                },
+                "decepción": {
+                    "aliases": ["decepcion", "desilusión", "desilusión", "desilusíon", "frustración", "frustracion", "desengaño", "desenganio"],
+                    "foria": {"esperado": ["disforico"], "tolerado": ["ambiforico"]},
+                    "intensidad": {"esperado": ["alta", "neutra_ambivalente"], "tolerado": ["baja"]},
+                    "dominancia": {"esperado": ["cognoscitiva", "mixta"], "tolerado": ["corporal"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial"]}
+                },
+                "esperanza": {
+                    "aliases": ["ilusión", "ilusion", "anhelo", "expectativa", "optimismo"],
+                    "foria": {"esperado": ["euforico"], "tolerado": ["ambiforico"]},
+                    "intensidad": {"esperado": ["alta", "neutra_ambivalente"], "tolerado": ["baja"]},
+                    "dominancia": {"esperado": ["cognoscitiva"], "tolerado": ["mixta"]},
+                    "modo_existencia": {"esperado": ["potencial", "virtual"], "tolerado": ["actual", "realizada"]}
+                },
+                "melancolía": {
+                    "aliases": ["melancolia", "nostalgia", "añoranza", "anioranza", "morriña", "morrina"],
+                    "foria": {"esperado": ["disforico"], "tolerado": ["ambiforico"]},
+                    "intensidad": {"esperado": ["neutra_ambivalente", "alta"], "tolerado": ["baja"]},
+                    "dominancia": {"esperado": ["cognoscitiva", "mixta"], "tolerado": ["corporal"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["virtual"]}
+                },
+                "orgullo": {
+                    "aliases": ["dignidad", "autoestima", "honor", "soberbia"],
+                    "foria": {"esperado": ["euforico"], "tolerado": ["ambiforico"]},
+                    "intensidad": {"esperado": ["alta"], "tolerado": ["neutra_ambivalente"]},
+                    "dominancia": {"esperado": ["cognoscitiva", "mixta"], "tolerado": ["corporal"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial"]}
+                },
+                "ansiedad": {
+                    "aliases": ["angustia", "nerviosismo", "zozobra", "inquietud", "intranquilidad", "alarma"],
+                    "foria": {"esperado": ["disforico"], "tolerado": ["ambiforico"]},
+                    "intensidad": {"esperado": ["alta", "neutra_ambivalente"], "tolerado": ["baja"]},
+                    "dominancia": {"esperado": ["corporal", "mixta"], "tolerado": ["cognoscitiva"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial", "virtual"]}
+                },
+                "conmoción": {
+                    "aliases": ["conmocion", "emoción_profunda", "emocion_profunda", "impacto", "sacudida"],
+                    "foria": {"esperado": ["ambiforico"], "tolerado": ["euforico", "disforico"]},
+                    "intensidad": {"esperado": ["alta"], "tolerado": ["neutra_ambivalente"]},
+                    "dominancia": {"esperado": ["corporal", "mixta"], "tolerado": ["cognoscitiva"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial"]}
+                },
+                "indignación": {
+                    "aliases": ["indignacion", "ultraje", "escándalo_moral", "escandalo_moral", "cólera_moral", "colera_moral"],
+                    "foria": {"esperado": ["disforico"], "tolerado": ["ambiforico"]},
+                    "intensidad": {"esperado": ["alta"], "tolerado": ["neutra_ambivalente"]},
+                    "dominancia": {"esperado": ["cognoscitiva", "mixta"], "tolerado": ["corporal"]},
+                    "modo_existencia": {"esperado": ["realizada", "actual"], "tolerado": ["potencial"]}
+                }
+            }
+        }),
+        encoding="utf-8",
+    )
+    (d / "configuraciones_emocion.json").write_text(
+        json.dumps({
+            "version": "v1",
+            "configuraciones": {
+                "sostenido_en_sustantivos": {
+                    "id": 1,
+                    "definicion": "La emoción es portada principalmente por sustantivos que designan estados afectivos.",
+                    "heuristica_deteccion": "Identificar sustantivos con valor emocional que operen como núcleo nominal del sintagma.",
+                    "ejemplos": ["la indignación de los presentes", "un profundo dolor"],
+                },
+                "sostenido_en_adjetivos": {
+                    "id": 2,
+                    "definicion": "La emoción se expresa mediante adjetivos evaluativos o afectivos.",
+                    "heuristica_deteccion": "Detectar adjetivos con carga afectiva que atribuyan cualidades emocionales.",
+                    "ejemplos": ["una situación inquietante", "los testigos estaban nerviosos"],
+                },
+            }
+        }),
+        encoding="utf-8",
+    )
+
+    heur = d / "heuristicas"
+    heur.mkdir()
+
+    (heur / "actors.md").write_text("Heurísticas actors.", encoding="utf-8")
+    (heur / "characterizer.md").write_text("Heurísticas characterizer.", encoding="utf-8")
+    (heur / "emotions.md").write_text("Heurísticas emotions.", encoding="utf-8")
+    (heur / "emotions_pass2.md").write_text("Heurísticas emotions pass2.", encoding="utf-8")
+    (heur / "enunciation.md").write_text("Heurísticas enunciation.", encoding="utf-8")
+    (heur / "judge.md").write_text("Heurísticas judge.", encoding="utf-8")
+
     return d
 
 

@@ -65,6 +65,7 @@ class _RecordingBackend(LLMBackend):
                     EmocionSchema(
                         experienciador="X",
                         tipo_emocion=f"emocion_{i}",
+                        tipo_configuracion="sostenido_en_sustantivos",
                         modo_existencia="realizada",
                         justificacion="j",
                     )
@@ -194,6 +195,7 @@ def _emociones_for(unit_idx: int, tipo: str = "miedo") -> str:
     return json.dumps([{
         "experienciador": "el orador",
         "tipo_emocion": tipo,
+        "tipo_configuracion": "sostenido_en_sustantivos",
         "modo_existencia": "realizada",
         "justificacion": "j",
     }])

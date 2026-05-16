@@ -336,16 +336,16 @@ def test_trayectoria_codigos_vacios(df_emociones: pd.DataFrame) -> None:
 
 def test_emo_color_match_parcial() -> None:
     """'indignación profunda' debe caer en 'indignación'."""
-    color = charts._emo_color("indignación profunda")
+    color = charts.emo_color("indignación profunda")
     assert color == charts.EMOTION_COLORS["indignación"]
 
 
 def test_emo_color_string_vacio() -> None:
-    assert charts._emo_color("") == charts.EMOTION_COLORS["neutro"]
+    assert charts.emo_color("") == charts.EMOTION_COLORS["neutro"]
 
 
 def test_emo_color_emocion_desconocida_fallback() -> None:
-    assert charts._emo_color("xyzzz") == charts.ACCENT2
+    assert charts.emo_color("xyzzz") == charts.ACCENT2
 
 
 def test_resolve_posicion_desde_frase_idx() -> None:

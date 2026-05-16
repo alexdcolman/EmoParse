@@ -48,6 +48,7 @@ class _RecordingBackend(LLMBackend):
         items = [
             EmocionesBatchItemSchema(unit_idx=i, emociones=[
                 EmocionSchema(experienciador="X", tipo_emocion="miedo",
+                              tipo_configuracion="cualificacion_por_componentes_descriptivo_narrativos",
                               modo_existencia="realizada", justificacion="j")
             ])
             for i in range(n)

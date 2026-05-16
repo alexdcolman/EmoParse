@@ -14,7 +14,7 @@ models:
     context_length: 8192
     n_gpu_layers: -1
     temperature: 0.6
-    max_tokens: 2048
+    max_tokens: 4096
     seed: 42
 
   phi4-mini:
@@ -28,14 +28,16 @@ models:
 
 pipeline:
   stages:
-    summarizer:      qwen3-30b-moe
-    metadata:        phi4-mini
-    enunciation:     qwen3-14b
-    actors:          qwen3-14b
-    emotions:        qwen3-14b
-    emotions_pass2:  qwen3-14b
-    characterizer:   qwen3-14b
-    judge:           qwen3-14b
+    summarizer:       qwen3-30b-moe
+    metadata:         phi4-mini
+    enunciation:      qwen3-14b
+    actors:           qwen3-14b
+    normalize_actors: qwen3-14b
+    emotions:         qwen3-14b
+    emotions_pass2:   qwen3-14b
+    characterizer:    qwen3-14b
+    actants:          qwen3-14b
+    judge:            qwen3-14b
   cache_enabled: true
   max_retries: 3
   retry_delays_seconds: [2, 8, 15]
@@ -49,9 +51,9 @@ paths:
 
 versions:
   knowledge: v1
-  prompt:    v1
-  ontology:  v1
-  schema:    v1
+  prompt:    v5
+  ontology:  v4
+  schema:    v4
 
 logging:
   level: INFO

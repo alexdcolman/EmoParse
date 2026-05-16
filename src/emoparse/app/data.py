@@ -345,7 +345,8 @@ def get_emociones(
     """
     sql, params = _build_filter_sql(
         base="SELECT e.codigo, e.frase_idx, e.emocion_idx, "
-             "e.experienciador, e.tipo_emocion, e.modo_existencia, "
+             "e.experienciador, e.tipo_emocion, e.tipo_emocion_canonico, "
+             "e.modo_existencia, "
              "e.deteccion_justificacion, "
              "e.caracterizacion_payload, e.caracterizacion_error, "
              "f.frase, "
@@ -372,6 +373,7 @@ def get_emociones(
             "emocion_idx":             row["emocion_idx"],
             "experienciador":          row["experienciador"],
             "tipo_emocion":            row["tipo_emocion"],
+            "tipo_emocion_canonico":   row["tipo_emocion_canonico"],
             "modo_existencia":         row["modo_existencia"],
             "deteccion_justificacion": row["deteccion_justificacion"],
             "frase":                   row["frase"],

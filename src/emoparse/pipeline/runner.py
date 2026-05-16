@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 import pandas as pd
 from loguru import logger
 
+from emoparse.agents.actants import ACTANTS_COMPONENTS
 from emoparse.agents.metadata import MetadataAgent
 from emoparse.agents.enunciation import EnunciationAgent
 from emoparse.agents.summarizer import SummarizerAgent
@@ -24,6 +25,7 @@ from emoparse.core.cache.repository import CacheRepository
 from emoparse.knowledge.loader import KnowledgeLoader
 from emoparse.pipeline.dag import EMOPARSE_DAG
 from emoparse.pipeline.stages import (
+    ActantsStage,
     ActorsStage,
     CharacterizerStage,
     EmotionsPass2Stage,
@@ -32,9 +34,12 @@ from emoparse.pipeline.stages import (
     ExplodeEmocionesStage,
     JudgeStage,
     MetadataStage,
+    NormalizeActorsStage,
+    NormalizeEmotionsStage,
     Stage,
     SummarizerStage,
 )
+from emoparse.storage.actors_kb_discoveries import ActorsKbDiscoveriesRepository
 from emoparse.storage.db import Database
 from emoparse.storage.discursos import DiscursosRepository
 from emoparse.storage.emociones import EmocionesRepository
@@ -57,8 +62,12 @@ STAGE_ORDER: tuple[str, ...] = EMOPARSE_DAG.toposort()
 
 
 #: Stages ejecutadas por default.
+#: `normalize_actors` queda OPT-IN: requiere KB poblada y se piloteaba sobre
+#: un subset antes de tirarla a producción.
+#: `actants` queda OPT-IN: análisis fino opcional sobre emociones detectadas.
 DEFAULT_ENABLED_STAGES: tuple[str, ...] = tuple(
-    s for s in STAGE_ORDER if s not in ("emotions_pass2", "judge")
+    s for s in STAGE_ORDER
+    if s not in ("emotions_pass2", "judge", "normalize_actors", "actants")
 )
 
 
@@ -117,6 +126,16 @@ class PipelineRunner:
         ontology_filename: str = "emociones.json",
         heuristics_filename: str = "heuristicas.md",
         diccionario_filename: str = "tipos_discurso.json",
+        configurations_filename: str = "configuraciones_emocion.json",
+        actors_kb_filename: str = "actors_kb.json",
+        actors_heuristics_filename: str | None = "heuristicas/actors.md",
+        emotions_heuristics_filename: str | None = "heuristicas/emotions.md",
+        emotions_pass2_heuristics_filename: str | None = "heuristicas/emotions_pass2.md",
+        characterizer_heuristics_filename: str | None = "heuristicas/characterizer.md",
+        enunciation_heuristics_filename: str | None = "heuristicas/enunciation.md",
+        judge_heuristics_filename: str | None = "heuristicas/judge.md",
+        actants_heuristics_filename: str | None = "heuristicas/actants.md",
+        actants_components: tuple[str, ...] = ACTANTS_COMPONENTS,
         genre: "Genre | None" = None,
     ) -> None:
         """
@@ -130,8 +149,34 @@ class PipelineRunner:
             enabled_stages: Etapas a ejecutar.
             ontology_filename: Nombre del archivo de ontología de emociones
                 dentro de knowledge_dir.
-            heuristics_filename: Nombre del archivo de heurísticas.
+            heuristics_filename: Nombre del archivo de heurísticas (fallback
+                monolítico si no se especifican los archivos por agente).
             diccionario_filename: Nombre del archivo de tipos de discurso.
+            configurations_filename: Nombre del archivo JSON con las 8
+                configuraciones del simulacro emocional (TIPO_CONF). Si el
+                archivo no existe en knowledge_dir, EmotionsStage falla con
+                un mensaje claro: se asume que la knowledge base lo provee.
+            actors_kb_filename: Nombre del archivo JSON con la KB de actores
+                conocidos (entity linking). Usado solo si la stage
+                `normalize_actors` está habilitada.
+            actors_heuristics_filename: Heurísticas para ActorsAgent.
+                Si None, usa heuristics_filename.
+            emotions_heuristics_filename: Heurísticas para EmotionsAgent (pase 1).
+                Si None, usa heuristics_filename.
+            emotions_pass2_heuristics_filename: Heurísticas para EmotionsAgentPass2.
+                Si None, usa heuristics_filename.
+            characterizer_heuristics_filename: Heurísticas para CharacterizerAgent.
+                Si None, no se pasan heurísticas (el agente no las requiere por default).
+            enunciation_heuristics_filename: Heurísticas para EnunciationAgent.
+                Si None, no se pasan heurísticas (el agente no las requiere por default).
+            judge_heuristics_filename: Heurísticas para JudgeAgent.
+                Si None, no se pasan heurísticas (el agente no las requiere por default).
+            actants_heuristics_filename: Heurísticas para ActantsAgent.
+                Si None, no se pasan heurísticas (el agente no las requiere por default).
+            actants_components: Subconjunto de componentes actanciales que
+                el ActantsAgent debe pedirle al LLM. Los no incluidos se
+                rellenan con un placeholder determinístico al persistir.
+                Default: los cuatro componentes.
             genre: Género del discurso.
         """
         self._run_id = run_id
@@ -139,6 +184,14 @@ class PipelineRunner:
         self._knowledge = knowledge
         self._enabled_stages = tuple(enabled_stages)
         self._validate_contracts = validate_contracts
+        self._actors_heuristics_filename = actors_heuristics_filename or heuristics_filename
+        self._emotions_heuristics_filename = emotions_heuristics_filename or heuristics_filename
+        self._emotions_pass2_heuristics_filename = emotions_pass2_heuristics_filename or heuristics_filename
+        self._characterizer_heuristics_filename = characterizer_heuristics_filename
+        self._enunciation_heuristics_filename = enunciation_heuristics_filename
+        self._judge_heuristics_filename = judge_heuristics_filename
+        self._actants_heuristics_filename = actants_heuristics_filename
+        self._actants_components = actants_components
 
         if genre is None:
             # Import lazy para no acoplar Runner a registry en hot path.
@@ -157,8 +210,10 @@ class PipelineRunner:
             )
 
         self._ontology_filename = ontology_filename
-        self._heuristics_filename = heuristics_filename
+        self._heuristics_filename = heuristics_filename  # fallback monolítico
         self._diccionario_filename = diccionario_filename
+        self._configurations_filename = configurations_filename
+        self._actors_kb_filename = actors_kb_filename
         self._db = Database(Path(db_path))
         self._runs_repo = RunsRepository(self._db)
         self._d_repo = DiscursosRepository(self._db)
@@ -167,6 +222,7 @@ class PipelineRunner:
         self._j_repo = JudgmentsRepository(self._db)
         self._cache_repo = CacheRepository(self._db)
         self._metrics_repo = MetricsRepository(self._db)
+        self._discoveries_repo = ActorsKbDiscoveriesRepository(self._db)
         self._current_accumulator: StageMetricsAccumulator | None = None
         self._ctx = self._build_run_context()
         self._runs_repo.bootstrap(self._ctx)
@@ -381,6 +437,9 @@ class PipelineRunner:
                 backend, diccionario,
                 retry_config=self._retry_config,
                 genre=genre_for_agent,
+                heuristicas=self._knowledge.load_heuristics(
+                    self._enunciation_heuristics_filename
+                ) if self._enunciation_heuristics_filename else None,
             )
             return EnunciationStage(
                 agent, self._d_repo, agent_version=self._cfg.versions.prompt
@@ -390,6 +449,21 @@ class PipelineRunner:
             backend = self._get_backend(name)
             return ActorsStage(
                 backend, self._d_repo, self._f_repo,
+                heuristicas=self._knowledge.load_heuristics(
+                    self._actors_heuristics_filename
+                ) if self._actors_heuristics_filename else None,
+                agent_version=self._cfg.versions.prompt,
+                retry_config=self._retry_config,
+                genre=self._genre,
+            )
+
+        if name == "normalize_actors":
+            backend = self._get_backend(name)
+            actors_kb = self._knowledge.load_actors_kb(self._actors_kb_filename)
+            return NormalizeActorsStage(
+                backend, self._d_repo, self._f_repo,
+                actors_kb=actors_kb,
+                discoveries_repo=self._discoveries_repo,
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
@@ -399,12 +473,16 @@ class PipelineRunner:
             backend = self._get_backend(name)
             ontologia = self._knowledge.load_ontology(self._ontology_filename)
             heuristicas = self._knowledge.load_heuristics(
-                self._heuristics_filename
+                self._emotions_heuristics_filename
+            )
+            configuraciones = self._knowledge.load_emotion_configurations(
+                self._configurations_filename
             )
             return EmotionsStage(
                 backend, self._d_repo, self._f_repo,
                 ontologia=ontologia,
                 heuristicas=heuristicas,
+                configuraciones=configuraciones,
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
@@ -414,12 +492,16 @@ class PipelineRunner:
             backend = self._get_backend(name)
             ontologia = self._knowledge.load_ontology(self._ontology_filename)
             heuristicas = self._knowledge.load_heuristics(
-                self._heuristics_filename
+                self._emotions_pass2_heuristics_filename
+            )
+            configuraciones = self._knowledge.load_emotion_configurations(
+                self._configurations_filename
             )
             return EmotionsPass2Stage(
                 backend, self._d_repo, self._f_repo,
                 ontologia=ontologia,
                 heuristicas=heuristicas,
+                configuraciones=configuraciones,
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
@@ -430,10 +512,23 @@ class PipelineRunner:
                 self._d_repo, self._f_repo, self._e_repo
             )
 
+        if name == "normalize_emotions":
+            ontology = self._knowledge.load_emotion_ontology(
+                "emociones_ontologia.json"
+            )
+            return NormalizeEmotionsStage(
+                emociones_repo=self._e_repo,
+                emotion_ontology=ontology,
+                agent_version=self._cfg.versions.ontology,
+            )
+
         if name == "characterizer":
             backend = self._get_backend(name)
             return CharacterizerStage(
                 backend, self._d_repo, self._f_repo, self._e_repo,
+                heuristicas=self._knowledge.load_heuristics(
+                    self._characterizer_heuristics_filename
+                ) if self._characterizer_heuristics_filename else None,
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
@@ -444,6 +539,22 @@ class PipelineRunner:
             return JudgeStage(
                 backend,
                 self._d_repo, self._f_repo, self._e_repo, self._j_repo,
+                heuristicas=self._knowledge.load_heuristics(
+                    self._judge_heuristics_filename
+                ) if self._judge_heuristics_filename else None,
+                agent_version=self._cfg.versions.prompt,
+                retry_config=self._retry_config,
+                genre=self._genre,
+            )
+
+        if name == "actants":
+            backend = self._get_backend(name)
+            return ActantsStage(
+                backend, self._d_repo, self._f_repo, self._e_repo,
+                heuristicas=self._knowledge.load_heuristics(
+                    self._actants_heuristics_filename
+                ) if self._actants_heuristics_filename else None,
+                enabled_components=self._actants_components,
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,

@@ -78,6 +78,7 @@ def _emo_json(*types: str) -> str:
         {
             "experienciador": "el pueblo",
             "tipo_emocion": t,
+            "tipo_configuracion": "sostenido_en_sustantivos",
             "modo_existencia": "realizada",
             "justificacion": "test",
         }

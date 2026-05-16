@@ -63,6 +63,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         backend: LLMBackend,
         ontologia: str,
         heuristicas: str,
+        configuraciones: str = "",
         titulo: str = "",
         tipo_discurso: str = "",
         enunciador: str = "",
@@ -74,6 +75,9 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
             backend: Backend LLM utilizado para generación estructurada.
             ontologia: Ontología emocional utilizada por el agente.
             heuristicas: Reglas heurísticas para inferencia emocional.
+            configuraciones: Texto formateado con las 8 configuraciones del
+                simulacro emocional (TIPO_CONF). Si es string vacío, el
+                template lo renderiza como bloque vacío.
             titulo: Título del discurso.
             tipo_discurso: Tipo o clasificación del discurso.
             enunciador: Sujeto principal de enunciación.
@@ -83,6 +87,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         """
         self._ontologia = ontologia
         self._heuristicas = heuristicas
+        self._configuraciones = configuraciones
         self._titulo = titulo
         self._tipo_discurso = tipo_discurso
         self._enunciador = enunciador
@@ -99,6 +104,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         return prompts.render_system(
             ontologia=self._ontologia,
             heuristicas=self._heuristicas,
+            configuraciones=self._configuraciones,
             titulo=self._titulo,
             tipo_discurso=self._tipo_discurso,
             enunciador=self._enunciador,
@@ -187,9 +193,6 @@ def compute_emotion_rolling_summary(
     La función es determinística: el resultado depende únicamente de
     (`codigo`, `unit_idx`) y del contenido de `emociones`, no del orden
     de iteración del DataFrame de entrada.
-
-    No realiza llamadas al backend; es una transformación pura sobre el
-    DataFrame.
     """
 
     if df_with_emotions.empty:
@@ -317,12 +320,7 @@ def _format_emociones_for_history(
     *,
     unit_idx: int,
 ) -> str | None:
-    """Formatea las emociones de una frase para el historial contextual.
-
-    Devuelve una línea compacta para incorporar al resumen histórico.
-    Si no hay emociones válidas o el contenido no puede parsearse,
-    devuelve `None`.
-    """
+    """Formatea las emociones de una frase para el historial contextual."""
     if raw is None or (isinstance(raw, float) and pd.isna(raw)):
         return None
     if isinstance(raw, str):

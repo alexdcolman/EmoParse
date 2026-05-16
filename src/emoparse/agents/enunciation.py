@@ -2,17 +2,6 @@
 #  emoparse.agents.enunciation
 #
 #  Agente de análisis enunciativo.
-#
-#  Identifica:
-#  - enunciador principal del discurso
-#  - enunciatarios (destinatarios explícitos o implícitos)
-#
-#  Procesa un discurso completo por llamada (BaseAgent, no batch) y
-#  serializa la estructura resultante en columnas compatibles con
-#  DataFrame y exportación tabular.
-#
-#  El agente admite configuración opcional por género discursivo, que
-#  puede restringir los roles enunciativos válidos del schema.
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -55,6 +44,7 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         self,
         backend: LLMBackend,
         diccionario_tipos: dict[str, Any],
+        heuristicas: str | None = None,
         retry_config: Any | None = None,
         genre: Genre | None = None,
     ) -> None:
@@ -63,6 +53,9 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
             backend: Backend LLM utilizado para generación estructurada.
             diccionario_tipos: Diccionario de tipos discursivos utilizado
                 en el system prompt.
+            heuristicas: Reglas heurísticas para identificación de
+                estructura enunciativa. Si None, no se inyectan en el
+                system prompt.
             retry_config: Política de reintentos ante errores transitorios.
             genre: Configuración opcional de género discursivo. Si se
                 provee, restringe los roles enunciativos válidos del schema.
@@ -70,6 +63,7 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         self._diccionario_str = json.dumps(
             diccionario_tipos, ensure_ascii=False, indent=2
         )
+        self._heuristicas = heuristicas
         self._genre = genre
 
         # Si se define genre, reemplazar el schema antes de llamar a
@@ -83,7 +77,10 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
     # ── Hooks de BaseAgent ───────────────────────────────────────────────────
 
     def _build_system(self) -> str:
-        return prompts.render_system(diccionario=self._diccionario_str)
+        return prompts.render_system(
+            diccionario=self._diccionario_str,
+            heuristicas=self._heuristicas,
+        )
 
     def _build_user(self, row: pd.Series) -> str:
         codigo = str(row["codigo"])
