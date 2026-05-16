@@ -6,7 +6,7 @@ EmoParse procesa corpus de discursos y devuelve, para cada frase, una caracteriz
 
 Está pensado para investigadores en lingüística, semiótica, ciencias del lenguaje y análisis del discurso que necesitan procesar corpus extensos sin renunciar a la trazabilidad ni al marco teórico.
 
-- **Reproducible**: una base SQLite por corrida, versionado fino de prompts y ontologías, seed fija.
+- **Reproducible**: una base SQLite por run, versionado fino de prompts y ontologías, seed fija.
 - **Trazable**: cada emoción detectada lleva su justificación textual y queda enlazada a la frase original.
 - **Local-first**: corre con modelos GGUF locales (llama.cpp) o vía LM Studio. La arquitectura admite además backends de API (OpenAI, Anthropic, etc.) — ver la documentación.
 - **Extensible**: pipeline organizado como DAG declarativo; sumar géneros, sources de scraping o agentes es código aislado.
@@ -58,11 +58,10 @@ cp config.example.yaml config.yaml
 emoparse run \
   --config config.yaml \
   --input  data/discursos.csv \
-  --run-id mi_corrida
+  --run-id mi_run
 
 # 4. Explorar resultados
 streamlit run src/emoparse/app/__main__.py
-# alternativa: python -m emoparse.app
 ```
 
 El input mínimo es un CSV con columnas `codigo` (identificador único) y `contenido` (texto). EmoParse también incluye un scraper para Casa Rosada:
@@ -125,9 +124,9 @@ Para dudas o colaboraciones, podés contactarme vía GitHub o correo: alexdcolma
 
 ## Agradecimientos
 
-Agradezco especialmente a [Martín Schuster](https://www.flacso.org.ar/docentes/schuster-martin-ivan/) y a [Mathi Gatti](https://mathigatti.com/) por la orientación en el desarrollo del proyecto.
+Agradezco especialmente a [Mathi Gatti](https://mathigatti.com/) y a [Martín Schuster](https://www.flacso.org.ar/docentes/schuster-martin-ivan/) por la orientación en el desarrollo del proyecto.
 
-También agradezco a [Laura Bonilla](https://www.researchgate.net/profile/Laura-Bonilla-Neira), quien me está ayudando a desarrollar una adaptación de EmoParse para análisis de tuits.
+[Laura Bonilla](https://www.researchgate.net/profile/Laura-Bonilla-Neira) me está ayudando a desarrollar una adaptación de EmoParse para análisis de tuits.
 
 ---
 
