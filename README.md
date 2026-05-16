@@ -13,7 +13,7 @@ Está pensado para investigadores en lingüística, semiótica, ciencias del len
 
 ---
 
-## [Documentación](https://alexdcolman.github.io/EmoParse/)
+> 📖 **[Documentación completa →](https://alexdcolman.github.io/EmoParse/)**
 
 ---
 
