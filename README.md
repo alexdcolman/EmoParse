@@ -127,6 +127,8 @@ Para dudas o colaboraciones, podés contactarme vía GitHub o correo: alexdcolma
 
 Agradezco especialmente a [Martín Schuster](https://www.flacso.org.ar/docentes/schuster-martin-ivan/) y a [Mathi Gatti](https://mathigatti.com/) por la orientación en el desarrollo del proyecto.
 
+También agradezco a [Laura Bonilla](https://www.researchgate.net/profile/Laura-Bonilla-Neira), quien me está ayudando a desarrollar una adaptación de EmoParse para análisis de tuits.
+
 ---
 
 ## ¿Querés colaborar?
