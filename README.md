@@ -13,6 +13,10 @@ Está pensado para investigadores en lingüística, semiótica, ciencias del len
 
 ---
 
+## [Documentación](https://alexdcolman.github.io/EmoParse/)
+
+---
+
 ## Requisitos
 
 - Python 3.11+
@@ -90,12 +94,6 @@ Todos aceptan `--help`. Ejemplo:
 ```bash
 emoparse run --help
 ```
-
----
-
-## Documentación
-
-Disponible [aquí](https://alexdcolman.github.io/EmoParse/)
 
 ---
 
