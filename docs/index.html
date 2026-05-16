@@ -1134,7 +1134,7 @@ body.at-home main > footer { display: block; }
     <li><strong>Python 3.11+</strong></li>
     <li><strong>git</strong></li>
     <li><strong>GPU recomendada</strong> (NVIDIA con CUDA, AMD con ROCm) para correr los modelos GGUF localmente. CPU funciona pero es muy lento para corpus grandes.</li>
-    <li><strong>~24 GB VRAM</strong> para la configuración de producción sugerida (Qwen3-14B + Phi-4-mini en GPU). Modelos más chicos corren en placas más modestas.</li>
+    <li><strong>~12 GB VRAM</strong> para el pipeline estándar (Qwen3-14B + Phi-4-mini). El runner descarga el modelo de VRAM al cambiar de stage, así que no se cargan simultáneamente. Para el summarizer con Qwen3-30B MoE (~18 GB en Q4_K_M) se necesita una placa más grande o configurar offload parcial a RAM, pero sino se puede usar otro modelo.</li>
   </ul>
 
   <h3 id="install-clone">Instalación desde GitHub</h3>
