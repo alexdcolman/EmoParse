@@ -1,8 +1,8 @@
 # EmoParse
 
-> Análisis semiótico de emociones en discursos con LLMs locales.
+> Análisis de emociones en discursos con LLMs locales.
 
-EmoParse procesa corpus de discursos y devuelve, para cada frase, una caracterización semiótica de las emociones que la atraviesan: qué actor las experimenta, en qué modo de existencia, con qué foria, dominancia, intensidad y cuál es la fuente que la desencadena.
+EmoParse procesa corpus de discursos y devuelve, para cada frase, una caracterización semiótica de las emociones que la atraviesan: qué actor las experimenta, en qué modo de existencia, con qué foria, dominancia, intensidad y cuál es la fuente que la desencadena. Opcionalmente, realiza un análisis actancial de cada emoción (mediador, verificadores normativo y observacional, operador de modificación) y homogeneiza actores y emociones para habilitar el análisis agregado del corpus.
 
 Está pensado para investigadores en lingüística, semiótica, ciencias del lenguaje y análisis del discurso que necesitan procesar corpus extensos sin renunciar a la trazabilidad ni al marco teórico.
 
@@ -61,7 +61,8 @@ emoparse run \
   --run-id mi_corrida
 
 # 4. Explorar resultados
-streamlit run -m emoparse.app
+streamlit run src/emoparse/app/__main__.py
+# alternativa: python -m emoparse.app
 ```
 
 El input mínimo es un CSV con columnas `codigo` (identificador único) y `contenido` (texto). EmoParse también incluye un scraper para Casa Rosada:
@@ -82,6 +83,7 @@ emoparse scrape      Scrapea discursos desde una source registrada
 emoparse status      Resumen pending/failed/completed por stage
 emoparse inspect     Estado completo de un discurso particular
 emoparse retry       Limpia errores para reintentar (modo legacy o policy YAML)
+emoparse discoveries Gestiona actores no reconocidos por la homogeneización (listar, exportar, promover, fusionar, descartar)
 emoparse validate    Corre los domain validators sobre las emociones
 emoparse judge       Resumen de veredictos del LLM-as-judge
 emoparse metrics     Métricas persistidas por stage

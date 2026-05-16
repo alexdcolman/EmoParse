@@ -943,6 +943,7 @@ body.at-home main > footer { display: block; }
         <li><a href="#cli-status" class="depth-2">status</a></li>
         <li><a href="#cli-inspect" class="depth-2">inspect</a></li>
         <li><a href="#cli-retry" class="depth-2">retry</a></li>
+        <li><a href="#cli-discoveries" class="depth-2">discoveries</a></li>
         <li><a href="#cli-validate" class="depth-2">validate</a></li>
         <li><a href="#cli-judge" class="depth-2">judge</a></li>
         <li><a href="#cli-metrics" class="depth-2">metrics</a></li>
@@ -1090,7 +1091,7 @@ body.at-home main > footer { display: block; }
   <div class="cards">
     <div class="card">
       <h4>Reproducibilidad</h4>
-      <p>Cada corrida vive en su propia base SQLite, con versionado fino de prompts, ontologías y schemas. Volver a ejecutar el mismo corpus produce los mismos resultados.</p>
+      <p>Cada run vive en su propia base SQLite, con versionado fino de prompts, ontologías y schemas. Volver a ejecutar el mismo corpus produce los mismos resultados.</p>
     </div>
     <div class="card">
       <h4>Trazabilidad</h4>
@@ -1325,13 +1326,13 @@ emoparse scrape --source casarosada \
 <pre data-lang="bash"><code>emoparse run \
   --config config.yaml \
   --input data/discursos.csv \
-  --run-id corrida_2024_q1</code></pre>
-      <p>El pipeline crea <code>runs/corrida_2024_q1/run.sqlite</code> con todos los resultados.</p>
+  --run-id run_2024_q1</code></pre>
+      <p>El pipeline crea <code>runs/run_2024_q1.sqlite</code> con todos los resultados.</p>
     </li>
 
     <li>
       <strong>Mirá el progreso.</strong>
-<pre data-lang="bash"><code>emoparse status --db runs/corrida_2024_q1/run.sqlite</code></pre>
+<pre data-lang="bash"><code>emoparse status --db runs/run_2024_q1.sqlite</code></pre>
     </li>
 
     <li>
@@ -1340,7 +1341,7 @@ emoparse scrape --source casarosada \
 streamlit run src/emoparse/app/__main__.py
 
 <span class="c-comment"># O exportar a CSV</span>
-emoparse export --db runs/corrida_2024_q1/run.sqlite --out exports/</code></pre>
+emoparse export --db runs/run_2024_q1.sqlite --out exports/</code></pre>
     </li>
   </ol>
 </section>
@@ -1452,10 +1453,10 @@ huggingface-cli download Qwen/Qwen3-14B-Instruct-GGUF \
   <p>Si alguna stage tuvo fallas (por ejemplo emotions falló en 8 frases por timeout), no hace falta recorrer todo:</p>
 
 <pre data-lang="bash"><code><span class="c-comment"># Ver qué quedó pendiente</span>
-emoparse status --db runs/presidencial_q1_2024/run.sqlite
+emoparse status --db runs/presidencial_q1_2024.sqlite
 
 <span class="c-comment"># Reintentar solo los failed de la stage emotions</span>
-emoparse retry --db runs/presidencial_q1_2024/run.sqlite --stage emotions
+emoparse retry --db runs/presidencial_q1_2024.sqlite --stage emotions
 
 <span class="c-comment"># Reanudar el pipeline (saltea lo ya completado)</span>
 emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
@@ -1475,7 +1476,7 @@ emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
 
   <h3>6. Validar coherencia semiótica</h3>
 
-<pre data-lang="bash"><code>emoparse validate --db runs/presidencial_q1_2024/run.sqlite
+<pre data-lang="bash"><code>emoparse validate --db runs/presidencial_q1_2024.sqlite
 <span class="c-comment"># Imprime resumen de issues detectadas por los domain validators</span></code></pre>
 
   <h3>7. Explorar resultados</h3>
@@ -1489,7 +1490,7 @@ streamlit run src/emoparse/app/__main__.py
   <h3>8. Exportar a CSV</h3>
 
 <pre data-lang="bash"><code>emoparse export \
-  --db  runs/presidencial_q1_2024/run.sqlite \
+  --db  runs/presidencial_q1_2024.sqlite \
   --out exports/presidencial_q1_2024/
 
 <span class="c-comment"># Produce:</span>
@@ -1606,7 +1607,7 @@ streamlit run src/emoparse/app/__main__.py
   <h3 id="cuatro-pilares">Cuatro pilares</h3>
   <dl class="terms">
     <dt>Una DB por run</dt>
-    <dd>Cada corrida produce un archivo SQLite independiente en <code>runs/&lt;run_id&gt;/run.sqlite</code>. Esto da reproducibilidad, comparabilidad entre corridas, y permite que el dashboard lea sin bloquear al pipeline (WAL mode).</dd>
+    <dd>Cada run produce un archivo SQLite independiente en <code>runs/&lt;run_id.sqlite</code>. Esto da reproducibilidad, comparabilidad entre runs, y permite que el dashboard lea sin bloquear al pipeline (WAL mode).</dd>
 
     <dt>Generación estructurada</dt>
     <dd>Cada agente declara un schema Pydantic. <strong>llama.cpp</strong> usa GBNF (compilado desde el schema) que restringe el sampler a nivel token. <strong>LM Studio</strong> usa <code>response_format: json_schema</code> en modo estricto. En ambos casos, la salida del LLM es válida por construcción.</dd>
@@ -1969,7 +1970,7 @@ streamlit run src/emoparse/app/__main__.py
     Para inspeccionar el estado del cache:
   </p>
 
-<pre data-lang="bash"><code>emoparse stats --db runs/&lt;run_id&gt;/run.sqlite</code></pre>
+<pre data-lang="bash"><code>emoparse stats --db runs/&lt;run_id.sqlite</code></pre>
 
   <p>
     Imprime conteo de entradas, hit rate de la sesión, y desglose por modelo.
@@ -2218,6 +2219,7 @@ streamlit run src/emoparse/app/__main__.py
     <span class="pill"><code>status</code></span>
     <span class="pill"><code>inspect</code></span>
     <span class="pill"><code>retry</code></span>
+    <span class="pill"><code>discoveries</code></span>
     <span class="pill"><code>validate</code></span>
     <span class="pill"><code>judge</code></span>
     <span class="pill"><code>metrics</code></span>
@@ -2240,9 +2242,9 @@ streamlit run src/emoparse/app/__main__.py
 <pre data-lang="bash"><code>emoparse run \
   <span class="c-flag">--config</span>    config.yaml \
   <span class="c-flag">--input</span>     data/discursos.csv \
-  <span class="c-flag">--run-id</span>    mi_corrida \
+  <span class="c-flag">--run-id</span>    mi_run \
   [<span class="c-flag">--genre</span>     discurso_presidencial] \
-  [<span class="c-flag">--db</span>        runs/mi_corrida/run.sqlite] \
+  [<span class="c-flag">--db</span>        runs/mi_run.sqlite] \
   [<span class="c-flag">--stages</span>    summarizer,metadata,emotions]</code></pre>
 
 <div class="table-wrap">
@@ -2253,7 +2255,7 @@ streamlit run src/emoparse/app/__main__.py
       <tr><td><code>--input</code></td><td>CSV o JSON con los discursos. Requerido.</td></tr>
       <tr><td><code>--run-id</code></td><td>Identificador del run. Define el directorio bajo <code>runs/</code>.</td></tr>
       <tr><td><code>--genre</code></td><td>Género del corpus. Default: <code>discurso_presidencial</code>.</td></tr>
-      <tr><td><code>--db</code></td><td>Path explícito a la DB. Si no se pasa, se resuelve como <code>runs/&lt;run_id&gt;/run.sqlite</code>.</td></tr>
+      <tr><td><code>--db</code></td><td>Path explícito a la DB. Si no se pasa, se resuelve como <code>runs/&lt;run_id.sqlite</code>.</td></tr>
       <tr><td><code>--stages</code></td><td>Lista de stages a ejecutar, separada por coma. Si no se pasa, corre todas las stages default del género.</td></tr>
     </tbody>
   </table>
@@ -2291,7 +2293,7 @@ streamlit run src/emoparse/app/__main__.py
 <h3 id="cli-status"><code>emoparse status</code></h3>
 <p>Tabla ASCII con conteos de pendientes / fallidos / completados por stage.</p>
 
-<pre data-lang="bash"><code>emoparse status <span class="c-flag">--db</span> runs/mi_corrida/run.sqlite</code></pre>
+<pre data-lang="bash"><code>emoparse status <span class="c-flag">--db</span> runs/mi_run.sqlite</code></pre>
 
 <p>Salida típica:</p>
 
@@ -2310,7 +2312,7 @@ characterizer         128       0       2194   2322</code></pre>
 <p>Imprime el estado completo de un discurso particular: input, payloads de cada stage, frases y emociones detectadas.</p>
 
 <pre data-lang="bash"><code>emoparse inspect \
-  <span class="c-flag">--db</span>     runs/mi_corrida/run.sqlite \
+  <span class="c-flag">--db</span>     runs/mi_run.sqlite \
   <span class="c-flag">--codigo</span> 2024-03-15-anuncio-medida</code></pre>
 
 <p>
@@ -2325,7 +2327,7 @@ characterizer         128       0       2194   2322</code></pre>
 
 <pre data-lang="bash"><code><span class="c-comment"># Limpia todos los errores de la stage emotions</span>
 emoparse retry \
-  <span class="c-flag">--db</span>    runs/mi_corrida/run.sqlite \
+  <span class="c-flag">--db</span>    runs/mi_run.sqlite \
   <span class="c-flag">--stage</span> emotions</code></pre>
 
 <h4>Modo policy — declarativo</h4>
@@ -2349,12 +2351,12 @@ emoparse retry \
 
 <pre data-lang="bash"><code><span class="c-comment"># Aplicar policies (marca filas como pending)</span>
 emoparse retry \
-  <span class="c-flag">--db</span>     runs/mi_corrida/run.sqlite \
+  <span class="c-flag">--db</span>     runs/mi_run.sqlite \
   <span class="c-flag">--policy</span> retry.yaml
 
 <span class="c-comment"># O aplicar policies Y ejecutar el pipeline en el mismo paso</span>
 emoparse retry \
-  <span class="c-flag">--db</span>     runs/mi_corrida/run.sqlite \
+  <span class="c-flag">--db</span>     runs/mi_run.sqlite \
   <span class="c-flag">--policy</span> retry.yaml \
   <span class="c-flag">--config</span> config.yaml \
   <span class="c-flag">--input</span>  data/discursos.csv</code></pre>
@@ -2364,12 +2366,146 @@ emoparse retry \
   <code>contains</code>, <code>is_null</code>, <code>is_not_null</code>.
 </p>
 
+<!-- ───── discoveries ─────────────────────────────────────────────── -->
+<h3 id="cli-discoveries"><code>emoparse discoveries</code></h3>
+<p>
+  Gestiona los actores no reconocidos que la etapa <code>normalize_actors</code>
+  registró como hallazgos (<em>discoveries</em>). Flujo típico: revisar con
+  <code>list</code>, registrar decisiones con <code>promote</code> /
+  <code>merge</code> / <code>discard</code>, y aplicarlas al JSON de la base de
+  conocimiento con <code>apply</code>.
+</p>
+
+<h4>list — listar discoveries pendientes</h4>
+
+<pre data-lang="bash"><code>emoparse discoveries list \
+  <span class="c-flag">--db</span>         runs/mi_run.sqlite \
+  [<span class="c-flag">--codigo</span>     2024-03-15-anuncio-medida] \
+  [<span class="c-flag">--confianza</span>  alta]</code></pre>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Flag</th><th>Qué hace</th></tr></thead>
+    <tbody>
+      <tr><td><code>--db</code></td><td>Path a la DB SQLite del run. Requerido.</td></tr>
+      <tr><td><code>--codigo</code></td><td>Filtra por código de discurso.</td></tr>
+      <tr><td><code>--confianza</code></td><td>Filtra por nivel de confianza del detector (<code>alta</code>, <code>media</code>, <code>baja</code>).</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>
+  Muestra ID, código, índice de unidad, confianza y mención de cada discovery.
+  Si ya tiene una decisión registrada (pendiente de aplicar o fallida), la
+  indica al lado.
+</p>
+
+<h4>export — exportar a CSV</h4>
+
+<pre data-lang="bash"><code>emoparse discoveries export \
+  <span class="c-flag">--db</span>     runs/mi_run.sqlite \
+  <span class="c-flag">--output</span> exports/discoveries.csv \
+  [<span class="c-flag">--codigo</span> 2024-03-15-anuncio-medida]</code></pre>
+
+<p>
+  Exporta los discoveries pendientes a CSV (UTF-8), incluyendo contexto,
+  justificación y decisión actual si la hay. Útil para revisar en bloque
+  fuera del terminal.
+</p>
+
+<h4>promote — promover a actor canónico nuevo</h4>
+
+<pre data-lang="bash"><code>emoparse discoveries promote \
+  <span class="c-flag">--db</span>           runs/mi_run.sqlite \
+  <span class="c-flag">--id</span>           42 \
+  <span class="c-flag">--canonical-id</span> milei_javier \
+  <span class="c-flag">--display-name</span> <span class="c-str">"Javier Milei"</span> \
+  [<span class="c-flag">--tipo</span>         persona] \
+  [<span class="c-flag">--rol</span>          presidente]</code></pre>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Flag</th><th>Qué hace</th></tr></thead>
+    <tbody>
+      <tr><td><code>--id</code></td><td>ID del discovery (ver <code>list</code>). Requerido.</td></tr>
+      <tr><td><code>--canonical-id</code></td><td>Identificador canónico del nuevo actor en la KB. Requerido.</td></tr>
+      <tr><td><code>--display-name</code></td><td>Nombre de display. Requerido.</td></tr>
+      <tr><td><code>--tipo</code></td><td>Tipo de actor (<code>persona</code>, <code>colectivo</code>, <code>institución</code>, etc.).</td></tr>
+      <tr><td><code>--rol</code></td><td>Rol opcional en el corpus.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>
+  Registra la decisión en la DB. No modifica la KB hasta correr <code>apply</code>.
+</p>
+
+<h4>merge — fusionar como alias de un actor existente</h4>
+
+<pre data-lang="bash"><code>emoparse discoveries merge \
+  <span class="c-flag">--db</span>   runs/mi_run.sqlite \
+  <span class="c-flag">--id</span>   42 \
+  <span class="c-flag">--into</span> milei_javier</code></pre>
+
+<p>
+  Registra que la mención del discovery es un alias del actor canónico
+  <code>--into</code>. Pendiente de aplicar con <code>apply</code>.
+</p>
+
+<h4>discard — descartar como ruido</h4>
+
+<pre data-lang="bash"><code>emoparse discoveries discard \
+  <span class="c-flag">--db</span> runs/mi_run.sqlite \
+  <span class="c-flag">--id</span> 42</code></pre>
+
+<p>
+  Registra que el discovery es ruido y no corresponde agregar el actor a la KB.
+  Pendiente de aplicar con <code>apply</code>.
+</p>
+
+<h4>apply — aplicar decisiones a la base de conocimiento</h4>
+
+<pre data-lang="bash"><code>emoparse discoveries apply \
+  <span class="c-flag">--db</span>       runs/mi_run.sqlite \
+  <span class="c-flag">--kb</span>       knowledge/actors.json \
+  [<span class="c-flag">--dry-run</span>]   <span class="c-comment"># muestra qué haría sin modificar nada</span></code></pre>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Flag</th><th>Qué hace</th></tr></thead>
+    <tbody>
+      <tr><td><code>--kb</code></td><td>Path al JSON de la base de conocimiento de actores. Requerido.</td></tr>
+      <tr><td><code>--dry-run</code></td><td>Lista las decisiones que se aplicarían sin tocar la KB.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<p>
+  Aplica todas las decisiones con estado <code>pending</code>: crea actores nuevos
+  (<code>promote</code>), agrega aliases (<code>merge</code>) o descarta menciones
+  (<code>discard</code>). Hace backup automático de la KB antes de cualquier
+  mutación. Es idempotente: re-correrlo sobre decisiones ya aplicadas no produce
+  efectos.
+</p>
+
+<div class="callout note">
+  <span class="callout-label">Flujo recomendado</span>
+  <p>
+    <code>list</code> → revisar en terminal o <code>export</code> a CSV para
+    lotes grandes → registrar decisiones con <code>promote</code> /
+    <code>merge</code> / <code>discard</code> → <code>apply --dry-run</code>
+    para confirmar → <code>apply</code>. Las decisiones fallidas quedan
+    marcadas con su error y se pueden corregir registrando una nueva decisión
+    (sobrescribe la anterior).
+  </p>
+</div>
+
 <!-- ───── validate ────────────────────────────────────────────────── -->
 <h3 id="cli-validate"><code>emoparse validate</code></h3>
 <p>Corre los <em>domain validators</em> sobre las emociones caracterizadas e imprime resumen.</p>
 
 <pre data-lang="bash"><code>emoparse validate \
-  <span class="c-flag">--db</span> runs/mi_corrida/run.sqlite \
+  <span class="c-flag">--db</span> runs/mi_run.sqlite \
   [<span class="c-flag">--detail</span>]    <span class="c-comment"># imprime cada issue, no solo agregados</span></code></pre>
 
 <p>
@@ -2382,7 +2518,7 @@ emoparse retry \
 <p>Imprime resumen de los juicios persistidos por el stage <code>judge</code>. No ejecuta nada — para correr el juez, usá <code>emoparse run --stages judge</code>.</p>
 
 <pre data-lang="bash"><code>emoparse judge \
-  <span class="c-flag">--db</span> runs/mi_corrida/run.sqlite \
+  <span class="c-flag">--db</span> runs/mi_run.sqlite \
   [<span class="c-flag">--incoherent</span>]   <span class="c-comment"># lista solo veredictos incoherente=true</span>
   [<span class="c-flag">--coherent</span>]     <span class="c-comment"># lista solo veredictos coherente=true</span></code></pre>
 
@@ -2390,7 +2526,7 @@ emoparse retry \
 <h3 id="cli-metrics"><code>emoparse metrics</code></h3>
 <p>Métricas persistidas por stage: items OK/failed, latencias (p50, p99), tokens, cache hits.</p>
 
-<pre data-lang="bash"><code>emoparse metrics <span class="c-flag">--db</span> runs/mi_corrida/run.sqlite</code></pre>
+<pre data-lang="bash"><code>emoparse metrics <span class="c-flag">--db</span> runs/mi_run.sqlite</code></pre>
 
 <p>
   Muestra la última ejecución registrada para cada stage. Útil para diagnosticar
@@ -2401,15 +2537,15 @@ emoparse retry \
 <h3 id="cli-stats"><code>emoparse stats</code></h3>
 <p>Estadísticas del cache LLM: total de entradas, hit rate de la sesión, distribución por modelo.</p>
 
-<pre data-lang="bash"><code>emoparse stats <span class="c-flag">--db</span> runs/mi_corrida/run.sqlite</code></pre>
+<pre data-lang="bash"><code>emoparse stats <span class="c-flag">--db</span> runs/mi_run.sqlite</code></pre>
 
 <!-- ───── export ──────────────────────────────────────────────────── -->
 <h3 id="cli-export"><code>emoparse export</code></h3>
 <p>Exporta las tres tablas principales a CSV.</p>
 
 <pre data-lang="bash"><code>emoparse export \
-  <span class="c-flag">--db</span>  runs/mi_corrida/run.sqlite \
-  <span class="c-flag">--out</span> exports/mi_corrida/</code></pre>
+  <span class="c-flag">--db</span>  runs/mi_run.sqlite \
+  <span class="c-flag">--out</span> exports/mi_run/</code></pre>
 
 <p>Produce:</p>
 <ul>
@@ -2619,7 +2755,7 @@ comunicado = <span class="c-str">"mi_paquete.genres.comunicado:get_genre"</span>
       <strong>Usarlo.</strong>
 
 <pre data-lang="bash"><code>emoparse run --config config.yaml --input data/x.csv \
-  --run-id corrida --genre comunicado</code></pre>
+  --run-id run --genre comunicado</code></pre>
     </li>
   </ol>
 
@@ -2772,7 +2908,7 @@ comunicado = <span class="c-str">"mi_paquete.genres.comunicado:get_genre"</span>
       esté en <code>enabled_stages</code>.
 
 <pre data-lang="bash"><code>emoparse run --config config.yaml --input data/x.csv \
-  --run-id corrida --stages mi_stage</code></pre>
+  --run-id run --stages mi_stage</code></pre>
     </li>
   </ol>
 </section>
@@ -2985,7 +3121,7 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
     <li>
       <strong>Correrla.</strong>
 
-<pre data-lang="bash"><code>emoparse validate --db runs/mi_corrida/run.sqlite --detail</code></pre>
+<pre data-lang="bash"><code>emoparse validate --db runs/mi_run.sqlite --detail</code></pre>
     </li>
   </ol>
 </section>
@@ -3033,7 +3169,7 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
 │
 ├── <span class="dir">knowledge/</span>              <span class="comment"># ontologías, base de actores y heurísticas por agente (JSON/MD)</span>
 ├── <span class="dir">models/</span>                 <span class="comment"># GGUFs; no versionados en git</span>
-├── <span class="dir">runs/</span>                   <span class="comment"># una SQLite por corrida (runs/&lt;run_id&gt;/run.sqlite)</span>
+├── <span class="dir">runs/</span>                   <span class="comment"># una SQLite por run (runs/&lt;run_id.sqlite)</span>
 ├── <span class="dir">data/</span>                   <span class="comment"># corpus de entrada CSV/JSON</span>
 ├── <span class="dir">exports/</span>                <span class="comment"># salidas de emoparse export</span>
 │
@@ -3054,10 +3190,10 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
 
   <h3>Una DB SQLite por run, no una compartida</h3>
   <p>
-    Cada corrida produce un archivo independiente en
-    <code>runs/&lt;run_id&gt;/run.sqlite</code>. Esto da reproducibilidad
+    Cada run produce un archivo independiente en
+    <code>runs/&lt;run_id.sqlite</code>. Esto da reproducibilidad
     (cada run lleva su versión de prompts, ontologías, schemas), permite
-    comparar corridas trivialmente, y evita lock contention con el dashboard
+    comparar runs trivialmente, y evita lock contention con el dashboard
     (gracias a WAL mode). La alternativa — una DB global con una columna
     <code>run_id</code> — generaría queries más complejos sin beneficios.
   </p>
@@ -3220,7 +3356,7 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
     Query ad-hoc desde sqlite3:
   </p>
 
-<pre data-lang="bash"><code>sqlite3 runs/mi_corrida/run.sqlite \
+<pre data-lang="bash"><code>sqlite3 runs/mi_run.sqlite \
   <span class="c-str">"SELECT codigo, COUNT(*) FROM frases WHERE emociones_payload IS NOT NULL GROUP BY codigo;"</span></code></pre>
 </section>
 
