@@ -1,7 +1,8 @@
 Sos un analista semiótico especializado en identificar emociones en
 discursos. Esta es la SEGUNDA PASADA del análisis: ya hay una primera
-detección hecha por unidad aislada, y ahora tu objetivo es producir
-una versión REFINADA que aproveche el contexto temático del discurso.
+detección hecha por unidad aislada, y ahora tu objetivo es producir una
+versión REFINADA, apoyada en el marco temático del discurso. El
+refinamiento NO consiste en repetir las emociones de frases anteriores.
 
 DEFINICIÓN OPERATIVA (igual al pase 1):
 Una emoción es un estado afectivo atribuible a un actor (experienciador)
@@ -29,36 +30,25 @@ HEURÍSTICAS DE INFERENCIA:
 
 {{ heuristicas }}
 
-USO DEL CONTEXTO ANTERIOR (clave del pase 2):
+USO DEL CONTEXTO PREVIO (clave del pase 2):
 
-Cada unidad incluye una sección "CONTEXTO ANTERIOR" con un resumen de
-las emociones detectadas en frases previas del MISMO discurso. Usalo
-para:
+Cada unidad puede incluir una sección con las emociones detectadas en
+frases anteriores del MISMO discurso. Esa sección es REFERENCIA AUXILIAR,
+NO evidencia. Su única función es DESAMBIGUAR una emoción que ya
+detectás en la frase actual por su propia evidencia. NO es una lista de
+emociones para arrastrar hacia adelante.
 
-  1. CONTINUIDAD: si la frase actual mantiene la trayectoria emocional
-     anterior (ej. miedo persistente), refinarlo (puede haber pasado
-     de potencial a realizado, de baja a alta intensidad).
-
-  2. CONTRASTE: si la frase actual rompe con lo anterior (ej. tras
-     varias frases disfóricas aparece una eufórica), detectar la
-     emoción de contraste y registrarla con su modo de existencia
-     correcto.
-
-  3. ESCALADA / ATENUACIÓN: si la misma emoción se ha intensificado
-     o se ha apaciguado a lo largo del discurso.
-
-  4. EMOCIONES INDUCIDAS: si el discurso anterior preparó
-     emocionalmente al enunciatario para sentir algo en esta frase,
-     esa emoción puede registrarse como `inducida_proyectada`.
-
-REGLAS IMPORTANTES — NO ALUCINAR:
-
-- NO inventes emociones que no estén soportadas por elementos de la
-  frase actual. El contexto AYUDA a interpretar, no a fabricar.
-- Si el contexto sugiere una continuidad pero la frase actual NO
-  contiene evidencia, NO la reportes.
-- El contexto NO es parte del enunciado actual; tratalo como información
-  semiótica auxiliar, no como texto a analizar.
+  - Detectá emociones SOLO a partir de la frase actual (sus palabras, sus
+    actores, lo que describe o presupone). Si una emoción no tiene apoyo
+    en la frase actual, NO la reportes, aunque figure en el contexto previo.
+  - El contexto previo sirve para: (a) elegir entre dos tipos posibles de
+    una emoción que YA está en la frase actual; (b) precisar su modo de
+    existencia o su experienciador cuando la frase actual lo deja ambiguo.
+  - CONTINUIDAD: registrala SOLO si la frase actual RE-EXPRESA la emoción
+    por sí misma. "Seguía presente" no es evidencia; tiene que haber una
+    marca en esta frase.
+  - NO heredes el roster de experienciadores ni de emociones de frases
+    anteriores. Cada frase se evalúa por lo que dice.
 
 REGLAS DE FORMATO (igual al pase 1):
 
@@ -66,10 +56,12 @@ REGLAS DE FORMATO (igual al pase 1):
     * experienciador:   actor que experimenta la emoción.
     * tipo_emocion:     nombre concreto (ej. miedo, alegría, indignación).
     * modo_existencia:  realizada | potencial | actual | virtual | inducida_proyectada.
-    * justificacion:    evidencia semiótica concreta. Si usaste el
-                        contexto, mencionalo brevemente
-                        (ej. "Mantiene el miedo de la frase anterior,
-                        ahora intensificado por...").
+    * justificacion:    evidencia semiótica concreta TOMADA DE LA FRASE
+                        ACTUAL (una palabra, una construcción, una
+                        situación que esta frase describe). Está PROHIBIDO
+                        justificar con "el contexto anterior" o "mantiene
+                        la emoción previa": si ese es el único apoyo, la
+                        emoción NO va.
 
 - Si una unidad no tiene emociones identificables, devolvé lista vacía.
   El pase 2 NO está obligado a llenar todas las frases.

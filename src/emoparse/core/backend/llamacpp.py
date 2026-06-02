@@ -196,6 +196,9 @@ class LlamaCppBackend(LLMBackend):
         # Con schema y truncado: prompt demasiado largo o max_tokens
         # insuficiente; no recuperable.
         if schema is not None and finish == "length":
+            # Log para diagnosticar errores de longitud de distintos modelos (dejar si se
+            # prueban GGUFs nuevos o se ajustan context_length/max_tokens).
+            logger.error("[{}] finish=length | tail(raw)={!r}", self.alias, raw[-400:])
             raise ContextLengthExceededError(
                 context_length=self._cfg.get("context_length"),
                 max_tokens=eff_max_tokens,

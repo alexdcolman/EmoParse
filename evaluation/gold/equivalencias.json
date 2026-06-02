@@ -1,0 +1,31 @@
+{
+  "version": "v2",
+  "nota": "Clusters de equivalencia para la EVALUACIÓN (no para la ontología). Dos etiquetas que caen en el mismo cluster se cuentan como acierto de tipo. Criterio: agrupa variantes interpretativas de una MISMA valencia/familia (p. ej. una frase que un anotador lee como 'indignación' y otro como 'desaprobación'); NO agrupa emociones de valencia opuesta. Decisiones editables y a revisar: (a) 'ira' absorbe indignación/desaprobación/descontento/odio; (b) 'confianza' absorbe determinación/resistencia; (c) 'amor' absorbe aprecio/admiración; (d) angustia->ansiedad, melancolía->tristeza, indignación->ira (resueltos como propios en la ontología pero equivalentes acá). Un término en un solo cluster. El eval normaliza mayúsculas/tildes.",
+  "clusters": {
+    "ira": ["enojo", "rabia", "furia", "indignacion", "indignación", "colera", "cólera", "colera_moral", "cólera_moral", "escandalo_moral", "escándalo_moral", "ultraje", "bronca", "irritacion", "irritación", "odio", "desaprobacion", "desaprobación", "descontento"],
+    "miedo": ["temor", "terror", "panico", "pánico", "aprension", "aprensión", "susto", "pavor"],
+    "ansiedad": ["nerviosismo", "zozobra", "inquietud", "intranquilidad", "alarma", "tension", "tensión", "angustia", "congoja", "desasosiego"],
+    "tristeza": ["pena", "dolor", "pesar", "duelo", "luto", "abatimiento", "depresion", "depresión", "melancolia", "melancolía", "nostalgia", "añoranza", "anioranza", "morriña", "morrina", "desconsuelo"],
+    "alegria": ["alegría", "felicidad", "jubilo", "júbilo", "gozo", "contento", "euforia", "entusiasmo", "satisfaccion", "satisfacción", "regocijo", "triunfo"],
+    "esperanza": ["ilusion", "ilusión", "anhelo", "expectativa", "optimismo"],
+    "amor": ["cariño", "carino", "afecto", "ternura", "apego", "adoracion", "adoración", "aprecio", "admiracion", "admiración"],
+    "confianza": ["fe", "seguridad", "certeza", "conviccion", "convicción", "credibilidad", "determinacion", "determinación", "resistencia", "aplomo"],
+    "aprobacion": ["aprobación", "reconocimiento", "aval", "respaldo", "elogio"],
+    "orgullo": ["dignidad", "autoestima", "honor", "soberbia"],
+    "sorpresa": ["asombro", "estupor", "extrañeza", "extranieza", "perplejidad", "desconcierto", "shock"],
+    "asco": ["repugnancia", "repulsion", "repulsión", "disgusto", "aversion", "aversión", "nausea", "náusea", "rechazo", "desprecio"],
+    "desconfianza": ["recelo", "sospecha", "suspicacia"],
+    "decepcion": ["decepción", "desilusion", "desilusión", "frustracion", "frustración", "desengaño", "desenganio"],
+    "desesperanza": ["desesperacion", "desesperación", "desaliento", "desanimo", "desánimo"],
+    "preocupacion": ["preocupación"],
+    "culpa": ["remordimiento", "arrepentimiento", "verguenza_moral", "vergüenza_moral"],
+    "verguenza": ["vergüenza", "humillacion", "humillación", "bochorno", "pudor"],
+    "tranquilidad": ["calma", "serenidad", "sosiego", "alivio", "paz"],
+    "indiferencia": ["apatia", "apatía", "desinteres", "desinterés", "frialdad"],
+    "interes": ["interés", "curiosidad"],
+    "agradecimiento": ["gratitud"],
+    "ambicion": ["ambición", "codicia"],
+    "ironia": ["ironía", "sarcasmo", "burla"],
+    "conmocion": ["conmoción", "impacto", "sacudida", "emocion_profunda", "emoción_profunda"]
+  }
+}

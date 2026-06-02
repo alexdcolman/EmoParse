@@ -226,7 +226,7 @@ def compute_emotion_rolling_summary(
         # Después: agregar las emociones de esta frase a la historia
         # para que aparezcan en el resumen de la próxima.
         emociones_raw = row.get("emociones")
-        emociones_str = _format_emociones_for_history(
+        emociones_str = _format_frase_for_history(
             emociones_raw,
             unit_idx=int(row["unit_idx"]),
         )
@@ -293,7 +293,7 @@ def compute_emotion_full_summary(
 
         # Agregar emociones de esta frase para las siguientes.
         emociones_raw = row.get("emociones")
-        emociones_str = _format_emociones_for_history(
+        emociones_str = _format_frase_for_history(
             emociones_raw,
             unit_idx=int(row["unit_idx"]),
         )
@@ -315,12 +315,12 @@ def compute_emotion_full_summary(
     return sorted_df
 
 
-def _format_emociones_for_history(
+def _format_frase_for_history(
     raw: Any,
     *,
     unit_idx: int,
 ) -> str | None:
-    """Formatea las emociones de una frase para el historial contextual."""
+    """Formatea las frases para el historial contextual."""
     if raw is None or (isinstance(raw, float) and pd.isna(raw)):
         return None
     if isinstance(raw, str):

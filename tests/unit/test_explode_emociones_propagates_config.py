@@ -24,8 +24,11 @@ class _FakeDiscursosRepo:
 
 
 class _FakeFrasesRepo:
-    def __init__(self, frases: dict[str, list[tuple[int, str]]],
-                 emociones: dict[tuple[str, int], list[dict[str, Any]]]) -> None:
+    def __init__(
+        self,
+        frases: dict[str, list[tuple[int, str]]],
+        emociones: dict[tuple[str, int], list[dict[str, Any]]],
+    ) -> None:
         self._frases = frases
         self._emociones = emociones
 
@@ -33,7 +36,7 @@ class _FakeFrasesRepo:
         return self._frases.get(codigo, [])
 
     def get_payload(self, codigo: str, frase_idx: int, key: str) -> Any:
-        assert key == "emociones"
+        assert key in {"emociones", "emociones_pass2"}
         return self._emociones.get((codigo, frase_idx))
 
 

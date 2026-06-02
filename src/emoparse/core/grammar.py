@@ -19,7 +19,7 @@ boolean ::= "true" | "false"
 null ::= "null"
 
 #: Whitespace permitido entre tokens JSON (no dentro de strings).
-ws ::= ([ \t\n] ws)?
+ws ::= [ \t\n]{0,32}
 
 #: String JSON: comillas + (char escapado | unicode-escape | char permitido)+
 string ::= "\"" (
@@ -128,6 +128,13 @@ class _GrammarBuilder:
         if node_type == "array":
             return self._visit_array(node, path=path)
         if node_type == "string":
+            # Bound opcional por maxLength (Pydantic `Field(max_length=N)` sobre
+            # un str). Sin maxLength se conserva la primitiva `string` ilimitada.
+            if "maxLength" in node:
+                return self._bounded_string_rule(
+                    min_len=node.get("minLength", 1),
+                    max_len=node["maxLength"],
+                )
             return "string"
         if node_type == "integer":
             return "integer"
@@ -211,14 +218,26 @@ class _GrammarBuilder:
             )
 
         item_rule = self._visit(items, path=f"{path}/items")
-        # Lista posiblemente vacía con elementos separados por coma.
-        # Patrón GBNF estándar para `[item (, item)*]`:
-        #   "[" ws ( item (ws "," ws item)* )? ws "]"
-        body = (
-            r'"[" ws '
-            r'( ' + item_rule + r' (ws "," ws ' + item_rule + r')* )? '
-            r'ws "]"'
-        )
+        # Bound opcional: si el schema declara `maxItems` (Pydantic
+        # `Field(max_length=N)` sobre una lista), la gramática acota la
+        # repetición por construcción, garantizando terminación. Sin
+        # `maxItems`, se conserva exactamente el patrón ilimitado original.
+        max_items = node.get("maxItems")
+        if max_items is not None:
+            body = self._bounded_array_body(
+                item_rule,
+                min_items=node.get("minItems", 0),
+                max_items=max_items,
+            )
+        else:
+            # Lista posiblemente vacía con elementos separados por coma.
+            # Patrón GBNF estándar para `[item (, item)*]`:
+            #   "[" ws ( item (ws "," ws item)* )? ws "]"
+            body = (
+                r'"[" ws '
+                r'( ' + item_rule + r' (ws "," ws ' + item_rule + r')* )? '
+                r'ws "]"'
+            )
         if reserved is not None:
             rule_name = reserved
             self._rules[rule_name] = body
@@ -227,6 +246,74 @@ class _GrammarBuilder:
         # generan regla nombrada para consistencia.
         rule_name = self._make_rule_name(node, path=path, prefix="arr")
         self._rules[rule_name] = body
+        return rule_name
+
+    # ── array acotado (maxItems) ─────────────────────────────────────────────
+
+    @staticmethod
+    def _bounded_array_body(item_rule: str, *, min_items: int, max_items: int) -> str:
+        """Cuerpo GBNF para un array con [min_items, max_items] elementos.
+
+        Usa solo `?`, `()` y literales — sin el operador `{m,n}` — para ser
+        compatible con cualquier versión de GBNF de llama.cpp. La repetición
+        acotada se expande como opcionales anidados (un elemento solo aparece
+        si apareció el anterior), lo que además prohíbe coma final.
+        """
+        lo = max(0, int(min_items))
+        hi = int(max_items)
+        if hi < lo:
+            raise GrammarError(
+                f"Array con maxItems ({hi}) < minItems ({lo}): inconsistente"
+            )
+        if hi == 0:
+            return r'"[" ws "]"'
+
+        sep_item = r'ws "," ws ' + item_rule
+
+        def opt_tail(k: int) -> str:
+            # k elementos adicionales opcionales, anidados (contiguos).
+            if k <= 0:
+                return ""
+            return r'( ' + sep_item + r' ' + opt_tail(k - 1) + r' )?'
+
+        if lo == 0:
+            # Cero-o-más, hasta hi: head opcional + cola opcional.
+            inner = item_rule + r' ' + opt_tail(hi - 1)
+            return r'"[" ws ( ' + inner + r' )? ws "]"'
+
+        # head requerido de `lo` elementos, luego cola opcional hasta hi.
+        head = item_rule
+        for _ in range(lo - 1):
+            head += r' ' + sep_item
+        tail = opt_tail(hi - lo)
+        return r'"[" ws ' + head + r' ' + tail + r' ws "]"'
+
+    # ── string acotado (maxLength) ───────────────────────────────────────────
+
+    def _bounded_string_rule(self, *, min_len: int, max_len: int) -> str:
+        """Regla GBNF para un string JSON de [min_len, max_len] caracteres.
+
+        Reusa exactamente la clase de caracteres de la primitiva `string`
+        (mismo escapeo/unicode), pero acota la repetición con el operador
+        `{m,n}` de GBNF, garantizando terminación. Preserva el >=1 char de la
+        primitiva original (default min_len=1). La regla se cachea por
+        (min_len, max_len), así varios campos con el mismo bound la comparten.
+        """
+        lo = max(0, int(min_len))
+        hi = int(max_len)
+        if hi < lo:
+            raise GrammarError(
+                f"String con maxLength ({hi}) < minLength ({lo}): inconsistente"
+            )
+        rule_name = f"string-max-{lo}-{hi}"
+        if rule_name not in self._rules:
+            char = (
+                r'[^"\\\x7F\x00-\x1F] | '
+                r'"\\" (["\\bfnrt] | "u" [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F])'
+            )
+            self._rules[rule_name] = (
+                r'"\"" ( ' + char + r' ){' + f"{lo},{hi}" + r'} "\""'
+            )
         return rule_name
 
     # ── enum ─────────────────────────────────────────────────────────────────

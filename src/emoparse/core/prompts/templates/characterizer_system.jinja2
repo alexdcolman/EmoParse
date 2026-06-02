@@ -33,6 +33,11 @@ FUENTE — qué desencadena la emoción:
 
 Para cada emoción, además del `tipo_fuente` (categoría), indicá la
 `fuente` concreta (quién o qué desencadena la emoción) en lenguaje natural.
+El campo `fuente` NO debe repetir el nombre de la categoría: nunca escribas
+ahí literalmente "actor", "situacion", "objeto", "experiencia", "espacio" ni
+"discurso_ajeno". Nombrá el desencadenante específico tal como aparece en la
+frase. Ej.: si `tipo_fuente` es 'actor', en `fuente` va "los socialistas",
+no "actor"; si es 'situacion', va "la suba de la inflación", no "situacion".
 Si `tipo_fuente` es 'no_se_identifica', escribí literalmente "no identificado"
 en `fuente`. NO dejes el campo vacío.
 

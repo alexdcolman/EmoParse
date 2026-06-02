@@ -20,6 +20,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 import pandas as pd
@@ -88,7 +89,7 @@ class SummarizerAgent:
             system=prompts.SYSTEM_FRAGMENTO,
             user=prompts.render_user_fragmento(fragmento=fragment_text),
         )
-        return response.raw.strip()
+        return _strip_reasoning(response.raw)
 
     def summarize_global(
         self,
@@ -111,7 +112,7 @@ class SummarizerAgent:
                 resumenes_parciales=joined,
             ),
         )
-        return response.raw.strip()
+        return _strip_reasoning(response.raw)
 
     # ── Procesamiento de DataFrame ───────────────────────────────────────────
 
@@ -214,6 +215,32 @@ class SummarizerAgent:
 # ══════════════════════════════════════════════════════════════════════════════
 #  Helpers
 # ══════════════════════════════════════════════════════════════════════════════
+
+#: Bloques de razonamiento (``<think>...</think>``) que algunos modelos
+#: emiten antes de la respuesta. El summarizer es el único agente sin schema
+#: de salida, por lo que su generación no está restringida por GBNF y puede
+#: incluirlos; el resto de los agentes los descarta por construcción.
+_REASONING_BLOCK_RE = re.compile(
+    r"<think\b[^>]*>.*?</think\s*>",
+    re.DOTALL | re.IGNORECASE,
+)
+
+
+def _strip_reasoning(text: str) -> str:
+    """Elimina bloques de razonamiento del texto generado.
+
+    Quita los pares ``<think>...</think>`` completos. Si el modelo emite
+    solo la etiqueta de cierre (la apertura quedó en un canal separado),
+    descarta todo lo anterior al último ``</think>``. Devuelve el texto
+    restante sin espacios sobrantes en los extremos.
+    """
+    cleaned = _REASONING_BLOCK_RE.sub("", text)
+    lowered = cleaned.lower()
+    if "</think>" in lowered:
+        cut = lowered.rfind("</think>") + len("</think>")
+        cleaned = cleaned[cut:]
+    return cleaned.strip()
+
 
 def _split_into_chunks(text: str, char_limit: int) -> list[str]:
     """Divide `text` en chunks de hasta `char_limit` caracteres.

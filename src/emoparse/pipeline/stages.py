@@ -808,9 +808,7 @@ class ExplodeEmocionesStage(Stage):
         frases = self._f_repo.list_frases_of_discurso(codigo)
         rows: list[dict[str, Any]] = []
         for frase_idx, _frase_text in frases:
-            emos_payload = self._f_repo.get_payload(
-                codigo, frase_idx, "emociones"
-            )
+            emos_payload = self._select_emociones_payload(codigo, frase_idx)
             if not isinstance(emos_payload, list):
                 continue
             for emo_idx, emo in enumerate(emos_payload):
@@ -831,6 +829,22 @@ class ExplodeEmocionesStage(Stage):
             self._validate(EmocionExplodedContract, df_rows, "salida")
             self._e_repo.upsert_emociones(rows)
         return len(rows)
+
+    def _select_emociones_payload(self, codigo: str, frase_idx: int) -> Any:
+        """Devuelve la lectura de emociones a explotar para una frase.
+
+        Prefiere el pase 2 cuando esa frase fue procesada por
+        ``emotions_pass2`` (su payload existe, aunque sea una lista vacía:
+        esa lista vacía es su veredicto refinado de que no hay emoción). Si
+        el pase 2 no corrió para la frase —o falló, dejando el payload en
+        NULL— cae al pase 1. Así el explode consume siempre la mejor lectura
+        disponible sin obligar a correr el pase 2 ni depender del orden de
+        las stages.
+        """
+        pass2 = self._f_repo.get_payload(codigo, frase_idx, "emociones_pass2")
+        if isinstance(pass2, list):
+            return pass2
+        return self._f_repo.get_payload(codigo, frase_idx, "emociones")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1045,6 +1059,7 @@ class EmotionsPass2Stage(Stage):
         configuraciones: str = "",
         rolling_window: int = 5,
         context_mode: Literal["rolling", "full"] = "rolling",
+        # "full" da más contexto de continuidad para detectar escaladas, a costa de prompt más largo
         agent_version: str | None = None,
         retry_config: RetryConfig | None = None,
         genre: Genre | None = None,

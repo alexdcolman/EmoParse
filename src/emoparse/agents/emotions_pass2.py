@@ -126,13 +126,14 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
             actores_str = self._format_actores(row.get("actores"))
             rolling = str(row.get("emotion_rolling", "")).strip()
             if not rolling:
-                rolling = "(sin contexto anterior)"
+                rolling = "(sin emociones previas)"
 
             bloques.append(
                 f"UNIDAD [{i}] (codigo={codigo}):\n"
                 f"FRASE: {frase}\n"
                 f"ACTORES IDENTIFICADOS: {actores_str}\n"
-                f"CONTEXTO ANTERIOR:\n{rolling}"
+                f"EMOCIONES EN FRASES PREVIAS "
+                f"(referencia auxiliar, NO evidencia de esta frase):\n{rolling}"
             )
         unidades_block = "\n\n".join(bloques)
         return prompts.render_user(unidades_block=unidades_block)

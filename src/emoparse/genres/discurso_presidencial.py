@@ -21,7 +21,11 @@ def get_genre() -> Genre:
             "contradestinatario",
         ),
         models={},
-        batch_size={},
+        batch_size={
+            "actors": 1,
+            "emotions": 1,
+            "emotions_pass2": 1,
+        },
         summarizer=True,
         prompt_overrides={},
     )

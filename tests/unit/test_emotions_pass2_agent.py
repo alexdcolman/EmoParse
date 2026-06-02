@@ -105,7 +105,10 @@ class TestSystemPrompt:
         system = backend.calls[0]["system"]
         # El system del pase 2 debe instruir sobre uso de contexto.
         assert "SEGUNDA PASADA" in system or "pase 2" in system.lower()
-        assert "CONTEXTO ANTERIOR" in system
+        assert (
+            "CONTEXTO GLOBAL DEL DISCURSO" in system
+            or "frases anteriores" in system
+        )
 
     def test_includes_anti_alucinacion_rules(self) -> None:
         """El prompt debe instruir explícitamente: no inventar."""
@@ -115,7 +118,11 @@ class TestSystemPrompt:
 
         system = backend.calls[0]["system"]
         # Alguna mención a no alucinar / inventar.
-        assert "NO inventes" in system or "NO ALUCINAR" in system
+        assert (
+            "Cada frase se evalúa por lo que dice" in system
+            or "NO heredes" in system
+            or "PROHIBIDO" in system
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -133,7 +140,7 @@ class TestUserPromptIncludesRolling:
 
         user = backend.calls[0]["user"]
         # CONTEXTO ANTERIOR debe aparecer una vez por unidad del batch.
-        assert user.count("CONTEXTO ANTERIOR") == 2
+        assert user.count("EMOCIONES EN FRASES PREVIAS") == 2
         # Y el rolling de la unidad 1 (que cita la 0) debe estar.
         assert "[unidad 0]" in user
 
@@ -148,11 +155,11 @@ class TestUserPromptIncludesRolling:
         agent.run(df)
 
         user = backend.calls[0]["user"]
-        assert "(sin contexto anterior)" in user
+        assert "(sin emociones previas)" in user
 
     def test_missing_rolling_column_handled(self) -> None:
         """Si el DF no tiene `emotion_rolling`, el agente no debe crashear:
-        usa empty + cae en el branch '(sin contexto anterior)'."""
+        usa empty + cae en el branch '(sin emociones previas)'."""
         backend = _RecordingBackend()
         agent = EmotionsAgentPass2(backend, ontologia="o", heuristicas="h")
         df = _make_df(1, with_rolling=False)  # sin la columna
@@ -160,7 +167,7 @@ class TestUserPromptIncludesRolling:
 
         user = backend.calls[0]["user"]
         # No crasheó; el contexto se llena con default.
-        assert "(sin contexto anterior)" in user
+        assert "(sin emociones previas)" in user
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -28,7 +28,8 @@ _STAGE_DISPATCH: dict[str, tuple[str, str]] = {
     "metadata": ("discursos", "metadata"),
     "enunciation": ("discursos", "enunciation"),
     "actores": ("frases", "actores"),
-    "emociones": ("frases", "emociones"),
+    "emotions": ("frases", "emociones"),
+    "emotions_pass2": ("frases", "emociones_pass2"),
     "characterizer": ("emociones_table", ""),  # caso especial
 }
 

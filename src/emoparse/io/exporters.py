@@ -111,6 +111,7 @@ def export_discursos_csv(db: Database, output_path: Path) -> int:
         input_data = _json_or_empty(row["input"]) or {}
         for k in _DISCURSO_INPUT_COLS:
             record[k] = str(input_data.get(k, "") or "")
+        record["codigo"] = str(row["codigo"] or "")
         for k, v in input_data.items():
             if k not in _DISCURSO_INPUT_COLS:
                 record[f"input__{k}"] = str(v) if v is not None else ""

@@ -286,6 +286,7 @@ class EmocionSchema(StrictBase):
                     "como fallback de proyección situacional.",
     )
     justificacion: str = Field(
+        max_length=600,
         description="Justificación semiótica de la detección, citando "
                     "elementos del texto.",
     )
@@ -297,6 +298,7 @@ class EmocionesBatchItemSchema(StrictBase):
         description="Índice 0-based de la unidad en el batch.",
     )
     emociones: list[EmocionSchema] = Field(
+        max_length=10,
         description="Emociones identificadas en esa unidad. Lista vacía "
                     "si no hay emociones detectables.",
     )

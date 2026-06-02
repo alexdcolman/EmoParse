@@ -117,7 +117,11 @@ class TestBuiltinDiscursoPresidencial:
         assert g.summarizer is True
         # No overrides → respeta config.yaml.
         assert g.models == {}
-        assert g.batch_size == {}
+        assert g.batch_size == {
+            "actors": 1,
+            "emotions": 1,
+            "emotions_pass2": 1,
+        }
 
 
 class TestExampleTuit:

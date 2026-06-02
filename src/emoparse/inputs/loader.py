@@ -39,6 +39,7 @@ def load_discursos(path: Path | str) -> pd.DataFrame:
         )
 
     _validate_columns(df, p)
+    _validate_no_empty_codigo(df, p)
     _validate_unique_codigos(df, p)
     _validate_no_empty_content(df, p)
 
@@ -122,6 +123,25 @@ def _validate_columns(df: pd.DataFrame, path: Path) -> None:
         raise InputError(
             f"En {path}, faltan columnas obligatorias: {missing}. "
             f"Columnas presentes: {list(df.columns)}"
+        )
+
+
+def _validate_no_empty_codigo(df: pd.DataFrame, path: Path) -> None:
+    """Verifica que `codigo` no esté vacío/NaN.
+
+    El código es el identificador único de cada discurso y la clave que
+    enlaza las tablas `discursos`, `frases` y `emociones`. Un código vacío
+    rompe la trazabilidad y, con varios discursos, colisiona en la
+    validación de unicidad de forma poco transparente; conviene rechazarlo
+    en la entrada.
+    """
+    empty_mask = df["codigo"].fillna("").astype(str).str.strip() == ""
+    n_empty = int(empty_mask.sum())
+    if n_empty > 0:
+        raise InputError(
+            f"En {path}, hay {n_empty} discurso(s) con `codigo` vacío. "
+            "El código identifica de forma única a cada discurso y no puede "
+            "quedar en blanco."
         )
 
 

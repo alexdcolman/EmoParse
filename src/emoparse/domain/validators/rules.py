@@ -301,6 +301,64 @@ class V07_TipoFuenteActorSinFuenteNombrada(RowValidator):
         )]
 
 
+class V12_FuenteEcoDeCategoria(RowValidator):
+    """V-12: el campo `fuente` repite la categoría en vez de nombrarla.
+
+    Fuente del dominio:
+      characterizer_system — "indicá la `fuente` concreta (quién o qué
+      desencadena la emoción) en lenguaje natural" y "El campo `fuente` NO
+      debe repetir el nombre de la categoría".
+
+    Regla: `fuente` debe nombrar el desencadenante concreto, no repetir el
+    literal de `tipo_fuente` ni el nombre genérico de la categoría
+    ('actor', 'situacion', 'objeto', ...). Cuando coincide, el campo no
+    aporta información: suele ser un eco de la categoría por parte del
+    modelo. No dispara con el sentinel 'no identificado' (el caso de
+    tipo_fuente 'actor' sin actor nombrado lo cubre V-07).
+    """
+
+    VALIDATOR_ID = "V-12"
+
+    #: Nombres genéricos de categoría que `fuente` no debería repetir.
+    _CATEGORIAS = frozenset({
+        "actor",
+        "situacion",
+        "objeto",
+        "experiencia",
+        "espacio",
+        "discurso_ajeno",
+        "discurso ajeno",
+    })
+
+    def validate(self, *, codigo, frase_idx, emocion_idx,
+                 experienciador, tipo_emocion, modo_existencia,
+                 foria, dominancia, intensidad, tipo_fuente, fuente,
+                 enunciador, enunciatarios) -> list[ValidationIssue]:
+        fuente_norm = strip_accents(fuente.strip().lower())
+        if not fuente_norm:
+            return []
+
+        tipo_norm = strip_accents(tipo_fuente.strip().lower())
+        if fuente_norm != tipo_norm and fuente_norm not in self._CATEGORIAS:
+            return []
+
+        return [ValidationIssue(
+            validator_id=self.VALIDATOR_ID,
+            mensaje=(
+                f"Emoción '{tipo_emocion}': el campo fuente repite la categoría "
+                f"('{fuente}') en lugar de nombrar el desencadenante concreto."
+            ),
+            codigo=codigo,
+            frase_idx=frase_idx,
+            emocion_idx=emocion_idx,
+            contexto={
+                "tipo_emocion": tipo_emocion,
+                "tipo_fuente": tipo_fuente,
+                "fuente": fuente,
+            },
+        )]
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  DiscursoValidators (operan sobre todas las emociones de un discurso)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -634,6 +692,7 @@ ROW_VALIDATORS: list[RowValidator] = [
     V05_AmbiforicaConIntensidadBaja(),
     V06_VirtualConForiaAforica(),
     V07_TipoFuenteActorSinFuenteNombrada(),
+    V12_FuenteEcoDeCategoria(),
 ]
 
 #: Lista de DiscursoValidators activos.
