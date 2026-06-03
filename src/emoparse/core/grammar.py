@@ -223,12 +223,15 @@ class _GrammarBuilder:
         # repetición por construcción, garantizando terminación. Sin
         # `maxItems`, se conserva exactamente el patrón ilimitado original.
         max_items = node.get("maxItems")
+        min_items = node.get("minItems", 0)
         if max_items is not None:
             body = self._bounded_array_body(
                 item_rule,
-                min_items=node.get("minItems", 0),
+                min_items=min_items,
                 max_items=max_items,
             )
+        elif min_items and min_items > 0:
+            body = self._min_array_body(item_rule, min_items)
         else:
             # Lista posiblemente vacía con elementos separados por coma.
             # Patrón GBNF estándar para `[item (, item)*]`:
@@ -287,6 +290,19 @@ class _GrammarBuilder:
             head += r' ' + sep_item
         tail = opt_tail(hi - lo)
         return r'"[" ws ' + head + r' ' + tail + r' ws "]"'
+
+    @staticmethod
+    def _min_array_body(item_rule: str, min_items: int) -> str:
+        """Cuerpo GBNF para un array con AL MENOS min_items elementos (sin tope).
+
+        Fuerza `min_items` obligatorios y permite más con `*`. Sirve para
+        prohibir el array vacío `[]` (con min_items=1) sin acotar por arriba.
+        """
+        lo = max(1, int(min_items))
+        head = item_rule
+        for _ in range(lo - 1):
+            head += r' ws "," ws ' + item_rule
+        return r'"[" ws ' + head + r' (ws "," ws ' + item_rule + r')* ws "]"'
 
     # ── string acotado (maxLength) ───────────────────────────────────────────
 

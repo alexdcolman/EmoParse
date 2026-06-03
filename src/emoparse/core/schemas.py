@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, Annotated
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel
 
@@ -304,7 +304,9 @@ class EmocionesBatchItemSchema(StrictBase):
     )
 
 
-class ListaEmocionesBatchSchema(RootModel[list[EmocionesBatchItemSchema]]):
+class ListaEmocionesBatchSchema(
+    RootModel[Annotated[list[EmocionesBatchItemSchema], Field(min_length=1)]]
+):
     """Batch response de detección de emociones."""
 
 

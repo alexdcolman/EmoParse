@@ -57,7 +57,7 @@ models:
     max_tokens: 4096
     seed: 42
 
-  qwen3-32b: # aun no probado
+  qwen3-32b: # Muchos falsos positivos en emociones.
     backend: llama_cpp
     path: ${EMOPARSE_MODELS_DIR:-models}/Qwen3-32B-Q4_K_M.gguf
     context_length: 8192
@@ -66,6 +66,7 @@ models:
 #    top_k: 20
 #    top_p: 0.8
 #    min_p: 0.0
+    no_think: true   # Qwen3 razonador bajo GBNF: saltea el thinking
     presence_penalty: 0.0
     max_tokens: 4096
     seed: 42
@@ -82,12 +83,12 @@ models:
     max_tokens: 4096
     seed: 42
 
-  gpt-oss-20b:
+  gpt-oss-20b: # Falla. El formato harmony + GBNF estricto es mala combinación
     backend: llama_cpp
     path: ${EMOPARSE_MODELS_DIR:-models}/gpt-oss-20b-Q4_K_M.gguf
     context_length: 8192
     n_gpu_layers: -1
-    temperature: 1.0  # OpenAI recomienda temp=1.0, top_p=1.0
+    temperature: 1.0  # OpenAI recomienda temp=1.0, top_p=1.0, pero si se usa puede ser buena idea bajar temp
 #    top_p: 1.0
     max_tokens: 4096
     seed: 42
@@ -138,8 +139,8 @@ pipeline:
     enunciation:      qwen3-14b
     actors:           qwen3-14b
     normalize_actors: qwen3-14b
-    emotions:         qwen3-32b
-    emotions_pass2:   qwen3-32b
+    emotions:         qwen3-14b
+    emotions_pass2:   qwen3-14b
     characterizer:    qwen3-14b
     actants:          qwen3-14b
     judge:            qwen3-14b
@@ -158,7 +159,7 @@ versions:
   knowledge: v1
   prompt:    v8
   ontology:  v4
-  schema:    v7
+  schema:    v8
 
 logging:
   level: INFO

@@ -385,6 +385,14 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
 
         missing = set(range(batch_size)) - seen
         if missing:
+            # Diagnóstico: qué devolvió realmente el modelo (dejar si se prueban GGUFs nuevos).
+            logger.error(
+                "[{}] batch sin match completo | n_items={} | unit_idx recibidos={} | batch_size={}",
+                self.NAME,
+                len(items),
+                [getattr(it, "unit_idx", None) for it in items],
+                batch_size,
+            )
             if len(missing) == batch_size:
                 logger.warning(
                     f"[{self.NAME}] Batch response NO cubrió ningún "

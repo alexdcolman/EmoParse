@@ -78,7 +78,8 @@ class LlamaCppBackend(LLMBackend):
         self._top_p = self._cfg.get("top_p", 1.0)
         self._top_k = self._cfg.get("top_k", 40)
         self._min_p = self._cfg.get("min_p", 0.0)
-        self._repeat_penalty = self._cfg.get("repeat_penalty", 1.0)
+        self._repeat_penalty = self._cfg.get("repeat_penalty", 1.0)        
+        self._no_think = bool(self._cfg.get("no_think", False))
 
         # Cache de gramáticas compiladas; se limpia al descargar backend.
         self._grammar_cache: dict[str, LlamaGrammar] = {}
@@ -141,9 +142,14 @@ class LlamaCppBackend(LLMBackend):
         eff_seed = seed if seed is not None else self._default_seed
 
         # Construir mensajes de chat; template se aplica desde GGUF.
+        # Switch suave de Qwen3: saltea la fase de razonamiento para evitar problemas con GBNF.
+        sys_content = system
+        if self._no_think:
+            sys_content = f"{sys_content}\n\n/no_think" if sys_content else "/no_think"
+
         messages: list[dict[str, str]] = []
-        if system:
-            messages.append({"role": "system", "content": system})
+        if sys_content:
+            messages.append({"role": "system", "content": sys_content})
         messages.append({"role": "user", "content": user})
 
         # Resolver gramática (si hay schema).
