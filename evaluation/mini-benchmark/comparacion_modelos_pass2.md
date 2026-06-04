@@ -1,9 +1,9 @@
-# Comparación de modelos — EmoParse `emotions_pass2`
+# Comparación de modelos — EmoParse `emotions` + `emotions_pass2`
 
-**Tarea:** detección de emociones (segundo pase) sobre el discurso de Milei en CPAC 2024 (161 frases).
-**Gold:** [silver gold](https://github.com/alexdcolman/EmoParse/blob/main/evaluation/gold/gold.csv) anotado de forma independiente (≈97 frases con emoción / 64 NINGUNA).
-**Backend:** llama.cpp (GGUF Q4_K_M), salida JSON restringida por GBNF, GPU 24 GB, sin APIs pagas.
-**Base común a todos los runs:** fix estructural de pass2 (el contexto previo son *features* —texto de frases anteriores + resumen—, no el roster de emociones detectadas —que generaba el bug de pass2—) + bounds de gramática (`maxItems`, `maxLength`, `ws`, `minItems`).
+- **Tarea:** detección de emociones (primer y segundo pase) sobre [el discurso de Milei en CPAC 2024](https://www.casarosada.gob.ar/informacion/discursos/50371-palabras-del-presidente-de-la-nacion-javier-milei-en-la-conferencia-politica-de-accion-conservadora-cpac-en-washington-estados-unidos) (161 frases).
+- **Gold:** [silver gold](https://github.com/alexdcolman/EmoParse/blob/main/evaluation/gold/gold.csv) anotado de forma independiente (≈97 frases con emoción / 64 NINGUNA).
+- **Backend:** llama.cpp (GGUF Q4_K_M), salida JSON restringida por GBNF, GPU 24 GB, sin APIs pagas.
+- **Base común a todos los runs:** fix estructural de pass2 (el contexto previo son *features* —texto de frases anteriores + resumen—, no el roster de emociones detectadas —que generaba el bug de pass2—) + bounds de gramática (`maxItems`, `maxLength`, `ws`, `minItems`).
 
 ---
 
