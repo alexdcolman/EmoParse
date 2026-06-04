@@ -95,7 +95,7 @@ models:
     max_tokens: 4096
     seed: 42
 
-  qwen3.5-35b-a3b: # El mejor en detección de experienciador. Tipa bien emociones pero sobre-detecta amplio.
+  qwen3.5-35b-a3b: # Tipa bien emociones pero sobre-detecta amplio.
     backend: llama_cpp
     path: ${EMOPARSE_MODELS_DIR:-models}/Qwen3.5-35B-A3B-Q4_K_M.gguf
     context_length: 8192
@@ -122,7 +122,7 @@ models:
     max_tokens: 4096
     seed: 42
 
-  qwen3.6-35b-a3b: # El más rápido de todos.
+  qwen3.6-35b-a3b: # El más rápido de todos. Mejor detección de experienciador + precisión máxima + buen tipado.
     backend: llama_cpp
     path: ${EMOPARSE_MODELS_DIR:-models}/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf
     context_length: 8192
@@ -143,8 +143,8 @@ pipeline:
     enunciation:      qwen3-14b
     actors:           qwen3-14b
     normalize_actors: qwen3-14b
-    emotions:         qwen3.6-35b-a3b
-    emotions_pass2:   qwen3.6-35b-a3b
+    emotions:         gemma4-31b
+    emotions_pass2:   gemma4-31b
     characterizer:    qwen3-14b
     actants:          qwen3-14b
     judge:            qwen3-14b
