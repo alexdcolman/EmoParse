@@ -59,7 +59,9 @@ dependencies = [
 
 # ── llama.cpp local ──────────────────────────────────────────────────────────
 llamacpp = [
-    "llama-cpp-python>=0.3,<0.4",
+    # Tope subido para permitir builds nuevos de llama.cpp (soporte de
+    # arquitecturas 2026: Gemma4, Qwen3.5/3.6). Si querés un guard, usá <0.5.
+    "llama-cpp-python>=0.3",
 ]
 
 # ── OpenAI-compatible APIs / LM Studio ──────────────────────────────────────

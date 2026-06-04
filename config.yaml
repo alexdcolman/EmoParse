@@ -27,14 +27,14 @@ models:
     context_length: 8192
     n_gpu_layers: -1
     temperature: 0.6
-    top_k: 20
-    top_p: 0.95
-    min_p: 0.0
-    presence_penalty: 1.5  # reduce repeticiones en modo no-thinking
+#    top_k: 20
+#    top_p: 0.95
+#    min_p: 0.0
+#    presence_penalty: 1.5  # reduce repeticiones en modo no-thinking
     max_tokens: 2048
     seed: 42
 
-  mistral-small-24b: # inferencia conservadora, alta precisión en emociones pero más falsos negativos
+  mistral-small-24b: # inferencia conservadora, alta precisión en emociones pero más falsos negativos. El mejor en detección de experienciador.
     backend: llama_cpp
     path: ${EMOPARSE_MODELS_DIR:-models}/Mistral-Small-3.1-24B-Instruct-2503-Q4_K_M.gguf
     context_length: 8192
@@ -56,6 +56,7 @@ models:
 #    min_p: 0.0
     max_tokens: 4096
     seed: 42
+    flash_attn: true
 
   qwen3-32b: # Muchos falsos positivos en emociones.
     backend: llama_cpp
@@ -71,29 +72,30 @@ models:
     max_tokens: 4096
     seed: 42
 
-  gemma4-31b: # Falla, revisar
+  gemma4-31b: # Lento, pero el mejor modelo de detección de emociones por el momento. Salvo experienciador.
     backend: llama_cpp
     path: ${EMOPARSE_MODELS_DIR:-models}/gemma-4-31B-it-Q4_K_M.gguf
-    context_length: 8192
+    context_length: 4096 # Bajado porque está al límite de VRAM.
     n_gpu_layers: -1
     temperature: 1.0  # Google recomienda temp=1.0 para Gemma 4
 #    top_k: 64
 #    top_p: 0.95
 #    min_p: 0.0
-    max_tokens: 4096
+    max_tokens: 2048
     seed: 42
+    flash_attn: true    # Gemma iSWA con V heterogéneo entre capas
 
   gpt-oss-20b: # Falla. El formato harmony + GBNF estricto es mala combinación
     backend: llama_cpp
     path: ${EMOPARSE_MODELS_DIR:-models}/gpt-oss-20b-Q4_K_M.gguf
     context_length: 8192
     n_gpu_layers: -1
-    temperature: 1.0  # OpenAI recomienda temp=1.0, top_p=1.0, pero si se usa puede ser buena idea bajar temp
+    temperature: 1.0  # OpenAI recomienda temp=1.0, top_p=1.0
 #    top_p: 1.0
     max_tokens: 4096
     seed: 42
 
-  qwen3.5-35b-a3b: # Falla, revisar
+  qwen3.5-35b-a3b: # El mejor en detección de experienciador. Tipa bien emociones pero sobre-detecta amplio.
     backend: llama_cpp
     path: ${EMOPARSE_MODELS_DIR:-models}/Qwen3.5-35B-A3B-Q4_K_M.gguf
     context_length: 8192
@@ -106,7 +108,7 @@ models:
     max_tokens: 4096
     seed: 42
 
-  qwen3.6-27b: # Falla, revisar
+  qwen3.6-27b: # El más lento hasta ahora, y peor que qwen3-14b.
     backend: llama_cpp
     path: ${EMOPARSE_MODELS_DIR:-models}/Qwen3.6-27B-Q4_K_M.gguf
     context_length: 8192
@@ -115,11 +117,12 @@ models:
 #    top_k: 20
 #    top_p: 0.95
 #    min_p: 0.0
+    no_think: true
     presence_penalty: 0.0
     max_tokens: 4096
     seed: 42
 
-  qwen3.6-35b-a3b: # Falla, revisar
+  qwen3.6-35b-a3b: # El más rápido de todos.
     backend: llama_cpp
     path: ${EMOPARSE_MODELS_DIR:-models}/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf
     context_length: 8192
@@ -128,6 +131,7 @@ models:
 #    top_k: 20
 #    top_p: 0.95
 #    min_p: 0.0
+    no_think: true
     presence_penalty: 0.0
     max_tokens: 4096
     seed: 42
@@ -139,8 +143,8 @@ pipeline:
     enunciation:      qwen3-14b
     actors:           qwen3-14b
     normalize_actors: qwen3-14b
-    emotions:         qwen3-14b
-    emotions_pass2:   qwen3-14b
+    emotions:         qwen3.6-35b-a3b
+    emotions_pass2:   qwen3.6-35b-a3b
     characterizer:    qwen3-14b
     actants:          qwen3-14b
     judge:            qwen3-14b
