@@ -1,7 +1,7 @@
 # Comparación de modelos — EmoParse `emotions_pass2`
 
 **Tarea:** detección de emociones (segundo pase) sobre el discurso de Milei en CPAC 2024 (161 frases).
-**Gold:** silver gold anotado de forma independiente (≈97 frases con emoción / 64 NINGUNA). Está en evaluation/gold/gold.csv.
+**Gold:** [silver gold](https://github.com/alexdcolman/EmoParse/blob/main/evaluation/gold/gold.csv) anotado de forma independiente (≈97 frases con emoción / 64 NINGUNA).
 **Backend:** llama.cpp (GGUF Q4_K_M), salida JSON restringida por GBNF, GPU 24 GB, sin APIs pagas.
 **Base común a todos los runs:** fix estructural de pass2 (el contexto previo son *features* —texto de frases anteriores + resumen—, no el roster de emociones detectadas —que generaba el bug de pass2—) + bounds de gramática (`maxItems`, `maxLength`, `ws`, `minItems`).
 
@@ -16,7 +16,7 @@
 | **Experienciador** | ¿Quién siente? (sobre los tipos acertados) | alto |
 | **Arrastre** | % de emociones justificadas por "contexto previo" (bug de pass2: tendía a detectar emociones que correspondían a frases previas) | bajo (~pass1 ≈ 25%) |
 
-Se reportan dos vistas: **exacta** (match por lema, incluye emociones clasificadas como "low-conf") y la **justa** (usa equivalencias semánticas del archivo evaluation/gold/equivalencias.json + el parámetro `--exclude-low-conf`). La tabla principal usa la vista justa, que es la comparable contra el baseline histórico.
+Se reportan dos vistas: **exacta** (match por lema, incluye emociones clasificadas como "low-conf") y la **justa** (usa equivalencias semánticas del archivo [equivalencias.json](https://github.com/alexdcolman/EmoParse/blob/main/evaluation/gold/equivalencias.json) + el parámetro `--exclude-low-conf`). La tabla principal usa la vista justa, que es la comparable contra el baseline histórico.
 
 ---
 
