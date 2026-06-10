@@ -1,0 +1,162 @@
+﻿unit_idx,status,modelo_n,gold,modelo,frase
+4,FN (modelo se perdio),0,Satisfaccion (Milei) [infer] (conf-baja),,"Parece que lo que decían como fenómeno barrial, se agrandó un poco el barrio."
+23,FN (modelo se perdio),0,certeza (Milei) [infer] (conf-baja),,"Por lo tanto, cuando definimos bien mercado todas las definiciones de intervenci"
+25,FN (modelo se perdio),0,certeza (Milei) [infer] (conf-baja),,Dos instituciones muy importantes son la propiedad privada y los mercados libres
+31,FN (modelo se perdio),0,certeza (Milei) [infer] (conf-baja),,"En definitiva, la propiedad privada y los mercados libres determinan el funciona"
+36,FN (modelo se perdio),0,reconocimiento (Milei) [infer] (conf-baja),,La división del trabajo quién mejor la explicó fue Adam Smith: una persona sola 
+47,FN (modelo se perdio),0,estimulacion (Milei->desafío) [infer] (conf-baja) | estimulacion (audiencia->desafío) [sost/POTENCIAL] (conf-baja),,"Por lo tanto, dada esta introducción, vale la pena enfrentar, ahora, dónde está "
+50,FN (modelo se perdio),0,satisfaccion/asombro (Milei) [infer] (conf-baja),,"Sin embargo, desde el año 1800 hasta aquí, se multiplicó por más de 15 veces, y "
+57,FN (modelo se perdio),0,preocupación/temor (empresas) [sost] (conf-baja),,"Supongamos que tengo 10 empresas compitiendo por hacer teléfonos celulares, y un"
+68,FN (modelo se perdio),0,preocupacion/desaprobacion (Milei) [infer] (conf-baja),,"Y si, además, tomamos el rol que toman las ganancias como elemento para generar "
+70,FN (modelo se perdio),0,certeza (Milei) [infer] (conf-baja),,"Y en realidad la respuesta no está en el análisis económico, está en la estructu"
+74,FN (modelo se perdio),0,desaprobacion (Milei) [infer] (conf-baja) | certeza (Milei) [infer] (conf-baja),,"Naturalmente, eso es un error matemático también porque si yo tengo rendimientos"
+83,FN (modelo se perdio),0,certeza (Milei) [infer] (conf-baja),,No se pierde nada.
+96,FN (modelo se perdio),0,desaprobacion (Milei) [infer] (conf-baja),,"Por un lado está la regulación de los monopolios, que al regular los monopolios "
+100,FN (modelo se perdio),0,aprobacion (Milei->procesos de destruccion creativa) [infer] (conf-baja),,Porque estos procesos de destrucción creativa parten de la idea de resolver algu
+125,FN (modelo se perdio),0,miedo (la gallina) [sost/PARABOLICO] (conf-baja),,Ahora vamos votar por qué se come hoy a la noche.
+129,FN (modelo se perdio),0,desaprobacion (Milei->populismo) [infer] (conf-baja),,"No solo Venezuela, Argentina y todo el populismo latinoamericano."
+145,FN (modelo se perdio),0,desaprobacion (Milei->Club de Roma) [infer] (conf-baja),,"o más cercano -a fines de la década del 60- el Club de Roma, donde el Club de Ro"
+152,FN (modelo se perdio),0,optimismo (Milei) [infer] (conf-baja),,donde básicamente al haber más personas y haber problemas de escasez y demás eso
+160,FN (modelo se perdio),0,agradecimiento/gratitud (Milei) [infer],,Muchas gracias.
+22,FP (modelo de mas),1,NINGUNA,sufri,De hecho – dado que los intercambios son voluntarios – no es posible hablar de f
+44,FP (modelo de mas),2,NINGUNA (conf-baja),angusti;satisfac,"Y si ese empresario no lo está haciendo bien, podrá aparecer otro que pueda brin"
+76,FP (modelo de mas),1,NINGUNA,aversion,De qué le serviría un trabajo de que le ofrezcan 12 millones de dólares al año s
+77,FP (modelo de mas),1,NINGUNA,desespera,Se van a chocar contra su propia humanidad.
+85,FP (modelo de mas),1,NINGUNA,optimism,Tal que todo su ahorro se transforma en inversión.
+124,FP (modelo de mas),1,NINGUNA,miedo,Supongamos que se juntan cuatro lobos y una gallina.
+127,FP (modelo de mas),1,NINGUNA (conf-baja),indigna,"En el fondo eso también es lo que pasa en la economía, la gallina de los huevos "
+135,FP (modelo de mas),1,NINGUNA,indigna,"Y ese libro parte de la hipótesis que Kirzner dice, el sistema capitalista es má"
+0,TN,0,NINGUNA,,"Palabras del Presidente de la Nación, Javier Milei en la Conferencia Política de"
+7,TN,0,NINGUNA,,"En cuanto a la génesis de este problema, el problema es un problema metodológico"
+9,TN,0,NINGUNA,,El origen de este problema tiene que ver cuando se ponen a estudiar las cualidad
+10,TN,0,NINGUNA,,Y en rigor el problema aparece cuando ingresa el análisis normativo de la mano d
+11,TN,0,NINGUNA,,Básicamente la idea del óptimo de Pareto es que yo no puedo mejorar a alguien si
+12,TN,0,NINGUNA,,"Concretamente si estoy en una situación, donde puedo mejorar a alguien y hago un"
+13,TN,0,NINGUNA,,"Y obviamente, cuando esas oportunidades se agotan significa que estamos en el óp"
+14,TN,0,NINGUNA,,"Y es ahí, donde aparecen las definiciones de fallos de mercados, que tienen dist"
+15,TN,0,NINGUNA,,Otros casos son las externalidades: los bienes públicos en formación asimétrica 
+20,TN,0,NINGUNA,,"Entonces lo primero que tenemos que entender es qué es el mercado, tener una bue"
+21,TN,0,NINGUNA,,"En este sentido, el mercado es un proceso de cooperación social, donde se interc"
+24,TN,0,NINGUNA,,"Por otra parte, también es muy importante tener bien claro cuáles son las instit"
+27,TN,0,NINGUNA,,"En este sentido, cuando se hace un intercambio y alguien entrega un bien, a camb"
+28,TN,0,NINGUNA,,"Y ese registro histórico, denominado precio es un mecanismo de transmisión de in"
+29,TN,0,NINGUNA,,"Y como no necesariamente la cantidad demanda coincide con la ofrecida, cuando la"
+30,TN,0,NINGUNA,,"Es decir, hay un proceso de ajuste."
+34,TN,0,NINGUNA,,Otra de las instituciones importantes para los mercados es lo que se llama la li
+35,TN,0,NINGUNA,,Y por otra parte hay dos instituciones que son muy importantes que son la divisi
+39,TN,0,NINGUNA,,"Por eso, como decía Bastiat, “Donde entra el comercio, no entran las balas”."
+48,TN,0,NINGUNA,,Esto dentro de la teoría del crecimiento económico y su evidencia empírica se ll
+49,TN,0,NINGUNA,,"Si ustedes miran la historia, desde la era cristiana hacia adelante, el PBI per "
+54,TN,0,NINGUNA,,"Sin embargo, esta presencia de rendimientos crecientes significa que hay estruct"
+60,TN,0,NINGUNA (conf-baja),,"Entonces, veamos dónde están esos errores de la teoría neoclásica."
+61,TN,0,NINGUNA,,En la versión más simple es porque dicen que el precio del monopolio es mayor qu
+69,TN,0,NINGUNA,,"Entonces, la pregunta es: ¿Cuál es la verdadera respuesta, o el verdadero fundam"
+71,TN,0,NINGUNA,,"Básicamente, tiene que ver con el análisis del óptimo de Pareto y el problema de"
+72,TN,0,NINGUNA,,"El óptimo de Pareto, para que el equilibrio existente sea óptimo de Pareto, tant"
+73,TN,0,NINGUNA,,Y el problema es que cuando tenemos rendimientos crecientes tenemos funciones de
+81,TN,0,NINGUNA,,¿Qué sucede si esas grandes ganancias las ahorramos?
+82,TN,0,NINGUNA,,Ese ahorro se transforma en inversión en otras empresas y eso genera crecimiento
+89,TN,0,NINGUNA,,Así nadie puede acceder a ese dinero.
+90,TN,0,NINGUNA,,¿Qué es lo que va a ocurrir?
+97,TN,0,NINGUNA,,Si se regulara bajo el ideal neoclásico la cuasi renta sería cero.
+98,TN,0,NINGUNA (conf-baja),,Y por lo tanto estaríamos en un mundo de la competencia perfecta donde no hay in
+103,TN,0,NINGUNA (conf-baja),,"De hecho, les voy a contar un caso de un país que conozco, llamado Argentina."
+121,TN,0,NINGUNA (conf-baja),,"Es decir, la democracia originalmente fue diseñada para respetar el derecho de l"
+123,TN,0,NINGUNA,,Pero para que no quede en algo tan abstracto les voy a dar un ejemplo.
+136,TN,0,NINGUNA,,"En ese sentido, trabaja sobre dos ideas, trabaja con el principio de apropiación"
+137,TN,0,NINGUNA,,"Si ustedes descubren algo, son los dueños de esos."
+138,TN,0,NINGUNA,,"Y la otra idea es la de Hayet, que es la de mercado como proceso de descubrimien"
+153,TN,0,NINGUNA (conf-baja),,donde -por ejemplo- las chances de que tenga Mozart es mucho más grande si vive 
+1,TP,1,orgullo (Milei) [infer] | determinacion (Milei) [infer],orgull,Yo soy el león.
+2,TP,1,amor/afecto (Milei->audiencia) [expl],amor,Yo también los amo.
+3,TP,1,entusiasmo (Milei/audiencia) [infer],entusiasm,"Viva la libertad, carajo."
+5,TP,3,agradecimiento/gratitud (Milei) [infer],gratitud;preocupa;temor,"En primer lugar, muchas gracias por esta invitación; en cuanto a la conferencia,"
+6,TP,1,desaprobacion (Milei->neoclasica/socialismo) [infer],indigna,"En este sentido, haré foco sobre cómo la economía neoclásica y su visión de los "
+8,TP,1,enojo (el mundo neoclásico),enojo,"Dado que la realidad es siempre muy compleja de analizar se analiza con modelos,"
+16,TP,1,desaprobacion (Milei) [infer],indigna,"Y en realidad, todas estas definiciones tan elegantes son todos elementos que ha"
+17,TP,1,preocupación/angustia/desesperación/temor (fabricantes de velas) [sost] (conf-baja),angusti,Pero para que no quede tan en abstracto voy a hacer un ejemplo aplicado: suponga
+18,TP,2,desaprobacion (Milei->intervencionistas) [infer],alegri;indigna,"Naturalmente si le hubiéramos prestado atención a los intervencionistas, hoy, en"
+19,TP,1,alivio/satisfaccion (Milei) [infer] (conf-baja),alivi,Por suerte descartemos el óptimo de Pareto y avancemos con el progreso tecnológi
+26,TP,1,desaprobacion (Milei->Estado) [infer],indigna,"Y si los intercambios no son voluntarios, no hay lugar para la presencia intrusi"
+32,TP,1,desaprobacion (Milei->socialismo) [infer],indigna,Y esto muestra por qué el socialismo en ninguna de sus vertientes puede funciona
+33,TP,2,desaprobacion (Milei->Estado) [infer],indigna;irrita,"Y, en segundo lugar, las versiones más light que permiten la existencia del sect"
+37,TP,1,certeza (Milei) [infer] (conf-baja) | satisfaccion (Milei) [infer] (conf-baja) | desaprobacion (Milei->socialismo) [infer],despreci,"Y esto combinado con la idea de combinación social, termina siendo absolutamente"
+38,TP,1,odio (vendedor generico) [expl/HIPOTETICO],odio,"Una es: Yo podría estar odiando a él, pero necesito que el compre mi producto, p"
+40,TP,1,certeza (Milei) [infer] (conf-baja),esperanz,Y promover el libre comercio es promover la paz.
+41,TP,2,certeza (Milei) [infer] (conf-baja) | satisfaccion (Milei) [infer] (conf-baja) | desaprobacion (Milei->socialismo) [infer],entusiasm;hostil,"Y al mismo tiempo, del mercado como proceso de cooperación social es una tremend"
+42,TP,1,certeza (Milei) [infer] (conf-baja) | desaprobacion (Milei->marxismo/socialismo) [infer] (conf-baja),rechaz,"Por lo tanto, no hay lugar para la teoría de la explotación, no hay lugar para l"
+43,TP,1,certeza (Milei) [infer] (conf-baja) | admiracion/aprecio (Milei->empresarios) [infer],aproba,"Al mismo tiempo, es importante señalar, en la lógica del mercado, un empresario "
+45,TP,1,certeza (Milei) [infer] (conf-baja) | admiracion/aprecio (Milei->empresarios) [infer],apreci,"Y por ende, los empresarios, son benefactores sociales porque nos brindan bienes"
+46,TP,2,certeza (Milei) [infer] (conf-baja) | admiracion/aprecio (Milei->empresarios) [infer] | admiracion/aprecio (audiencia->empresarios) [infer/POTENCIAL] (conf-baja),admira;afect,"Por lo tanto, abracemos a los empresarios que son la base de la prosperidad."
+51,TP,1,satisfaccion/optimismo (Milei) [infer],satisfac,"Es decir, que aumentó la productividad per cápita y, además, el PBI aumentó cerc"
+52,TP,1,desaprobacion (Milei->Estado) [infer],indigna,"Todo esto, a pesar de la existencia del Estado."
+53,TP,1,satisfaccion (Milei) [infer] (conf-baja),satisfac,"Y en este mismo periodo de tan importante crecimiento económico, la pobreza extr"
+55,TP,1,desaprobacion (Milei->teoria neoclasica) [infer] | aprobacion (Milei->monopolios) [infer] (conf-baja) | desaprobacion (la teoria neoclasica) [infer] (conf-baja),escepticism,"Entonces, la pregunta es: si se generó tanto bienestar ¿Por qué la teoría neoclá"
+56,TP,1,desaprobacion (Milei->analisis neoclasico) [infer],desaproba,"Y en realidad, como diría Murray Newton Rothbard, el inventor del anarco capital"
+58,TP,1,satisfaccion (audiencia) [infer] (conf-baja),insatisfac,"Sin embargo, ¿Alguno de ustedes se quejaría por tener mejores teléfonos a un mej"
+59,TP,1,desaprobacion (Milei->teoria neoclasica) [infer],indigna,"Por lo tanto, fuera la teoría neoclásica."
+62,TP,1,desaprobacion (Milei->analisis neoclasico) [infer] (conf-baja),rechaz,"Sin embargo, ese análisis es errado porque tiene varios problemas; en primer lug"
+63,TP,2,Satisfaccion (Milei) [infer] (conf-baja),gratitud;satisfac,"Es decir, yo tengo el monopolio sobre Javier Milei y ustedes tienen el monopolio"
+64,TP,3,satisfaccion/orgullo (Milei/nosotros) [infer] | desaprobacion (Milei->socialismo) [infer],alegri;indigna;rechaz,"Es más, festejamos nuestras diferencias porque no nos gusta la uniformidad gris "
+65,TP,1,desaprobacion/rechazo (Milei->analisis) [infer],despreci,Pero no solo está mal por ser un análisis de equilibrio parcial que no considera
+66,TP,1,admiracion/aprecio (Milei->Hazlitt) [infer],apreci,"De hecho, esto me hace recordar un hermoso libro de un economista y pensador ame"
+67,TP,1,desaprobacion (Milei) [infer],indigna,"Por lo tanto, esto estaría mostrando que el análisis tradicional del monopolio y"
+75,TP,1,desaprobacion (Milei) [infer] (conf-baja) | certeza (Milei) [infer] (conf-baja),deseo,pero eso que parece algo empíricamente correcto también tiene otro error concept
+78,TP,1,desaprobacion (Milei->analisis neoclasico) [infer],indigna,"Sin embargo, el análisis neoclásico trabaja a las firmas como si fueran máquina "
+79,TP,1,desaprobacion (Milei) [infer] (conf-baja) | certeza (Milei) [infer] (conf-baja) | desaprobacion (teoria neoclasica->monopolios) [infer] (conf-baja),indigna,"Finalmente, otras de las críticas que se les hacen a los monopolios es que gener"
+80,TP,1,satisfaccion (Milei) [infer] (conf-baja) | irritacion (keynesianos) [sost/POTENCIAL],irrita,Ahora vamos a hacer un par de casos que irriten más a los keynesianos.
+84,TP,1,ambicion (monopolista) [expl],ambi,O supongamos que este monopolista es tan ambicioso que quiere invertir todo en s
+86,TP,1,optimismo (Milei) [infer] (conf-baja) | certeza (Milei) [infer] (conf-baja),satisfac,"Pero esa inversión significa más capital, más productividad, mayores salarios y "
+87,TP,1,satisfaccion (Milei) [infer] (conf-baja),satisfac,"Es más, entonces como ya no le podemos encontrar más ataques al monopolista, ya "
+88,TP,1,desaprobacion (socialismo) [infer/IRONICO] (conf-baja),indigna,Ahora pensemos que pasa si el “maldito empresario” decide enterrar ese dinero.
+91,TP,1,optimismo (Milei) [infer] (conf-baja) | satisfaccion (la poblacion) [sost] (conf-baja) | certeza (Milei) [infer] (conf-baja),satisfac,Se va reducir la cantidad de dinero en la economía y van a bajar los precios ben
+92,TP,1,desaprobacion (socialismo) [infer/IRONICO] (conf-baja) | certeza (Milei) [infer] (conf-baja),desaproba,"Y es más, este empresario tan malo a los que más va a beneficiar son a los que m"
+93,TP,2,desaprobacion (Milei) [infer] | preocupacion (Milei) [infer] (conf-baja) | certeza (Milei) [infer] (conf-baja),indigna;sufri,"Por lo tanto, todo lo que acabamos de ver es que todos los análisis que justific"
+94,TP,1,desaprobacion/indignacion (Milei->intervencion socialista) [infer] | certeza (Milei) [infer] (conf-baja),indigna,"Por lo tanto, para cerrar esta presentación, voy a mostrar como la intervención "
+95,TP,1,desaprobacion (Milei->socialistas) [infer] (conf-baja),indigna,Y básicamente este ataque que hacen los socialistas es básicamente desde dos pun
+99,TP,1,desaprobacion (Milei) [infer] (conf-baja),indigna,En el fondo lo que hace es abortar el proceso de destrucción creativa a la Schum
+101,TP,1,desaprobacion/preocupacion (Milei) [infer] (conf-baja),preocupa,"Por lo tanto, si regulo los beneficios, si regulo la ganancia, el problema que v"
+102,TP,1,desaprobacion (Milei) [infer],indigna,Al margen de que regular precios y cantidades implica destruir el derecho de pro
+104,TP,1,preocupacion (Milei) [infer] | tristeza (Milei) [infer] (conf-baja),indigna,Un país que entró al siglo XX siendo uno de los países más ricos del mundo y que
+105,TP,1,desaprobacion (Milei) [infer] (conf-baja),indigna,"Y cuando uno mira la cantidad de regulaciones, uno va a entender por qué."
+106,TP,1,desaprobacion (Milei) [infer] (conf-baja),indigna,"Dentro de nuestros equipos de gobierno, hemos descubierto, por el momento, 380 m"
+107,TP,2,desaprobacion/indignacion (Milei->corrupción) [infer] | optimismo (argentinos) [sost/POTENCIAL] (conf-baja) | resistencia (los beneficiarios de este sistema decadente) [expl],indigna;resist,"Y de hecho, nuestras dos grandes pedidos de medidas, de reformas estructurales, "
+108,TP,2,indignacion (Milei) [infer],angusti;indigna,que empobrece a los argentinos de bien en favor de la casta corrupta.
+109,TP,2,indignacion (Milei->casta corrupta) [infer] | enojo (medios de comunicacion corruptos) [expl],enojo;indigna,"Donde la casta corrupta se compone de políticos ladrones, que ponen sus privileg"
+110,TP,1,indignacion (Milei) [infer],indigna,y además por aquellos profesionales que son funcionales a la religión del Estado
+111,TP,2,determinacion (Milei/nosotros) [infer],concientizacion/sorpres;determina,"Por lo tanto, tomarán conciencia de la gran pelea que estamos dando."
+112,TP,2,determinacion (Milei/nosotros) [infer] | esperanza (Milei/nosotros) [infer] | esperanza (Argentina) [sost/POTENCIAL] (conf-baja),determina;esperanz,Pero no nos vamos a rendir en volver a hacer Argentina grande nuevamente.
+113,TP,1,preocupacion (Milei) [infer] | desaprobacion (Milei->socialistas) [infer] | aprobación (socialistas->altruismo socialista) [infer] (conf-baja) | altruismo (socialistas) [expl/VIRTUAL] (conf-baja),indigna,La otra gran amenaza por donde atacan los socialistas y el estatismo es básicame
+114,TP,1,indignacion (Milei->casta) [infer],indigna,Siempre con el dinero ajeno.
+115,TP,1,indignacion (Milei) [infer],indigna,"Y esta aberración se lleva a cabo en nombre de la justicia social, donde Hayek h"
+116,TP,1,desaprobacion (Milei) [infer] (conf-baja),indigna,"Donde cada vez que le ponían un adjetivo, significaba totalmente lo opuesto."
+117,TP,1,indignacion (Milei->justicia social) [infer] | admiracion (Milei->Huerta de Soto) [infer],indigna,"De hecho como dice el gran Jesús Huerta de Soto, la justicia social es violenta "
+118,TP,1,indignacion/desaprobacion (Milei) [infer],indigna,"En primer lugar, es injusta porque implica un trato desigual frente a la ley y l"
+119,TP,1,desaprobacion/indignacion (Milei) [infer],indigna,Lo que hace que la justicia social además de ser violenta sea injusta.
+120,TP,1,preocupacion/desaprobacion (Milei) [infer] (conf-baja),indigna,"En el mismo sentido, esto se agrava con la idea de la democracia ilimitada."
+122,TP,1,desaprobacion (Milei->socialismo/populismo) [infer] (conf-baja),rechaz,Pero cuando ingresan las ideas socialistas e ingresa la idea de la democracia il
+126,TP,1,miedo (la gallina) [sost/PARABOLICO] (conf-baja),indigna,Se acaban de comer la gallina.
+128,TP,2,desaprobacion (Milei->politico populista) [infer] | preocupación (los ricos) [sost/POTENCIAL] (conf-baja) | esperanza (los pobres) [sost/POTENCIAL] (conf-baja),despreci;indigna,Y ahí es cuando aparece el político populista que dice que hay que sacarles a lo
+130,TP,1,desaprobacion/preocupacion (Milei) [infer] (conf-baja),indigna,"Y cuando eso ocurre, se destruye los beneficios y se destruye el crecimiento eco"
+131,TP,1,desaprobacion (Milei->Estado) [infer] (conf-baja),indigna,"Si lo quieren en términos prácticos, Argentina es un país que produce alimentos "
+132,TP,1,indignacion (Milei->Estado) [infer],indigna,Es decir que el Estado se queda con el alimento de 280 millones de seres humanos
+133,TP,2,indignacion (Milei->Estado) [infer] | frustracion (5 millones de argentinos) [sost] (conf-baja),angusti;indigna,"A pesar de ello, hay 5 millones de argentinos que no les alcanza para comer grac"
+134,TP,1,aprecio (Milei->libro) [infer] (conf-baja) | desaprobación (socialistas) [infer] (conf-baja),indigna,Otra parte que también discuten los socialistas y que tiene que ver con la distr
+139,TP,1,convicción (Milei) [infer] (conf-baja),satisfac,"Por lo tanto, si esa torta se va descubriendo mientras que ustedes van avanzando"
+140,TP,1,satisfaccion/conviccion (Milei) [infer],satisfac,"Por lo tanto, ahora el sistema no solo que es más productivo, sino que además es"
+141,TP,2,satisfaccion/triunfo (Milei) [infer] | frustracion (socialistas) [sost] (conf-baja),frustra;satisfac,Y la verdad es que digamos todo esto a los socialistas los tenemos más que en ja
+142,TP,1,desaprobacion (Milei) [infer] (conf-baja),indigna,"Naturalmente cuando uno regula los monopolios, regula las empresas, lo que eran "
+143,TP,1,indignacion (Milei) [infer] | miedo (audiencia) [sost/POTENCIAL],indigna,Y ese estancamiento dado el crecimiento de la población lleva al empobrecimiento
+144,TP,2,indignacion (Milei) [infer] | miedo (audiencia) [sost/POTENCIAL] (conf-baja) | miedo (judios) [sost] (conf-baja),indigna;odio,Una agenda asesina que podemos encontrar sus orígenes ya con los egipcios intent
+146,TP,1,desaprobacion (Milei) [infer] (conf-baja) | miedo/desesperación (humanidad) [sost] (conf-baja),miedo,"Y sin embargo, esa situación lo que iba a generar es que no hubiera alimentos pa"
+147,TP,1,indignacion (Milei) [infer],indigna,"Y en base a eso, hoy habiéndose desclasificado los archivos de Nixon y Kissinger"
+148,TP,1,satisfaccion/alivio (Milei) [infer],satisfac,Pero afortunadamente se equivocaron de nuevo porque hoy en el mundo viven 8 mil 
+149,TP,2,indignacion (Milei) [infer] | preocupacion (Milei) [infer] | desaprobacion (postmarxismo/ecologismo) [infer] (conf-baja),frustra;indigna,"Sin embargo, no cesan esa agenda asesina, de hecho, el postmarxismo frente a su "
+150,TP,2,desaprobacion/indignacion (Milei) [infer],indigna;miedo,cuando esto ya ha pasado cuatros veces en la historia del planeta tierra y no vi
+151,TP,2,desaprobacion (Milei) [infer] | optimismo (Milei) [infer] (conf-baja) | certeza (Milei) [infer] (conf-baja),indigna;optimism,"De hecho, todos esos análisis en contra del crecimiento de la población son fals"
+154,TP,2,desaprobacion (Milei->socialismo) [infer] | indignacion (Milei->agenda asesina) | determinacion (audiencia) [sost/POTENCIAL],indigna;temor,"En definitiva, el mensaje es el siguiente: no dejen avanzar al socialismo, no av"
+155,TP,2,determinacion (audiencia) [sost/POTENCIAL] | preocupacion/miedo (audiencia) [sost/POTENCIAL],determina;miedo,"Por lo tanto, no entreguen su libertad, peleen por su libertad, porque si no pel"
+156,TP,3,esperanza/optimismo (Milei/audiencia) [expl] | frustracion (Argentina) [infer] (conf-baja),determina;optimism;resigna,"Pero quiero dejarles también un mensaje de optimismo, Argentina parecía un país "
+157,TP,2,entusiasmo (Milei) [infer] | orgullo (Milei) [infer] | esperanza (Milei) [infer],coraj;optimism,"Y fue así que cada día despertamos más leones y el mensaje de la libertad, no so"
+158,TP,2,entusiasmo (Milei) [infer] | entusiasmo (audiencia) [sost/POTENCIAL] | determinacion (audiencia) [sost/POTENCIAL],determina;entusiasm,"Por lo tanto, no cedan frente a la lucha por la libertad, ¡viva la libertad cara"
+159,TP,1,entusiasmo (Milei) [infer] | entusiasmo (audiencia) [sost/POTENCIAL],entusiasm,¡viva la libertad carajo!

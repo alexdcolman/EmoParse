@@ -83,6 +83,7 @@ emoparse status      Resumen pending/failed/completed por stage
 emoparse inspect     Estado completo de un discurso particular
 emoparse retry       Limpia errores para reintentar (modo legacy o policy YAML)
 emoparse discoveries Gestiona actores no reconocidos por la homogeneización (listar, exportar, promover, fusionar, descartar)
+emoparse experiencers Gestiona equivalencias de experienciador por discurso (listar, exportar, aceptar, rechazar, aplicar)
 emoparse validate    Corre los domain validators sobre las emociones
 emoparse judge       Resumen de veredictos del LLM-as-judge
 emoparse metrics     Métricas persistidas por stage
@@ -95,6 +96,14 @@ Todos aceptan `--help`. Ejemplo:
 ```bash
 emoparse run --help
 ```
+
+---
+
+## Foco de análisis y normalización de experienciadores
+
+Por defecto `emoparse run` detecta emociones de todos los experienciadores. Para acotar el análisis a ciertos roles, `run` acepta `--enunciador`, `--enunciatarios` y `--actores` (combinables): si se pasa alguno, solo se analizan las emociones de esos experienciadores, en ambos pases de detección.
+
+La etapa opcional `normalize_experiencers` resuelve las distintas formas en que un discurso nombra a quien siente (por ejemplo "yo" o "el orador" → el enunciador de ese discurso). Propone equivalencias para revisión humana; se revisan con `emoparse experiencers list/accept/reject` (o desde el dashboard) y se materializan en `emociones.experienciador_canonico` con `emoparse experiencers apply`.
 
 ---
 

@@ -17,6 +17,9 @@ from emoparse.app import actions as actions_layer
 from emoparse.app import data as data_layer
 from emoparse.storage.actors_kb_discoveries import ActorsKbDiscoveriesRepository
 from emoparse.storage.db import Database
+from emoparse.storage.experiencer_equivalences import (
+    ExperiencerEquivalencesRepository,
+)
 
 
 def render(db_path: Path) -> None:
@@ -66,6 +69,7 @@ def render(db_path: Path) -> None:
         _render_stage_row(s)
 
     _render_actors_discoveries(db_path)
+    _render_experiencer_equivalences(db_path)
 
 
 def _render_stage_row(s: data_layer.StageStatus) -> None:
@@ -442,6 +446,149 @@ def _render_triage_forms(
                 st.rerun()
             except (ValueError, FileNotFoundError, RuntimeError) as e:
                 st.error(str(e))
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Equivalencias de experienciador
+# ══════════════════════════════════════════════════════════════════════════════
+
+#: Cap de equivalencias listadas en la UI.
+_EQUIVALENCES_DISPLAY_CAP = 40
+
+
+def _render_experiencer_equivalences(db_path: Path) -> None:
+    """Sección de triage de equivalencias de experienciador."""
+    db = Database(db_path)
+    if not db.table_exists("experiencer_equivalences"):
+        return
+
+    repo = ExperiencerEquivalencesRepository(db)
+    n_pending = repo.count_by_status("pending")
+    n_accepted = repo.count_by_status("accepted")
+    n_applied = repo.count_by_status("applied")
+
+    st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
+    st.markdown("#### Experienciadores (equivalencias)")
+    st.markdown(
+        "<p style='color:#8a8799;font-size:0.82rem;margin-top:-0.5rem;'>"
+        "Propuestas de <code>normalize_experiencers</code> para resolver cada "
+        "experienciador a un referente del discurso. Lo aceptado se escribe en "
+        "<code>experienciador_canonico</code> al correr "
+        "<code>emoparse experiencers apply</code>."
+        "</p>",
+        unsafe_allow_html=True,
+    )
+
+    if n_accepted or n_applied:
+        bar = []
+        if n_accepted:
+            bar.append(
+                f"<span style='color:#c8a96e;'>{n_accepted} aceptadas sin aplicar</span>"
+            )
+        if n_applied:
+            bar.append(
+                f"<span style='color:#6ec89a;'>{n_applied} aplicadas</span>"
+            )
+        st.markdown(
+            f"<div class='ep-card' style='border-left:3px solid #c8a96e;margin-bottom:0.6rem;'>"
+            f"<p style='margin:0;font-family:\"DM Mono\",monospace;font-size:0.82rem;'>"
+            f"{' · '.join(bar)}"
+            f"</p></div>",
+            unsafe_allow_html=True,
+        )
+
+    if n_pending == 0:
+        st.markdown(
+            "<div class='ep-card' style='border-left:3px solid #6ec89a;'>"
+            "<p style='margin:0;color:#6ec89a;font-family:\"DM Mono\",monospace;font-size:0.85rem;'>"
+            "✓ Sin equivalencias pendientes."
+            "</p></div>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    st.markdown(
+        f"<div class='ep-card' style='border-left:3px solid #c8a96e;'>"
+        f"<p style='margin:0;font-family:\"DM Mono\",monospace;font-size:0.85rem;color:#c8a96e;'>"
+        f"{n_pending} equivalencias pendientes de revisión"
+        f"</p></div>",
+        unsafe_allow_html=True,
+    )
+
+    pending = repo.list_pending_review()
+    shown = pending[:_EQUIVALENCES_DISPLAY_CAP]
+    with st.expander(
+        f"Ver detalle (primeras {len(shown)} de {n_pending})",
+        expanded=False,
+    ):
+        for e in shown:
+            _render_equivalence_row(db_path, e)
+
+        if n_pending > _EQUIVALENCES_DISPLAY_CAP:
+            st.markdown(
+                f"<p style='margin-top:0.6rem;font-size:0.75rem;color:#5a5d6e;'>"
+                f"... y {n_pending - _EQUIVALENCES_DISPLAY_CAP} más. "
+                f"Listado completo: <code>emoparse experiencers list --db ...</code>."
+                f"</p>",
+                unsafe_allow_html=True,
+            )
+
+
+def _render_equivalence_row(db_path: Path, e: dict) -> None:
+    """Una equivalencia pendiente con campo editable + aceptar/rechazar."""
+    confianza = str(e.get("confianza", "?"))
+    badge_color = {
+        "alta": "#6ec89a",
+        "media": "#c8a96e",
+        "baja": "#c86e6e",
+    }.get(confianza, "#5a5d6e")
+    sugerido = e.get("canonical_sugerido") or (
+        e["raw_experienciador"] if e.get("clase") == "literal" else ""
+    )
+    just = str(e.get("justificacion") or "")
+    just_html = (
+        f"<p style='margin:0.2rem 0;font-size:0.76rem;color:#5a5d6e;'>"
+        f"{_escape(just)[:200]}</p>" if just else ""
+    )
+    st.markdown(
+        f"<div style='padding:0.5rem 0 0.2rem 0;border-bottom:1px solid #1a1c22;'>"
+        f"<div style='display:flex;align-items:center;gap:0.6rem;font-size:0.85rem;'>"
+        f"<code style='color:#e8e4dc;'>{_escape(str(e.get('raw_experienciador', '')))}</code>"
+        f"<span style='color:#5a5d6e;'>→</span>"
+        f"<span style='color:#8a8799;font-family:DM Mono,monospace;font-size:0.78rem;'>"
+        f"[{_escape(str(e.get('clase', '?')))}]</span>"
+        f"<span style='color:{badge_color};font-family:DM Mono,monospace;font-size:0.75rem;'>"
+        f"[{confianza}]</span>"
+        f"<span style='color:#5a5d6e;font-family:DM Mono,monospace;font-size:0.72rem;'>"
+        f"· {_escape(str(e.get('codigo', '')))} · x{e.get('ocurrencias', 0)} · id={e['id']}</span>"
+        f"</div>{just_html}</div>",
+        unsafe_allow_html=True,
+    )
+
+    col_in, col_ok, col_no = st.columns([3, 1, 1])
+    with col_in:
+        canonical = st.text_input(
+            "canónico",
+            value=sugerido,
+            key=f"exp_canon_{e['id']}",
+            label_visibility="collapsed",
+        )
+    with col_ok:
+        if st.button("Aceptar", key=f"exp_acc_{e['id']}", use_container_width=True):
+            try:
+                actions_layer.register_experiencer_accept(
+                    db_path, e["id"], canonical=(canonical or None)
+                )
+                st.rerun()
+            except (ValueError, FileNotFoundError, RuntimeError) as exc:
+                st.error(f"No pude aceptar: {exc}")
+    with col_no:
+        if st.button("Rechazar", key=f"exp_rej_{e['id']}", use_container_width=True):
+            try:
+                actions_layer.register_experiencer_reject(db_path, e["id"])
+                st.rerun()
+            except (ValueError, FileNotFoundError, RuntimeError) as exc:
+                st.error(f"No pude rechazar: {exc}")
 
 
 # ── Helpers privados ─────────────────────────────────────────────────────────

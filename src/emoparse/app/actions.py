@@ -15,6 +15,9 @@ from loguru import logger
 
 from emoparse.storage.actors_kb_discoveries import ActorsKbDiscoveriesRepository
 from emoparse.storage.db import Database
+from emoparse.storage.experiencer_equivalences import (
+    ExperiencerEquivalencesRepository,
+)
 
 
 def register_promote(
@@ -110,3 +113,55 @@ def _open_repo(db_path: Path) -> ActorsKbDiscoveriesRepository:
             f"DB sin tabla actors_kb_discoveries."
         )
     return ActorsKbDiscoveriesRepository(db)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Equivalencias de experienciador
+# ══════════════════════════════════════════════════════════════════════════════
+
+def register_experiencer_accept(
+    db_path: Path,
+    equivalence_id: int,
+    *,
+    canonical: str | None = None,
+) -> None:
+    """Acepta desde el dashboard una equivalencia de experienciador.
+
+    Queda accepted hasta correr `emoparse experiencers apply`. Si `canonical`
+    es None se usa el sugerido (o el crudo si la clase es 'literal').
+    """
+    repo = _open_equiv_repo(db_path)
+    repo.accept(equivalence_id, canonical=canonical, origin="dashboard")
+    logger.info(
+        f"[app.actions] Aceptada equivalencia desde dashboard: "
+        f"id={equivalence_id} canonical={canonical!r}"
+    )
+
+
+def register_experiencer_reject(db_path: Path, equivalence_id: int) -> None:
+    """Rechaza desde el dashboard una equivalencia de experienciador."""
+    repo = _open_equiv_repo(db_path)
+    repo.reject(equivalence_id, origin="dashboard")
+    logger.info(
+        f"[app.actions] Rechazada equivalencia desde dashboard: "
+        f"id={equivalence_id}"
+    )
+
+
+def undo_experiencer_decision(db_path: Path, equivalence_id: int) -> None:
+    """Vuelve a pending una equivalencia decidida (no aplicada)."""
+    repo = _open_equiv_repo(db_path)
+    repo.reset_to_pending(equivalence_id)
+    logger.info(
+        f"[app.actions] Equivalencia vuelta a pending: id={equivalence_id}"
+    )
+
+
+def _open_equiv_repo(db_path: Path) -> ExperiencerEquivalencesRepository:
+    """Abre el repo de equivalencias de experienciador en modo read-write."""
+    if not db_path.is_file():
+        raise FileNotFoundError(f"DB no encontrada: {db_path}")
+    db = Database(db_path)
+    if not db.table_exists("experiencer_equivalences"):
+        raise RuntimeError("DB sin tabla experiencer_equivalences.")
+    return ExperiencerEquivalencesRepository(db)

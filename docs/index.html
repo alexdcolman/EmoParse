@@ -938,6 +938,7 @@ body.at-home main > footer { display: block; }
         <li><a href="#cli-inspect" class="depth-2">inspect</a></li>
         <li><a href="#cli-retry" class="depth-2">retry</a></li>
         <li><a href="#cli-discoveries" class="depth-2">discoveries</a></li>
+        <li><a href="#cli-experiencers" class="depth-2">experiencers</a></li>
         <li><a href="#cli-validate" class="depth-2">validate</a></li>
         <li><a href="#cli-judge" class="depth-2">judge</a></li>
         <li><a href="#cli-metrics" class="depth-2">metrics</a></li>
@@ -1162,6 +1163,18 @@ pip install -e .</code></pre>
     El proyecto declara grupos de dependencias opcionales. Instalá los que necesites:
   </p>
 
+  <div class="callout">
+    <span class="callout-label">Build CUDA del backend local</span>
+    <p>
+      El extra <code>llamacpp</code> pide <code>llama-cpp-python&gt;=0.3</code>
+      (se quitó el tope <code>&lt;0.4</code>, que bloqueaba builds necesarios
+      para arquitecturas 2026). Para compilar con CUDA:
+      <code>CMAKE_ARGS='-DGGML_CUDA=on' pip install -e ".[llamacpp]"
+      --no-binary llama-cpp-python</code>. El <code>--no-binary</code> es
+      clave: sin él, pip baja un wheel CPU e ignora CUDA.
+    </p>
+  </div>
+
   <div class="table-wrap">
     <table>
       <thead>
@@ -1265,6 +1278,28 @@ docker run --gpus all -v <span class="c-acc">$PWD</span>/data:/data -v <span cla
         <tr><td><code>phi-4-mini-instruct</code></td><td>~2 GB Q4_K_M</td><td>metadata (schema simple)</td><td>Hugging Face</td></tr>
       </tbody>
     </table>
+  </div>
+
+  <div class="callout">
+    <span class="callout-label">Gemma 3/4 (iSWA)</span>
+    <p>
+      Los modelos Gemma 3/4 requieren <code>flash_attn: true</code> en su
+      entrada de <code>models</code> para poder crear el contexto en el build
+      nuevo (embeddings de V de tamaño heterogéneo entre capas).
+    </p>
+  </div>
+
+  <div class="callout">
+    <span class="callout-label">A/B sobre detección de emociones (pass2)</span>
+    <p>
+      De ocho modelos evaluados, dos ganan en ejes opuestos:
+      <code>gemma4-31b</code> es el mejor en detección y tipado de emoción,
+      pero flojo en experienciador; <code>qwen3.6-35b-a3b</code> es el mejor en
+      experienciador y precisión, aunque sub-detecta. <code>mistral-24b</code>
+      queda balanceado. El experienciador sigue siendo el frente más difícil:
+      por eso conviene reforzarlo aparte con la etapa
+      <code>normalize_experiencers</code>.
+    </p>
   </div>
 
   <p>
@@ -1484,7 +1519,27 @@ emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
 <span class="c-comment"># judge: evalúa la coherencia de las caracterizaciones</span>
 emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
   --run-id presidencial_q1_2024 \
-  --stages judge</code></pre>
+  --stages judge
+
+<span class="c-comment"># normalize_experiencers: propone equivalencias de experienciador por discurso</span>
+emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
+  --run-id presidencial_q1_2024 \
+  --stages explode_emociones,normalize_experiencers
+
+<span class="c-comment"># Revisar y resolver las equivalencias propuestas; apply las materializa</span>
+emoparse experiencers list   --db runs/presidencial_q1_2024.sqlite
+emoparse experiencers accept --db runs/presidencial_q1_2024.sqlite --id 3 \
+  --canonical <span class="c-str">"Javier Milei"</span>
+emoparse experiencers reject --db runs/presidencial_q1_2024.sqlite --id 7
+emoparse experiencers apply  --db runs/presidencial_q1_2024.sqlite</code></pre>
+
+  <p>
+    Además, <code>emoparse run</code> acepta <code>--enunciador</code>,
+    <code>--enunciatarios</code> y <code>--actores</code> (combinables) para
+    acotar la detección de emociones a esos experienciadores. Sin ninguna de
+    las tres se analiza todo; con alguna, el filtro se aplica a ambos pases de
+    detección.
+  </p>
 
   <h3>6. Validar coherencia semiótica</h3>
 
@@ -1747,9 +1802,14 @@ streamlit run src/emoparse/app/__main__.py
       <!-- normalize_emotions -->
       <rect x="285" y="289" width="165" height="36" rx="3" class="st"/>
       <text x="367" y="307" class="stx">normalize_emotions</text>
+      <!-- normalize_experiencers [opt] -->
+      <rect x="470" y="289" width="185" height="36" rx="3" class="sto"/>
+      <text x="562" y="307" class="stx">normalize_experiencers</text>
 
       <!-- explode → normalize_emotions -->
       <line x1="260" y1="307" x2="283" y2="307" class="ar" marker-end="url(#arr)"/>
+      <!-- explode → normalize_experiencers (segunda rama opcional desde explode) -->
+      <path d="M 200,289 Q 200,273 230,273 L 532,273 Q 562,273 562,289" class="ar" marker-end="url(#arr)"/>
       <!-- normalize_emotions → characterizer (baja fila 2) -->
       <path d="M 367,325 Q 367,344 177,344 L 177,349" class="ar" marker-end="url(#arr)"/>
 
@@ -1830,7 +1890,7 @@ streamlit run src/emoparse/app/__main__.py
         <tr>
           <td><code>emotions_pass2</code></td>
           <td>frase</td>
-          <td>Segunda lectura de las mismas frases, esta vez con el contexto de las emociones anteriores del discurso. Refina la primera lectura.</td>
+          <td>Segunda lectura de las mismas frases, usando el <em>texto</em> de las frases previas del discurso como contexto para desambiguar —no una lista de emociones para arrastrar—. Cada emoción exige evidencia citable en la frase actual. Refina la primera lectura.</td>
           <td>opcional</td>
         </tr>
         <tr>
@@ -1844,6 +1904,12 @@ streamlit run src/emoparse/app/__main__.py
           <td>emoción</td>
           <td>Asigna a cada emoción un nombre canónico de la ontología, de modo que variantes equivalentes ("bronca", "enojo", "indignación") se puedan agrupar en el análisis.</td>
           <td>activa</td>
+        </tr>
+        <tr>
+          <td><code>normalize_experiencers</code></td>
+          <td>emoción</td>
+          <td>Resuelve, por discurso, las distintas formas de nombrar a quien siente una emoción ("yo", "el orador" → el enunciador; otras menciones → enunciatarios o actores). Propone equivalencias para revisión humana; lo aceptado se escribe en <code>experienciador_canonico</code> con <code>emoparse experiencers apply</code>.</td>
+          <td>opcional</td>
         </tr>
         <tr>
           <td><code>characterizer</code></td>
@@ -1925,6 +1991,13 @@ streamlit run src/emoparse/app/__main__.py
     estructurada con GBNF compilada desde el schema Pydantic (cacheada por
     modelo, ya que compilar GBNF es costoso). Soporta seed fija para
     determinismo bit-a-bit.
+  </p>
+  <p>
+    Flag opcional por modelo <code>no_think: true</code>: el backend inyecta
+    <code>/no_think</code> en el system prompt solo para ese modelo. Útil para
+    los razonadores Qwen bajo GBNF, que sin esto tienden a devolver
+    <code>[]</code> o a no terminar la generación. Es por-modelo, así que no
+    contamina prompts compartidos con modelos no-Qwen.
   </p>
 
 <pre data-lang="yaml"><code><span class="c-key">models:</span>
@@ -2050,6 +2123,20 @@ streamlit run src/emoparse/app/__main__.py
       que toques un prompt o una ontología. Si no, el cache devuelve
       respuestas viejas (pre-cambio). El bumpeo es manual a propósito: te
       obliga a decidir qué cambio invalida qué.
+    </p>
+  </div>
+
+  <div class="callout">
+    <span class="callout-label">Foco de detección y cache</span>
+    <p>
+      Las flags <code>--enunciador</code> / <code>--enunciatarios</code> /
+      <code>--actores</code> se renderizan dentro del system prompt, y la clave
+      del cache incluye el hash del system prompt: por eso cada combinación de
+      alcance se cachea por separado de forma automática, sin necesidad de
+      bumpear ninguna version. En cambio, si cambiás una plantilla de prompt o
+      un archivo de heurísticas, subí <code>prompt</code>; y si modificás un
+      schema de salida —incluidos los <code>Field(min_length/max_length)</code>
+      que acotan la gramática GBNF—, subí <code>schema</code>.
     </p>
   </div>
 
@@ -2283,11 +2370,25 @@ streamlit run src/emoparse/app/__main__.py
       ontología, de modo que las variantes equivalentes puedan agruparse
       al analizar tendencias.
     </li>
+    <li>
+      Una tercera, opcional, normaliza el <em>experienciador</em>: resuelve,
+      discurso por discurso, las distintas formas de nombrar a quien siente
+      ("yo", "el orador" → el enunciador; otras menciones → enunciatarios o
+      actores). Como esta correspondencia es local a cada discurso, no usa una
+      base global: propone equivalencias para revisión y, al aceptarlas,
+      escribe el canónico en <code>emociones.experienciador_canonico</code>.
+    </li>
   </ul>
   <p>
     Los hallazgos de actores no reconocidos se gestionan con el
     subcomando <code>emoparse discoveries</code> (listar, exportar,
     promover a nuevo actor, fusionar con uno existente o descartar).
+  </p>
+  <p>
+    Las equivalencias de experienciador se gestionan con
+    <code>emoparse experiencers</code> (listar, exportar, aceptar —con destino
+    editable—, rechazar) y se materializan con <code>experiencers apply</code>.
+    También se pueden revisar desde el dashboard.
   </p>
 </section>
 
@@ -2332,7 +2433,8 @@ streamlit run src/emoparse/app/__main__.py
   <span class="c-flag">--run-id</span>    mi_run \
   [<span class="c-flag">--genre</span>     discurso_presidencial] \
   [<span class="c-flag">--db</span>        runs/mi_run.sqlite] \
-  [<span class="c-flag">--stages</span>    summarizer,metadata,emotions]</code></pre>
+  [<span class="c-flag">--stages</span>    summarizer,metadata,emotions] \
+  [<span class="c-flag">--enunciador</span>] [<span class="c-flag">--enunciatarios</span>] [<span class="c-flag">--actores</span>]</code></pre>
 
 <div class="table-wrap">
   <table>
@@ -2344,6 +2446,7 @@ streamlit run src/emoparse/app/__main__.py
       <tr><td><code>--genre</code></td><td>Género del corpus. Default: <code>discurso_presidencial</code>.</td></tr>
       <tr><td><code>--db</code></td><td>Path explícito a la DB. Si no se pasa, se resuelve como <code>runs/&lt;run_id&gt;.sqlite</code>.</td></tr>
       <tr><td><code>--stages</code></td><td>Lista de stages a ejecutar, separada por coma. Si no se pasa, corre todas las stages default del género.</td></tr>
+      <tr><td><code>--enunciador</code> · <code>--enunciatarios</code> · <code>--actores</code></td><td>Acotan la detección de emociones a esos experienciadores (combinables; se unen). Sin ninguna se analizan todos. El filtro se aplica a ambos pases de detección.</td></tr>
     </tbody>
   </table>
 </div>
@@ -2588,6 +2691,64 @@ emoparse retry \
 </div>
 
 <!-- ───── validate ────────────────────────────────────────────────── -->
+<h3 id="cli-experiencers"><code>emoparse experiencers</code></h3>
+<p>
+  Gestiona las equivalencias de experienciador que la etapa
+  <code>normalize_experiencers</code> propone por discurso (por ejemplo "yo" o
+  "el orador" → el enunciador). Flujo típico: revisar con <code>list</code>,
+  decidir con <code>accept</code> / <code>reject</code>, y materializar lo
+  aceptado con <code>apply</code>, que escribe
+  <code>emociones.experienciador_canonico</code>. A diferencia de
+  <code>discoveries</code> (que muta el JSON global de actores), acá la
+  normalización es local al discurso y se aplica directamente sobre la DB.
+</p>
+
+<h4>list / export — revisar las propuestas</h4>
+
+<pre data-lang="bash"><code>emoparse experiencers list \
+  <span class="c-flag">--db</span>      runs/mi_run.sqlite \
+  [<span class="c-flag">--codigo</span> 2024-03-15-anuncio-medida] \
+  [<span class="c-flag">--status</span> pending]
+
+emoparse experiencers export \
+  <span class="c-flag">--db</span>     runs/mi_run.sqlite \
+  <span class="c-flag">--output</span> exports/experiencers.csv \
+  [<span class="c-flag">--status</span> pending]</code></pre>
+
+<div class="table-wrap">
+  <table>
+    <thead><tr><th>Flag</th><th>Qué hace</th></tr></thead>
+    <tbody>
+      <tr><td><code>--db</code></td><td>Path a la DB SQLite del run. Requerido.</td></tr>
+      <tr><td><code>--codigo</code></td><td>Filtra por código de discurso.</td></tr>
+      <tr><td><code>--status</code></td><td>Estado a listar/exportar: <code>pending</code> (default), <code>accepted</code>, <code>rejected</code>, <code>applied</code>.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h4>accept / reject — decidir</h4>
+
+<pre data-lang="bash"><code><span class="c-comment"># Acepta la equivalencia. Sin --canonical usa el destino sugerido</span>
+<span class="c-comment"># (o el propio crudo si la clase es 'literal').</span>
+emoparse experiencers accept \
+  <span class="c-flag">--db</span> runs/mi_run.sqlite \
+  <span class="c-flag">--id</span> 3 \
+  [<span class="c-flag">--canonical</span> <span class="c-str">"Javier Milei"</span>]
+
+emoparse experiencers reject <span class="c-flag">--db</span> runs/mi_run.sqlite <span class="c-flag">--id</span> 7</code></pre>
+
+<h4>apply — materializar lo aceptado</h4>
+
+<pre data-lang="bash"><code>emoparse experiencers apply \
+  <span class="c-flag">--db</span> runs/mi_run.sqlite \
+  [<span class="c-flag">--dry-run</span>]</code></pre>
+
+<p>
+  Escribe el canónico en todas las emociones cuyo experienciador crudo
+  coincide, discurso por discurso. Es idempotente: re-correr es seguro.
+  <code>--dry-run</code> muestra lo que se aplicaría sin tocar la DB.
+</p>
+
 <h3 id="cli-validate"><code>emoparse validate</code></h3>
 <p>Corre los <em>domain validators</em> sobre las emociones caracterizadas e imprime resumen.</p>
 
@@ -3299,6 +3460,19 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
     usamos <code>response_format: json_schema</code> strict. El JSON inválido
     es imposible por construcción. Esto saca una fuente entera de bugs.
   </p>
+  <p>
+    El conversor Pydantic→GBNF honra además algunos límites declarados en el
+    schema (todos opt-in salvo el de whitespace): <code>max_length</code> en
+    una lista acota la repetición (evita listas infinitas);
+    <code>min_length</code> en una lista prohíbe el array vacío
+    <code>[]</code> (el bug de modelos que devolvían un batch vacío);
+    <code>max_length</code> en un string acota su longitud; y el whitespace
+    entre tokens dejó de ser recursivo (<code>ws ::= [ \t\n]{0,32}</code>),
+    cerrando la no-terminación por whitespace infinito. Dos requisitos del
+    build de llama.cpp: que soporte el operador <code>{m,n}</code>, y que los
+    nombres de regla GBNF no lleven guión bajo (solo <code>[a-zA-Z0-9-]</code>),
+    por lo que las reglas generadas usan guiones (<code>string-max-1-600</code>).
+  </p>
 
   <h3>Cache versionado con granularidad fina</h3>
   <p>
@@ -3405,7 +3579,12 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
         <tr>
           <td><code>emociones</code></td>
           <td>1 row × emoción individual</td>
-          <td>Una fila por emoción individual: quién la siente, tipo, modo y justificación, más el nombre canónico, la caracterización detallada y, si se ejecutó, el análisis actancial.</td>
+          <td>Una fila por emoción individual: quién la siente, tipo, modo y justificación, más el nombre canónico de la emoción, el experienciador canónico (si se normalizó), la caracterización detallada y, si se ejecutó, el análisis actancial.</td>
+        </tr>
+        <tr>
+          <td><code>experiencer_equivalences</code></td>
+          <td>1 row × (codigo, experienciador crudo)</td>
+          <td>Equivalencias de experienciador propuestas por <code>normalize_experiencers</code> y su decisión de triage (pending / accepted / rejected / applied). Al aplicarlas se escribe <code>emociones.experienciador_canonico</code>.</td>
         </tr>
         <tr>
           <td><code>llm_cache</code></td>
@@ -3451,6 +3630,19 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
 <section id="troubleshooting">
   <h2>Troubleshooting<a class="anchor" href="#troubleshooting">#</a></h2>
 
+  <h3>"ContextLengthExceededError" pero el input no parece tan largo</h3>
+  <p>
+    Ese error tiene dos orígenes. El obvio es que el prompt no entra en el
+    <code>context_length</code> del modelo. El menos obvio: bajo schema GBNF,
+    también se dispara cuando el modelo no cierra el JSON dentro de
+    <code>max_tokens</code> y termina con <code>finish_reason == "length"</code>
+    —es decir, no-terminación o loop de generación, no overflow del input—. En
+    ambos casos es permanente (no se reintenta). Si el input es chico, mirá la
+    generación: subí <code>max_tokens</code>, revisá si el modelo entra en loop
+    (los razonadores Qwen sin <code>no_think</code> son propensos), o acotá el
+    schema con los límites GBNF.
+  </p>
+
   <h3>Out of memory al cargar el modelo</h3>
   <p>
     Bajá <code>n_gpu_layers</code> en el modelo afectado (de <code>-1</code> a un
@@ -3459,6 +3651,18 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
     automáticamente el modelo actual de VRAM cuando la próxima stage usa
     otro alias, así que mezclar modelos grandes funciona si se secuencian
     bien.
+  </p>
+
+  <h3>Resultados no reproducibles, u override de modelo que no toma</h3>
+  <p>
+    El manejo del <code>seed</code> cambió entre versiones de
+    <code>llama-cpp-python</code>: si actualizás el backend, re-validá el
+    determinismo. Y el override de modelo por etapa
+    (<code>emoparse retry --policy retry.yaml</code> con
+    <code>override_model</code>) es un remap in-memory de
+    <code>pipeline.stages</code>: solo aplica dentro del mismo comando (con
+    <code>--run-id</code>), no se persiste para un <code>emoparse run</code>
+    separado.
   </p>
 
   <h3>El cache no parece estar funcionando</h3>

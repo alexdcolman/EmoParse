@@ -18,6 +18,7 @@ from loguru import logger
 
 from emoparse.cli.commands import (
     discoveries_cmd,
+    experiencers_cmd,
     inspect_cmd,
     judge_cmd,
     metrics_cmd,
@@ -103,6 +104,31 @@ def _build_parser() -> argparse.ArgumentParser:
             "género determina los roles enunciativos válidos, la unidad "
             "de chunking (frase/parrafo/documento), y opcionalmente "
             "overrides de modelos y batch_sizes."
+        ),
+    )
+    p_run.add_argument(
+        "--enunciador",
+        dest="scope_enunciador",
+        action="store_true",
+        help=(
+            "Acota la detección de emociones (ambos pases) a las del enunciador. Combinable "
+            "con --enunciatarios y --actores (se unen). Si no se pasa "
+            "ninguna de las tres, se analizan todos los experienciadores."
+        ),
+    )
+    p_run.add_argument(
+        "--enunciatarios",
+        dest="scope_enunciatarios",
+        action="store_true",
+        help="Acota la detección de emociones (ambos pases) a las de los enunciatarios.",
+    )
+    p_run.add_argument(
+        "--actores",
+        dest="scope_actores",
+        action="store_true",
+        help=(
+            "Acota la detección de emociones (ambos pases) a las de otros actores "
+            "(distintos del enunciador y los enunciatarios)."
         ),
     )
     p_run.set_defaults(handler=run_cmd.handle)
@@ -427,6 +453,106 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Imprime las acciones que se ejecutarían sin modificar nada.",
     )
     p_apply.set_defaults(handler=discoveries_cmd.handle)
+
+    # ── experiencers ─────────────────────────────────────────────────────────
+    p_exp = sub.add_parser(
+        "experiencers",
+        help="Gestiona equivalencias de experienciador propuestas por normalize_experiencers.",
+        description=(
+            "Triage de equivalencias de experienciador (por discurso) que "
+            "propone la stage normalize_experiencers. Subverbos: list, "
+            "export, accept, reject, apply.\n\n"
+            "Flujo recomendado:\n"
+            "  1. `list` para ver las equivalencias pendientes.\n"
+            "  2. Para cada una: `accept` (opcionalmente con --canonical para "
+            "sobrescribir el destino sugerido) o `reject`. Estos verbos solo "
+            "registran la decisión en la DB.\n"
+            "  3. `apply` materializa las aceptadas escribiendo "
+            "emociones.experienciador_canonico. Idempotente."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    sub_exp = p_exp.add_subparsers(
+        title="acciones",
+        dest="action",
+        required=True,
+    )
+
+    p_exp_list = sub_exp.add_parser(
+        "list",
+        help="Lista equivalencias por estado (default: pending).",
+    )
+    p_exp_list.add_argument("--db", required=True, help="Path al .sqlite del run.")
+    p_exp_list.add_argument(
+        "--codigo", default=None, help="Filtrar por código de discurso."
+    )
+    p_exp_list.add_argument(
+        "--status",
+        default="pending",
+        choices=("pending", "accepted", "rejected", "applied"),
+        help="Estado a listar. Default: pending.",
+    )
+    p_exp_list.set_defaults(handler=experiencers_cmd.handle)
+
+    p_exp_exp = sub_exp.add_parser(
+        "export",
+        help="Exporta equivalencias a CSV.",
+    )
+    p_exp_exp.add_argument("--db", required=True, help="Path al .sqlite del run.")
+    p_exp_exp.add_argument("--output", required=True, help="Path al CSV de salida.")
+    p_exp_exp.add_argument(
+        "--codigo", default=None, help="Filtrar por código de discurso."
+    )
+    p_exp_exp.add_argument(
+        "--status",
+        default="pending",
+        choices=("pending", "accepted", "rejected", "applied"),
+        help="Estado a exportar. Default: pending.",
+    )
+    p_exp_exp.set_defaults(handler=experiencers_cmd.handle)
+
+    p_exp_acc = sub_exp.add_parser(
+        "accept",
+        help="Acepta una equivalencia (opcionalmente con --canonical).",
+        description=(
+            "Acepta la equivalencia. Sin --canonical usa el destino sugerido "
+            "(o el propio crudo si la clase es 'literal'). El canónico se "
+            "escribe recién en `apply`."
+        ),
+    )
+    p_exp_acc.add_argument("--db", required=True)
+    p_exp_acc.add_argument("--id", required=True, type=int, help="ID de la equivalencia.")
+    p_exp_acc.add_argument(
+        "--canonical",
+        default=None,
+        help="Destino canónico explícito (sobrescribe el sugerido).",
+    )
+    p_exp_acc.set_defaults(handler=experiencers_cmd.handle)
+
+    p_exp_rej = sub_exp.add_parser(
+        "reject",
+        help="Rechaza una equivalencia (el experienciador queda sin canónico).",
+    )
+    p_exp_rej.add_argument("--db", required=True)
+    p_exp_rej.add_argument("--id", required=True, type=int, help="ID de la equivalencia.")
+    p_exp_rej.set_defaults(handler=experiencers_cmd.handle)
+
+    p_exp_app = sub_exp.add_parser(
+        "apply",
+        help="Aplica las equivalencias aceptadas a emociones.experienciador_canonico.",
+        description=(
+            "Escribe el canónico en todas las emociones cuyo experienciador "
+            "crudo coincide, por discurso. Idempotente: re-correr es seguro."
+        ),
+    )
+    p_exp_app.add_argument("--db", required=True, help="Path al .sqlite del run.")
+    p_exp_app.add_argument(
+        "--dry-run",
+        action="store_true",
+        dest="dry_run",
+        help="Imprime lo que se aplicaría sin modificar nada.",
+    )
+    p_exp_app.set_defaults(handler=experiencers_cmd.handle)
 
     # ── scrape ───────────────────────────────────────────────────────────────
     p_scrape = sub.add_parser(

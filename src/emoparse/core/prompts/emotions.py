@@ -16,17 +16,23 @@ def render_system(
     titulo: str,
     tipo_discurso: str,
     enunciador: str,
+    enunciatarios: str = "",
+    alcance: str = "",
 ) -> str:
     """Renderiza el system prompt de EmotionsAgent.
 
     Args:
         ontologia: Texto formateado de la ontología de emociones.
         heuristicas: Texto con heurísticas de inferencia para el agente.
-        configuraciones: Texto con ocho tipos de configuraciones de
-            simulacro emocional.
+        configuraciones: Texto con las ocho configuraciones de simulacro
+            emocional.
         titulo: Título del discurso.
         tipo_discurso: Clasificación del discurso.
         enunciador: Identificación del enunciador.
+        enunciatarios: Enunciatarios del discurso, ya formateados como texto.
+            Vacío si no se conocen.
+        alcance: Frase que restringe los experienciadores a analizar. Vacío
+            para analizar emociones de cualquier actor.
     """
     return render(
         "emotions_system",
@@ -36,6 +42,8 @@ def render_system(
         titulo=titulo,
         tipo_discurso=tipo_discurso,
         enunciador=enunciador,
+        enunciatarios=enunciatarios,
+        alcance=alcance,
     )
 
 

@@ -22,6 +22,10 @@ FORMATO DEL GOLD (CSV)
     · tipo            la emoción; todo lo anterior al primer '('. Alternativas
                       con '/': "satisfaccion/ironia" matchea cualquiera.
     · (experienciador) primer paréntesis; QUIÉN siente la emoción.
+                      Alternativas con '/': "(Milei/yo/enunciador)" matchea si el
+                      modelo acierta CUALQUIERA de ellas. Con '->' se anota el
+                      objetivo (hacia qué): "(Milei->socialismo)"; para el match
+                      del experienciador solo cuenta lo previo a '->'.
     · [tag]           y un "(conf-baja)" extra se ignoran en el match
                       (son nota humana; conf-baja además actúa como peso).
   Sin emoción en la frase → escribir 'NINGUNA' sola en la celda.
@@ -30,9 +34,13 @@ PARÁMETROS
   base                  carpeta del run con frases.csv (p. ej. exports/q2/)
   gold                  CSV del gold (p. ej. evaluation/gold/gold.csv)
   --pass {pass1,pass2}  qué columna del modelo evaluar (default: pass2)
-  --equivalences FILE   JSON de clusters de equivalencias; canoniza gold y
-                        modelo antes de comparar el tipo. Sin esto: match
+  --equivalences FILE   JSON de clusters de equivalencias de TIPOS; canoniza gold
+                        y modelo antes de comparar el tipo. Sin esto: match
                         exacto por lema.
+  --exp-equivalences FILE  JSON (mismo formato) de equivalencias de
+                        EXPERIENCIADORES; canoniza quién-siente antes de
+                        comparar (p. ej. Milei≡yo≡enunciador). Si no matchea por
+                        cluster, cae al match laxo por token de siempre.
   --exclude-low-conf    ignora las emociones del gold marcadas "(conf-baja)";
                         las frases que SOLO tenían conf-baja salen del scoring
                         (no cuentan como acierto ni error).
@@ -55,6 +63,13 @@ CÓMO CORRER (desde la raíz del proyecto; gold y JSON en evaluation/gold/)
   python evaluation/scripts/eval_against_gold.py exports/*/ \
          evaluation/gold/gold.csv --pass pass2 \
          --equivalences evaluation/gold/equivalencias.json --exclude-low-conf
+
+  # 4) Con equivalencias de experienciador (Milei≡yo≡enunciador, etc.):
+  python evaluation/scripts/eval_against_gold.py exports/*/ \
+         evaluation/gold/gold.csv --pass pass2 \
+         --equivalences evaluation/gold/equivalencias.json \
+         --exp-equivalences evaluation/gold/exp_equivalencias.json \
+         --out evaluation/diff_pass2_eq.csv
 
   (base es UN directorio de run, el que contiene frases.csv; si exports/*/
   expande a varios, pasá el que querés evaluar, p. ej. exports/q2/.)
@@ -80,14 +95,15 @@ def lemma(s):
             return s[:-len(suf)]
     return s
 
-CANON_LOOKUP: dict[str, str] = {}
+CANON_LOOKUP: dict[str, str] = {}       # tipos de emocion
+EXP_CANON_LOOKUP: dict[str, str] = {}   # experienciadores
 
 
-def load_equivalences(path):
-    """Carga clusters de equivalencias y arma lookup norm(termino)->canonico.
+def _load_clusters(path, lookup, etiqueta):
+    """Carga clusters {"<canonico>": [terminos...]} a `lookup` (norm->canonico).
 
-    Formato: {"clusters": {"<canonico>": ["term1", "term2", ...], ...}}.
     Si un termino aparece en mas de un cluster, se avisa y gana el primero.
+    Devuelve la cantidad de clusters cargados.
     """
     import json as _json
     data = _json.load(open(path, encoding="utf-8"))
@@ -98,18 +114,36 @@ def load_equivalences(path):
         for t in [canonico, *terms]:
             tn = norm(t)
             if tn in seen and seen[tn] != c:
-                print(f"  [aviso] equivalencias: '{tn}' en >1 cluster "
+                print(f"  [aviso] {etiqueta}: '{tn}' en >1 cluster "
                       f"({seen[tn]} y {c}); queda en {seen[tn]}.")
                 continue
             seen.setdefault(tn, c)
-    CANON_LOOKUP.update(seen)
+    lookup.update(seen)
     return len(clusters)
 
 
+def load_equivalences(path):
+    """Clusters de equivalencias de TIPOS de emocion."""
+    return _load_clusters(path, CANON_LOOKUP, "equivalencias")
+
+
+def load_exp_equivalences(path):
+    """Clusters de equivalencias de EXPERIENCIADORES (mismo formato JSON)."""
+    return _load_clusters(path, EXP_CANON_LOOKUP, "exp-equivalencias")
+
+
 def canon(label):
-    """Canoniza una etiqueta: cluster si esta en equivalencias, si no su lema."""
+    """Canoniza un tipo: cluster si esta en equivalencias, si no su lema."""
     n = norm(label)
     return CANON_LOOKUP.get(n) or lemma(label)
+
+
+def canon_exp(label):
+    """Canoniza un experienciador: cluster si esta en exp-equivalencias, si no
+    su forma normalizada (NO lematizada: 'audiencia' no debe volverse 'audi',
+    los nombres propios no se tocan)."""
+    n = norm(label)
+    return EXP_CANON_LOOKUP.get(n, n)
 
 
 def parse_json(s):
@@ -135,8 +169,24 @@ def _experienciador(raw):
         return content
     return ""
 
+
+def _exp_alternatives(raw_exp):
+    """Conjunto de experienciadores ACEPTABLES (canonizados) de un parentesis.
+
+    · '/'  separa alternativas intercambiables: 'Milei/yo/enunciador' -> los tres
+           cuentan; basta que el modelo acierte uno.
+    · '->' separa QUIEN siente de HACIA QUE (objetivo). Para el experienciador
+           solo importa lo previo a '->'; el objetivo se ignora aca. Asi, el '/'
+           que viva dentro del objetivo ('Milei->marxismo/socialismo') no se
+           confunde con alternativas de experienciador.
+    """
+    head = re.split(r"->", raw_exp)[0]          # quien siente
+    alts = (a.strip() for a in head.split("/"))
+    return {canon_exp(a) for a in alts if a.strip()}
+
+
 def parse_gold_cell(cell, exclude_low_conf=False):
-    """Devuelve lista de (set_de_canonicos_tipo, experienciador)."""
+    """Devuelve lista de (set_tipos_canon, exp_raw, set_exp_canon)."""
     cell = (cell or "").strip()
     if not cell or norm(cell).startswith("ninguna"):
         return []
@@ -148,12 +198,13 @@ def parse_gold_cell(cell, exclude_low_conf=False):
         if exclude_low_conf and "conf-baja" in raw.lower():
             continue
         exp = _experienciador(raw)
+        exp_set = _exp_alternatives(exp)
         tipo_part = raw.split("(")[0]
         tipo_part = re.sub(r"\[.*?\]", "", tipo_part).strip()
         cset = {canon(t) for t in re.split(r"[/]", tipo_part) if t.strip()}
         cset = {c for c in cset if c}
         if cset:
-            out.append((cset, exp))
+            out.append((cset, exp, exp_set))
     return out
 
 CARRY = re.compile(r"contexto anterior|frase anterior|mantiene|persiste|"
@@ -168,13 +219,17 @@ def main():
     ap.add_argument("--pass", dest="which", default="pass2",
                     choices=["pass1", "pass2"])
     ap.add_argument("--equivalences", default=None,
-                    help="JSON de clusters de equivalencias (opcional)")
+                    help="JSON de clusters de equivalencias de TIPOS (opcional)")
+    ap.add_argument("--exp-equivalences", dest="exp_equiv", default=None,
+                    help="JSON de clusters de equivalencias de EXPERIENCIADORES "
+                         "(mismo formato; canoniza quien-siente antes de comparar)")
     ap.add_argument("--exclude-low-conf", dest="excl", action="store_true",
                     help="ignora emociones del gold marcadas (conf-baja)")
     ap.add_argument("--out", default="eval_diff.csv")
     args = ap.parse_args()
 
     n_clusters = load_equivalences(args.equivalences) if args.equivalences else 0
+    n_exp_clusters = load_exp_equivalences(args.exp_equiv) if args.exp_equiv else 0
 
     col = "emociones_payload" if args.which == "pass1" else "emociones_pass2_payload"
     with open(os.path.join(args.base, "frases.csv"), encoding="utf-8-sig") as fh:
@@ -198,7 +253,10 @@ def main():
 
         fr = frases.get(idx, {})
         model_em = parse_json(fr.get(col)) or parse_json(fr.get("emociones_payload"))
-        model = [(canon(e.get("tipo_emocion", "")), norm(e.get("experienciador", "")))
+        # cada modelo: (tipo_canon, exp_crudo_norm, set_exp_canon)
+        model = [(canon(e.get("tipo_emocion", "")),
+                  norm(e.get("experienciador", "")),
+                  _exp_alternatives(e.get("experienciador", "") or ""))
                  for e in model_em if e.get("tipo_emocion")]
         for e in model_em:
             carry_d += 1
@@ -212,19 +270,27 @@ def main():
         else: tn += 1
 
         if gold_has and model_has:
-            model_lemmas = {ml for ml, _ in model}
-            gold_universe = set().union(*[s for s, _ in gold])
-            for lemas, exp in gold:
+            model_lemmas = {ml for ml, _r, _e in model}
+            model_exp_canon = set().union(*[es for _l, _r, es in model]) or set()
+            me = " ".join(m_raw for _l, m_raw, _e in model)   # fallback laxo
+            gold_universe = set().union(*[s for s, *_ in gold])
+            for lemas, exp_raw, exp_set in gold:
                 g_total += 1
                 if lemas & model_lemmas:
                     g_match += 1
-                    if exp:
+                    if exp_set:
                         exp_tot += 1
-                        me = " ".join(m_exp for _, m_exp in model)
-                        toks = [t for t in re.split(r"\W+", norm(exp)) if len(t) > 3]
-                        if any(t in me for t in toks):
+                        # 1) acierto por equivalencia/identidad del experienciador
+                        ok = bool(exp_set & model_exp_canon)
+                        # 2) fallback laxo (como antes): token (>3) del exp crudo
+                        #    del gold como substring de los exp del modelo
+                        if not ok:
+                            toks = [t for t in re.split(r"\W+", norm(exp_raw))
+                                    if len(t) > 3]
+                            ok = any(t in me for t in toks)
+                        if ok:
                             exp_ok += 1
-            for ml, _ in model:
+            for ml, _r, _e in model:
                 m_total += 1
                 if ml in gold_universe:
                     m_match += 1
@@ -235,7 +301,7 @@ def main():
         diffs.append({
             "unit_idx": idx, "status": status,
             "modelo_n": len(model), "gold": cell,
-            "modelo": ";".join(sorted({ml for ml, _ in model})),
+            "modelo": ";".join(sorted({ml for ml, _r, _e in model})),
             "frase": (fr.get("frase", "") or "")[:80],
         })
 
@@ -247,6 +313,7 @@ def main():
     print(f"  EVAL vs GOLD  ({args.which})   frases={len(gold_rows)}")
     print(f"  equivalencias: {('%d clusters' % n_clusters) if n_clusters else 'NO (match exacto por lema)'}"
           f"   |   exclude-low-conf: {'si' if args.excl else 'no'}")
+    print(f"  exp-equivalencias: {('%d clusters' % n_exp_clusters) if n_exp_clusters else 'NO (match laxo por token)'}")
     print("=" * 62)
     print("  1) DETECCION (presencia por frase)")
     print(f"       TP={tp} FP={fp} FN={fn} TN={tn}")

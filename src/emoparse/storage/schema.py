@@ -134,6 +134,13 @@ CREATE TABLE IF NOT EXISTS emociones (
     tipo_emocion_canonico       TEXT,
     normalize_emotions_version  TEXT,
 
+    -- Output de NormalizeExperiencersStage (opt-in), tras aplicar las
+    -- equivalencias aceptadas. Es un string legible por discurso (p. ej. el
+    -- nombre del enunciador), NO un canonical_id de actors_kb. NULL = stage
+    -- no corrida, equivalencia no aceptada, o aún sin aplicar.
+    experienciador_canonico        TEXT,
+    normalize_experiencers_version TEXT,
+
     -- Output del CharacterizerAgent. JSON con los 4 atributos.
     caracterizacion_payload TEXT,
     caracterizacion_version TEXT,
@@ -337,6 +344,46 @@ CREATE INDEX IF NOT EXISTS idx_actors_kb_decisions_status
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  Tabla `experiencer_equivalences`: equivalencias de experienciador propuestas
+#  por normalize_experiencers, por discurso, para revisión humana.
+#
+#  A diferencia de los actores (KB global en JSON), la normalización de
+#  experienciadores es dependiente del discurso ("yo" → el enunciador de ESE
+#  discurso), así que no hay JSON externo que mutar: el `apply` escribe el
+#  canónico directamente en `emociones.experienciador_canonico`. Por eso una
+#  sola tabla (propuesta + decisión), no el par discoveries/decisions.
+# ══════════════════════════════════════════════════════════════════════════════
+
+CREATE_EXPERIENCER_EQUIVALENCES = """
+CREATE TABLE IF NOT EXISTS experiencer_equivalences (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo              TEXT NOT NULL,
+    raw_experienciador  TEXT NOT NULL,
+    -- Propuesta del LLM.
+    canonical_sugerido  TEXT,
+    clase               TEXT NOT NULL,    -- enunciador|enunciatario|actor|otro|literal
+    confianza           TEXT NOT NULL,    -- alta|media|baja
+    justificacion       TEXT,
+    ocurrencias         INTEGER NOT NULL DEFAULT 0,
+    -- Triage.
+    status              TEXT NOT NULL DEFAULT 'pending',  -- pending|accepted|rejected|applied
+    canonical_final     TEXT,             -- destino efectivo al aceptar
+    origin              TEXT NOT NULL DEFAULT 'cli',       -- cli|dashboard
+    discovered_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at         TIMESTAMP,
+    applied_at          TIMESTAMP,
+    UNIQUE (codigo, raw_experienciador)
+)
+""".strip()
+
+
+CREATE_EXPERIENCER_EQUIVALENCES_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_experiencer_equivalences_codigo_status
+    ON experiencer_equivalences(codigo, status)
+""".strip()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  Lista canónica de DDLs en orden de creación
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -358,4 +405,6 @@ ALL_TABLES_DDL: list[str] = [
     CREATE_ACTORS_KB_DISCOVERIES_INDEX,
     CREATE_ACTORS_KB_DECISIONS,
     CREATE_ACTORS_KB_DECISIONS_INDEX,
+    CREATE_EXPERIENCER_EQUIVALENCES,
+    CREATE_EXPERIENCER_EQUIVALENCES_INDEX,
 ]

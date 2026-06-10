@@ -354,3 +354,51 @@ class EmocionesRepository:
         with self._db.transaction() as cur:
             cur.execute(sql, params)
             return cur.rowcount
+
+    # ── Normalización de experienciador ──────────────────────────────────────
+
+    def list_distinct_experiencers(
+        self,
+        codigo: str,
+    ) -> list[tuple[str, int]]:
+        """Experienciadores crudos distintos de un discurso, con su frecuencia.
+
+        Ordenados por frecuencia descendente. Excluye vacíos.
+        """
+        rows = self._db.execute(
+            """
+            SELECT experienciador AS exp, COUNT(*) AS n
+            FROM emociones
+            WHERE codigo = ? AND TRIM(experienciador) <> ''
+            GROUP BY experienciador
+            ORDER BY n DESC, exp ASC
+            """,
+            (codigo,),
+        ).fetchall()
+        return [(row["exp"], int(row["n"])) for row in rows]
+
+    def set_experienciador_canonico(
+        self,
+        codigo: str,
+        raw_experienciador: str,
+        canonical: str,
+        version: str | None = None,
+    ) -> int:
+        """Escribe el canónico en todas las filas de un discurso que tienen
+        ese experienciador crudo. Devuelve el nº de filas afectadas."""
+        with self._db.transaction() as cur:
+            cur.execute(
+                """
+                UPDATE emociones SET
+                    experienciador_canonico        = ?,
+                    normalize_experiencers_version = ?,
+                    updated_at                     = ?
+                WHERE codigo = ? AND experienciador = ?
+                """,
+                (
+                    canonical, version,
+                    datetime.now(timezone.utc),
+                    codigo, raw_experienciador,
+                ),
+            )
+            return cur.rowcount

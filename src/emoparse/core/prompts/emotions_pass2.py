@@ -16,12 +16,15 @@ def render_system(
     titulo: str,
     tipo_discurso: str,
     enunciador: str,
+    enunciatarios: str = "",
+    alcance: str = "",
 ) -> str:
     """SYSTEM del pase 2.
 
     Incluye instrucciones de uso del rolling/full summary, reglas
-    anti-alucinación y los ocho tipos de configuraciones de simulacro
-    emocional que el agente debe asignar a cada emoción detectada.
+    anti-alucinación y las ocho configuraciones de simulacro emocional. El
+    parámetro `alcance` restringe los experienciadores a analizar, con la
+    misma semántica que en el pase 1.
     """
     return render(
         "emotions_pass2_system",
@@ -31,11 +34,14 @@ def render_system(
         titulo=titulo,
         tipo_discurso=tipo_discurso,
         enunciador=enunciador,
+        enunciatarios=enunciatarios,
+        alcance=alcance,
     )
 
 
 def render_user(unidades_block: str) -> str:
     """USER del pase 2.
 
-    Cada unidad ya viene con su CONTEXTO ANTERIOR formateado por el agente."""
+    Cada unidad ya viene con su CONTEXTO ANTERIOR formateado por el agente.
+    """
     return render("emotions_pass2_user", unidades=unidades_block)

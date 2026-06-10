@@ -43,9 +43,14 @@ REGLAS:
     * tipo_configuracion: una de las 8 configuraciones listadas arriba
                           (usá exactamente el nombre canónico de la clave).
     * justificacion:      evidencia semiótica concreta del texto.
+{% if alcance %}
+
+- ALCANCE RESTRINGIDO: detectá ÚNICAMENTE emociones cuyo experienciador sea {{ alcance }}. Ignorá (no devuelvas) emociones de cualquier otro actor, aunque estén presentes en la unidad.
+{% else %}
 
 - Identificá emociones de cualquier actor mencionado en la unidad,
   incluyendo enunciador y enunciatarios.
+{% endif %}
 
 - NO uses contenido de OTRAS unidades para inferir emociones de una.
 
@@ -62,3 +67,5 @@ CONTEXTO GLOBAL DEL DISCURSO:
   Título:     {{ titulo }}
   Tipo:       {{ tipo_discurso }}
   Enunciador: {{ enunciador }}
+{% if enunciatarios %}  Enunciatarios: {{ enunciatarios }}
+{% endif %}

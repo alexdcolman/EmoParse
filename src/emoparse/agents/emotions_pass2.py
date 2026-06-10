@@ -1,17 +1,13 @@
 # ══════════════════════════════════════════════════════════════════════════════
 #  emoparse.agents.emotions_pass2
 #
-#  Segundo pase de detección de emociones.
-#
-#  A diferencia del primer pase, este agente incorpora contexto previo
-#  del discurso mediante la columna emotion_rolling, que resume
-#  emociones detectadas en frases anteriores.
+#  Segundo pase de detección de emociones con contexto previo.
 #
 #  El output mantiene el mismo schema estructural que el pase 1
 #  (ListaEmocionesBatchSchema), permitiendo que ambos resultados sean
 #  consumidos de forma intercambiable según el flujo downstream.
 # ══════════════════════════════════════════════════════════════════════════════
-
+ 
 from __future__ import annotations
 
 import json
@@ -20,6 +16,7 @@ from typing import TYPE_CHECKING, Any, Literal
 import pandas as pd
 
 from emoparse.agents.base import BaseBatchAgent
+from emoparse.agents.emotions import alcance_text
 from emoparse.core.backend.base import LLMBackend
 from emoparse.core.prompts import emotions_pass2 as prompts
 from emoparse.core.schemas import (
@@ -36,16 +33,17 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
     """Segundo pase de análisis de emociones con contexto previo.
 
     Espera un DataFrame similar al del primer pase, pero con la columna
-    adicional `emotion_rolling`, que resume emociones detectadas en frases
-    anteriores del mismo discurso.
+    adicional `emotion_rolling`, que resume en texto las frases anteriores
+    del mismo discurso (referencia auxiliar para desambiguar, no evidencia).
 
-    El resultado mantiene el mismo formato estructural que `EmotionsAgent`,
-    permitiendo almacenar y consumir ambos pases de forma equivalente.
+    `emotion_scope` restringe qué experienciadores se analizan, con la misma
+    semántica que en el pase 1. Pasar el mismo alcance a ambos pases mantiene
+    el filtro coherente de punta a punta: el explode prioriza el pase 2, así
+    que si el pase 1 se acota pero el pase 2 no, el alcance se perdería.
 
     Args:
-        context_mode: Define cómo se construye el contexto previo.
-            `"rolling"` usa una ventana deslizante de frases recientes.
-            `"full"` usa todo el historial previo del discurso.
+        context_mode: `"rolling"` usa una ventana deslizante de frases
+            recientes; `"full"` usa todo el historial previo del discurso.
     """
 
     NAME = "emotions_pass2"
@@ -62,6 +60,8 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         titulo: str = "",
         tipo_discurso: str = "",
         enunciador: str = "",
+        enunciatarios: str = "",
+        emotion_scope: tuple[str, ...] | None = None,
         context_mode: Literal["rolling", "full"] = "rolling",
         retry_config: RetryConfig | None = None,
         genre: "Genre | None" = None,
@@ -77,19 +77,25 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
             titulo: Título del discurso.
             tipo_discurso: Tipo o clasificación del discurso.
             enunciador: Sujeto principal de enunciación del discurso.
+            enunciatarios: Destinatarios o audiencias del discurso.
+            emotion_scope: Restricción de experienciadores a analizar. Si se
+                pasa, el prompt enfatiza que solo se consideren emociones
+                relacionadas con esos actores específicos. Si no se pasa, se
+                analizan emociones de cualquier experienciador presente.
             context_mode: Estrategia de construcción del contexto previo
                 (`"rolling"` o `"full"`).
             retry_config: Política de reintentos ante errores transitorios.
             genre: Configuración opcional de género discursivo. Puede
                 ajustar parámetros como `BATCH_SIZE`.
         """
-
         self._ontologia = ontologia
         self._heuristicas = heuristicas
         self._configuraciones = configuraciones
         self._titulo = titulo
         self._tipo_discurso = tipo_discurso
         self._enunciador = enunciador
+        self._enunciatarios = enunciatarios
+        self._emotion_scope = tuple(emotion_scope) if emotion_scope else ()
         self._context_mode = context_mode
         self._genre = genre
 
@@ -97,8 +103,6 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
             if "emotions_pass2" in genre.batch_size:
                 self.BATCH_SIZE = genre.batch_size["emotions_pass2"]  # type: ignore[misc]
             elif "emotions" in genre.batch_size:
-                # Compatibilidad: si no existe configuración específica para
-                # emotions_pass2, reutilizar la de emotions.
                 self.BATCH_SIZE = genre.batch_size["emotions"]  # type: ignore[misc]
 
         super().__init__(
@@ -116,6 +120,10 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
             titulo=self._titulo,
             tipo_discurso=self._tipo_discurso,
             enunciador=self._enunciador,
+            enunciatarios=self._enunciatarios,
+            alcance=alcance_text(
+                self._emotion_scope, self._enunciador, self._enunciatarios
+            ),
         )
 
     def _build_user(self, batch: pd.DataFrame) -> str:

@@ -72,7 +72,7 @@ models:
     max_tokens: 4096
     seed: 42
 
-  gemma4-31b: # Lento, pero el mejor modelo de detección de emociones por el momento. Salvo experienciador.
+  gemma4-31b: # Lento, pero el mejor modelo de detección de emociones por el momento.
     backend: llama_cpp
     path: ${EMOPARSE_MODELS_DIR:-models}/gemma-4-31B-it-Q4_K_M.gguf
     context_length: 4096 # Bajado porque está al límite de VRAM.
@@ -138,16 +138,17 @@ models:
 
 pipeline:
   stages:
-    summarizer:       qwen3-30b-moe
-    metadata:         phi4-mini
-    enunciation:      qwen3-14b
-    actors:           qwen3-14b
-    normalize_actors: qwen3-14b
-    emotions:         gemma4-31b
-    emotions_pass2:   gemma4-31b
-    characterizer:    qwen3-14b
-    actants:          qwen3-14b
-    judge:            qwen3-14b
+    summarizer:             qwen3-30b-moe
+    metadata:               phi4-mini
+    enunciation:            gemma4-31b
+    actors:                 gemma4-31b
+    normalize_actors:       gemma4-31b
+    emotions:               gemma4-31b
+    emotions_pass2:         gemma4-31b
+    characterizer:          gemma4-31b
+    actants:                gemma4-31b
+    judge:                  gemma4-31b
+    normalize_experiencers: gemma4-31b
   cache_enabled: true
   max_retries: 3
   retry_delays_seconds: [2, 8, 15]
@@ -161,9 +162,9 @@ paths:
 
 versions:
   knowledge: v1
-  prompt:    v8
+  prompt:    v9
   ontology:  v4
-  schema:    v8
+  schema:    v9
 
 logging:
   level: INFO

@@ -62,6 +62,10 @@ REGLAS DE FORMATO (igual al pase 1):
                         justificar con "el contexto anterior" o "mantiene
                         la emoción previa": si ese es el único apoyo, la
                         emoción NO va.
+{% if alcance %}
+
+- ALCANCE RESTRINGIDO: detectá ÚNICAMENTE emociones cuyo experienciador sea {{ alcance }}. Ignorá (no devuelvas) emociones de cualquier otro actor, aunque la frase actual las exprese.
+{% endif %}
 
 - Si una unidad no tiene emociones identificables, devolvé lista vacía.
   El pase 2 NO está obligado a llenar todas las frases.
@@ -74,3 +78,5 @@ CONTEXTO GLOBAL DEL DISCURSO:
   Título:     {{ titulo }}
   Tipo:       {{ tipo_discurso }}
   Enunciador: {{ enunciador }}
+{% if enunciatarios %}  Enunciatarios: {{ enunciatarios }}
+{% endif %}

@@ -37,20 +37,50 @@ if TYPE_CHECKING:
     from emoparse.genres.base import Genre
 
 
+#: Valores válidos del alcance de detección (experienciadores a analizar).
+EMOTION_SCOPE_VALUES: tuple[str, ...] = ("enunciador", "enunciatarios", "actores")
+
+
+def alcance_text(
+    emotion_scope: tuple[str, ...] | None,
+    enunciador: str,
+    enunciatarios: str,
+) -> str:
+    """Frase legible del alcance de detección, o cadena vacía si no hay límite.
+
+    Compartida por los dos pases para que el mismo `emotion_scope` produzca
+    la misma restricción en ambos prompts.
+    """
+    if not emotion_scope:
+        return ""
+    partes: list[str] = []
+    if "enunciador" in emotion_scope:
+        partes.append(f"el enunciador ({enunciador or 'no identificado'})")
+    if "enunciatarios" in emotion_scope:
+        detalle = f" ({enunciatarios})" if enunciatarios else ""
+        partes.append(f"los enunciatarios del discurso{detalle}")
+    if "actores" in emotion_scope:
+        partes.append(
+            "otros actores mencionados en la unidad, distintos del "
+            "enunciador y de los enunciatarios"
+        )
+    return "; ".join(partes)
+
+
 class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
     """Primer pase de detección de emociones.
 
     Procesa frases o párrafos utilizando ontología emocional, heurísticas
     de inferencia y los actores previamente identificados en cada unidad.
 
-    Agrega la columna `emociones`, que contiene una lista JSON con:
-    `experienciador`, `tipo_emocion`, `modo_existencia` y
-    `justificacion`.
+    Agrega la columna `emociones`, que contiene una lista JSON con
+    `experienciador`, `tipo_emocion`, `modo_existencia`, `tipo_configuracion`
+    y `justificacion`.
 
-    Este pase es idempotente: cada unidad se procesa de forma
-    independiente, sin depender del orden de ejecución ni del estado de
-    frases anteriores. El contexto histórico se incorpora en un segundo
-    pase separado (`EmotionsAgentPass2`) mediante resúmenes determinísticos.
+    El parámetro `emotion_scope` restringe qué experienciadores se analizan.
+    Si es None o vacío se detectan emociones de cualquier actor. Si contiene
+    uno o más de `EMOTION_SCOPE_VALUES`, el prompt instruye al modelo a
+    devolver únicamente emociones cuyo experienciador caiga en esas clases.
     """
 
     NAME = "emotions"
@@ -67,6 +97,8 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         titulo: str = "",
         tipo_discurso: str = "",
         enunciador: str = "",
+        enunciatarios: str = "",
+        emotion_scope: tuple[str, ...] | None = None,
         retry_config: Any | None = None,
         genre: "Genre | None" = None,
     ) -> None:
@@ -81,6 +113,9 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
             titulo: Título del discurso.
             tipo_discurso: Tipo o clasificación del discurso.
             enunciador: Sujeto principal de enunciación.
+            enunciatarios: Destinatarios o audiencia del discurso.
+            emotion_scope: Restricción opcional de experienciadores a analizar.
+                 Si es None o vacío, se analizan emociones de cualquier experienciador.
             retry_config: Política de reintentos ante errores transitorios.
             genre: Configuración opcional de género discursivo. Puede
                 ajustar parámetros como BATCH_SIZE.
@@ -91,6 +126,8 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         self._titulo = titulo
         self._tipo_discurso = tipo_discurso
         self._enunciador = enunciador
+        self._enunciatarios = enunciatarios
+        self._emotion_scope = tuple(emotion_scope) if emotion_scope else ()
         self._genre = genre
 
         if genre is not None and "emotions" in genre.batch_size:
@@ -108,6 +145,8 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
             titulo=self._titulo,
             tipo_discurso=self._tipo_discurso,
             enunciador=self._enunciador,
+            enunciatarios=self._enunciatarios,
+            alcance=self._alcance_text(),
         )
 
     def _build_user(self, batch: pd.DataFrame) -> str:
@@ -139,6 +178,12 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
+    def _alcance_text(self) -> str:
+        """Frase legible del alcance, o cadena vacía si no hay restricción."""
+        return alcance_text(
+            self._emotion_scope, self._enunciador, self._enunciatarios
+        )
+
     @staticmethod
     def _format_actores(actores_raw: Any) -> str:
         """Convierte la representación de actores a texto legible.
@@ -151,7 +196,6 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
             Si otro agente requiere el mismo helper, puede evaluarse su
             extracción a un módulo compartido para evitar divergencias.
         """
-
         if actores_raw is None or (isinstance(actores_raw, float) and pd.isna(actores_raw)):
             return "(no procesados)"
         if isinstance(actores_raw, str):
@@ -165,7 +209,6 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         if not isinstance(parsed, list) or not parsed:
             return "(ninguno identificado)"
 
-        # Compacto: "Nombre (tipo)".
         formatted = []
         for a in parsed:
             if isinstance(a, dict):
@@ -186,28 +229,24 @@ def compute_emotion_rolling_summary(
 ) -> pd.DataFrame:
     """Construye un resumen rolling de emociones previas por frase.
 
-    Recibe un DataFrame con la columna `emociones` ya generada por el
-    primer pase y agrega `emotion_rolling`, que resume las emociones de
-    las últimas `window` frases anteriores dentro del mismo discurso.
+    Recibe un DataFrame con la columna `emociones` ya generada por el primer
+    pase y agrega `emotion_rolling`, que resume las emociones de las últimas
+    `window` frases anteriores dentro del mismo discurso.
 
-    La función es determinística: el resultado depende únicamente de
-    (`codigo`, `unit_idx`) y del contenido de `emociones`, no del orden
-    de iteración del DataFrame de entrada.
+    Determinística: el resultado depende solo de (`codigo`, `unit_idx`) y del
+    contenido de `emociones`, no del orden de iteración del DataFrame.
     """
-
     if df_with_emotions.empty:
         out = df_with_emotions.copy()
         out["emotion_rolling"] = pd.Series(dtype="object")
         return out
 
-    # Orden canónico: por (codigo, unit_idx). Crítico para determinismo.
     sorted_df = df_with_emotions.sort_values(
         ["codigo", "unit_idx"], kind="stable"
     ).reset_index(drop=True)
 
-    # Acumulador por discurso. Reset al cambiar de codigo.
     rollings: list[str] = []
-    history: list[str] = []  # entradas de las últimas `window` frases del codigo actual
+    history: list[str] = []
     current_codigo: str | None = None
 
     for _, row in sorted_df.iterrows():
@@ -216,15 +255,11 @@ def compute_emotion_rolling_summary(
             history = []
             current_codigo = codigo
 
-        # El resumen es de lo acumulado antes de esta frase: la frase
-        # actual no se incluye en su propio resumen.
         if not history:
             rollings.append("(sin emociones previas en este discurso)")
         else:
             rollings.append("\n".join(history[-window:]))
 
-        # Después: agregar las emociones de esta frase a la historia
-        # para que aparezcan en el resumen de la próxima.
         emociones_raw = row.get("emociones")
         emociones_str = _format_frase_for_history(
             emociones_raw,
@@ -236,11 +271,7 @@ def compute_emotion_rolling_summary(
     sorted_df = sorted_df.copy()
     sorted_df["emotion_rolling"] = rollings
 
-    # Restituir el orden original del DF input. Si el caller pasó un DF
-    # ya ordenado por (codigo, unit_idx), esto es no-op.
     if not df_with_emotions.index.equals(sorted_df.index):
-        # Reindexar al orden del input. Como `sort_values` no preserva
-        # el index original, hacemos un join por (codigo, unit_idx).
         key_cols = ["codigo", "unit_idx"]
         merged = df_with_emotions.merge(
             sorted_df[[*key_cols, "emotion_rolling"]],
@@ -258,25 +289,20 @@ def compute_emotion_full_summary(
 
     A diferencia de `compute_emotion_rolling_summary`, incluye todas las
     emociones anteriores del discurso en lugar de una ventana deslizante.
-
-    Esto mejora el contexto en discursos cortos, pero aumenta el tamaño
-    del prompt de forma lineal en discursos largos.
-
-    Mantiene las mismas garantías de determinismo y produce la misma
-    columna de salida: `emotion_rolling`.
+    Mantiene las mismas garantías de determinismo y produce la misma columna
+    de salida: `emotion_rolling`.
     """
     if df_with_emotions.empty:
         out = df_with_emotions.copy()
         out["emotion_rolling"] = pd.Series(dtype="object")
         return out
 
-    # Orden canónico: por (codigo, unit_idx). Crítico para determinismo.
     sorted_df = df_with_emotions.sort_values(
         ["codigo", "unit_idx"], kind="stable"
     ).reset_index(drop=True)
 
     summaries: list[str] = []
-    history: list[str] = []  # Todas las entradas previas del discurso actual
+    history: list[str] = []
     current_codigo: str | None = None
 
     for _, row in sorted_df.iterrows():
@@ -285,13 +311,11 @@ def compute_emotion_full_summary(
             history = []
             current_codigo = codigo
 
-        # Resumen de todo lo acumulado antes de esta frase.
         if not history:
             summaries.append("(sin emociones previas en este discurso)")
         else:
             summaries.append("\n".join(history))
 
-        # Agregar emociones de esta frase para las siguientes.
         emociones_raw = row.get("emociones")
         emociones_str = _format_frase_for_history(
             emociones_raw,
@@ -303,7 +327,6 @@ def compute_emotion_full_summary(
     sorted_df = sorted_df.copy()
     sorted_df["emotion_rolling"] = summaries
 
-    # Restituir el orden original del DF input (mismo patrón que rolling).
     if not df_with_emotions.index.equals(sorted_df.index):
         key_cols = ["codigo", "unit_idx"]
         merged = df_with_emotions.merge(
@@ -320,7 +343,7 @@ def _format_frase_for_history(
     *,
     unit_idx: int,
 ) -> str | None:
-    """Formatea las frases para el historial contextual."""
+    """Formatea las emociones de una frase para el historial contextual."""
     if raw is None or (isinstance(raw, float) and pd.isna(raw)):
         return None
     if isinstance(raw, str):
@@ -332,7 +355,6 @@ def _format_frase_for_history(
         parsed = raw
     if not isinstance(parsed, list) or not parsed:
         return None
-    # Compacto: "[unit_idx=N]: experienciador siente tipo (modo); ..."
     parts: list[str] = []
     for emo in parsed:
         if not isinstance(emo, dict):

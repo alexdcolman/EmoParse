@@ -121,6 +121,9 @@ class TestBuiltinDiscursoPresidencial:
             "actors": 1,
             "emotions": 1,
             "emotions_pass2": 1,
+            "characterizer": 1,
+            "actants": 1,
+            "judge": 1,
         }
 
 

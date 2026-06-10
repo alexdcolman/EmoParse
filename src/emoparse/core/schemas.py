@@ -226,6 +226,65 @@ class ListaActorLinkingBatchSchema(RootModel[list[ActorLinkingBatchItemSchema]])
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  Equivalencias de experienciador
+# ══════════════════════════════════════════════════════════════════════════════
+
+ClaseExperienciador = Literal[
+    "enunciador", "enunciatario", "actor", "otro", "literal"
+]
+
+
+class ExperiencerEquivalenceSchema(StrictBase):
+    """Propuesta de normalización para un experienciador crudo de un discurso.
+
+    La normalización es local al discurso: 'yo', 'enunciador', 'el orador'
+    refieren al enunciador de ESE discurso. El modelo NO debe inventar un
+    destino: ante duda, usar clase 'otro' con confianza 'baja'.
+    """
+    raw_experienciador: str = Field(
+        description="Experienciador tal como aparece en las emociones. Debe "
+                    "replicarse literal para que el caller correlacione.",
+    )
+    clase: ClaseExperienciador = Field(  # type: ignore[valid-type]
+        description="A quién refiere: 'enunciador' (incl. 'yo', 'el orador', "
+                    "'quien habla'); 'enunciatario' (el/los destinatarios); "
+                    "'actor' (un tercero mencionado); 'literal' (ya es un "
+                    "nombre propio que no necesita cambio); 'otro' (no "
+                    "resoluble con seguridad).",
+    )
+    canonical_sugerido: str | None = Field(
+        description="Nombre canónico legible propuesto (p. ej. el nombre del "
+                    "enunciador, o el del actor). Para 'literal' repetir el "
+                    "crudo. Para 'otro' dejar null.",
+    )
+    confianza: ConfianzaLinking = Field(  # type: ignore[valid-type]
+        description="alta | media | baja. Usar 'baja' ante ambigüedad antes "
+                    "que forzar un destino.",
+    )
+    justificacion: str = Field(
+        description="Justificación breve citando la evidencia del discurso.",
+    )
+
+
+class ExperiencerEquivalenceBatchItemSchema(StrictBase):
+    """Ítem del batch: un discurso (unit_idx) y sus equivalencias."""
+    unit_idx: int = Field(
+        description="Índice 0-based del discurso en el batch. DEBE coincidir "
+                    "con el número entre corchetes del prompt: DISCURSO [N].",
+    )
+    equivalencias: list[ExperiencerEquivalenceSchema] = Field(
+        description="Una entrada por experienciador a normalizar de ese "
+                    "discurso. Mismo conjunto que la lista del prompt.",
+    )
+
+
+class ListaExperiencerEquivalenceBatchSchema(
+    RootModel[list[ExperiencerEquivalenceBatchItemSchema]]
+):
+    """Batch response de la normalización de experienciadores."""
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  Emociones
 # ══════════════════════════════════════════════════════════════════════════════
 

@@ -134,6 +134,7 @@ EMOPARSE_DAG = StageDAG(
         StageNode("emotions_pass2", deps=("emotions",)),
         StageNode("explode_emociones", deps=("emotions",)),
         StageNode("normalize_emotions", deps=("explode_emociones",)),
+        StageNode("normalize_experiencers", deps=("explode_emociones",)),
         StageNode("characterizer", deps=("normalize_emotions",)),
         StageNode("actants", deps=("explode_emociones",)),
         StageNode("judge", deps=("characterizer",)),

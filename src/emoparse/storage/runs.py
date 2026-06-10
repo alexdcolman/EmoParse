@@ -106,6 +106,16 @@ class RunsRepository:
         )
         self._add_column_if_missing(
             table="emociones",
+            column="experienciador_canonico",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="emociones",
+            column="normalize_experiencers_version",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="emociones",
             column="tipo_configuracion",
             type_def="TEXT",
         )

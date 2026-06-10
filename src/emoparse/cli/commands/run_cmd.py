@@ -42,23 +42,18 @@ from emoparse.pipeline import (
 
 def handle(args: argparse.Namespace) -> int:
     """Maneja `emoparse run`. Devuelve exit code."""
-    # ── Cargar config ────────────────────────────────────────────────────────
     try:
         cfg = load_config(args.config)
     except ConfigError as e:
         logger.error(f"Config inválido: {e}")
         return 1
 
-    # ── Cargar input ─────────────────────────────────────────────────────────
     try:
         df_input = load_discursos(args.input)
     except InputError as e:
         logger.error(f"Input inválido: {e}")
         return 1
 
-    # ── Resolver género (T-8) ────────────────────────────────────────────────
-    # Si --genre es None se aplica default. Si se especifica, se busca en el registry.
-    # Fallas por id inválido o plugin ausente generan error y salida con código 1.
     try:
         if args.genre is None:
             genre = default_genre()
@@ -74,11 +69,9 @@ def handle(args: argparse.Namespace) -> int:
         logger.error(f"Género inválido: {e}")
         return 1
 
-    # ── Resolver path de la DB ───────────────────────────────────────────────
     db_path = _resolve_db_path(args.db, cfg.paths.runs_dir, args.run_id)
     logger.info(f"[run] DB: {db_path}")
 
-    # ── Parsear stages habilitadas ───────────────────────────────────────────
     if args.stages:
         try:
             enabled = _parse_stages(args.stages)
@@ -88,9 +81,6 @@ def handle(args: argparse.Namespace) -> int:
     else:
         enabled = DEFAULT_ENABLED_STAGES
 
-    # Si el género desactiva summarizer (genre.summarizer=False),
-    # la stage se elimina del set habilitado. El DAG permanece válido porque
-    # metadata utiliza `contenido` si no existe `resumen_global`.
     if not genre.summarizer and "summarizer" in enabled:
         enabled = tuple(s for s in enabled if s != "summarizer")
         logger.info(
@@ -98,7 +88,13 @@ def handle(args: argparse.Namespace) -> int:
             f"(genre.summarizer=False)."
         )
 
-    # ── KnowledgeLoader ──────────────────────────────────────────────────────
+    emotion_scope = _collect_emotion_scope(args)
+    if emotion_scope is not None:
+        logger.info(
+            f"[run] Alcance de detección de emociones: "
+            f"{', '.join(emotion_scope)} (aplica a emotions y emotions_pass2)."
+        )
+
     knowledge_dir = Path(cfg.paths.knowledge_dir).expanduser().resolve()
     if not knowledge_dir.is_dir():
         logger.error(
@@ -108,19 +104,18 @@ def handle(args: argparse.Namespace) -> int:
         return 1
     loader = KnowledgeLoader(knowledge_dir)
 
-    # ── Ejecutar pipeline ────────────────────────────────────────────────────
     with PipelineRunner(
         run_id=args.run_id,
         config=cfg,
         knowledge=loader,
         db_path=db_path,
         enabled_stages=enabled,
-        genre=genre,  # El runner recibe el género para dispatch interno.
+        genre=genre,
+        emotion_scope=emotion_scope,
     ) as runner:
         runner.ingest(df_input)
         report = runner.run()
 
-    # ── Reporte final ────────────────────────────────────────────────────────
     print()
     print(f"=== Run {args.run_id} completado ===")
     print(f"DB:    {db_path}")
@@ -138,26 +133,36 @@ def handle(args: argparse.Namespace) -> int:
     return 0
 
 
+def _collect_emotion_scope(args: argparse.Namespace) -> tuple[str, ...] | None:
+    """Reúne las flags de alcance en una tupla, o None si no se pasó ninguna.
+
+    None significa "analizar emociones de todos los experienciadores"
+    (comportamiento por defecto). Una tupla restringe el pase 1 a esas
+    clases de experienciador.
+    """
+    scope: list[str] = []
+    if getattr(args, "scope_enunciador", False):
+        scope.append("enunciador")
+    if getattr(args, "scope_enunciatarios", False):
+        scope.append("enunciatarios")
+    if getattr(args, "scope_actores", False):
+        scope.append("actores")
+    return tuple(scope) if scope else None
+
+
 def _resolve_db_path(
     db_arg: str | None,
     runs_dir: str,
     run_id: str,
 ) -> Path:
-    """Resuelve el path de la DB.
-
-    - Si `--db` está definido: se respeta (relativo al CWD).
-    - En caso contrario: <runs_dir>/<run_id>.sqlite.
-    """
+    """Resuelve el path de la DB."""
     if db_arg is not None:
         return Path(db_arg).expanduser().resolve()
     return Path(runs_dir).expanduser().resolve() / f"{run_id}.sqlite"
 
 
 def _parse_stages(raw: str) -> tuple[str, ...]:
-    """Parsea la flag --stages: 'metadata,emotions' → ('metadata', 'emotions').
-
-    Valida que cada stage sea conocida. Lanza ValueError con mensaje útil.
-    """
+    """Parsea la flag --stages: 'metadata,emotions' → ('metadata', 'emotions')."""
     parts = [s.strip() for s in raw.split(",") if s.strip()]
     if not parts:
         raise ValueError("--stages vacío.")

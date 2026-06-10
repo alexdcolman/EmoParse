@@ -70,7 +70,8 @@ models:
 #
 #    Opcionales (se declaran acá para asignarles modelo, pero solo
 #    se ejecutan si se piden con `--stages` en la CLI):
-#      normalize_actors, emotions_pass2, actants, judge.
+#      normalize_actors, emotions_pass2, actants, judge,
+#      normalize_experiencers.
 #
 #  Las etapas `explode_emociones` y `normalize_emotions` son internas
 #  (sin LLM) y no requieren modelo asignado.
@@ -103,6 +104,11 @@ pipeline:
 
     # Un segundo modelo evalúa la coherencia de las caracterizaciones.
     judge:           qwen3-14b
+
+    # Propone equivalencias de experienciador por discurso (p. ej. "yo" →
+    # el enunciador) para revisión humana. Se revisa con `emoparse
+    # experiencers` y se materializa con `experiencers apply`.
+    normalize_experiencers: qwen3-14b
 
   # Si false, los backends no se envuelven con CachedBackend. Útil
   # solo para benchmarks; en producción dejar siempre true.

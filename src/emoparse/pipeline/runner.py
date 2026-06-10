@@ -36,6 +36,7 @@ from emoparse.pipeline.stages import (
     MetadataStage,
     NormalizeActorsStage,
     NormalizeEmotionsStage,
+    NormalizeExperiencersStage,
     Stage,
     SummarizerStage,
 )
@@ -43,6 +44,9 @@ from emoparse.storage.actors_kb_discoveries import ActorsKbDiscoveriesRepository
 from emoparse.storage.db import Database
 from emoparse.storage.discursos import DiscursosRepository
 from emoparse.storage.emociones import EmocionesRepository
+from emoparse.storage.experiencer_equivalences import (
+    ExperiencerEquivalencesRepository,
+)
 from emoparse.storage.frases import FrasesRepository
 from emoparse.storage.judgments import JudgmentsRepository
 from emoparse.storage.metrics import (
@@ -65,9 +69,12 @@ STAGE_ORDER: tuple[str, ...] = EMOPARSE_DAG.toposort()
 #: `normalize_actors` queda OPT-IN: requiere KB poblada y se piloteaba sobre
 #: un subset antes de tirarla a producción.
 #: `actants` queda OPT-IN: análisis fino opcional sobre emociones detectadas.
+#: `normalize_experiencers` queda OPT-IN: propone equivalencias de
+#: experienciador para revisión humana; no corre en el pipeline base.
 DEFAULT_ENABLED_STAGES: tuple[str, ...] = tuple(
     s for s in STAGE_ORDER
-    if s not in ("emotions_pass2", "judge", "normalize_actors", "actants")
+    if s not in ("emotions_pass2", "judge", "normalize_actors", "actants",
+                 "normalize_experiencers")
 )
 
 
@@ -122,6 +129,7 @@ class PipelineRunner:
         db_path: Path | str,
         *,
         enabled_stages: tuple[str, ...] = DEFAULT_ENABLED_STAGES,
+        emotion_scope: tuple[str, ...] | None = None,
         validate_contracts: bool = True,
         ontology_filename: str = "emociones.json",
         heuristics_filename: str = "heuristicas.md",
@@ -183,6 +191,7 @@ class PipelineRunner:
         self._cfg = config
         self._knowledge = knowledge
         self._enabled_stages = tuple(enabled_stages)
+        self._emotion_scope = tuple(emotion_scope) if emotion_scope else None
         self._validate_contracts = validate_contracts
         self._actors_heuristics_filename = actors_heuristics_filename or heuristics_filename
         self._emotions_heuristics_filename = emotions_heuristics_filename or heuristics_filename
@@ -223,6 +232,7 @@ class PipelineRunner:
         self._cache_repo = CacheRepository(self._db)
         self._metrics_repo = MetricsRepository(self._db)
         self._discoveries_repo = ActorsKbDiscoveriesRepository(self._db)
+        self._equivalences_repo = ExperiencerEquivalencesRepository(self._db)
         self._current_accumulator: StageMetricsAccumulator | None = None
         self._ctx = self._build_run_context()
         self._runs_repo.bootstrap(self._ctx)
@@ -483,6 +493,7 @@ class PipelineRunner:
                 ontologia=ontologia,
                 heuristicas=heuristicas,
                 configuraciones=configuraciones,
+                emotion_scope=self._emotion_scope,
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
@@ -502,6 +513,7 @@ class PipelineRunner:
                 ontologia=ontologia,
                 heuristicas=heuristicas,
                 configuraciones=configuraciones,
+                emotion_scope=self._emotion_scope,
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
@@ -520,6 +532,16 @@ class PipelineRunner:
                 emociones_repo=self._e_repo,
                 emotion_ontology=ontology,
                 agent_version=self._cfg.versions.ontology,
+            )
+
+        if name == "normalize_experiencers":
+            backend = self._get_backend(name)
+            return NormalizeExperiencersStage(
+                backend, self._d_repo, self._f_repo, self._e_repo,
+                equivalences_repo=self._equivalences_repo,
+                agent_version=self._cfg.versions.prompt,
+                retry_config=self._retry_config,
+                genre=self._genre,
             )
 
         if name == "characterizer":

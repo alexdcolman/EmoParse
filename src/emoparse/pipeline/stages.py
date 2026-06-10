@@ -17,6 +17,7 @@ from loguru import logger
 from emoparse.agents.actors import ActorsAgent
 from emoparse.agents.actants import ACTANTS_COMPONENTS, ActantsAgent
 from emoparse.agents.normalize_actors import NormalizeActorsAgent
+from emoparse.agents.normalize_experiencers import NormalizeExperiencersAgent
 from emoparse.pipeline.contracts import (
     DiscursoInputContract,
     EmocionExplodedContract,
@@ -45,6 +46,9 @@ from emoparse.pipeline.coref import (
 from emoparse.storage.actors_kb_discoveries import ActorsKbDiscoveriesRepository
 from emoparse.storage.discursos import DiscursosRepository
 from emoparse.storage.emociones import EmocionesRepository
+from emoparse.storage.experiencer_equivalences import (
+    ExperiencerEquivalencesRepository,
+)
 from emoparse.storage.frases import FrasesRepository
 from emoparse.storage.judgments import JudgmentsRepository
 from emoparse.storage.metrics import StageMetricsAccumulator
@@ -691,6 +695,32 @@ class NormalizeActorsStage(Stage):
 # ══════════════════════════════════════════════════════════════════════════════
 
 
+def _format_enunciatarios(raw: Any) -> str:
+    """Extrae los nombres de los enunciatarios desde el payload de enunciation.
+
+    El payload guarda `enunciatarios` como string JSON (lista de objetos con
+    clave `actor`). Devuelve un listado compacto `a; b; c`, o cadena vacía si
+    no hay datos.
+    """
+    if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+        return ""
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return ""
+    else:
+        parsed = raw
+    if not isinstance(parsed, list):
+        return ""
+    nombres = [
+        str(e.get("actor", "")).strip()
+        for e in parsed
+        if isinstance(e, dict) and str(e.get("actor", "")).strip()
+    ]
+    return "; ".join(nombres)
+
+
 class EmotionsStage(_FraseStage):
     NAME = "emotions"
     STAGE_KEY = "emociones"
@@ -707,6 +737,7 @@ class EmotionsStage(_FraseStage):
         ontologia: str,
         heuristicas: str,
         configuraciones: str = "",
+        emotion_scope: tuple[str, ...] | None = None,
         agent_version: str | None = None,
         retry_config: RetryConfig | None = None,
         genre: Genre | None = None,
@@ -715,6 +746,7 @@ class EmotionsStage(_FraseStage):
         self._ontologia = ontologia
         self._heuristicas = heuristicas
         self._configuraciones = configuraciones
+        self._emotion_scope = tuple(emotion_scope) if emotion_scope else None
 
     def _build_agent(
         self, input_data: dict[str, Any], codigo: str
@@ -730,6 +762,8 @@ class EmotionsStage(_FraseStage):
             titulo=str(input_data.get("titulo", "")),
             tipo_discurso=str(meta.get("tipo_discurso", "")),
             enunciador=str(enun.get("enunciador", "")),
+            enunciatarios=_format_enunciatarios(enun.get("enunciatarios")),
+            emotion_scope=self._emotion_scope,
             retry_config=self._retry_config,
             genre=self._genre,
         )
@@ -902,6 +936,148 @@ class NormalizeEmotionsStage(Stage):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  Etapa normalización de experienciadores (opt-in)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class NormalizeExperiencersStage(Stage):
+    """Propone equivalencias de experienciador por discurso (opt-in).
+
+    Para cada discurso reúne los experienciadores crudos distintos de sus
+    emociones y, con el enunciador, los enunciatarios y los actores como
+    contexto, pide al LLM una propuesta de normalización por cada uno. Las
+    propuestas se escriben como pendientes en ``experiencer_equivalences``
+    para revisión humana; esta stage NO toca ``experienciador_canonico`` (eso
+    lo hace ``emoparse experiencers apply`` tras aceptar).
+
+    Incremental e idempotente: solo propone para experienciadores que aún no
+    tienen una fila de equivalencia en el discurso, así que re-ejecutarla tras
+    nuevas emociones agrega únicamente lo nuevo y respeta lo ya decidido.
+    """
+
+    NAME = "normalize_experiencers"
+
+    def __init__(
+        self,
+        backend: LLMBackend,
+        discursos_repo: DiscursosRepository,
+        frases_repo: FrasesRepository,
+        emociones_repo: EmocionesRepository,
+        equivalences_repo: ExperiencerEquivalencesRepository,
+        agent_version: str | None = None,
+        retry_config: RetryConfig | None = None,
+        genre: Genre | None = None,
+    ) -> None:
+        super().__init__()
+        self.validate_contracts = False
+        self._backend = backend
+        self._d_repo = discursos_repo
+        self._f_repo = frases_repo
+        self._e_repo = emociones_repo
+        self._eq_repo = equivalences_repo
+        self._version = agent_version
+        self._retry_config = retry_config
+        self._genre = genre
+
+    def run_pending(self) -> int:
+        """Genera propuestas para los experienciadores aún no propuestos."""
+        total = 0
+        for codigo in self._d_repo.list_codigos():
+            total += self._process_discurso(codigo)
+        if total:
+            logger.info(
+                f"[Stage:{self.NAME}] {total} equivalencia(s) propuesta(s)."
+            )
+        else:
+            logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
+        return total
+
+    def _process_discurso(self, codigo: str) -> int:
+        distinct = self._e_repo.list_distinct_experiencers(codigo)
+        if not distinct:
+            return 0
+        counts = {raw: n for raw, n in distinct}
+        ya = self._eq_repo.list_existing_raw(codigo)
+        faltan = [raw for raw, _ in distinct if raw not in ya]
+        if not faltan:
+            return 0
+
+        enun = self._d_repo.get_payload(codigo, "enunciation") or {}
+        df_in = pd.DataFrame([{
+            "codigo": codigo,
+            "enunciador": str(enun.get("enunciador", "")),
+            "enunciatarios": _format_enunciatarios(enun.get("enunciatarios")),
+            "actores": self._collect_actor_names(codigo),
+            "experienciadores": json.dumps(
+                [{"raw": raw, "ocurrencias": counts.get(raw, 0)} for raw in faltan],
+                ensure_ascii=False,
+            ),
+        }])
+
+        agent = NormalizeExperiencersAgent(
+            self._backend,
+            retry_config=self._retry_config,
+            genre=self._genre,
+        )
+        try:
+            df_out = agent.run(df_in)
+        except Exception as e:
+            logger.error(f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}")
+            self.metrics.record_item_failed()
+            return 0
+
+        row = df_out.iloc[0]
+        equivalencias_str = row.get("equivalencias")
+        if pd.isna(equivalencias_str):
+            logger.warning(f"[Stage:{self.NAME}] {codigo}: sin salida del agente.")
+            self.metrics.record_item_failed()
+            return 0
+        try:
+            propuestas = json.loads(equivalencias_str)
+        except (json.JSONDecodeError, TypeError):
+            logger.warning(f"[Stage:{self.NAME}] {codigo}: salida no parseable.")
+            self.metrics.record_item_failed()
+            return 0
+
+        faltan_set = set(faltan)
+        n = 0
+        for p in propuestas if isinstance(propuestas, list) else []:
+            if not isinstance(p, dict):
+                continue
+            raw = str(p.get("raw_experienciador", "")).strip()
+            if raw not in faltan_set:
+                continue
+            self._eq_repo.upsert_proposal(
+                codigo,
+                raw,
+                canonical_sugerido=p.get("canonical_sugerido"),
+                clase=str(p.get("clase", "otro")),
+                confianza=str(p.get("confianza", "baja")),
+                justificacion=str(p.get("justificacion", "")),
+                ocurrencias=counts.get(raw, 0),
+            )
+            n += 1
+            self.metrics.record_item_ok()
+        return n
+
+    def _collect_actor_names(self, codigo: str) -> str:
+        """Nombres de actores distintos mencionados en el discurso."""
+        vistos: list[str] = []
+        seen: set[str] = set()
+        for unit_idx, _txt in self._f_repo.list_frases_of_discurso(codigo):
+            payload = self._f_repo.get_payload(codigo, unit_idx, "actores")
+            if not isinstance(payload, list):
+                continue
+            for a in payload:
+                if isinstance(a, dict):
+                    nombre = str(a.get("actor", "")).strip()
+                    key = nombre.lower()
+                    if nombre and key not in seen:
+                        seen.add(key)
+                        vistos.append(nombre)
+        return "; ".join(vistos)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  Etapa caracterización
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -1060,6 +1236,7 @@ class EmotionsPass2Stage(Stage):
         rolling_window: int = 5,
         context_mode: Literal["rolling", "full"] = "rolling",
         # "full" da más contexto de continuidad para detectar escaladas, a costa de prompt más largo
+        emotion_scope: tuple[str, ...] | None = None,
         agent_version: str | None = None,
         retry_config: RetryConfig | None = None,
         genre: Genre | None = None,
@@ -1073,6 +1250,7 @@ class EmotionsPass2Stage(Stage):
         self._configuraciones = configuraciones
         self._rolling_window = rolling_window
         self._context_mode = context_mode
+        self._emotion_scope = tuple(emotion_scope) if emotion_scope else None
         self._version = agent_version
         self._retry_config = retry_config
         self._genre = genre
@@ -1119,6 +1297,8 @@ class EmotionsPass2Stage(Stage):
                 titulo=str(input_data.get("titulo", "")),
                 tipo_discurso=str(meta.get("tipo_discurso", "")),
                 enunciador=str(enun.get("enunciador", "")),
+                enunciatarios=_format_enunciatarios(enun.get("enunciatarios")),
+                emotion_scope=self._emotion_scope,
                 context_mode=self._context_mode,
                 retry_config=self._retry_config,
                 genre=self._genre,
