@@ -20,6 +20,7 @@ from emoparse.storage.db import Database
 from emoparse.storage.experiencer_equivalences import (
     ExperiencerEquivalencesRepository,
 )
+from emoparse.triage.discovery_grouping import group_pending_discoveries
 
 
 def render(db_path: Path) -> None:
@@ -150,7 +151,46 @@ def _pct_badge(pct: int) -> str:
 # ══════════════════════════════════════════════════════════════════════════════
 
 #: Cap de discoveries listados en la UI.
-_DISCOVERIES_DISPLAY_CAP = 30
+#: Cantidad de discoveries por página en la UI.
+_DISCOVERIES_PAGE_SIZE = 25
+
+
+def _pager(total: int, key: str, page_size: int) -> tuple[int, int]:
+    """Controles de paginación (‹ Anterior / Siguiente ›) + indicador.
+
+    Guarda la página en `st.session_state[key]`, la acota al rango válido y
+    devuelve el slice ``(start, end)`` a renderizar.
+    """
+    n_pages = max(1, (total + page_size - 1) // page_size)
+    page = max(0, min(int(st.session_state.get(key, 0)), n_pages - 1))
+    st.session_state[key] = page
+
+    if n_pages > 1:
+        c1, c2, c3 = st.columns([1, 2, 1])
+        with c1:
+            if st.button(
+                "‹ Anterior", key=f"{key}_prev",
+                disabled=page <= 0, use_container_width=True,
+            ):
+                st.session_state[key] = page - 1
+                st.rerun()
+        with c2:
+            st.markdown(
+                f"<p style='text-align:center;margin:0.3rem 0;"
+                f"font-family:\"DM Mono\",monospace;font-size:0.8rem;color:#8a8799;'>"
+                f"Página {page + 1} de {n_pages}</p>",
+                unsafe_allow_html=True,
+            )
+        with c3:
+            if st.button(
+                "Siguiente ›", key=f"{key}_next",
+                disabled=page >= n_pages - 1, use_container_width=True,
+            ):
+                st.session_state[key] = page + 1
+                st.rerun()
+
+    start = page * page_size
+    return start, min(start + page_size, total)
 
 
 def _render_actors_discoveries(db_path: Path) -> None:
@@ -195,6 +235,8 @@ def _render_actors_discoveries(db_path: Path) -> None:
                 f"</p></div>",
                 unsafe_allow_html=True,
             )
+        if n_dec_pending:
+            _render_actors_apply_button(db_path, n_dec_pending)
 
     if n_pending == 0:
         st.markdown(
@@ -215,15 +257,23 @@ def _render_actors_discoveries(db_path: Path) -> None:
     )
 
     pending = repo.list_pending_review()
-    shown = pending[:_DISCOVERIES_DISPLAY_CAP]
+
+    if has_triage:
+        _render_discovery_groups(db_path, repo)
 
     with st.expander(
-        f"Ver detalle (primeros {len(shown)} de {n_pending})",
+        f"Ver detalle ({n_pending} pendientes)",
         expanded=False,
     ):
         kb_canonical_ids = _try_load_kb_ids(db_path) if has_triage else []
+        if has_triage:
+            # Sumar los promotes pendientes como destinos posibles del merge:
+            # así se puede encolar promote A + merge B→A y aplicar en un lote.
+            pend = actions_layer.pending_promote_canonical_ids(db_path)
+            kb_canonical_ids = sorted(set(kb_canonical_ids) | set(pend))
 
-        for d in shown:
+        start, end = _pager(n_pending, "actors_disc_page", _DISCOVERIES_PAGE_SIZE)
+        for d in pending[start:end]:
             _render_discovery_row(
                 db_path,
                 d,
@@ -232,14 +282,136 @@ def _render_actors_discoveries(db_path: Path) -> None:
                 kb_canonical_ids=kb_canonical_ids,
             )
 
-        if n_pending > _DISCOVERIES_DISPLAY_CAP:
-            st.markdown(
-                f"<p style='margin-top:0.6rem;font-size:0.75rem;color:#5a5d6e;'>"
-                f"... y {n_pending - _DISCOVERIES_DISPLAY_CAP} más. "
-                f"Listado completo: <code>emoparse discoveries list --db ...</code>."
-                f"</p>",
-                unsafe_allow_html=True,
+
+_GROUPS_PAGE_SIZE = 15
+_KB_TIPOS_UI = ("individuo", "institucion", "colectivo", "desconocido")
+
+
+def _render_discovery_groups(
+    db_path: Path,
+    repo: ActorsKbDiscoveriesRepository,
+) -> None:
+    """Vista de sugerencias agrupadas: menciones que parecen el mismo actor nuevo."""
+    try:
+        decided = {int(x["discovery_id"]) for x in repo.list_decisions()}
+    except Exception:
+        decided = set()
+    groups = [
+        g
+        for g in group_pending_discoveries(db_path, exclude_ids=decided)
+        if g.n_members >= 2
+    ]
+    if not groups:
+        return
+
+    with st.expander(
+        f"Sugerencias agrupadas ({len(groups)} grupos de ≥2 menciones)",
+        expanded=False,
+    ):
+        st.caption(
+            "Menciones que el modelo propone como el mismo actor nuevo. "
+            "Editá el canónico si hace falta y confirmá el grupo entero "
+            "(un promote + los merges)."
+        )
+        start, end = _pager(len(groups), "actors_groups_page", _GROUPS_PAGE_SIZE)
+        for g in groups[start:end]:
+            _render_group_card(db_path, g)
+
+
+def _render_group_card(db_path: Path, g) -> None:
+    members_txt = " · ".join(
+        f"'{_escape(str(m.get('actor_mencionado', '')))}' "
+        f"({_escape(str(m.get('codigo', '')))}:{m.get('unit_idx', '?')})"
+        for m in g.members
+    )
+    st.markdown(
+        f"<div style='padding:0.5rem 0;border-bottom:1px solid #1a1c22;'>"
+        f"<div style='font-size:0.85rem;color:#e8e4dc;'>"
+        f"<strong>{_escape(g.display_name)}</strong> "
+        f"<span style='color:#8a8799;font-family:DM Mono,monospace;font-size:0.78rem;'>"
+        f"· {g.n_members} menciones</span></div>"
+        f"<p style='margin:0.2rem 0;font-size:0.76rem;color:#8a8799;'>{members_txt}</p>"
+        f"</div>",
+        unsafe_allow_html=True,
+    )
+    key = g.canonical_id
+    cid = st.text_input(
+        "canonical_id (slug)", value=g.canonical_id, key=f"grp_id_{key}",
+        help="Slug ASCII: minúsculas, dígitos, guiones bajos.",
+    )
+    dn = st.text_input("display_name", value=g.display_name, key=f"grp_name_{key}")
+    tipo = st.selectbox(
+        "tipo", options=_KB_TIPOS_UI,
+        index=_KB_TIPOS_UI.index(g.tipo) if g.tipo in _KB_TIPOS_UI else 3,
+        key=f"grp_tipo_{key}",
+    )
+    if st.button(
+        f"Confirmar grupo ({g.n_members} menciones)",
+        key=f"grp_btn_{key}",
+        type="primary",
+    ):
+        try:
+            actions_layer.register_group_decisions(
+                db_path,
+                canonical_id=cid.strip(),
+                display_name=dn.strip(),
+                tipo=tipo,
+                member_ids=g.member_ids,
             )
+            st.rerun()
+        except (ValueError, FileNotFoundError, RuntimeError) as e:
+            st.error(str(e))
+
+
+def _render_actors_apply_button(db_path: Path, n_pending: int) -> None:
+    """Botón para aplicar el lote de decisiones de actores a la KB (con backup)."""
+    flash = st.session_state.pop("_actors_apply_flash", None)
+    if flash is not None:
+        _render_apply_flash(flash, backup=flash.get("backup"))
+
+    kb_path = _resolve_kb_path(db_path)
+    if kb_path is None:
+        st.markdown(
+            "<p style='font-size:0.78rem;color:#c86e6e;margin:0 0 0.6rem 0;'>"
+            "No encontré <code>knowledge/actors_kb.json</code> cerca de la DB; "
+            "aplicá desde la terminal con "
+            "<code>emoparse discoveries apply --kb ...</code>."
+            "</p>",
+            unsafe_allow_html=True,
+        )
+        return
+
+    if st.button(
+        f"Aplicar {n_pending} decisiones a la KB",
+        key="apply_actors_btn",
+        type="primary",
+    ):
+        try:
+            res = actions_layer.apply_actor_decisions(db_path, kb_path)
+            st.session_state["_actors_apply_flash"] = res
+            st.rerun()
+        except (FileNotFoundError, RuntimeError) as e:
+            st.error(f"No pude aplicar: {e}")
+
+
+def _render_apply_flash(res: dict, *, backup: str | None) -> None:
+    """Muestra el resultado de un apply (compartido actores/experienciadores)."""
+    applied = res.get("applied")
+    failed = res.get("failed", 0)
+    if applied is not None:
+        msg = f"Aplicadas {applied} decisiones."
+        if backup:
+            msg += f" Backup: {backup}"
+        (st.warning if failed else st.success)(
+            msg + (f" Fallidas: {failed}." if failed else "")
+        )
+        for did, err in (res.get("errors") or [])[:5]:
+            st.error(f"discovery {did}: {err}")
+    else:
+        st.success(
+            f"Aplicadas {res.get('equivalences', 0)} equivalencias "
+            f"({res.get('rows', 0)} emociones actualizadas)."
+        )
 
 
 def _render_discovery_row(
@@ -261,7 +433,7 @@ def _render_discovery_row(
 
     ctx_html = (
         f"<p style='margin:0.2rem 0;font-size:0.78rem;color:#8a8799;font-style:italic;'>"
-        f"{_escape(contexto)[:180]}{'…' if len(contexto) > 180 else ''}</p>"
+        f"{_escape(contexto)}</p>"
         if contexto else ""
     )
     just_html = (
@@ -291,6 +463,13 @@ def _render_discovery_row(
     decision = repo.find_decision(d["id"])
     if decision is not None:
         _render_decision_status(db_path, d, decision)
+        if decision["status"] == "failed":
+            st.markdown(
+                "<p style='margin:0.2rem 0 0 1rem;font-size:0.76rem;color:#c8a96e;'>"
+                "Corregí los campos y volvé a registrar para reintentar:</p>",
+                unsafe_allow_html=True,
+            )
+            _render_triage_forms(db_path, d, kb_canonical_ids, prefill=decision)
         return
 
     _render_triage_forms(db_path, d, kb_canonical_ids)
@@ -328,7 +507,7 @@ def _render_decision_status(
             unsafe_allow_html=True,
         )
 
-    if status == "pending":
+    if status in ("pending", "failed"):
         if st.button(
             "Deshacer",
             key=f"undo_{discovery['id']}",
@@ -345,39 +524,63 @@ def _render_triage_forms(
     db_path: Path,
     discovery: dict,
     kb_canonical_ids: list[str],
+    *,
+    prefill: dict | None = None,
 ) -> None:
-    """Renderiza los formularios de triage (promote / merge / discard)."""
+    """Renderiza los formularios de triage (promote / merge / discard).
+
+    Si `prefill` (una decisión previa, p. ej. fallida) trae valores, se usan
+    como defaults para corregir y volver a registrar.
+    """
     discovery_id = discovery["id"]
     mencion = str(discovery.get("actor_mencionado", ""))
+    pf_promote = prefill if (prefill and prefill.get("decision") == "promote") else None
+    pf_merge_into = (
+        prefill["canonical_id"]
+        if (prefill and prefill.get("decision") == "merge")
+        else None
+    )
 
     tabs = st.tabs(["Promote", "Merge", "Discard"])
 
     # ── Promote ──
     with tabs[0]:
-        suggested_id = _suggest_canonical_id(mencion)
+        sug_id = (discovery.get("canonical_id_sugerido") or "").strip()
+        sug_name = (discovery.get("display_name_sugerido") or "").strip()
+        sug_tipo = (discovery.get("tipo_sugerido") or "").strip().lower()
+        default_id = (
+            (pf_promote or {}).get("canonical_id")
+            or sug_id
+            or _suggest_canonical_id(mencion)
+        )
         canonical_id = st.text_input(
             "canonical_id (slug)",
-            value=suggested_id,
+            value=default_id,
             key=f"prom_id_{discovery_id}",
             help="Slug ASCII: minúsculas, dígitos, guiones bajos.",
         )
         display_name = st.text_input(
             "display_name",
-            value=mencion,
+            value=(pf_promote or {}).get("display_name") or sug_name or mencion,
             key=f"prom_name_{discovery_id}",
         )
         col1, col2 = st.columns(2)
+        tipo_opts = ("individuo", "institucion", "colectivo", "desconocido")
+        pf_tipo = (pf_promote or {}).get("tipo") or (
+            sug_tipo if sug_tipo in tipo_opts else None
+        )
+        tipo_idx = tipo_opts.index(pf_tipo) if pf_tipo in tipo_opts else 3
         with col1:
             tipo = st.selectbox(
                 "tipo",
-                options=("individuo", "institucion", "colectivo", "desconocido"),
-                index=3,
+                options=tipo_opts,
+                index=tipo_idx,
                 key=f"prom_tipo_{discovery_id}",
             )
         with col2:
             rol = st.text_input(
                 "rol (opcional)",
-                value="",
+                value=(pf_promote or {}).get("rol") or "",
                 key=f"prom_rol_{discovery_id}",
             )
         if st.button(
@@ -401,15 +604,21 @@ def _render_triage_forms(
     # ── Merge ──
     with tabs[1]:
         if kb_canonical_ids:
+            merge_idx = (
+                kb_canonical_ids.index(pf_merge_into)
+                if pf_merge_into in kb_canonical_ids
+                else 0
+            )
             into = st.selectbox(
                 "Mergear como alias de",
                 options=kb_canonical_ids,
+                index=merge_idx,
                 key=f"merge_into_{discovery_id}",
             )
         else:
             into = st.text_input(
                 "canonical_id destino",
-                value="",
+                value=pf_merge_into or "",
                 key=f"merge_into_{discovery_id}",
                 help="No se pudo cargar la KB para autocompletar; escribir manualmente.",
             )
@@ -453,7 +662,7 @@ def _render_triage_forms(
 # ══════════════════════════════════════════════════════════════════════════════
 
 #: Cap de equivalencias listadas en la UI.
-_EQUIVALENCES_DISPLAY_CAP = 40
+_EQUIVALENCES_PAGE_SIZE = 40
 
 
 def _render_experiencer_equivalences(db_path: Path) -> None:
@@ -497,6 +706,23 @@ def _render_experiencer_equivalences(db_path: Path) -> None:
             unsafe_allow_html=True,
         )
 
+    flash = st.session_state.pop("_exp_apply_flash", None)
+    if flash is not None:
+        _render_apply_flash(flash, backup=None)
+
+    if n_accepted:
+        if st.button(
+            f"Aplicar {n_accepted} equivalencias aceptadas",
+            key="apply_exp_btn",
+            type="primary",
+        ):
+            try:
+                res = actions_layer.apply_experiencer_decisions(db_path)
+                st.session_state["_exp_apply_flash"] = res
+                st.rerun()
+            except (FileNotFoundError, RuntimeError) as e:
+                st.error(f"No pude aplicar: {e}")
+
     if n_pending == 0:
         st.markdown(
             "<div class='ep-card' style='border-left:3px solid #6ec89a;'>"
@@ -516,22 +742,13 @@ def _render_experiencer_equivalences(db_path: Path) -> None:
     )
 
     pending = repo.list_pending_review()
-    shown = pending[:_EQUIVALENCES_DISPLAY_CAP]
     with st.expander(
-        f"Ver detalle (primeras {len(shown)} de {n_pending})",
+        f"Ver detalle ({n_pending} pendientes)",
         expanded=False,
     ):
-        for e in shown:
+        start, end = _pager(n_pending, "exp_equiv_page", _EQUIVALENCES_PAGE_SIZE)
+        for e in pending[start:end]:
             _render_equivalence_row(db_path, e)
-
-        if n_pending > _EQUIVALENCES_DISPLAY_CAP:
-            st.markdown(
-                f"<p style='margin-top:0.6rem;font-size:0.75rem;color:#5a5d6e;'>"
-                f"... y {n_pending - _EQUIVALENCES_DISPLAY_CAP} más. "
-                f"Listado completo: <code>emoparse experiencers list --db ...</code>."
-                f"</p>",
-                unsafe_allow_html=True,
-            )
 
 
 def _render_equivalence_row(db_path: Path, e: dict) -> None:
@@ -608,24 +825,32 @@ def _suggest_canonical_id(mencion: str) -> str:
     return s[:64]
 
 
-def _try_load_kb_ids(db_path: Path) -> list[str]:
-    """Intenta cargar los canonical_ids actuales de la KB para el selectbox."""
-    import json
-    # Subir hasta 4 niveles buscando 'knowledge/actors_kb.json'.
+def _resolve_kb_path(db_path: Path) -> Path | None:
+    """Ubica 'knowledge/actors_kb.json' subiendo hasta 5 niveles desde la DB."""
     cur = db_path.parent
     for _ in range(5):
         candidate = cur / "knowledge" / "actors_kb.json"
         if candidate.is_file():
-            try:
-                data = json.loads(candidate.read_text(encoding="utf-8"))
-                actors = data.get("actors") or {}
-                if isinstance(actors, dict):
-                    return sorted(actors.keys())
-            except (json.JSONDecodeError, OSError):
-                return []
+            return candidate
         if cur.parent == cur:
             break
         cur = cur.parent
+    return None
+
+
+def _try_load_kb_ids(db_path: Path) -> list[str]:
+    """Intenta cargar los canonical_ids actuales de la KB para el selectbox."""
+    import json
+    candidate = _resolve_kb_path(db_path)
+    if candidate is None:
+        return []
+    try:
+        data = json.loads(candidate.read_text(encoding="utf-8"))
+        actors = data.get("actors") or {}
+        if isinstance(actors, dict):
+            return sorted(actors.keys())
+    except (json.JSONDecodeError, OSError):
+        return []
     return []
 
 

@@ -36,6 +36,9 @@ class ActorsKbDiscoveriesRepository:
         confianza: str,
         contexto: str | None = None,
         justificacion: str | None = None,
+        canonical_id_sugerido: str | None = None,
+        display_name_sugerido: str | None = None,
+        tipo_sugerido: str | None = None,
     ) -> None:
         """Registra un actor nuevo detectado por el agente."""
         with self._db.transaction() as cur:
@@ -43,8 +46,9 @@ class ActorsKbDiscoveriesRepository:
                 """
                 INSERT INTO actors_kb_discoveries (
                     codigo, unit_idx, actor_mencionado,
-                    contexto, confianza, justificacion
-                ) VALUES (?, ?, ?, ?, ?, ?)
+                    contexto, confianza, justificacion,
+                    canonical_id_sugerido, display_name_sugerido, tipo_sugerido
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     codigo,
@@ -53,6 +57,9 @@ class ActorsKbDiscoveriesRepository:
                     contexto,
                     confianza,
                     justificacion,
+                    canonical_id_sugerido,
+                    display_name_sugerido,
+                    tipo_sugerido,
                 ),
             )
 
@@ -64,7 +71,8 @@ class ActorsKbDiscoveriesRepository:
         """Devuelve discoveries no revisados (reviewed=0)."""
         sql = (
             "SELECT id, codigo, unit_idx, actor_mencionado, contexto, "
-            "confianza, justificacion, discovered_at "
+            "confianza, justificacion, canonical_id_sugerido, "
+            "display_name_sugerido, tipo_sugerido, discovered_at "
             "FROM actors_kb_discoveries WHERE reviewed = 0"
         )
         params: list[Any] = []
@@ -92,7 +100,8 @@ class ActorsKbDiscoveriesRepository:
         """Devuelve un discovery por id, o None si no existe."""
         row = self._db.execute(
             "SELECT id, codigo, unit_idx, actor_mencionado, contexto, "
-            "confianza, justificacion, discovered_at, reviewed "
+            "confianza, justificacion, canonical_id_sugerido, "
+            "display_name_sugerido, tipo_sugerido, discovered_at, reviewed "
             "FROM actors_kb_discoveries WHERE id = ?",
             (discovery_id,),
         ).fetchone()

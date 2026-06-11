@@ -152,7 +152,10 @@ class TestOutputMapping:
                         confianza="alta",
                         es_nuevo=False,
                         justificacion="Alias directo en KB.",
-                    ),
+                        canonical_id_sugerido=None,
+                        display_name_sugerido=None,
+                        tipo_sugerido=None,
+                    )
                 ],
             ),
         ])])
@@ -185,6 +188,9 @@ class TestOutputMapping:
                         confianza="alta",
                         es_nuevo=True,
                         justificacion="No matchea con la KB.",
+                        canonical_id_sugerido=None,
+                        display_name_sugerido=None,
+                        tipo_sugerido=None,
                     ),
                 ],
             ),

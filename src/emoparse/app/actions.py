@@ -13,11 +13,21 @@ from pathlib import Path
 
 from loguru import logger
 
+from emoparse.knowledge.kb_editor import (
+    KbEditorError,
+    backup_kb,
+    discard as kb_discard,
+    load_kb,
+    merge as kb_merge,
+    promote as kb_promote,
+)
 from emoparse.storage.actors_kb_discoveries import ActorsKbDiscoveriesRepository
 from emoparse.storage.db import Database
+from emoparse.storage.emociones import EmocionesRepository
 from emoparse.storage.experiencer_equivalences import (
     ExperiencerEquivalencesRepository,
 )
+from emoparse.storage.runs import RunsRepository
 
 
 def register_promote(
@@ -83,6 +93,38 @@ def register_discard(
     logger.info(
         f"[app.actions] Registrada discard desde dashboard: "
         f"discovery={discovery_id}"
+    )
+
+
+def register_group_decisions(
+    db_path: Path,
+    *,
+    canonical_id: str,
+    display_name: str,
+    tipo: str,
+    member_ids: list[int],
+) -> None:
+    """Encola las decisiones de un grupo de discoveries (un promote + N merges).
+
+    El primer miembro se promueve al `canonical_id` del grupo; el resto se
+    mergean hacia él. Como las decisiones se aplican por orden de creación,
+    el promote queda antes que los merges y el lote se aplica de una sola vez.
+    """
+    if not member_ids:
+        raise ValueError("El grupo no tiene miembros.")
+    first, *rest = member_ids
+    register_promote(
+        db_path,
+        first,
+        canonical_id=canonical_id,
+        display_name=display_name,
+        tipo=tipo,
+    )
+    for mid in rest:
+        register_merge(db_path, mid, into_canonical_id=canonical_id)
+    logger.info(
+        f"[app.actions] Grupo encolado: promote '{canonical_id}' "
+        f"(+{len(rest)} merges) sobre {len(member_ids)} discoveries."
     )
 
 
@@ -165,3 +207,126 @@ def _open_equiv_repo(db_path: Path) -> ExperiencerEquivalencesRepository:
     if not db.table_exists("experiencer_equivalences"):
         raise RuntimeError("DB sin tabla experiencer_equivalences.")
     return ExperiencerEquivalencesRepository(db)
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Aplicación (apply) desde el dashboard
+# ══════════════════════════════════════════════════════════════════════════════
+
+def pending_promote_canonical_ids(db_path: Path) -> list[str]:
+    """canonical_ids de los promotes pendientes (aún no aplicados a la KB).
+
+    Permite ofrecerlos como destino de un merge antes de aplicar, de modo que
+    se pueda encolar `promote A` + `merge B→A` y aplicarlos en un solo lote.
+    """
+    repo = _open_repo(db_path)
+    out = {
+        d["canonical_id"]
+        for d in repo.list_decisions(status="pending")
+        if d["decision"] == "promote" and d.get("canonical_id")
+    }
+    return sorted(out)
+
+
+def apply_actor_decisions(db_path: Path, kb_path: Path) -> dict:
+    """Aplica las decisiones de actores pendientes al JSON de la KB.
+
+    Hace un backup antes de mutar y procesa el lote por orden de creación
+    (así un `merge` hacia un `promote` del mismo lote encuentra su destino).
+    Devuelve {applied, failed, backup, errors}. Idempotente.
+    """
+    repo = _open_repo(db_path)
+    try:
+        load_kb(kb_path)
+    except KbEditorError as e:
+        raise RuntimeError(f"KB inválida: {e}") from e
+
+    decisions = repo.list_decisions(status="pending")
+    if not decisions:
+        return {"applied": 0, "failed": 0, "backup": None, "errors": []}
+
+    backup = backup_kb(kb_path)
+    applied = failed = 0
+    errors: list[tuple[int, str]] = []
+    for d in decisions:
+        try:
+            _apply_actor_one(kb_path, d)
+            repo.mark_decision_applied(d["discovery_id"])
+            applied += 1
+        except Exception as e:  # noqa: BLE001 — no abortar el lote.
+            repo.mark_decision_failed(d["discovery_id"], str(e))
+            failed += 1
+            errors.append((d["discovery_id"], str(e)))
+    logger.info(
+        f"[app.actions] apply actores: {applied} ok, {failed} fallidas "
+        f"(backup {backup})"
+    )
+    return {
+        "applied": applied,
+        "failed": failed,
+        "backup": str(backup),
+        "errors": errors,
+    }
+
+
+def _apply_actor_one(kb_path: Path, d: dict) -> None:
+    kind = d["decision"]
+    if kind == "promote":
+        kb_promote(
+            kb_path,
+            canonical_id=d["canonical_id"],
+            display_name=d["display_name"],
+            aliases_iniciales=[d["actor_mencionado"]],
+            tipo=d.get("tipo") or "desconocido",
+            rol=d.get("rol"),
+        )
+    elif kind == "merge":
+        kb_merge(
+            kb_path,
+            canonical_id=d["canonical_id"],
+            alias_to_add=d["actor_mencionado"],
+        )
+    elif kind == "discard":
+        kb_discard(kb_path, mencion=d["actor_mencionado"])
+    else:
+        raise KbEditorError(f"Decisión desconocida: {kind!r}")
+
+
+def apply_experiencer_decisions(db_path: Path) -> dict:
+    """Aplica las equivalencias de experienciador aceptadas a `emociones`.
+
+    Escribe `experienciador_canonico` (estampando la versión de prompt del run
+    como provenance) y marca las equivalencias como aplicadas. Idempotente.
+    Devuelve {equivalences, rows}.
+    """
+    if not db_path.is_file():
+        raise FileNotFoundError(f"DB no encontrada: {db_path}")
+    db = Database(db_path)
+    if not db.table_exists("experiencer_equivalences"):
+        raise RuntimeError("DB sin tabla experiencer_equivalences.")
+    eq = ExperiencerEquivalencesRepository(db)
+    emo = EmocionesRepository(db)
+
+    accepted = eq.list_accepted_unapplied()
+    version = _run_prompt_version(db)
+    rows = 0
+    for r in accepted:
+        rows += emo.set_experienciador_canonico(
+            r["codigo"], r["raw_experienciador"], r["canonical_final"],
+            version=version,
+        )
+        eq.mark_applied(r["id"])
+    logger.info(
+        f"[app.actions] apply experienciadores: {len(accepted)} equivalencias, "
+        f"{rows} emociones."
+    )
+    return {"equivalences": len(accepted), "rows": rows}
+
+
+def _run_prompt_version(db: Database) -> str | None:
+    """Versión de prompt del run (provenance del canónico)."""
+    try:
+        ctx = RunsRepository(db).get_run()
+    except Exception:
+        return None
+    return ctx.versions.prompt if ctx is not None else None

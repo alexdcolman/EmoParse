@@ -40,6 +40,84 @@
       "tipo": "colectivo",
       "rol": "politico",
       "notas": "Referente genérico. Refinable a partidos específicos vía expansión."
+    },
+    "foro_economico_mundial": {
+      "display_name": "Foro Económico Mundial",
+      "aliases": [
+        "Foro Económico Mundial"
+      ],
+      "tipo": "institucion"
+    },
+    "occidente": {
+      "display_name": "Occidente",
+      "aliases": [
+        "Occidente"
+      ],
+      "tipo": "colectivo"
+    },
+    "principales_lideres_del_mundo_occidental": {
+      "display_name": "líderes del mundo occidental",
+      "aliases": [
+        "principales líderes del mundo occidental"
+      ],
+      "tipo": "colectivo"
+    },
+    "personas_en_situacion_de_pobreza": {
+      "display_name": "personas en situación de pobreza",
+      "aliases": [
+        "personas en situación de pobreza",
+        "personas que sufren hambre, pobreza e indigencia"
+      ],
+      "tipo": "colectivo"
+    },
+    "el_projimo": {
+      "display_name": "el prójimo",
+      "aliases": [
+        "prójimo"
+      ],
+      "tipo": "individuo"
+    },
+    "ciudadanos_del_mundo": {
+      "display_name": "ciudadanos del mundo",
+      "aliases": [
+        "ciudadanos del mundo"
+      ],
+      "tipo": "colectivo"
+    },
+    "ciudadanos": {
+      "display_name": "ciudadanos",
+      "aliases": [
+        "ciudadanos"
+      ],
+      "tipo": "colectivo"
+    },
+    "la_humanidad": {
+      "display_name": "la humanidad",
+      "aliases": [
+        "la humanidad"
+      ],
+      "tipo": "colectivo"
+    },
+    "descubridores_de_america": {
+      "display_name": "descubridores de América",
+      "aliases": [
+        "descubridores de América"
+      ],
+      "tipo": "colectivo"
+    },
+    "poblacion_mundial": {
+      "display_name": "población mundial",
+      "aliases": [
+        "población mundial"
+      ],
+      "tipo": "colectivo"
+    },
+    "los_contribuyentes": {
+      "display_name": "los contribuyentes",
+      "aliases": [
+        "contribuyentes"
+      ],
+      "tipo": "colectivo"
     }
   }
 }

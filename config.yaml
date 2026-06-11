@@ -162,7 +162,7 @@ paths:
 
 versions:
   knowledge: v1
-  prompt:    v9
+  prompt:    v10
   ontology:  v4
   schema:    v9
 

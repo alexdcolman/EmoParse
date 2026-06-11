@@ -596,6 +596,13 @@ class NormalizeActorsStage(Stage):
                             confianza=str(link.get("confianza", "baja")),
                             contexto=frases_text.get(unit_idx),
                             justificacion=str(link.get("justificacion", "")),
+                            canonical_id_sugerido=(
+                                link.get("canonical_id_sugerido") or None
+                            ),
+                            display_name_sugerido=(
+                                link.get("display_name_sugerido") or None
+                            ),
+                            tipo_sugerido=link.get("tipo_sugerido") or None,
                         )
 
         return total_ok

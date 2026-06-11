@@ -1878,7 +1878,7 @@ streamlit run src/emoparse/app/__main__.py
         <tr>
           <td><code>normalize_actors</code></td>
           <td>frase</td>
-          <td>Unifica las distintas formas de nombrar a un mismo actor. Resuelve correferencias dentro del discurso y vincula cada mención con una base de actores conocidos. Los actores no reconocidos quedan registrados para revisión manual.</td>
+          <td>Unifica las distintas formas de nombrar a un mismo actor. Resuelve correferencias dentro del discurso y vincula cada mención con una base de actores conocidos. Para los actores no reconocidos, además propone una forma canónica (id, nombre y tipo) que el analista revisa; quedan registrados para revisión manual.</td>
           <td>opcional</td>
         </tr>
         <tr>
@@ -2383,6 +2383,17 @@ streamlit run src/emoparse/app/__main__.py
     Los hallazgos de actores no reconocidos se gestionan con el
     subcomando <code>emoparse discoveries</code> (listar, exportar,
     promover a nuevo actor, fusionar con uno existente o descartar).
+  </p>
+  <p>
+    Para reducir el trabajo manual, <code>normalize_actors</code> propone, en
+    la misma pasada, una forma canónica para cada actor nuevo
+    (<code>canonical_id</code>, nombre y tipo), con una regla de estabilidad:
+    el mismo actor del mundo real recibe el mismo slug aunque la mención
+    cambie ("LLA" y "La Libertad Avanza" → <code>la_libertad_avanza</code>).
+    El dashboard usa esas propuestas para <strong>agrupar</strong> los
+    hallazgos que parecen el mismo actor y ofrecer un único "Confirmar grupo"
+    (un promote + los merges), editable antes de aplicar. El agrupamiento es
+    determinista y no usa el LLM: la coreferencia ya la propuso la etapa.
   </p>
   <p>
     Las equivalencias de experienciador se gestionan con

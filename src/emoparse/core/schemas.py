@@ -202,6 +202,24 @@ class ActorLinkingSchema(StrictBase):
                     "canónico que matchea (en cuyo caso actor_canonico no "
                     "debe ser null).",
     )
+    canonical_id_sugerido: str | None = Field(
+        description="Solo si es_nuevo=true: slug ASCII propuesto para el actor "
+                    "nuevo (minúsculas, dígitos y guiones bajos; empieza por "
+                    "letra). REGLA DE ESTABILIDAD: el MISMO actor del mundo "
+                    "real debe recibir el MISMO slug aunque la mención cambie "
+                    "(p. ej. 'LLA' y 'La Libertad Avanza' → 'la_libertad_avanza'). "
+                    "null si es_nuevo=false.",
+    )
+    display_name_sugerido: str | None = Field(
+        description="Solo si es_nuevo=true: nombre canónico legible del actor "
+                    "nuevo, expandiendo siglas o apodos a la forma más completa "
+                    "y estable. null si es_nuevo=false.",
+    )
+    tipo_sugerido: str | None = Field(
+        description="Solo si es_nuevo=true: tipo del actor nuevo, uno de "
+                    "'individuo', 'institucion', 'colectivo' o 'desconocido'. "
+                    "null si es_nuevo=false.",
+    )
     justificacion: str = Field(
         description="Justificación breve del linking, citando aliases o "
                     "elementos del contexto que respalden la decisión.",

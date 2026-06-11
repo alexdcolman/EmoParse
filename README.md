@@ -105,6 +105,8 @@ Por defecto `emoparse run` detecta emociones de todos los experienciadores. Para
 
 La etapa opcional `normalize_experiencers` resuelve las distintas formas en que un discurso nombra a quien siente (por ejemplo "yo" o "el orador" → el enunciador de ese discurso). Propone equivalencias para revisión humana; se revisan con `emoparse experiencers list/accept/reject` (o desde el dashboard) y se materializan en `emociones.experienciador_canonico` con `emoparse experiencers apply`.
 
+Para los actores nuevos, `normalize_actors` resuelve correferencias y vincula contra la base de actores conocidos; además, en la misma pasada, propone una forma canónica (id, nombre y tipo) para cada actor no reconocido, con una regla de estabilidad (el mismo actor recibe el mismo slug aunque la mención cambie). El dashboard agrupa esos hallazgos por canónico sugerido y permite confirmar un grupo entero (un promote + sus merges) en un paso, sin llamadas extra al modelo. La revisión también se puede hacer con `emoparse discoveries`.
+
 ---
 
 ## Estado del proyecto

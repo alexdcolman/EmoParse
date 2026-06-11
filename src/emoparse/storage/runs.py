@@ -149,6 +149,21 @@ class RunsRepository:
             column="actantes_error",
             type_def="TEXT",
         )
+        self._add_column_if_missing(
+            table="actors_kb_discoveries",
+            column="canonical_id_sugerido",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="actors_kb_discoveries",
+            column="display_name_sugerido",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="actors_kb_discoveries",
+            column="tipo_sugerido",
+            type_def="TEXT",
+        )
 
     def _add_column_if_missing(
         self,

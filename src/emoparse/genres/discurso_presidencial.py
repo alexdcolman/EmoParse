@@ -23,6 +23,7 @@ def get_genre() -> Genre:
         models={},
         batch_size={
             "actors": 1,
+            "normalize_actors": 7,
             "emotions": 1,
             "emotions_pass2": 1,
             "characterizer": 1,
