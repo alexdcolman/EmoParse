@@ -1,14 +1,11 @@
-"""Agrupamiento (sin LLM) de discoveries de actores por canónico sugerido.
-
-`normalize_actors` propone, para cada actor nuevo, un `canonical_id_sugerido`
-estable (mismo actor del mundo real → mismo slug, aunque la mención cambie).
-Este módulo agrupa las menciones por ese slug normalizado, de modo que la UI
-pueda ofrecer un único "Confirmar grupo" (un promote + N merges) en lugar de
-obligar al analista a reconstruir cada decisión a mano.
-
-El agrupamiento es puro y determinista; no toca la DB. El wrapper
-`group_pending_discoveries` solo agrega la lectura del repo.
-"""
+# ══════════════════════════════════════════════════════════════════════════════
+#  emoparse.triage.discovery_grouping
+#
+#  Agrupamiento (sin LLM) de discoveries de actores por canónico sugerido.
+#
+#  Agrupa las menciones que parecen referirse al mismo actor nuevo, para
+#  facilitar la revisión por parte del analista.
+# ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
 
@@ -155,11 +152,14 @@ def group_pending_discoveries(
     db_path: Path,
     *,
     exclude_ids: set[int] | None = None,
+    only_alias_candidates: bool = True,
 ) -> list[DiscoveryGroup]:
     """Lee los discoveries pendientes y los agrupa.
 
     `exclude_ids` permite omitir discoveries que ya tienen una decisión
     registrada (para no re-proponerlos en la vista de grupos).
+    `only_alias_candidates` excluye los deícticos/rol (alias_candidato=false);
+    los `NULL` (runs viejos, sin la marca) se tratan como candidatos.
     """
     from emoparse.storage.actors_kb_discoveries import (
         ActorsKbDiscoveriesRepository,
@@ -170,4 +170,12 @@ def group_pending_discoveries(
     pending: list[dict[str, Any]] = repo.list_pending_review()
     if exclude_ids:
         pending = [d for d in pending if int(d["id"]) not in exclude_ids]
+    if only_alias_candidates:
+        pending = [d for d in pending if _is_alias_candidate(d)]
     return group_discoveries(pending)
+
+
+def _is_alias_candidate(d: dict) -> bool:
+    """True salvo que esté marcado explícitamente como no-candidato (0/False)."""
+    val = d.get("alias_candidato")
+    return val is None or bool(val)

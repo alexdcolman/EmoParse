@@ -1878,7 +1878,7 @@ streamlit run src/emoparse/app/__main__.py
         <tr>
           <td><code>normalize_actors</code></td>
           <td>frase</td>
-          <td>Unifica las distintas formas de nombrar a un mismo actor. Resuelve correferencias dentro del discurso y vincula cada mención con una base de actores conocidos. Para los actores no reconocidos, además propone una forma canónica (id, nombre y tipo) que el analista revisa; quedan registrados para revisión manual.</td>
+          <td>Unifica las distintas formas de nombrar a un mismo actor. Resuelve correferencias dentro del discurso y vincula cada mención con una base de actores conocidos. Para los actores no reconocidos, distingue nombres propios (propone una forma canónica para revisión) de deícticos y roles; los deícticos de 1ª persona se atribuyen al enunciador por discurso, sin incorporarse a la KB.</td>
           <td>opcional</td>
         </tr>
         <tr>
@@ -2394,6 +2394,19 @@ streamlit run src/emoparse/app/__main__.py
     hallazgos que parecen el mismo actor y ofrecer un único "Confirmar grupo"
     (un promote + los merges), editable antes de aplicar. El agrupamiento es
     determinista y no usa el LLM: la coreferencia ya la propuso la etapa.
+  </p>
+  <p>
+    Para que la KB no se contamine, la etapa distingue dos cosas. Las
+    <strong>menciones identificantes sin contexto</strong> (nombres propios,
+    denominaciones estables) son candidatas a alias y son las únicas que se
+    agrupan para promover. Los <strong>deícticos y roles dependientes del
+    contexto</strong> ("yo", "mí", "nosotros", "el presidente") no se
+    incorporan a la KB: un "yo" en otro discurso es otra persona. Los
+    deícticos de 1ª persona se resuelven de forma determinista al
+    <em>enunciador del discurso</em> (el mismo dato que usa
+    <code>normalize_experiencers</code>), por discurso y sin tocar la KB, de
+    modo que esas menciones se atribuyen al hablante en el agregado sin crear
+    un alias ambiguo.
   </p>
   <p>
     Las equivalencias de experienciador se gestionan con

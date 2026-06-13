@@ -96,6 +96,58 @@ def register_discard(
     )
 
 
+def register_merge_many(
+    db_path: Path,
+    discovery_ids: list[int],
+    *,
+    into_canonical_id: str,
+) -> int:
+    """Registra un merge en lote: varias discoveries → un mismo canónico.
+
+    Devuelve la cantidad de decisiones registradas. Abre el repo una sola vez.
+    """
+    ids = [int(d) for d in dict.fromkeys(discovery_ids)]
+    if not ids:
+        return 0
+    target = (into_canonical_id or "").strip()
+    if not target:
+        raise ValueError("into_canonical_id vacío.")
+    repo = _open_repo(db_path)
+    for discovery_id in ids:
+        repo.upsert_decision(
+            discovery_id=discovery_id,
+            decision="merge",
+            canonical_id=target,
+            origin="dashboard",
+        )
+    logger.info(
+        f"[app.actions] Merge masivo desde dashboard: "
+        f"{len(ids)} discoveries → '{target}'"
+    )
+    return len(ids)
+
+
+def register_discard_many(
+    db_path: Path,
+    discovery_ids: list[int],
+) -> int:
+    """Registra un discard en lote. Devuelve la cantidad de decisiones."""
+    ids = [int(d) for d in dict.fromkeys(discovery_ids)]
+    if not ids:
+        return 0
+    repo = _open_repo(db_path)
+    for discovery_id in ids:
+        repo.upsert_decision(
+            discovery_id=discovery_id,
+            decision="discard",
+            origin="dashboard",
+        )
+    logger.info(
+        f"[app.actions] Discard masivo desde dashboard: {len(ids)} discoveries"
+    )
+    return len(ids)
+
+
 def register_group_decisions(
     db_path: Path,
     *,
@@ -103,15 +155,17 @@ def register_group_decisions(
     display_name: str,
     tipo: str,
     member_ids: list[int],
+    discard_ids: list[int] | None = None,
 ) -> None:
     """Encola las decisiones de un grupo de discoveries (un promote + N merges).
 
     El primer miembro se promueve al `canonical_id` del grupo; el resto se
     mergean hacia él. Como las decisiones se aplican por orden de creación,
     el promote queda antes que los merges y el lote se aplica de una sola vez.
+    `discard_ids` (los miembros que el analista destildó) se descartan.
     """
     if not member_ids:
-        raise ValueError("El grupo no tiene miembros.")
+        raise ValueError("El grupo no tiene miembros incluidos.")
     first, *rest = member_ids
     register_promote(
         db_path,
@@ -122,9 +176,11 @@ def register_group_decisions(
     )
     for mid in rest:
         register_merge(db_path, mid, into_canonical_id=canonical_id)
+    for mid in discard_ids or []:
+        register_discard(db_path, mid)
     logger.info(
         f"[app.actions] Grupo encolado: promote '{canonical_id}' "
-        f"(+{len(rest)} merges) sobre {len(member_ids)} discoveries."
+        f"(+{len(rest)} merges, {len(discard_ids or [])} descartes)."
     )
 
 

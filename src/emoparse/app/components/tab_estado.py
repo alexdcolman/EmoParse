@@ -155,11 +155,30 @@ def _pct_badge(pct: int) -> str:
 _DISCOVERIES_PAGE_SIZE = 25
 
 
-def _pager(total: int, key: str, page_size: int) -> tuple[int, int]:
+#: Claves de session_state para mantener abiertos los expanders tras un rerun.
+_OPEN_GROUPS = "ui_open_groups"
+_OPEN_DETAIL = "ui_open_actors_detail"
+_OPEN_BULK = "ui_open_bulk"
+_OPEN_EXP = "ui_open_exp_detail"
+
+
+def _keep_open(open_key: str | None) -> None:
+    """Marca un expander para que siga abierto tras el próximo rerun."""
+    if open_key:
+        st.session_state[open_key] = True
+
+
+def _pager(
+    total: int,
+    key: str,
+    page_size: int,
+    open_key: str | None = None,
+) -> tuple[int, int]:
     """Controles de paginación (‹ Anterior / Siguiente ›) + indicador.
 
     Guarda la página en `st.session_state[key]`, la acota al rango válido y
-    devuelve el slice ``(start, end)`` a renderizar.
+    devuelve el slice ``(start, end)`` a renderizar. Si se pasa `open_key`,
+    navegar mantiene abierto ese expander.
     """
     n_pages = max(1, (total + page_size - 1) // page_size)
     page = max(0, min(int(st.session_state.get(key, 0)), n_pages - 1))
@@ -173,6 +192,7 @@ def _pager(total: int, key: str, page_size: int) -> tuple[int, int]:
                 disabled=page <= 0, use_container_width=True,
             ):
                 st.session_state[key] = page - 1
+                _keep_open(open_key)
                 st.rerun()
         with c2:
             st.markdown(
@@ -187,6 +207,7 @@ def _pager(total: int, key: str, page_size: int) -> tuple[int, int]:
                 disabled=page >= n_pages - 1, use_container_width=True,
             ):
                 st.session_state[key] = page + 1
+                _keep_open(open_key)
                 st.rerun()
 
     start = page * page_size
@@ -260,10 +281,11 @@ def _render_actors_discoveries(db_path: Path) -> None:
 
     if has_triage:
         _render_discovery_groups(db_path, repo)
+        _render_bulk_merge(db_path, repo)
 
     with st.expander(
         f"Ver detalle ({n_pending} pendientes)",
-        expanded=False,
+        expanded=st.session_state.get(_OPEN_DETAIL, False),
     ):
         kb_canonical_ids = _try_load_kb_ids(db_path) if has_triage else []
         if has_triage:
@@ -272,7 +294,10 @@ def _render_actors_discoveries(db_path: Path) -> None:
             pend = actions_layer.pending_promote_canonical_ids(db_path)
             kb_canonical_ids = sorted(set(kb_canonical_ids) | set(pend))
 
-        start, end = _pager(n_pending, "actors_disc_page", _DISCOVERIES_PAGE_SIZE)
+        start, end = _pager(
+            n_pending, "actors_disc_page", _DISCOVERIES_PAGE_SIZE,
+            open_key=_OPEN_DETAIL,
+        )
         for d in pending[start:end]:
             _render_discovery_row(
                 db_path,
@@ -306,35 +331,30 @@ def _render_discovery_groups(
 
     with st.expander(
         f"Sugerencias agrupadas ({len(groups)} grupos de ≥2 menciones)",
-        expanded=False,
+        expanded=st.session_state.get(_OPEN_GROUPS, False),
     ):
         st.caption(
             "Menciones que el modelo propone como el mismo actor nuevo. "
             "Editá el canónico si hace falta y confirmá el grupo entero "
             "(un promote + los merges)."
         )
-        start, end = _pager(len(groups), "actors_groups_page", _GROUPS_PAGE_SIZE)
+        start, end = _pager(
+            len(groups), "actors_groups_page", _GROUPS_PAGE_SIZE,
+            open_key=_OPEN_GROUPS,
+        )
         for g in groups[start:end]:
             _render_group_card(db_path, g)
 
 
 def _render_group_card(db_path: Path, g) -> None:
-    members_txt = " · ".join(
-        f"'{_escape(str(m.get('actor_mencionado', '')))}' "
-        f"({_escape(str(m.get('codigo', '')))}:{m.get('unit_idx', '?')})"
-        for m in g.members
-    )
+    key = g.canonical_id
     st.markdown(
-        f"<div style='padding:0.5rem 0;border-bottom:1px solid #1a1c22;'>"
-        f"<div style='font-size:0.85rem;color:#e8e4dc;'>"
+        f"<div style='font-size:0.9rem;color:#e8e4dc;margin-top:0.4rem;'>"
         f"<strong>{_escape(g.display_name)}</strong> "
         f"<span style='color:#8a8799;font-family:DM Mono,monospace;font-size:0.78rem;'>"
-        f"· {g.n_members} menciones</span></div>"
-        f"<p style='margin:0.2rem 0;font-size:0.76rem;color:#8a8799;'>{members_txt}</p>"
-        f"</div>",
+        f"· {g.n_members} menciones</span></div>",
         unsafe_allow_html=True,
     )
-    key = g.canonical_id
     cid = st.text_input(
         "canonical_id (slug)", value=g.canonical_id, key=f"grp_id_{key}",
         help="Slug ASCII: minúsculas, dígitos, guiones bajos.",
@@ -345,22 +365,184 @@ def _render_group_card(db_path: Path, g) -> None:
         index=_KB_TIPOS_UI.index(g.tipo) if g.tipo in _KB_TIPOS_UI else 3,
         key=f"grp_tipo_{key}",
     )
+
+    st.markdown(
+        "<p style='margin:0.4rem 0 0.1rem 0;font-size:0.78rem;color:#8a8799;'>"
+        "Menciones del grupo — destildá las que no correspondan (deícticos como "
+        "'yo', 'mí', 'nosotros', roles ambiguos):</p>",
+        unsafe_allow_html=True,
+    )
+    included_ids: list[int] = []
+    for m in g.members:
+        mid = int(m["id"])
+        label = (
+            f"'{m.get('actor_mencionado', '')}'  ·  "
+            f"{m.get('codigo', '')}:{m.get('unit_idx', '?')}"
+        )
+        if st.checkbox(label, value=True, key=f"grp_mem_{key}_{mid}"):
+            included_ids.append(mid)
+
+    discard_excluded = st.checkbox(
+        "Descartar las menciones destildadas (no reaparecen)",
+        value=False, key=f"grp_disc_{key}",
+    )
+    n_inc = len(included_ids)
     if st.button(
-        f"Confirmar grupo ({g.n_members} menciones)",
+        f"Confirmar grupo ({n_inc} incluidas)",
         key=f"grp_btn_{key}",
         type="primary",
+        disabled=n_inc == 0,
     ):
+        excluded = [int(m["id"]) for m in g.members if int(m["id"]) not in included_ids]
         try:
             actions_layer.register_group_decisions(
                 db_path,
                 canonical_id=cid.strip(),
                 display_name=dn.strip(),
                 tipo=tipo,
-                member_ids=g.member_ids,
+                member_ids=included_ids,
+                discard_ids=excluded if discard_excluded else None,
             )
+            _keep_open(_OPEN_GROUPS)
             st.rerun()
         except (ValueError, FileNotFoundError, RuntimeError) as e:
             st.error(str(e))
+    st.markdown(
+        "<div style='border-bottom:1px solid #1a1c22;margin:0.5rem 0;'></div>",
+        unsafe_allow_html=True,
+    )
+
+
+_BULK_PAGE_SIZE = 40
+
+
+def _render_bulk_merge(
+    db_path: Path,
+    repo: ActorsKbDiscoveriesRepository,
+) -> None:
+    """Revisión individual rápida: merge/descarte masivo por mención exacta.
+
+    Complementa la vista agrupada. Como el agrupamiento por canónico sugerido
+    a veces parte un mismo actor en dos grupos, acá las menciones se agregan
+    por texto exacto (sin importar el grupo): se busca, se seleccionan varias
+    y se mergean de una a un actor de la KB. Ordenado por frecuencia.
+    """
+    try:
+        decided = {int(x["discovery_id"]) for x in repo.list_decisions()}
+    except Exception:
+        decided = set()
+    pending = [
+        d for d in repo.list_pending_review() if int(d["id"]) not in decided
+    ]
+    if not pending:
+        return
+
+    agg: dict[str, list[int]] = {}
+    for d in pending:
+        mention = str(d.get("actor_mencionado", "")).strip()
+        if mention:
+            agg.setdefault(mention, []).append(int(d["id"]))
+    if not agg:
+        return
+
+    items = sorted(agg.items(), key=lambda kv: (-len(kv[1]), kv[0].lower()))
+
+    with st.expander(
+        f"Revisión individual — merge masivo ({len(items)} menciones)",
+        expanded=st.session_state.get(_OPEN_BULK, False),
+    ):
+        st.caption(
+            "Agregado por mención exacta, sin importar el grupo sugerido. "
+            "Buscá, tildá varias (la selección se mantiene entre páginas) y "
+            "mergealas a un actor de la KB. Ordenado por frecuencia (×N)."
+        )
+
+        q = st.text_input(
+            "Buscar mención",
+            key="bulk_search",
+            placeholder="ej.: víctimas del holocausto",
+        ).strip().lower()
+        shown = [it for it in items if q in it[0].lower()] if q else items
+
+        kb_ids = _try_load_kb_ids(db_path)
+        kb_ids = sorted(
+            set(kb_ids)
+            | set(actions_layer.pending_promote_canonical_ids(db_path))
+        )
+        if kb_ids:
+            target = st.selectbox(
+                "Mergear seleccionadas a", options=kb_ids, key="bulk_target",
+            )
+        else:
+            target = st.text_input(
+                "canonical_id destino", key="bulk_target",
+                help="No se pudo cargar la KB; escribir el canónico a mano.",
+            )
+
+        start, end = _pager(
+            len(shown), "bulk_page", _BULK_PAGE_SIZE, open_key=_OPEN_BULK,
+        )
+        for mention, ids in shown[start:end]:
+            st.checkbox(
+                f"{mention}  ·  ×{len(ids)}",
+                key=f"bulk_sel_{mention}",
+            )
+
+        # Selección efectiva: todas las menciones tildadas dentro del filtro
+        # actual (persisten entre páginas vía session_state).
+        selected_ids: list[int] = []
+        n_mentions = 0
+        for mention, ids in shown:
+            if st.session_state.get(f"bulk_sel_{mention}", False):
+                selected_ids.extend(ids)
+                n_mentions += 1
+        n_sel = len(selected_ids)
+
+        st.markdown(
+            f"<p style='font-family:\"DM Mono\",monospace;font-size:0.8rem;"
+            f"color:#8a8799;margin:0.3rem 0;'>"
+            f"{n_mentions} menciones · {n_sel} ocurrencias seleccionadas</p>",
+            unsafe_allow_html=True,
+        )
+
+        tgt = (target or "").strip()
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button(
+                f"Mergear {n_sel} → {tgt or '—'}",
+                key="bulk_merge_btn", type="primary",
+                use_container_width=True,
+                disabled=(n_sel == 0 or not tgt),
+            ):
+                try:
+                    actions_layer.register_merge_many(
+                        db_path, selected_ids, into_canonical_id=tgt,
+                    )
+                    _clear_bulk_selection()
+                    _keep_open(_OPEN_BULK)
+                    st.rerun()
+                except (ValueError, FileNotFoundError, RuntimeError) as e:
+                    st.error(str(e))
+        with c2:
+            if st.button(
+                f"Descartar {n_sel}",
+                key="bulk_disc_btn",
+                use_container_width=True,
+                disabled=(n_sel == 0),
+            ):
+                try:
+                    actions_layer.register_discard_many(db_path, selected_ids)
+                    _clear_bulk_selection()
+                    _keep_open(_OPEN_BULK)
+                    st.rerun()
+                except (ValueError, FileNotFoundError, RuntimeError) as e:
+                    st.error(str(e))
+
+
+def _clear_bulk_selection() -> None:
+    """Limpia los checkboxes del merge masivo tras una acción."""
+    for k in [k for k in st.session_state if str(k).startswith("bulk_sel_")]:
+        del st.session_state[k]
 
 
 def _render_actors_apply_button(db_path: Path, n_pending: int) -> None:
@@ -515,6 +697,7 @@ def _render_decision_status(
         ):
             try:
                 actions_layer.undo_decision(db_path, discovery["id"])
+                _keep_open(_OPEN_DETAIL)
                 st.rerun()
             except (ValueError, FileNotFoundError, RuntimeError) as e:
                 st.error(f"No pude deshacer: {e}")
@@ -597,6 +780,7 @@ def _render_triage_forms(
                     tipo=tipo,
                     rol=rol.strip() or None,
                 )
+                _keep_open(_OPEN_DETAIL)
                 st.rerun()
             except (ValueError, FileNotFoundError, RuntimeError) as e:
                 st.error(str(e))
@@ -633,6 +817,7 @@ def _render_triage_forms(
                     discovery_id,
                     into_canonical_id=(into or "").strip(),
                 )
+                _keep_open(_OPEN_DETAIL)
                 st.rerun()
             except (ValueError, FileNotFoundError, RuntimeError) as e:
                 st.error(str(e))
@@ -652,6 +837,7 @@ def _render_triage_forms(
         ):
             try:
                 actions_layer.register_discard(db_path, discovery_id)
+                _keep_open(_OPEN_DETAIL)
                 st.rerun()
             except (ValueError, FileNotFoundError, RuntimeError) as e:
                 st.error(str(e))
@@ -744,9 +930,12 @@ def _render_experiencer_equivalences(db_path: Path) -> None:
     pending = repo.list_pending_review()
     with st.expander(
         f"Ver detalle ({n_pending} pendientes)",
-        expanded=False,
+        expanded=st.session_state.get(_OPEN_EXP, False),
     ):
-        start, end = _pager(n_pending, "exp_equiv_page", _EQUIVALENCES_PAGE_SIZE)
+        start, end = _pager(
+            n_pending, "exp_equiv_page", _EQUIVALENCES_PAGE_SIZE,
+            open_key=_OPEN_EXP,
+        )
         for e in pending[start:end]:
             _render_equivalence_row(db_path, e)
 
@@ -796,6 +985,7 @@ def _render_equivalence_row(db_path: Path, e: dict) -> None:
                 actions_layer.register_experiencer_accept(
                     db_path, e["id"], canonical=(canonical or None)
                 )
+                _keep_open(_OPEN_EXP)
                 st.rerun()
             except (ValueError, FileNotFoundError, RuntimeError) as exc:
                 st.error(f"No pude aceptar: {exc}")
@@ -803,6 +993,7 @@ def _render_equivalence_row(db_path: Path, e: dict) -> None:
         if st.button("Rechazar", key=f"exp_rej_{e['id']}", use_container_width=True):
             try:
                 actions_layer.register_experiencer_reject(db_path, e["id"])
+                _keep_open(_OPEN_EXP)
                 st.rerun()
             except (ValueError, FileNotFoundError, RuntimeError) as exc:
                 st.error(f"No pude rechazar: {exc}")

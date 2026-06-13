@@ -361,51 +361,6 @@
         "captores / responsables del secuestro"
       ],
       "tipo": "colectivo"
-    },
-    "el_mundo": {
-      "display_name": "el mundo",
-      "aliases": [
-        "el mundo",
-        "mundo"
-      ],
-      "tipo": "colectivo"
-    },
-    "paises_que_son_libres": {
-      "display_name": "países que son libres",
-      "aliases": [
-        "países que son libres",
-        "aquellos países que son libres"
-      ],
-      "tipo": "colectivo"
-    },
-    "alberto_benegas_lynch_h": {
-      "display_name": "Alberto Benegas Lynch (h)",
-      "aliases": [
-        "Alberto Benegas Lynch (h)"
-      ],
-      "tipo": "individuo"
-    },
-    "la_poblacion": {
-      "display_name": "la población",
-      "aliases": [
-        "la población"
-      ],
-      "tipo": "colectivo"
-    },
-    "monopolio_s": {
-      "display_name": "Monopolio(s)",
-      "aliases": [
-        "monopolio",
-        "monopolios"
-      ],
-      "tipo": "colectivo"
-    },
-    "burocrata_s": {
-      "display_name": "Burócrata(s)",
-      "aliases": [
-        "un burócrata"
-      ],
-      "tipo": "individuo"
     }
   }
 }

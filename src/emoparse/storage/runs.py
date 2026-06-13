@@ -164,6 +164,11 @@ class RunsRepository:
             column="tipo_sugerido",
             type_def="TEXT",
         )
+        self._add_column_if_missing(
+            table="actors_kb_discoveries",
+            column="alias_candidato",
+            type_def="INTEGER",
+        )
 
     def _add_column_if_missing(
         self,

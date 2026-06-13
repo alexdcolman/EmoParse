@@ -384,28 +384,6 @@
         "Alberto Benegas Lynch (h)"
       ],
       "tipo": "individuo"
-    },
-    "la_poblacion": {
-      "display_name": "la población",
-      "aliases": [
-        "la población"
-      ],
-      "tipo": "colectivo"
-    },
-    "monopolio_s": {
-      "display_name": "Monopolio(s)",
-      "aliases": [
-        "monopolio",
-        "monopolios"
-      ],
-      "tipo": "colectivo"
-    },
-    "burocrata_s": {
-      "display_name": "Burócrata(s)",
-      "aliases": [
-        "un burócrata"
-      ],
-      "tipo": "individuo"
     }
   }
 }

@@ -299,6 +299,7 @@ CREATE TABLE IF NOT EXISTS actors_kb_discoveries (
     canonical_id_sugerido   TEXT,
     display_name_sugerido   TEXT,
     tipo_sugerido           TEXT,
+    alias_candidato         INTEGER,
     discovered_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     reviewed            INTEGER NOT NULL DEFAULT 0
 )

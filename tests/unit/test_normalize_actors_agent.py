@@ -149,6 +149,7 @@ class TestOutputMapping:
                     ActorLinkingSchema(
                         actor_mencionado="Milei",
                         actor_canonico="javier_milei",
+                        alias_candidato=True,
                         confianza="alta",
                         es_nuevo=False,
                         justificacion="Alias directo en KB.",
@@ -185,6 +186,7 @@ class TestOutputMapping:
                     ActorLinkingSchema(
                         actor_mencionado="Pepito",
                         actor_canonico=None,
+                        alias_candidato=True,
                         confianza="alta",
                         es_nuevo=True,
                         justificacion="No matchea con la KB.",

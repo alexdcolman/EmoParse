@@ -39,6 +39,7 @@ class ActorsKbDiscoveriesRepository:
         canonical_id_sugerido: str | None = None,
         display_name_sugerido: str | None = None,
         tipo_sugerido: str | None = None,
+        alias_candidato: bool = True,
     ) -> None:
         """Registra un actor nuevo detectado por el agente."""
         with self._db.transaction() as cur:
@@ -47,8 +48,9 @@ class ActorsKbDiscoveriesRepository:
                 INSERT INTO actors_kb_discoveries (
                     codigo, unit_idx, actor_mencionado,
                     contexto, confianza, justificacion,
-                    canonical_id_sugerido, display_name_sugerido, tipo_sugerido
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    canonical_id_sugerido, display_name_sugerido, tipo_sugerido,
+                    alias_candidato
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     codigo,
@@ -60,6 +62,7 @@ class ActorsKbDiscoveriesRepository:
                     canonical_id_sugerido,
                     display_name_sugerido,
                     tipo_sugerido,
+                    1 if alias_candidato else 0,
                 ),
             )
 
@@ -72,7 +75,7 @@ class ActorsKbDiscoveriesRepository:
         sql = (
             "SELECT id, codigo, unit_idx, actor_mencionado, contexto, "
             "confianza, justificacion, canonical_id_sugerido, "
-            "display_name_sugerido, tipo_sugerido, discovered_at "
+            "display_name_sugerido, tipo_sugerido, alias_candidato, discovered_at "
             "FROM actors_kb_discoveries WHERE reviewed = 0"
         )
         params: list[Any] = []
@@ -101,7 +104,7 @@ class ActorsKbDiscoveriesRepository:
         row = self._db.execute(
             "SELECT id, codigo, unit_idx, actor_mencionado, contexto, "
             "confianza, justificacion, canonical_id_sugerido, "
-            "display_name_sugerido, tipo_sugerido, discovered_at, reviewed "
+            "display_name_sugerido, tipo_sugerido, alias_candidato, discovered_at, reviewed "
             "FROM actors_kb_discoveries WHERE id = ?",
             (discovery_id,),
         ).fetchone()

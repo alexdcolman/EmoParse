@@ -6,7 +6,11 @@
 
 from __future__ import annotations
 
-from emoparse.triage.discovery_grouping import group_discoveries, slugify
+from emoparse.triage.discovery_grouping import (
+    _is_alias_candidate,
+    group_discoveries,
+    slugify,
+)
 
 
 def _d(id, mencion, cid=None, name=None, tipo=None, codigo="d1", unit=0):
@@ -122,3 +126,13 @@ def test_slugify_basic():
     assert slugify("La Libertad Avanza") == "la_libertad_avanza"
     assert slugify("  Caputo, Luis ") == "caputo_luis"
     assert slugify("Economía") == "economia"
+
+
+def test_is_alias_candidate():
+    assert _is_alias_candidate({"alias_candidato": 1}) is True
+    assert _is_alias_candidate({"alias_candidato": 0}) is False
+    assert _is_alias_candidate({"alias_candidato": True}) is True
+    assert _is_alias_candidate({"alias_candidato": False}) is False
+    # runs viejos / sin la marca → se tratan como candidatos
+    assert _is_alias_candidate({"alias_candidato": None}) is True
+    assert _is_alias_candidate({}) is True

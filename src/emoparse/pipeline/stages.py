@@ -18,6 +18,7 @@ from emoparse.agents.actors import ActorsAgent
 from emoparse.agents.actants import ACTANTS_COMPONENTS, ActantsAgent
 from emoparse.agents.normalize_actors import NormalizeActorsAgent
 from emoparse.agents.normalize_experiencers import NormalizeExperiencersAgent
+from emoparse.pipeline.deixis import resolve_deictic_to_enunciador
 from emoparse.pipeline.contracts import (
     DiscursoInputContract,
     EmocionExplodedContract,
@@ -486,6 +487,9 @@ class NormalizeActorsStage(Stage):
         actors_by_frase_map: dict[int, list[dict]] = {}
         frases_text: dict[int, str] = {}
 
+        enun = self._d_repo.get_payload(codigo, "enunciation") or {}
+        enunciador = str(enun.get("enunciador", "") or "").strip()
+
         for unit_idx, frase_text in self._f_repo.list_frases_of_discurso(codigo):
             frases_text[unit_idx] = frase_text
             actores_payload = self._f_repo.get_payload(codigo, unit_idx, "actores")
@@ -567,15 +571,15 @@ class NormalizeActorsStage(Stage):
             for mention_idx, actor in enumerate(actores):
                 mention_key = (unit_idx, mention_idx)
                 cluster_idx = self._find_cluster_idx(mention_key, clusters)
+                mencion = str(actor.get("actor", ""))
                 if cluster_idx is None or cluster_idx not in cluster_link:
-                    payload.append(self._unknown_linking_dict(
-                        actor_mencionado=str(actor.get("actor", "")),
-                    ))
-                    continue
-                link = dict(cluster_link[cluster_idx])
-                # actor_mencionado debe reflejar la mención de esta frase,
-                # no la del representante del cluster.
-                link["actor_mencionado"] = str(actor.get("actor", ""))
+                    link = self._unknown_linking_dict(actor_mencionado=mencion)
+                else:
+                    link = dict(cluster_link[cluster_idx])
+                    # actor_mencionado debe reflejar la mención de esta frase,
+                    # no la del representante del cluster.
+                    link["actor_mencionado"] = mencion
+                link = resolve_deictic_to_enunciador(link, enunciador)
                 payload.append(link)
 
             self._f_repo.set_payload(
@@ -603,6 +607,9 @@ class NormalizeActorsStage(Stage):
                                 link.get("display_name_sugerido") or None
                             ),
                             tipo_sugerido=link.get("tipo_sugerido") or None,
+                            alias_candidato=bool(
+                                link.get("alias_candidato", True)
+                            ),
                         )
 
         return total_ok

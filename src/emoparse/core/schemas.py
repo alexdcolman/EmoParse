@@ -202,23 +202,37 @@ class ActorLinkingSchema(StrictBase):
                     "canónico que matchea (en cuyo caso actor_canonico no "
                     "debe ser null).",
     )
+    alias_candidato: bool = Field(
+        description="True SOLO si la mención identifica al actor de forma "
+                    "inequívoca SIN contexto: un nombre propio o una "
+                    "denominación estable ('Javier Milei', 'La Libertad "
+                    "Avanza', 'el FMI'). False para deícticos y pronombres "
+                    "('yo', 'mí', 'nosotros'), roles dependientes del contexto "
+                    "('el presidente', 'el ministro') y apodos no "
+                    "identificantes ('el león'). Solo las menciones "
+                    "alias_candidato=true son aptas para incorporarse a la KB "
+                    "como alias; las demás se resuelven por discurso, no a "
+                    "nivel global.",
+    )
     canonical_id_sugerido: str | None = Field(
-        description="Solo si es_nuevo=true: slug ASCII propuesto para el actor "
-                    "nuevo (minúsculas, dígitos y guiones bajos; empieza por "
-                    "letra). REGLA DE ESTABILIDAD: el MISMO actor del mundo "
-                    "real debe recibir el MISMO slug aunque la mención cambie "
-                    "(p. ej. 'LLA' y 'La Libertad Avanza' → 'la_libertad_avanza'). "
-                    "null si es_nuevo=false.",
+        description="Solo si es_nuevo=true Y alias_candidato=true: slug ASCII "
+                    "propuesto para el actor nuevo (minúsculas, dígitos y "
+                    "guiones bajos; empieza por letra). REGLA DE ESTABILIDAD: "
+                    "el MISMO actor del mundo real debe recibir el MISMO slug "
+                    "aunque la mención cambie (p. ej. 'LLA' y 'La Libertad "
+                    "Avanza' → 'la_libertad_avanza'). null en cualquier otro "
+                    "caso.",
     )
     display_name_sugerido: str | None = Field(
-        description="Solo si es_nuevo=true: nombre canónico legible del actor "
-                    "nuevo, expandiendo siglas o apodos a la forma más completa "
-                    "y estable. null si es_nuevo=false.",
+        description="Solo si es_nuevo=true Y alias_candidato=true: nombre "
+                    "canónico legible del actor nuevo, expandiendo siglas o "
+                    "apodos a la forma más completa y estable. null en "
+                    "cualquier otro caso.",
     )
     tipo_sugerido: str | None = Field(
-        description="Solo si es_nuevo=true: tipo del actor nuevo, uno de "
-                    "'individuo', 'institucion', 'colectivo' o 'desconocido'. "
-                    "null si es_nuevo=false.",
+        description="Solo si es_nuevo=true Y alias_candidato=true: tipo del "
+                    "actor nuevo, uno de 'individuo', 'institucion', "
+                    "'colectivo' o 'desconocido'. null en cualquier otro caso.",
     )
     justificacion: str = Field(
         description="Justificación breve del linking, citando aliases o "

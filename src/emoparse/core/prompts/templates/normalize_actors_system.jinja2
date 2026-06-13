@@ -18,11 +18,15 @@ A continuación se lista cada actor canónico con su `canonical_id`, su nombre d
 
 3. **Entidad nueva.** Si la mención NO matchea con ninguna entrada conocida —ni por alias ni por rol contextual claro— marcar `es_nuevo=true` y `actor_canonico=null`. La entidad quedará registrada para revisión humana posterior y eventual incorporación a la KB.
 
-3b. **Propuesta de canónico (solo si `es_nuevo=true`).** Además, proponer una forma canónica para ese actor nuevo:
+3b. **Candidato a alias vs. correferencia de contexto.** Para CADA mención, marcar `alias_candidato`:
+   - `true` solo si la mención identifica al actor **sin contexto**: un nombre propio o una denominación estable ("Javier Milei", "La Libertad Avanza", "el FMI").
+   - `false` para deícticos y pronombres ("yo", "mí", "nosotros"), descripciones de rol dependientes del contexto ("el presidente", "el ministro", "el orador") y apodos no identificantes ("el león"). Estas menciones se resuelven a nivel del discurso, no se incorporan a la KB.
+
+3c. **Propuesta de canónico (solo si `es_nuevo=true` Y `alias_candidato=true`).** Proponer una forma canónica para ese actor nuevo:
    - `canonical_id_sugerido`: un slug ASCII (minúsculas, dígitos y guiones bajos; empieza por letra). **Regla de estabilidad:** el mismo actor del mundo real debe recibir el **mismo** slug aunque la mención cambie. Expandir siglas y apodos a la forma plena: por ejemplo "LLA" y "La Libertad Avanza" → `la_libertad_avanza`; "Toto" y "el ministro Caputo" → `luis_caputo`.
    - `display_name_sugerido`: el nombre canónico legible, expandido a su forma más completa y estable.
    - `tipo_sugerido`: uno de `individuo`, `institucion`, `colectivo` o `desconocido`.
-   Si `es_nuevo=false`, estos tres campos deben ser `null`.
+   En cualquier otro caso (mención conocida, o deíctico/rol), estos tres campos deben ser `null`.
 
 4. **Ambigüedad.** Ante duda real entre dos canónicos posibles o entre conocido/nuevo, usar `confianza="baja"`. **Nunca adivinar** un `canonical_id` que no surja con claridad de los aliases o del rol contextual.
 

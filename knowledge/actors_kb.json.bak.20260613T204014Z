@@ -60,8 +60,7 @@
     "principales_lideres_del_mundo_occidental": {
       "display_name": "líderes del mundo occidental",
       "aliases": [
-        "principales líderes del mundo occidental",
-        "aquellos que supuestamente deben defender los valores de Occidente"
+        "principales líderes del mundo occidental"
       ],
       "tipo": "colectivo"
     },
@@ -111,8 +110,7 @@
     "poblacion_mundial": {
       "display_name": "población mundial",
       "aliases": [
-        "población mundial",
-        "sociedad humana / población mundial"
+        "población mundial"
       ],
       "tipo": "colectivo"
     },
@@ -135,10 +133,7 @@
       "display_name": "Promotores del colectivismo",
       "aliases": [
         "promotores de experimentos colectivistas",
-        "colectivistas",
-        "el colectivismo",
-        "modelos colectivistas",
-        "colectivismo"
+        "colectivistas"
       ],
       "tipo": "colectivo"
     },
@@ -188,11 +183,7 @@
       "display_name": "Socialistas",
       "aliases": [
         "los socialistas",
-        "socialistas",
-        "socialismo",
-        "promotores del socialismo",
-        "quienes siguen bregando por el socialismo empobrecedor",
-        "socialdemócratas"
+        "socialistas"
       ],
       "tipo": "colectivo"
     },
@@ -245,8 +236,7 @@
         "víctimas",
         "víctimas del holocausto / población judía",
         "víctimas sobrevivientes de la Shoá",
-        "sobrevivientes/víctimas del Holocausto",
-        "ellos (víctimas del Holocausto)"
+        "sobrevivientes/víctimas del Holocausto"
       ],
       "tipo": "colectivo"
     },
@@ -361,51 +351,6 @@
         "captores / responsables del secuestro"
       ],
       "tipo": "colectivo"
-    },
-    "el_mundo": {
-      "display_name": "el mundo",
-      "aliases": [
-        "el mundo",
-        "mundo"
-      ],
-      "tipo": "colectivo"
-    },
-    "paises_que_son_libres": {
-      "display_name": "países que son libres",
-      "aliases": [
-        "países que son libres",
-        "aquellos países que son libres"
-      ],
-      "tipo": "colectivo"
-    },
-    "alberto_benegas_lynch_h": {
-      "display_name": "Alberto Benegas Lynch (h)",
-      "aliases": [
-        "Alberto Benegas Lynch (h)"
-      ],
-      "tipo": "individuo"
-    },
-    "la_poblacion": {
-      "display_name": "la población",
-      "aliases": [
-        "la población"
-      ],
-      "tipo": "colectivo"
-    },
-    "monopolio_s": {
-      "display_name": "Monopolio(s)",
-      "aliases": [
-        "monopolio",
-        "monopolios"
-      ],
-      "tipo": "colectivo"
-    },
-    "burocrata_s": {
-      "display_name": "Burócrata(s)",
-      "aliases": [
-        "un burócrata"
-      ],
-      "tipo": "individuo"
     }
   }
 }
