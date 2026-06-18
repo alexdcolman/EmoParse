@@ -228,4 +228,4 @@ models/
 runs/
 data/
 exports/
-knowledge/actors_kb.json.bak
+knowledge/actors_kb.json.bak*
