@@ -69,7 +69,8 @@
       "display_name": "personas en situación de pobreza",
       "aliases": [
         "personas en situación de pobreza",
-        "personas que sufren hambre, pobreza e indigencia"
+        "personas que sufren hambre, pobreza e indigencia",
+        "personas en situación de pobreza extrema"
       ],
       "tipo": "colectivo"
     },
@@ -365,7 +366,159 @@
     "el_mundo": {
       "display_name": "el mundo",
       "aliases": [
-        "el mundo"
+        "el mundo",
+        "mundo"
+      ],
+      "tipo": "colectivo"
+    },
+    "paises_que_son_libres": {
+      "display_name": "países que son libres",
+      "aliases": [
+        "países que son libres",
+        "aquellos países que son libres"
+      ],
+      "tipo": "colectivo"
+    },
+    "alberto_benegas_lynch_h": {
+      "display_name": "Alberto Benegas Lynch (h)",
+      "aliases": [
+        "Alberto Benegas Lynch (h)"
+      ],
+      "tipo": "individuo"
+    },
+    "la_poblacion": {
+      "display_name": "la población",
+      "aliases": [
+        "la población"
+      ],
+      "tipo": "colectivo"
+    },
+    "monopolio_s": {
+      "display_name": "Monopolio(s)",
+      "aliases": [
+        "monopolio",
+        "monopolios"
+      ],
+      "tipo": "colectivo"
+    },
+    "burocrata_s": {
+      "display_name": "Burócrata(s)",
+      "aliases": [
+        "un burócrata"
+      ],
+      "tipo": "individuo"
+    },
+    "estado": {
+      "display_name": "Estado",
+      "aliases": [
+        "el Estado",
+        "Estado / Organismos recaudadores",
+        "Estado",
+        "reguladores / Estado",
+        "Estado o autoridades regulatorias"
+      ],
+      "tipo": "institucion"
+    },
+    "el_mercado": {
+      "display_name": "el mercado",
+      "aliases": [
+        "el mercado",
+        "mercado",
+        "participantes del mercado",
+        "mercados"
+      ],
+      "tipo": "institucion"
+    },
+    "el_capitalista": {
+      "display_name": "el capitalista",
+      "aliases": [
+        "el capitalista"
+      ],
+      "tipo": "individuo"
+    },
+    "casta_politica": {
+      "display_name": "casta política",
+      "aliases": [
+        "la casta política",
+        "casta privilegiada",
+        "la casta corrupta"
+      ],
+      "tipo": "colectivo"
+    },
+    "individuos": {
+      "display_name": "individuos",
+      "aliases": [
+        "individuos",
+        "los individuos"
+      ],
+      "tipo": "colectivo"
+    },
+    "secuestrados": {
+      "display_name": "secuestrados",
+      "aliases": [
+        "secuestrados"
+      ],
+      "tipo": "colectivo"
+    },
+    "seres_humanos": {
+      "display_name": "seres humanos",
+      "aliases": [
+        "seres humanos",
+        "400 millones de seres humanos",
+        "280 millones de seres humanos",
+        "humanos"
+      ],
+      "tipo": "colectivo"
+    },
+    "empresas": {
+      "display_name": "empresas",
+      "aliases": [
+        "10 empresas",
+        "9 empresas",
+        "empresas"
+      ],
+      "tipo": "colectivo"
+    },
+    "el_monopolista": {
+      "display_name": "El monopolista",
+      "aliases": [
+        "monopolista",
+        "el monopolista",
+        "monopolistas"
+      ],
+      "tipo": "individuo"
+    },
+    "gobierno_poder_ejecutivo": {
+      "display_name": "Gobierno / Poder Ejecutivo",
+      "aliases": [
+        "equipos de gobierno",
+        "Gobierno / Poder Ejecutivo",
+        "autoridades del país / gobierno"
+      ],
+      "tipo": "institucion"
+    },
+    "promotores_de_la_justicia_social": {
+      "display_name": "promotores de la justicia social",
+      "aliases": [
+        "promotores de la justicia social",
+        "quienes bregan por la justicia social",
+        "Quienes promueven la justicia social",
+        "Estado / Agente de la justicia social"
+      ],
+      "tipo": "institucion"
+    },
+    "medios_de_comunicacion": {
+      "display_name": "Medios de Comunicación",
+      "aliases": [
+        "medios de comunicación",
+        "medios de comunicación corruptos"
+      ],
+      "tipo": "institucion"
+    },
+    "ustedes_audiencia": {
+      "display_name": "Ustedes (audiencia)",
+      "aliases": [
+        "ustedes"
       ],
       "tipo": "colectivo"
     }

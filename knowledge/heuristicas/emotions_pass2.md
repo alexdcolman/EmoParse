@@ -7,15 +7,15 @@ Nota: este pase incorpora un resumen de emociones previas del mismo discurso (CO
 - Identificar continuidades o cambios emocionales relevantes.
 - No limitarte al contexto previo si la frase actual tiene indicios propios suficientes.
 
-1. Sostenido en sustantivos
-   - Identificá emociones nombradas directamente mediante sustantivos (por ejemplo: "miedo", "alegría", "tristeza").
+1. Sostenido en sustantivos de emoción
+   - Identificá emociones nombradas directamente mediante sustantivos pertenecientes a la familia léxica de alguna emoción (por ejemplo: "miedo", "alegría", "tristeza").
    - Considerá el contexto para determinar el actor afectado.
    - Ejemplo:
      - Frase: "Su tristeza era evidente."
      - Emoción inferida: "tristeza" atribuida al sujeto de la frase.
 
-2. Sostenido en adjetivos
-   - Buscá emociones expresadas mediante adjetivos calificativos (por ejemplo: "feliz", "ansioso", "enojado").
+2. Sostenido en adjetivos de emoción
+   - Buscá emociones expresadas mediante adjetivos calificativos pertenecientes a la familia léxica de alguna emoción (por ejemplo: "feliz", "ansioso", "enojado").
    - Asegurate de asociarlas correctamente al actor que experimenta la emoción.
    - Ejemplo:
      - Frase: "Estaba ansioso ante la noticia."

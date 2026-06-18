@@ -142,7 +142,7 @@ pipeline:
     metadata:               phi4-mini
     enunciation:            gemma4-31b
     actors:                 gemma4-31b
-    normalize_actors:       gemma4-31b
+    normalize_actors:       qwen3-14b
     emotions:               gemma4-31b
     emotions_pass2:         gemma4-31b
     characterizer:          gemma4-31b
@@ -161,10 +161,10 @@ paths:
   inputs_dir:    ${EMOPARSE_INPUTS_DIR:-data}
 
 versions:
-  knowledge: v1
-  prompt:    v10
-  ontology:  v4
-  schema:    v9
+  knowledge: v2
+  prompt:    v13
+  ontology:  v5
+  schema:    v10
 
 logging:
   level: INFO

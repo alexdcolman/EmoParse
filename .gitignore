@@ -216,6 +216,7 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+.streamlit/cache/
 
 # Local LLM models
 models/
@@ -227,3 +228,4 @@ models/
 runs/
 data/
 exports/
+knowledge/actors_kb.json.bak

@@ -223,3 +223,70 @@ def discard(kb_path: Path, *, mencion: str) -> None:
     if not kb_path.is_file():
         raise KbEditorError(f"KB no encontrada: {kb_path}")
     logger.debug(f"[kb_editor] discard '{mencion}' (no-op sobre JSON)")
+
+
+def _clean_aliases(aliases: list[str]) -> list[str]:
+    """Normaliza una lista de aliases: strip, sin vacíos, dedupe case-insensitive."""
+    out: list[str] = []
+    seen: set[str] = set()
+    for a in aliases:
+        a_stripped = str(a).strip()
+        if a_stripped and a_stripped.lower() not in seen:
+            out.append(a_stripped)
+            seen.add(a_stripped.lower())
+    return out
+
+
+def edit_actor(
+    kb_path: Path,
+    *,
+    canonical_id: str,
+    display_name: str | None = None,
+    tipo: str | None = None,
+    rol: str | None = None,
+    notas: str | None = None,
+    aliases: list[str] | None = None,
+) -> None:
+    """Edita los campos de un actor existente SIN cambiar su `canonical_id`.
+
+    A diferencia de `promote`, acá sí se permite renombrar el `display_name`
+    (es el punto de "corregir la KB"). Solo se tocan los campos que se pasan
+    (no-None); `aliases`, si se pasa, REEMPLAZA la lista (normalizada). Para
+    `rol`/`notas`, una cadena vacía borra el campo. Nunca cambia la identidad
+    del canónico, así que no rompe referencias existentes.
+    """
+    _validate_canonical_id(canonical_id)
+    data = load_kb(kb_path)
+    actors = data["actors"]
+    if canonical_id not in actors:
+        raise KbEditorError(
+            f"Canónico '{canonical_id}' no existe en la KB."
+        )
+    entry = actors[canonical_id]
+    if not isinstance(entry, dict):
+        raise KbEditorError(f"Entrada '{canonical_id}' corrupta (no es objeto).")
+
+    if display_name is not None:
+        dn = display_name.strip()
+        if not dn:
+            raise KbEditorError("display_name no puede quedar vacío.")
+        entry["display_name"] = dn
+    if tipo is not None:
+        entry["tipo"] = tipo.strip() or _DEFAULT_TIPO
+    if rol is not None:
+        rol_s = rol.strip()
+        if rol_s:
+            entry["rol"] = rol_s
+        else:
+            entry.pop("rol", None)
+    if notas is not None:
+        notas_s = notas.strip()
+        if notas_s:
+            entry["notas"] = notas_s
+        else:
+            entry.pop("notas", None)
+    if aliases is not None:
+        entry["aliases"] = _clean_aliases(aliases)
+
+    _atomic_write(kb_path, data)
+    logger.info(f"[kb_editor] edit_actor '{canonical_id}'")

@@ -393,6 +393,146 @@ def get_emociones(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  Revisión: header de discurso + emociones con payloads crudos
+# ══════════════════════════════════════════════════════════════════════════════
+
+def get_discurso_header(db_path: Path, codigo: str) -> dict[str, Any]:
+    """Datos de cabecera de un discurso (una sola vez, no por frase).
+
+    Combina input (título/fecha), metadata (tipo de discurso, lugar) y
+    enunciación (enunciador, enunciatarios).
+    """
+    with _ro_connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT codigo, input, metadata_payload, enunciation_payload "
+            "FROM discursos WHERE codigo = ?",
+            (codigo,),
+        ).fetchone()
+    if row is None:
+        return {}
+    inp = _parse_json(row["input"]) or {}
+    meta = _parse_json(row["metadata_payload"]) or {}
+    enun = _parse_json(row["enunciation_payload"]) or {}
+    lugar_parts = [
+        meta.get(k) for k in ("ciudad", "provincia", "pais")
+        if meta.get(k) and str(meta.get(k)).lower() != "no identificado"
+    ]
+    return {
+        "codigo": codigo,
+        "titulo": inp.get("titulo") if isinstance(inp, dict) else None,
+        "fecha": inp.get("fecha") if isinstance(inp, dict) else None,
+        "tipo_discurso": meta.get("tipo_discurso"),
+        "lugar": ", ".join(str(p) for p in lugar_parts) if lugar_parts else None,
+        "enunciador": enun.get("enunciador"),
+        "enunciatarios": enun.get("enunciatarios"),
+    }
+
+
+def get_actores_canonicos(db_path: Path, codigo: str) -> dict[int, list[dict[str, Any]]]:
+    """Linking actor↔canónico por frase (`actores_canonicos_payload`).
+
+    Devuelve {unit_idx: [link, ...]} donde cada link trae al menos
+    `actor_mencionado`, `actor_canonico`, `es_nuevo` y, si aplica,
+    `resuelto_por` (p. ej. 'deixis_enunciador').
+    """
+    with _ro_connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT unit_idx, actores_canonicos_payload FROM frases "
+            "WHERE codigo = ? ORDER BY unit_idx",
+            (codigo,),
+        ).fetchall()
+    out: dict[int, list[dict[str, Any]]] = {}
+    for row in rows:
+        payload = _parse_json(row["actores_canonicos_payload"])
+        if isinstance(payload, list):
+            out[int(row["unit_idx"])] = payload
+    return out
+
+
+def get_actor_decisions(
+    db_path: Path, codigo: str
+) -> dict[tuple[int, str], dict[str, Any]]:
+    """Decisiones del triage por mención, para reflejarlas en Revisión.
+
+    Devuelve {(unit_idx, actor_mencionado): {decision, canonical_id, status}}
+    cruzando `actors_kb_discoveries` con `actors_kb_decisions` (estados
+    pending/applied). Si las tablas no existen, devuelve {} sin fallar.
+    Las decisiones `applied` priman sobre `pending` para la misma mención.
+    """
+    out: dict[tuple[int, str], dict[str, Any]] = {}
+    try:
+        with _ro_connect(db_path) as conn:
+            rows = conn.execute(
+                "SELECT di.unit_idx AS unit_idx, "
+                "di.actor_mencionado AS actor_mencionado, "
+                "de.decision AS decision, de.canonical_id AS canonical_id, "
+                "de.status AS status "
+                "FROM actors_kb_discoveries di "
+                "JOIN actors_kb_decisions de ON de.discovery_id = di.id "
+                "WHERE di.codigo = ? AND de.status IN ('pending', 'applied') "
+                "ORDER BY CASE de.status WHEN 'applied' THEN 1 ELSE 0 END",
+                (codigo,),
+            ).fetchall()
+    except sqlite3.OperationalError:
+        return {}
+    for row in rows:
+        out[(int(row["unit_idx"]), str(row["actor_mencionado"]))] = {
+            "decision": row["decision"],
+            "canonical_id": row["canonical_id"],
+            "status": row["status"],
+        }
+    return out
+
+
+def get_emociones_full(db_path: Path, codigo: str) -> list[dict[str, Any]]:
+    """Emociones de un discurso con sus payloads crudos para revisión.
+
+    Por cada emoción: campos base + caracterización (dict) + actantes (dict) +
+    juicio (si existe). Indexable por (frase_idx, emocion_idx).
+    """
+    with _ro_connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT e.codigo, e.frase_idx, e.emocion_idx, "
+            "e.experienciador, e.experienciador_canonico, "
+            "e.tipo_emocion, e.tipo_emocion_canonico, "
+            "e.modo_existencia, e.tipo_configuracion, e.deteccion_justificacion, "
+            "e.caracterizacion_payload, e.actantes_payload, "
+            "j.coherente, j.issues, j.confianza "
+            "FROM emociones e "
+            "LEFT JOIN judgments j ON e.codigo = j.codigo "
+            "AND e.frase_idx = j.frase_idx AND e.emocion_idx = j.emocion_idx "
+            "WHERE e.codigo = ? "
+            "ORDER BY e.frase_idx, e.emocion_idx",
+            (codigo,),
+        ).fetchall()
+    out: list[dict[str, Any]] = []
+    for row in rows:
+        coherente = row["coherente"]
+        out.append({
+            "frase_idx": row["frase_idx"],
+            "emocion_idx": row["emocion_idx"],
+            "experienciador": row["experienciador"],
+            "experienciador_canonico": row["experienciador_canonico"],
+            "tipo_emocion": row["tipo_emocion"],
+            "tipo_emocion_canonico": row["tipo_emocion_canonico"],
+            "modo_existencia": row["modo_existencia"],
+            "tipo_configuracion": row["tipo_configuracion"],
+            "deteccion_justificacion": row["deteccion_justificacion"],
+            "caracterizacion": _parse_json(row["caracterizacion_payload"]) or {},
+            "actantes": _parse_json(row["actantes_payload"]) or {},
+            "juicio": (
+                None if coherente is None and row["issues"] is None
+                else {
+                    "coherente": (None if coherente is None else bool(coherente)),
+                    "issues": row["issues"],
+                    "confianza": row["confianza"],
+                }
+            ),
+        })
+    return out
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  Estado del run: pending/failed/completed por stage
 # ══════════════════════════════════════════════════════════════════════════════
 

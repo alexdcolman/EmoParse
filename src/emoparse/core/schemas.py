@@ -371,6 +371,11 @@ class EmocionSchema(StrictBase):
                     "cualificacion_por_indicadores_axiologicos, "
                     "cualificacion_por_componentes_descriptivo_narrativos, "
                     "transposicion_situacion_reconocimiento_potencial. "
+                    "Las configuraciones sostenidas en sustantivos, adjetivos "
+                    "o verbos psicológicos SOLO aplican si la marca léxica "
+                    "pertenece a la familia léxica de una emoción ('amor', "
+                    "'amaba', 'amado'); una palabra no emocional ('inclaudicable') "
+                    "no cuenta como tal. "
                     "DEBE elegirse exactamente una; si ninguna marca léxica "
                     "lo determina con claridad, usar la configuración 8 "
                     "(transposicion_situacion_reconocimiento_potencial) "
@@ -419,7 +424,7 @@ TipoModoIdentificacion = Literal[
 TipoAtribucion = Literal[
     "auto_atribucion",
     "hetero_atribucion",
-    "atribucion_transpositiva",
+    "sin_atribucion",
 ]
 
 Foria = Literal[
@@ -494,7 +499,9 @@ class CaracterizacionEmocionSchema(StrictBase):
     )
     modo_semiotizacion: TipoModoSemiotizacion = Field(  # type: ignore[valid-type]
         description="Modo en que la emoción es semiotizada en el discurso: "
-                    "'dicha' (nombrada explícitamente mediante un término emocional), "
+                    "'dicha' (nombrada con un término de la familia léxica de "
+                    "una emoción, y nada más: un rol, cualidad o valoración no "
+                    "emocional como 'aliado' o 'inclaudicable' NO es 'dicha'), "
                     "'mostrada' (inferida por comportamiento, gesto o acción descritos), "
                     "'sostenida' (construida acumulativamente a lo largo del texto, "
                     "sin nombrarse ni mostrarse en un solo punto).",
@@ -505,7 +512,8 @@ class CaracterizacionEmocionSchema(StrictBase):
     )
     modo_identificacion: TipoModoIdentificacion = Field(  # type: ignore[valid-type]
         description="Modo en que el analista identifica la emoción: "
-                    "'directa' (la emoción se nombra o define sin ambigüedad), "
+                    "'directa' (la emoción está 'dicha'; solo válida si "
+                    "modo_semiotizacion es 'dicha'), "
                     "'por_senales_salida' (identificada por señales expresivas: "
                     "llanto, risa, tono, etc.), "
                     "'por_senales_entrada' (identificada por el estímulo desencadenante), "
@@ -516,12 +524,15 @@ class CaracterizacionEmocionSchema(StrictBase):
                     "los indicadores concretos usados.",
     )
     tipo_atribucion: TipoAtribucion = Field(  # type: ignore[valid-type]
-        description="Tipo de atribución de la emoción en el discurso: "
-                    "'auto_atribucion' (el experienciador se atribuye la emoción "
-                    "a sí mismo), "
-                    "'hetero_atribucion' (el enunciador atribuye la emoción a otro), "
-                    "'atribucion_transpositiva' (la emoción se traslada "
-                    "a un sujeto colectivo, abstracto o institucional).",
+        description="Cómo se atribuye EXPLÍCITAMENTE la emoción: "
+                    "'auto_atribucion' (el experienciador se la atribuye a sí "
+                    "mismo de forma explícita, ej. 'yo amo a Laura'), "
+                    "'hetero_atribucion' (un actor, incluido el enunciador, "
+                    "atribuye explícitamente una emoción a otro actor, ej. "
+                    "'ella ama a Laura'), "
+                    "'sin_atribucion' (nadie la atribuye explícitamente; se "
+                    "infiere de la situación, la valoración o el comportamiento). "
+                    "Sin atribución textual directa, usar 'sin_atribucion'.",
     )
     tipo_atribucion_justificacion: str = Field(
         description="Justificación breve del tipo de atribución, citando "

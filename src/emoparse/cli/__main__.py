@@ -17,6 +17,7 @@ from typing import Callable
 from loguru import logger
 
 from emoparse.cli.commands import (
+    app_cmd,
     discoveries_cmd,
     experiencers_cmd,
     inspect_cmd,
@@ -41,7 +42,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="emoparse",
         description=(
-            "EmoParse — análisis emocional semiótico de discursos políticos. "
+            "EmoParse — análisis semiótico de emociones en discursos. "
             "Orquesta el pipeline completo: ingest, agentes LLM por etapa, "
             "persistencia con resumability, y caché de respuestas LLM."
         ),
@@ -619,6 +620,9 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Timeout HTTP por request en segundos. Default: 20.",
     )
     p_scrape.set_defaults(handler=scrape_cmd.run)
+
+    # ── app ──────────────────────────────────────────────────────────────────
+    app_cmd.register(sub)
 
     return parser
 

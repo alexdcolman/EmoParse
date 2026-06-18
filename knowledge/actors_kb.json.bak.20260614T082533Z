@@ -69,7 +69,9 @@
       "display_name": "personas en situación de pobreza",
       "aliases": [
         "personas en situación de pobreza",
-        "personas que sufren hambre, pobreza e indigencia"
+        "personas que sufren hambre, pobreza e indigencia",
+        "personas en situación de pobreza extrema",
+        "pobres"
       ],
       "tipo": "colectivo"
     },
@@ -97,7 +99,8 @@
     "la_humanidad": {
       "display_name": "la humanidad",
       "aliases": [
-        "la humanidad"
+        "la humanidad",
+        "humanidad toda"
       ],
       "tipo": "colectivo"
     },
@@ -127,7 +130,9 @@
       "display_name": "Javier Milei",
       "aliases": [
         "Presidente de la Nación, Javier Milei",
-        "Javier Milei"
+        "Javier Milei",
+        "PRESIDENTE",
+        "presidente de Argentina"
       ],
       "tipo": "individuo"
     },
@@ -304,7 +309,14 @@
     "empresarios": {
       "display_name": "Empresarios",
       "aliases": [
-        "los empresarios"
+        "los empresarios",
+        "empresarios aquí presentes",
+        "empresario exitoso",
+        "empresario",
+        "otro [empresario]",
+        "maldito empresario",
+        "este empresario",
+        "empresarios prebendarios"
       ],
       "tipo": "colectivo"
     },
@@ -382,6 +394,395 @@
       "display_name": "Alberto Benegas Lynch (h)",
       "aliases": [
         "Alberto Benegas Lynch (h)"
+      ],
+      "tipo": "individuo"
+    },
+    "la_poblacion": {
+      "display_name": "la población",
+      "aliases": [
+        "la población"
+      ],
+      "tipo": "colectivo"
+    },
+    "monopolio_s": {
+      "display_name": "Monopolio(s)",
+      "aliases": [
+        "monopolio",
+        "monopolios"
+      ],
+      "tipo": "colectivo"
+    },
+    "burocrata_s": {
+      "display_name": "Burócrata(s)",
+      "aliases": [
+        "un burócrata",
+        "burócratas"
+      ],
+      "tipo": "individuo"
+    },
+    "estado": {
+      "display_name": "Estado",
+      "aliases": [
+        "el Estado",
+        "Estado / Organismos recaudadores",
+        "Estado",
+        "reguladores / Estado",
+        "Estado o autoridades regulatorias"
+      ],
+      "tipo": "institucion"
+    },
+    "el_mercado": {
+      "display_name": "el mercado",
+      "aliases": [
+        "el mercado",
+        "mercado",
+        "participantes del mercado",
+        "mercados"
+      ],
+      "tipo": "institucion"
+    },
+    "el_capitalista": {
+      "display_name": "el capitalista",
+      "aliases": [
+        "el capitalista"
+      ],
+      "tipo": "individuo"
+    },
+    "casta_politica": {
+      "display_name": "casta política",
+      "aliases": [
+        "la casta política",
+        "casta privilegiada",
+        "la casta corrupta"
+      ],
+      "tipo": "colectivo"
+    },
+    "individuos": {
+      "display_name": "individuos",
+      "aliases": [
+        "individuos",
+        "los individuos"
+      ],
+      "tipo": "colectivo"
+    },
+    "secuestrados": {
+      "display_name": "secuestrados",
+      "aliases": [
+        "secuestrados",
+        "civiles secuestrados"
+      ],
+      "tipo": "colectivo"
+    },
+    "seres_humanos": {
+      "display_name": "seres humanos",
+      "aliases": [
+        "seres humanos",
+        "400 millones de seres humanos",
+        "280 millones de seres humanos",
+        "humanos"
+      ],
+      "tipo": "colectivo"
+    },
+    "empresas": {
+      "display_name": "empresas",
+      "aliases": [
+        "10 empresas",
+        "9 empresas",
+        "empresas",
+        "empresa",
+        "productor/empresa",
+        "una de ellas [empresa]"
+      ],
+      "tipo": "colectivo"
+    },
+    "el_monopolista": {
+      "display_name": "El monopolista",
+      "aliases": [
+        "monopolista",
+        "el monopolista",
+        "monopolistas"
+      ],
+      "tipo": "individuo"
+    },
+    "gobierno_poder_ejecutivo": {
+      "display_name": "Gobierno / Poder Ejecutivo",
+      "aliases": [
+        "equipos de gobierno",
+        "Gobierno / Poder Ejecutivo",
+        "autoridades del país / gobierno"
+      ],
+      "tipo": "institucion"
+    },
+    "promotores_de_la_justicia_social": {
+      "display_name": "promotores de la justicia social",
+      "aliases": [
+        "promotores de la justicia social",
+        "quienes bregan por la justicia social",
+        "Quienes promueven la justicia social",
+        "Estado / Agente de la justicia social"
+      ],
+      "tipo": "institucion"
+    },
+    "medios_de_comunicacion": {
+      "display_name": "Medios de Comunicación",
+      "aliases": [
+        "medios de comunicación",
+        "medios de comunicación corruptos"
+      ],
+      "tipo": "institucion"
+    },
+    "ustedes_audiencia": {
+      "display_name": "Ustedes (audiencia)",
+      "aliases": [
+        "ustedes",
+        "público de la CPAC"
+      ],
+      "tipo": "colectivo"
+    },
+    "primer_mundo": {
+      "display_name": "Primer Mundo",
+      "aliases": [
+        "Primer Mundo"
+      ],
+      "tipo": "colectivo"
+    },
+    "el_emprendedor": {
+      "display_name": "el emprendedor",
+      "aliases": [
+        "el emprendedor"
+      ],
+      "tipo": "individuo"
+    },
+    "la_academia": {
+      "display_name": "la academia",
+      "aliases": [
+        "la academia"
+      ],
+      "tipo": "institucion"
+    },
+    "el_establishment_politico_y_economico": {
+      "display_name": "el establishment político y económico",
+      "aliases": [
+        "sectores del establishment político y económico"
+      ],
+      "tipo": "colectivo"
+    },
+    "academicos": {
+      "display_name": "académicos",
+      "aliases": [
+        "académicos"
+      ],
+      "tipo": "colectivo"
+    },
+    "estructuras_concentradas_de_la_economia": {
+      "display_name": "estructuras concentradas de la economía",
+      "aliases": [
+        "estructuras concentradas de la economía"
+      ],
+      "tipo": "desconocido"
+    },
+    "feminismo_radical": {
+      "display_name": "feminismo radical",
+      "aliases": [
+        "feminismo radical"
+      ],
+      "tipo": "colectivo"
+    },
+    "ministerios_de_la_mujer": {
+      "display_name": "ministerios de la mujer",
+      "aliases": [
+        "ministerios de la mujer"
+      ],
+      "tipo": "institucion"
+    },
+    "neo_marxistas": {
+      "display_name": "Neo-marxistas",
+      "aliases": [
+        "los neo-marxistas"
+      ],
+      "tipo": "colectivo"
+    },
+    "universidades": {
+      "display_name": "Universidades",
+      "aliases": [
+        "universidades"
+      ],
+      "tipo": "institucion"
+    },
+    "los_estados": {
+      "display_name": "los estados",
+      "aliases": [
+        "los estados"
+      ],
+      "tipo": "institucion"
+    },
+    "comunistas": {
+      "display_name": "comunistas",
+      "aliases": [
+        "comunistas"
+      ],
+      "tipo": "colectivo"
+    },
+    "democratas_cristianos": {
+      "display_name": "demócratas cristianos",
+      "aliases": [
+        "demócratas cristianos"
+      ],
+      "tipo": "colectivo"
+    },
+    "neokeynesianos": {
+      "display_name": "neokeynesianos",
+      "aliases": [
+        "neokeynesianos"
+      ],
+      "tipo": "colectivo"
+    },
+    "progresistas": {
+      "display_name": "progresistas",
+      "aliases": [
+        "progresistas"
+      ],
+      "tipo": "colectivo"
+    },
+    "nacionalistas": {
+      "display_name": "nacionalistas",
+      "aliases": [
+        "nacionalistas"
+      ],
+      "tipo": "colectivo"
+    },
+    "globalistas": {
+      "display_name": "globalistas",
+      "aliases": [
+        "globalistas"
+      ],
+      "tipo": "colectivo"
+    },
+    "banco_central": {
+      "display_name": "Banco Central",
+      "aliases": [
+        "banco central"
+      ],
+      "tipo": "institucion"
+    },
+    "museo_del_holocausto": {
+      "display_name": "Museo del Holocausto",
+      "aliases": [
+        "Museo del Holocausto",
+        "Museo del Holocausto Yad Vashem"
+      ],
+      "tipo": "institucion"
+    },
+    "inmigrantes": {
+      "display_name": "inmigrantes",
+      "aliases": [
+        "inmigrantes"
+      ],
+      "tipo": "colectivo"
+    },
+    "terrorismo": {
+      "display_name": "terrorismo",
+      "aliases": [
+        "terroristas",
+        "terrorismo"
+      ],
+      "tipo": "desconocido"
+    },
+    "las_potencias_del_mundo": {
+      "display_name": "las potencias del mundo",
+      "aliases": [
+        "las potencias del mundo"
+      ],
+      "tipo": "colectivo"
+    },
+    "judios_exiliados": {
+      "display_name": "judíos exiliados",
+      "aliases": [
+        "judíos exiliados"
+      ],
+      "tipo": "colectivo"
+    },
+    "organizaciones_comunidad_judio_argentina": {
+      "display_name": "organizaciones de la comunidad judío-argentina",
+      "aliases": [
+        "organizaciones de la comunidad judío-argentina"
+      ],
+      "tipo": "institucion"
+    },
+    "romanos": {
+      "display_name": "Romanos",
+      "aliases": [
+        "romanos"
+      ],
+      "tipo": "colectivo"
+    },
+    "los_rabinos": {
+      "display_name": "los rabinos",
+      "aliases": [
+        "los rabinos"
+      ],
+      "tipo": "colectivo"
+    },
+    "israel": {
+      "display_name": "Israel",
+      "aliases": [
+        "Israel"
+      ],
+      "tipo": "institucion"
+    },
+    "nazismo_moderno": {
+      "display_name": "nazismo moderno",
+      "aliases": [
+        "nazismo moderno"
+      ],
+      "tipo": "institucion"
+    },
+    "el_leon": {
+      "display_name": "el león",
+      "aliases": [
+        "el león"
+      ],
+      "tipo": "desconocido"
+    },
+    "ericsson": {
+      "display_name": "Ericsson",
+      "aliases": [
+        "Ericsson"
+      ],
+      "tipo": "individuo"
+    },
+    "fabricantes_de_velas": {
+      "display_name": "fabricantes de velas",
+      "aliases": [
+        "fabricantes de velas"
+      ],
+      "tipo": "colectivo"
+    },
+    "intervencionistas": {
+      "display_name": "intervencionistas",
+      "aliases": [
+        "intervencionistas"
+      ],
+      "tipo": "colectivo"
+    },
+    "sector_privado": {
+      "display_name": "sector privado",
+      "aliases": [
+        "sector privado"
+      ],
+      "tipo": "colectivo"
+    },
+    "adam_smith": {
+      "display_name": "Adam Smith",
+      "aliases": [
+        "Adam Smith"
+      ],
+      "tipo": "individuo"
+    },
+    "franco_bastiat": {
+      "display_name": "Franco Bastiat",
+      "aliases": [
+        "Bastiat"
       ],
       "tipo": "individuo"
     }

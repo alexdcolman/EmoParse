@@ -900,7 +900,7 @@ body.at-home main > footer { display: block; }
     <a href="#home" style="text-decoration:none;color:inherit;">
       <div class="logo">Emo<span class="accent">Parse</span></div>
     </a>
-    <div class="tag">Docs · v0.3.0</div>
+    <div class="tag">Docs · v0.3.5</div>
   </div>
 
   <nav>
@@ -944,6 +944,7 @@ body.at-home main > footer { display: block; }
         <li><a href="#cli-metrics" class="depth-2">metrics</a></li>
         <li><a href="#cli-stats" class="depth-2">stats</a></li>
         <li><a href="#cli-export" class="depth-2">export</a></li>
+        <li><a href="#cli-app" class="depth-2">app</a></li>
       </ul>
     </div>
 
@@ -986,7 +987,7 @@ body.at-home main > footer { display: block; }
 
 <!-- HOME / PORTADA ───────────────────────────────────────────── -->
 <header class="hero" id="home" data-title="Inicio">
-  <div class="hero-eyebrow">Documentación oficial · v0.3.0 · Beta</div>
+  <div class="hero-eyebrow">Documentación oficial · v0.3.5 · Beta</div>
   <h1>Emo<span class="em">Parse</span></h1>
   <p class="hero-lede">
     Un sistema reproducible de <em>análisis de emociones</em> en discursos,
@@ -1878,7 +1879,7 @@ streamlit run src/emoparse/app/__main__.py
         <tr>
           <td><code>normalize_actors</code></td>
           <td>frase</td>
-          <td>Unifica las distintas formas de nombrar a un mismo actor. Resuelve correferencias dentro del discurso y vincula cada mención con una base de actores conocidos. Para los actores no reconocidos, distingue nombres propios (propone una forma canónica para revisión) de deícticos y roles; los deícticos de 1ª persona se atribuyen al enunciador por discurso, sin incorporarse a la KB.</td>
+          <td>Unifica las distintas formas de nombrar a un mismo actor. Resuelve correferencias dentro del discurso (con el LLM) y vincula cada mención con la base de actores conocidos por matching determinístico (sin meter la KB en el prompt). Para los actores no reconocidos, distingue nombres propios (propone una forma canónica para revisión) de deícticos y roles; los deícticos de 1ª persona se atribuyen al enunciador por discurso, sin incorporarse a la KB.</td>
           <td>opcional</td>
         </tr>
         <tr>
@@ -1908,7 +1909,7 @@ streamlit run src/emoparse/app/__main__.py
         <tr>
           <td><code>normalize_experiencers</code></td>
           <td>emoción</td>
-          <td>Resuelve, por discurso, las distintas formas de nombrar a quien siente una emoción ("yo", "el orador" → el enunciador; otras menciones → enunciatarios o actores). Propone equivalencias para revisión humana; lo aceptado se escribe en <code>experienciador_canonico</code> con <code>emoparse experiencers apply</code>.</td>
+          <td>Resuelve, por discurso, las distintas formas de nombrar a quien siente una emoción ("yo", "el orador" → el enunciador; otras menciones → enunciatarios o actores). Cuando el experienciador es un actor, la sugerencia se reconcilia contra la KB de actores por coincidencia conservadora (mismo matcher que <code>normalize_actors</code>); si no hay correspondencia, queda la del LLM. Propone equivalencias para revisión humana; lo aceptado se escribe en <code>experienciador_canonico</code> con <code>emoparse experiencers apply</code>. La normalización es 1-a-1 por experienciador, así que se procesa en lotes (<code>chunk_size</code>, default 15) para que la salida del LLM no exceda el límite de tokens en discursos largos.</td>
           <td>opcional</td>
         </tr>
         <tr>
@@ -2374,9 +2375,15 @@ streamlit run src/emoparse/app/__main__.py
       Una tercera, opcional, normaliza el <em>experienciador</em>: resuelve,
       discurso por discurso, las distintas formas de nombrar a quien siente
       ("yo", "el orador" → el enunciador; otras menciones → enunciatarios o
-      actores). Como esta correspondencia es local a cada discurso, no usa una
-      base global: propone equivalencias para revisión y, al aceptarlas,
-      escribe el canónico en <code>emociones.experienciador_canonico</code>.
+      actores). La correspondencia es local a cada discurso, pero cuando el
+      experienciador es un <em>actor</em> la sugerencia se reconcilia además
+      contra la KB de actores por coincidencia literal/cuasi-literal
+      conservadora (el mismo matcher determinístico que usa
+      <code>normalize_actors</code>): un experienciador que es un actor conocido
+      recibe su canónico de la KB y, si no hay correspondencia, se conserva la
+      sugerencia del LLM. Propone equivalencias para revisión y, al aceptarlas,
+      escribe el canónico en <code>emociones.experienciador_canonico</code>
+      (o, desde el dashboard, en el overlay de revisión — ver más abajo).
     </li>
   </ul>
   <p>
@@ -2409,10 +2416,36 @@ streamlit run src/emoparse/app/__main__.py
     un alias ambiguo.
   </p>
   <p>
+    <strong>Escalabilidad de la KB.</strong> Para que el prompt no crezca con
+    la base de actores (lo que disparaba <code>ContextLengthExceeded</code> y
+    enlentecía la inferencia a medida que la KB se llenaba),
+    <code>normalize_actors</code> ya <em>no inyecta la KB en el prompt</em> por
+    defecto: el LLM solo correferencia y propone canónicos, con un prompt de
+    tamaño constante. El cruce contra los canónicos existentes se hace después,
+    de forma <strong>determinística</strong> (sin LLM y sin contexto), por
+    coincidencia literal/cuasi-literal <em>conservadora</em> contra los aliases,
+    <code>display_name</code> y <code>canonical_id</code> de la KB
+    (insensible a tildes, mayúsculas, puntuación y artículos iniciales; nunca
+    une cosas distintas como "víctimas del holocausto" y "víctimas del atentado
+    a la AMIA"). Lo que matchea se linkea solo; lo que no, queda como hallazgo y
+    se mergea con un canónico existente desde la tab de grupos / merge masivo.
+    Se puede volver al modo anterior con <code>normalize_actors_inject_kb</code>.
+  </p>
+  <p>
     Las equivalencias de experienciador se gestionan con
     <code>emoparse experiencers</code> (listar, exportar, aceptar —con destino
     editable—, rechazar) y se materializan con <code>experiencers apply</code>.
-    También se pueden revisar desde el dashboard.
+    Desde el dashboard la revisión es más rica: para cada experienciador se ve
+    la <strong>frase completa</strong> y la <strong>emoción</strong> a la que
+    corresponde, se pueden <strong>destildar emociones puntuales</strong> del
+    grupo (no hace falta aceptar todo el grupo de un crudo), se puede asignar
+    <strong>más de un canónico</strong> (p. ej. "Javier Milei" + la audiencia)
+    buscándolos en la KB con un selector múltiple o escribiéndolos a mano, y lo
+    aceptado se escribe <strong>por emoción en el overlay de revisión</strong>,
+    con lo que aparece de inmediato en la tab Revisión. (El botón
+    <code>experiencers apply</code> sigue materializando en la base, pero a
+    nivel de todas las ocurrencias del crudo; la granularidad por emoción vive
+    en el overlay.)
   </p>
 </section>
 
@@ -2831,6 +2864,29 @@ emoparse experiencers reject <span class="c-flag">--db</span> runs/mi_run.sqlite
 </p>
 </section>
 
+<!-- ─── CLI: app ─────────────────────────────────────────── -->
+<section id="cli-app">
+<h3 id="cli-app"><code>emoparse app</code></h3>
+<p>Lanza el dashboard Streamlit. Equivale a <code>streamlit run src/emoparse/app/__main__.py</code> pero sin tener que recordar el path.</p>
+
+<pre data-lang="bash"><code><span class="c-comment"># Puerto por defecto (8501), abre el navegador automáticamente</span>
+emoparse app
+
+<span class="c-comment"># Puerto alternativo, sin abrir el navegador</span>
+emoparse app <span class="c-flag">--port</span> 8502 <span class="c-flag">--no-browser</span></code></pre>
+
+<p>Flags disponibles:</p>
+<ul>
+  <li><code>--port PORT</code> — puerto en el que escucha Streamlit (default: 8501).</li>
+  <li><code>--no-browser</code> — arranca en modo headless sin abrir el navegador.</li>
+</ul>
+
+<div class="callout note">
+  <span class="callout-label">Nota</span>
+  <p>El comando reemplaza el proceso actual con <code>execvp</code>; si Streamlit no está instalado devuelve exit code 1 con un mensaje de error claro.</p>
+</div>
+</section>
+
 <!-- ═══════ DASHBOARD ═══════════════════════════════════════════════════ -->
 <section id="dashboard">
   <div class="section-eyebrow">07 · Visualización</div>
@@ -2841,7 +2897,10 @@ emoparse experiencers reject <span class="c-flag">--db</span> runs/mi_run.sqlite
     el pipeline en modo read-only.
   </p>
 
-<pre data-lang="bash"><code><span class="c-comment"># Lanzar el dashboard (escanea automáticamente runs/)</span>
+<pre data-lang="bash"><code><span class="c-comment"># Vía CLI (recomendado)</span>
+emoparse app
+
+<span class="c-comment"># Equivalentes directos</span>
 streamlit run src/emoparse/app/__main__.py
 
 <span class="c-comment"># Alternativa</span>
@@ -2850,7 +2909,7 @@ python -m emoparse.app</code></pre>
   <p>
     El sidebar lista todos los runs disponibles bajo <code>runs/</code> con
     badges de estado (running / completed / failed). Elegís el run y aparecen
-    cinco tabs:
+    seis tabs:
   </p>
 
   <div class="cards">
@@ -2871,17 +2930,42 @@ python -m emoparse.app</code></pre>
       <p>Perfil emocional, radar, trayectoria temporal y distribución comparada entre múltiples discursos.</p>
     </div>
     <div class="card">
+      <h4>📝 Revisión</h4>
+      <p>Lectura frase por frase con la cabecera del discurso (enunciador, enunciatarios, lugar, tipo) una sola vez. Desplegás cada frase para ver sus actores y emociones, y cada emoción para su caracterización, actantes y justificaciones. Muestra y permite editar el <strong>experienciador canónico</strong> (uno o varios), resolviendo los slugs de la KB a su nombre legible. Permite editar todo (confirmar, corregir, eliminar, agregar) guardando en un overlay aparte.</p>
+    </div>
+    <div class="card">
       <h4>🔁 Estado del run</h4>
-      <p>Progreso de cada stage con pendientes / errores / completados y lista de códigos fallidos.</p>
+      <p>Progreso de cada stage con pendientes / errores / completados y lista de códigos fallidos. Incluye el triage de actores nuevos (sugerencias agrupadas y merge masivo por mención) y el de experienciadores (frase y emoción a la vista, deselección por emoción y canónicos múltiples). Suma un <strong>editor de la KB de actores</strong>: ver / buscar / corregir <code>display_name</code>, tipo, rol, notas y aliases (equivalencias), y dar de alta actores.</p>
     </div>
   </div>
 
   <div class="callout note">
-    <span class="callout-label">Recomendación</span>
+    <span class="callout-label">Revisión sin tocar las bases</span>
     <p>
-      El dashboard es estrictamente de lectura. Si querés modificar
-      resultados, hacelo desde el CLI (<code>retry</code>, <code>run</code>)
-      sobre la misma DB; el dashboard reflejará los cambios al recargar.
+      Las tabs analíticas son de solo lectura. La tab <strong>Revisión</strong>
+      permite corregir el análisis, pero nunca escribe en las bases del
+      pipeline ni en la KB: las ediciones se guardan en un archivo overlay
+      aparte (<code>exports/&lt;run&gt;/revision_overlay.json</code>), que se
+      aplica por encima al leer. Los borrados son reversibles (tombstones), la
+      escritura es atómica con backup, y un re-run del pipeline no pisa las
+      correcciones. Para reprocesar resultados se sigue usando el CLI
+      (<code>retry</code>, <code>run</code>) sobre la misma DB.
+    </p>
+  </div>
+
+  <div class="callout note">
+    <span class="callout-label">Editar la KB de actores desde el dashboard</span>
+    <p>
+      La tab <strong>Estado</strong> permite corregir la KB de actores
+      (<code>display_name</code>, tipo, rol, notas y los aliases /
+      equivalencias) y dar de alta actores nuevos. Cada guardado hace
+      <strong>backup</strong> y escritura atómica a través del editor de la KB.
+      El <code>canonical_id</code> no se cambia desde la UI —renombrarlo
+      rompería las referencias ya escritas (<code>experienciador_canonico</code>,
+      <code>actores_canonicos</code> y el overlay apuntan al slug)—; para
+      fusionar o renombrar se sigue usando el flujo de
+      <code>discoveries</code>. Los nombres corregidos se reflejan en la tab
+      Revisión.
     </p>
   </div>
 </section>
@@ -3777,7 +3861,7 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
 
 <footer>
   <div>
-    <span class="mark">EmoParse</span> · Análisis de emociones en discursos · documentación v0.3.0
+    <span class="mark">EmoParse</span> · Análisis de emociones en discursos · documentación v0.3.5
   </div>
 </footer>
 

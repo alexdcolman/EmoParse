@@ -17,6 +17,7 @@ from emoparse.knowledge.kb_editor import (
     KbEditorError,
     backup_kb,
     discard as kb_discard,
+    edit_actor as kb_edit_actor,
     load_kb,
     merge as kb_merge,
     promote as kb_promote,
@@ -386,3 +387,69 @@ def _run_prompt_version(db: Database) -> str | None:
     except Exception:
         return None
     return ctx.versions.prompt if ctx is not None else None
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Edición directa de la KB de actores (revisión manual desde el dashboard)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def kb_save_actor(
+    kb_path: Path,
+    canonical_id: str,
+    *,
+    display_name: str | None = None,
+    tipo: str | None = None,
+    rol: str | None = None,
+    notas: str | None = None,
+    aliases: list[str] | None = None,
+) -> Path:
+    """Guarda ediciones de un actor existente (NO cambia el canonical_id).
+
+    Hace backup antes de escribir y delega en el editor seguro (atómico).
+    Devuelve el path del backup creado.
+    """
+    if not kb_path.is_file():
+        raise FileNotFoundError(f"KB no encontrada: {kb_path}")
+    backup = backup_kb(kb_path)
+    kb_edit_actor(
+        kb_path,
+        canonical_id=canonical_id,
+        display_name=display_name,
+        tipo=tipo,
+        rol=rol,
+        notas=notas,
+        aliases=aliases,
+    )
+    logger.info(
+        f"[app.actions] KB editada desde dashboard: '{canonical_id}' "
+        f"(backup {backup})"
+    )
+    return backup
+
+
+def kb_create_actor(
+    kb_path: Path,
+    *,
+    canonical_id: str,
+    display_name: str,
+    tipo: str = "desconocido",
+    rol: str | None = None,
+    aliases: list[str] | None = None,
+) -> Path:
+    """Crea un actor nuevo en la KB (vía editor seguro). Devuelve el backup."""
+    if not kb_path.is_file():
+        raise FileNotFoundError(f"KB no encontrada: {kb_path}")
+    backup = backup_kb(kb_path)
+    kb_promote(
+        kb_path,
+        canonical_id=canonical_id,
+        display_name=display_name,
+        aliases_iniciales=aliases or [],
+        tipo=tipo,
+        rol=rol,
+    )
+    logger.info(
+        f"[app.actions] KB alta desde dashboard: '{canonical_id}' "
+        f"(backup {backup})"
+    )
+    return backup

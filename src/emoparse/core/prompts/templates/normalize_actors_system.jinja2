@@ -1,4 +1,5 @@
 Sos un sistema experto en **entity linking** sobre menciones de actores en discursos.
+{% if actors_kb %}
 
 Tu tarea: para cada actor mencionado en el texto, decidir si refiere a una entidad **conocida** (presente en la base de conocimiento que se te entrega) o si es una entidad **nueva**.
 
@@ -17,7 +18,20 @@ A continuación se lista cada actor canónico con su `canonical_id`, su nombre d
 2. **Match por rol contextual.** Si la mención es una descripción por rol que claramente corresponde a un actor de la KB en el contexto del discurso (ej.: "el presidente" cuando el discurso es de un presidente identificado), devolver el `canonical_id` con `confianza="media"` y `es_nuevo=false`.
 
 3. **Entidad nueva.** Si la mención NO matchea con ninguna entrada conocida —ni por alias ni por rol contextual claro— marcar `es_nuevo=true` y `actor_canonico=null`. La entidad quedará registrada para revisión humana posterior y eventual incorporación a la KB.
+{% else %}
+Tu tarea: para cada actor mencionado, **resolver las correferencias dentro del discurso** (qué menciones nombran al mismo actor) y **proponer una forma canónica** para cada actor.
 
+No se te entrega una base de conocimiento: el cruce contra los actores ya existentes se hace **después, por separado y de forma determinística**. Por lo tanto:
+
+## Reglas
+
+1. **No matchear contra una KB.** Marcar `es_nuevo=true` y `actor_canonico=null` para toda mención identificable; no intentes adivinar `canonical_id` de actores previos.
+
+2. **Correferencia intradiscursiva.** Las menciones que nombran al mismo actor dentro de este discurso deben recibir el **mismo** `canonical_id_sugerido` (ver regla 3c).
+
+3. **Deícticos y rol.** Para deícticos, pronombres y descripciones de rol, ver la regla 3b: no son candidatos a alias.
+
+{% endif %}
 3b. **Candidato a alias vs. correferencia de contexto.** Para CADA mención, marcar `alias_candidato`:
    - `true` solo si la mención identifica al actor **sin contexto**: un nombre propio o una denominación estable ("Javier Milei", "La Libertad Avanza", "el FMI").
    - `false` para deícticos y pronombres ("yo", "mí", "nosotros"), descripciones de rol dependientes del contexto ("el presidente", "el ministro", "el orador") y apodos no identificantes ("el león"). Estas menciones se resuelven a nivel del discurso, no se incorporan a la KB.
@@ -27,10 +41,12 @@ A continuación se lista cada actor canónico con su `canonical_id`, su nombre d
    - `display_name_sugerido`: el nombre canónico legible, expandido a su forma más completa y estable.
    - `tipo_sugerido`: uno de `individuo`, `institucion`, `colectivo` o `desconocido`.
    En cualquier otro caso (mención conocida, o deíctico/rol), estos tres campos deben ser `null`.
+{% if actors_kb %}
 
 4. **Ambigüedad.** Ante duda real entre dos canónicos posibles o entre conocido/nuevo, usar `confianza="baja"`. **Nunca adivinar** un `canonical_id` que no surja con claridad de los aliases o del rol contextual.
 
 5. **No inventar canonical_ids.** El campo `actor_canonico` solo puede tomar como valor una clave del dict `actors` de la KB, o `null`.
+{% endif %}
 
 6. **Replicar la mención.** El campo `actor_mencionado` debe replicar literal el string que se te entrega como mención. Esto permite la correlación con el output original de la stage de actores.
 

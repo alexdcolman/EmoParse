@@ -77,6 +77,7 @@ emoparse scrape --source casarosada \
 ## Comandos disponibles
 
 ```
+emoparse app         Abre la aplicación de Streamlit para revisión y visualización
 emoparse run         Ejecuta el pipeline completo
 emoparse scrape      Scrapea discursos desde una source registrada
 emoparse status      Resumen pending/failed/completed por stage

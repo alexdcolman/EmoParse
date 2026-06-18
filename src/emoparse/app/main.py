@@ -20,6 +20,7 @@ from emoparse.app.components import (
     tab_comparacion,
     tab_curva,
     tab_estado,
+    tab_revision,
     tab_tabla,
 )
 from emoparse.app.styles import CSS
@@ -42,6 +43,29 @@ def main() -> None:
     )
     st.markdown(CSS, unsafe_allow_html=True)
 
+    # Fuerza el sidebar siempre visible: oculta el botón de colapso nativo
+    # de Streamlit (el chevron) y el backdrop que lo tapa en mobile.
+    st.markdown(
+        """
+        <style>
+        /* Oculta el botón colapsar/expandir del sidebar */
+        button[data-testid="collapsedControl"],
+        button[kind="header"][aria-label="Close sidebar"],
+        section[data-testid="stSidebarCollapsedControl"] {
+            display: none !important;
+        }
+        /* Garantiza que el sidebar permanezca visible */
+        section[data-testid="stSidebar"] {
+            transform: none !important;
+            visibility: visible !important;
+            width: var(--sidebar-width, 21rem) !important;
+            min-width: 16rem !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
+
     runs_dir = Path(os.environ.get(_RUNS_DIR_ENV, _DEFAULT_RUNS_DIR))
 
     db_path = run_selector.render(runs_dir)
@@ -63,11 +87,12 @@ def main() -> None:
     )
     st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
 
-    tab_curva_, tab_act, tab_tab, tab_comp, tab_est = st.tabs([
+    tab_curva_, tab_act, tab_tab, tab_comp, tab_rev, tab_est = st.tabs([
         "📈 Curva emocional",
         "👥 Por actor",
         "📋 Tabla",
         "↔ Comparar discursos",
+        "📝 Revisión",
         "🔁 Estado del run",
     ])
 
@@ -79,6 +104,8 @@ def main() -> None:
         tab_tabla.render(db_path)
     with tab_comp:
         tab_comparacion.render(db_path)
+    with tab_rev:
+        tab_revision.render(db_path)
     with tab_est:
         tab_estado.render(db_path)
 

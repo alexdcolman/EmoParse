@@ -19,6 +19,7 @@ from emoparse.agents.actants import ACTANTS_COMPONENTS, ActantsAgent
 from emoparse.agents.normalize_actors import NormalizeActorsAgent
 from emoparse.agents.normalize_experiencers import NormalizeExperiencersAgent
 from emoparse.pipeline.deixis import resolve_deictic_to_enunciador
+from emoparse.pipeline.kb_matching import KbMatcher
 from emoparse.pipeline.contracts import (
     DiscursoInputContract,
     EmocionExplodedContract,
@@ -432,6 +433,7 @@ class NormalizeActorsStage(Stage):
         agent_version: str | None = None,
         retry_config: RetryConfig | None = None,
         genre: Genre | None = None,
+        inject_kb: bool = False,
     ) -> None:
         super().__init__()
         self.validate_contracts = True
@@ -440,7 +442,12 @@ class NormalizeActorsStage(Stage):
         self._f_repo = frases_repo
         self._discoveries_repo = discoveries_repo
         self._kb = actors_kb
-        self._kb_serialized = self._serialize_kb(actors_kb)
+        # La KB se inyecta en el prompt SOLO si se pide explícitamente. Por
+        # defecto no se inyecta (prompt de tamaño constante) y el linking con
+        # canónicos existentes se resuelve con KbMatcher (determinístico).
+        self._inject_kb = inject_kb
+        self._kb_serialized = self._serialize_kb(actors_kb) if inject_kb else ""
+        self._kb_matcher = KbMatcher(actors_kb)
         self._version = agent_version
         self._retry_config = retry_config
         self._genre = genre
@@ -580,6 +587,7 @@ class NormalizeActorsStage(Stage):
                     # no la del representante del cluster.
                     link["actor_mencionado"] = mencion
                 link = resolve_deictic_to_enunciador(link, enunciador)
+                link = self._match_kb(link)
                 payload.append(link)
 
             self._f_repo.set_payload(
@@ -691,6 +699,25 @@ class NormalizeActorsStage(Stage):
                 f"- {canonical_id} [tipo={tipo}]: {display} | aliases: {aliases_str}"
             )
         return "\n".join(lines)
+
+    def _match_kb(self, link: dict[str, Any]) -> dict[str, Any]:
+        """Linkea con un canónico existente por match literal/cuasi-literal.
+
+        Determinístico (sin LLM, sin contexto). Solo actúa sobre menciones aún
+        nuevas y sin canónico; si matchea, deja `es_nuevo=False` (no genera
+        discovery) y marca `resuelto_por='kb_literal'`. Lo que no matchea queda
+        como discovery y se mergea con canónicos en la tab de grupos.
+        """
+        if link.get("actor_canonico"):
+            return link
+        if not link.get("es_nuevo"):
+            return link
+        cid = self._kb_matcher.match(str(link.get("actor_mencionado", "")))
+        if cid:
+            link["actor_canonico"] = cid
+            link["es_nuevo"] = False
+            link["resuelto_por"] = "kb_literal"
+        return link
 
     @staticmethod
     def _unknown_linking_dict(actor_mencionado: str = "") -> dict[str, Any]:
@@ -980,6 +1007,8 @@ class NormalizeExperiencersStage(Stage):
         agent_version: str | None = None,
         retry_config: RetryConfig | None = None,
         genre: Genre | None = None,
+        chunk_size: int = 15,
+        actors_kb: dict[str, Any] | None = None,
     ) -> None:
         super().__init__()
         self.validate_contracts = False
@@ -991,6 +1020,15 @@ class NormalizeExperiencersStage(Stage):
         self._version = agent_version
         self._retry_config = retry_config
         self._genre = genre
+        # Reconciliación determinística contra la KB de actores: la sugerencia
+        # del LLM se intenta primero adecuar a un canónico conocido por
+        # coincidencia literal/cuasi-literal (mismo KbMatcher que normalize_actors).
+        # Con actors_kb=None el matcher queda vacío y no altera nada (no-op).
+        self._kb_matcher = KbMatcher(actors_kb)
+        # Los experienciadores se normalizan 1-a-1 (cada raw → una propuesta
+        # independiente), así que se procesan en lotes para que la salida del
+        # LLM no exceda el límite de tokens en discursos largos.
+        self._chunk_size = max(1, int(chunk_size))
 
     def run_pending(self) -> int:
         """Genera propuestas para los experienciadores aún no propuestos."""
@@ -1016,55 +1054,93 @@ class NormalizeExperiencersStage(Stage):
             return 0
 
         enun = self._d_repo.get_payload(codigo, "enunciation") or {}
-        df_in = pd.DataFrame([{
+        ctx = {
             "codigo": codigo,
             "enunciador": str(enun.get("enunciador", "")),
             "enunciatarios": _format_enunciatarios(enun.get("enunciatarios")),
             "actores": self._collect_actor_names(codigo),
-            "experienciadores": json.dumps(
-                [{"raw": raw, "ocurrencias": counts.get(raw, 0)} for raw in faltan],
-                ensure_ascii=False,
-            ),
-        }])
-
+        }
         agent = NormalizeExperiencersAgent(
             self._backend,
             retry_config=self._retry_config,
             genre=self._genre,
         )
+
+        faltan_set = set(faltan)
+        total = 0
+        n_chunks = (len(faltan) + self._chunk_size - 1) // self._chunk_size
+        for ci in range(n_chunks):
+            chunk = faltan[ci * self._chunk_size : (ci + 1) * self._chunk_size]
+            total += self._process_chunk(
+                agent, codigo, chunk, counts, faltan_set, ctx, ci + 1, n_chunks
+            )
+        return total
+
+    def _process_chunk(
+        self,
+        agent: NormalizeExperiencersAgent,
+        codigo: str,
+        chunk: list[str],
+        counts: dict[str, int],
+        faltan_set: set[str],
+        ctx: dict[str, str],
+        idx: int,
+        n_chunks: int,
+    ) -> int:
+        df_in = pd.DataFrame([{
+            **ctx,
+            "experienciadores": json.dumps(
+                [{"raw": raw, "ocurrencias": counts.get(raw, 0)} for raw in chunk],
+                ensure_ascii=False,
+            ),
+        }])
+        suf = f" (lote {idx}/{n_chunks})" if n_chunks > 1 else ""
         try:
             df_out = agent.run(df_in)
         except Exception as e:
-            logger.error(f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}")
+            logger.error(f"[Stage:{self.NAME}] {codigo}{suf}: error inesperado: {e}")
             self.metrics.record_item_failed()
             return 0
 
         row = df_out.iloc[0]
         equivalencias_str = row.get("equivalencias")
         if pd.isna(equivalencias_str):
-            logger.warning(f"[Stage:{self.NAME}] {codigo}: sin salida del agente.")
+            logger.warning(f"[Stage:{self.NAME}] {codigo}{suf}: sin salida del agente.")
             self.metrics.record_item_failed()
             return 0
         try:
             propuestas = json.loads(equivalencias_str)
         except (json.JSONDecodeError, TypeError):
-            logger.warning(f"[Stage:{self.NAME}] {codigo}: salida no parseable.")
+            logger.warning(f"[Stage:{self.NAME}] {codigo}{suf}: salida no parseable.")
             self.metrics.record_item_failed()
             return 0
 
-        faltan_set = set(faltan)
+        chunk_set = set(chunk)
         n = 0
         for p in propuestas if isinstance(propuestas, list) else []:
             if not isinstance(p, dict):
                 continue
             raw = str(p.get("raw_experienciador", "")).strip()
-            if raw not in faltan_set:
+            if raw not in faltan_set or raw not in chunk_set:
                 continue
+            clase = str(p.get("clase", "otro"))
+            canonical = p.get("canonical_sugerido")
+            # Solo los experienciadores que son actores se reconcilian contra la
+            # KB de actores. Se intenta primero el texto crudo (evidencia
+            # literal) y, si no, la sugerencia del LLM. Si el matcher (conservador)
+            # devuelve un canónico, esa sugerencia reemplaza a la del LLM; si no
+            # hay equivalencia, se conserva la sugerencia del LLM.
+            if clase == "actor":
+                kb_hit = self._kb_matcher.match(raw)
+                if not kb_hit and canonical:
+                    kb_hit = self._kb_matcher.match(str(canonical))
+                if kb_hit:
+                    canonical = kb_hit
             self._eq_repo.upsert_proposal(
                 codigo,
                 raw,
-                canonical_sugerido=p.get("canonical_sugerido"),
-                clase=str(p.get("clase", "otro")),
+                canonical_sugerido=canonical,
+                clase=clase,
                 confianza=str(p.get("confianza", "baja")),
                 justificacion=str(p.get("justificacion", "")),
                 ocurrencias=counts.get(raw, 0),

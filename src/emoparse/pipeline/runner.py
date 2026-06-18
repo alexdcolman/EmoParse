@@ -477,6 +477,7 @@ class PipelineRunner:
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
+                inject_kb=bool(getattr(self._cfg, "normalize_actors_inject_kb", False)),
             )
 
         if name == "emotions":
@@ -536,9 +537,11 @@ class PipelineRunner:
 
         if name == "normalize_experiencers":
             backend = self._get_backend(name)
+            actors_kb = self._knowledge.load_actors_kb(self._actors_kb_filename)
             return NormalizeExperiencersStage(
                 backend, self._d_repo, self._f_repo, self._e_repo,
                 equivalences_repo=self._equivalences_repo,
+                actors_kb=actors_kb,
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,

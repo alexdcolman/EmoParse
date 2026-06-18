@@ -51,8 +51,11 @@ DURACION — duración temporal del estado emocional en el discurso:
 
 MODO_SEMIOTIZACION — modalidad mediante la cual la emoción está presente
 en el recorte discursivo:
-  - dicha:      la emoción se nombra explícitamente con un término emocional
-                (ej. "siento orgullo", "estoy indignado").
+  - dicha:      la emoción se nombra con un término de la FAMILIA LÉXICA de
+                una emoción, y nada más (sustantivo, adjetivo o verbo: "orgullo",
+                "indignado", "temo"). Un rol, una cualidad o una valoración que
+                no sea un término emocional ("aliado", "inclaudicable") NO es
+                "dicha".
   - mostrada:   se manifiesta indirectamente a través de indicadores
                 comportamentales, gestuales o expresivos descriptos
                 (ej. "alzó la voz", "se le llenaron los ojos de lágrimas").
@@ -61,7 +64,9 @@ en el recorte discursivo:
                 mostrarla en un punto único (construcción acumulativa).
 
 MODO_IDENTIFICACION — vía por la cual el analista identifica la emoción:
-  - directa:             la emoción se declara explícitamente, sin ambigüedad.
+  - directa:             la emoción está "dicha" (nombrada con un término de
+                         su familia léxica). Solo es válida si
+                         modo_semiotizacion es "dicha".
   - por_senales_salida:  identificada por señales expresivas del estado
                          emocional (llanto, risa, tono, postura, etc.).
   - por_senales_entrada: identificada por el estímulo o situación
@@ -69,14 +74,16 @@ MODO_IDENTIFICACION — vía por la cual el analista identifica la emoción:
   - mixta:               coexisten vías combinadas en el mismo fragmento
                          (ej. emoción dicha + señales de salida).
 
-TIPO_ATRIBUCION — quién atribuye la emoción al experienciador:
-  - auto_atribucion:         el propio experienciador se atribuye la emoción
-                             en primera persona o por su propio discurso.
-  - hetero_atribucion:       un tercero (incluido el enunciador) atribuye
-                             la emoción a otro actor.
-  - atribucion_transpositiva: el analista atribuye la emoción a partir de
-                               señales indirectas; la fuente no lo declara
-                               ni lo muestra explícitamente.
+TIPO_ATRIBUCION — cómo se atribuye EXPLÍCITAMENTE la emoción. Solo cuenta la
+atribución textual y explícita; si nadie la enuncia, es sin_atribucion.
+  - auto_atribucion:   el propio experienciador se atribuye la emoción de forma
+                       explícita (ej. "yo amo a Laura").
+  - hetero_atribucion: un actor (incluido el enunciador) atribuye de forma
+                       explícita una emoción a otro actor (ej. "ella ama a
+                       Laura").
+  - sin_atribucion:    nadie atribuye explícitamente la emoción; se infiere de
+                       la situación, la valoración o el comportamiento. Es el
+                       caso por defecto cuando no hay atribución textual directa.
 {% if heuristicas %}
 HEURÍSTICAS DE INFERENCIA:
 {{ heuristicas }}
