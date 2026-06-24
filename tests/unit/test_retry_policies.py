@@ -138,12 +138,12 @@ def db_with_data(db: Database) -> Database:
         # emociones caracterizadas (de D001 frase 1)
         cur.execute(
             "INSERT INTO emociones (codigo, frase_idx, emocion_idx, "
-            "experienciador, tipo_emocion, modo_existencia, "
+            "experienciador, experienciador_marca, tipo_emocion, modo_existencia, fuente_marca, fuente_inferencia, "
             "caracterizacion_payload, caracterizacion_version, caracterizacion_error, "
-            "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 "D001", 1, 0,
-                "presidente", "alegría", "actualizado",
+                "presidente", "el presidente", "alegría", "actualizado", "marca de prueba", "inferencia de prueba",
                 json.dumps({"foria": "eufórica", "intensidad": "alta"}), "v1", None,
                 now, now,
             ),
@@ -151,12 +151,12 @@ def db_with_data(db: Database) -> Database:
         # otra emoción con caracterizacion failed
         cur.execute(
             "INSERT INTO emociones (codigo, frase_idx, emocion_idx, "
-            "experienciador, tipo_emocion, modo_existencia, "
+            "experienciador, experienciador_marca, tipo_emocion, modo_existencia, fuente_marca, fuente_inferencia, "
             "caracterizacion_payload, caracterizacion_version, caracterizacion_error, "
-            "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (
                 "D001", 1, 1,
-                "pueblo", "miedo", "virtual",
+                "pueblo", "el pueblo", "miedo", "virtual", "marca de prueba", "inferencia de prueba",
                 None, None, "boom char",
                 now, now,
             ),

@@ -3,6 +3,8 @@ Tu tarea es identificar:
 
   1. El ENUNCIADOR: quién emite el discurso (persona, institución, colectivo).
   2. Los ENUNCIATARIOS: a quiénes está dirigido el discurso. Puede haber varios.
+  3. El AUDITORIO: el destinatario DIRECTO (quienes escuchan o leen el discurso).
+  4. Los COLECTIVOS DE IDENTIFICACIÓN del enunciador. Pueden ser varios.
 {% if heuristicas %}
 HEURÍSTICAS DE INFERENCIA:
 {{ heuristicas }}
@@ -40,6 +42,30 @@ REGLAS PARA LOS ENUNCIATARIOS:
 - Si solo se identifica un enunciatario, devolvé una lista de un solo
   elemento. NO devuelvas lista vacía: todo discurso tiene al menos un
   destinatario implícito.
+
+REGLAS PARA EL AUDITORIO:
+
+- El auditorio es el público concreto presente en la situación de enunciación
+  (quienes efectivamente escuchan o leen), NO una posición de destinación.
+- Es distinto de los enunciatarios: el contradestinatario suele NO estar en el
+  auditorio; el auditorio puede incluir a varios tipos de enunciatario a la vez.
+- Ejemplos: "los presentes en el Foro de Davos", "la audiencia de cadena
+  nacional", "los asistentes al acto".
+- Si no es determinable, devolvé lista vacía.
+{% if colectivos %}
+REGLAS PARA LOS COLECTIVOS DE IDENTIFICACIÓN:
+
+- Un colectivo de identificación es la entidad colectiva con la que el
+  enunciador se identifica o a la que adscribe (no a quién se dirige).
+- Para cada colectivo, asigná una `clase` usando EXACTAMENTE uno de los
+  identificadores válidos según el tipo de discurso. NO inventes clases.
+- Indicá el `nombre` concreto del colectivo (no la clase).
+- Pueden ser varios y de distintas clases. Lista vacía si no hay evidencia.
+
+CLASES DE COLECTIVO VÁLIDAS (por tipo de discurso):
+
+{{ colectivos }}
+{% endif %}
 
 DICCIONARIO DE TIPOS DE DISCURSO (referencia para identificar roles):
 

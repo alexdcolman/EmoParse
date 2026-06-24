@@ -80,6 +80,8 @@ def _emo_json(*types: str) -> str:
             "tipo_emocion": t,
             "tipo_configuracion": "sostenido_en_sustantivos",
             "modo_existencia": "realizada",
+            "fuente_marca": "la riqueza",
+            "fuente_inferencia": "riqueza",
             "justificacion": "test",
         }
         for t in types

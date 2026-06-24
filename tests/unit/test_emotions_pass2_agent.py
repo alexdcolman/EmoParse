@@ -47,9 +47,10 @@ class _RecordingBackend(LLMBackend):
         n = user.count("UNIDAD [")
         items = [
             EmocionesBatchItemSchema(unit_idx=i, emociones=[
-                EmocionSchema(experienciador="X", tipo_emocion="miedo",
+                EmocionSchema(experienciador="X", experienciador_marca="X", tipo_emocion="miedo",
                               tipo_configuracion="cualificacion_por_componentes_descriptivo_narrativos",
-                              modo_existencia="realizada", justificacion="j")
+                              fuente_marca="la pobreza", fuente_inferencia="pobreza",
+                              modo_existencia="realizada")
             ])
             for i in range(n)
         ]

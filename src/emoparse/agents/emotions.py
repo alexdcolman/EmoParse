@@ -74,8 +74,8 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
     de inferencia y los actores previamente identificados en cada unidad.
 
     Agrega la columna `emociones`, que contiene una lista JSON con
-    `experienciador`, `tipo_emocion`, `modo_existencia`, `tipo_configuracion`
-    y `justificacion`.
+    `experienciador`, `tipo_emocion`, `modo_existencia`, `fuente_marca`,
+    `fuente_inferencia`, `tipo_configuracion` y `justificacion`.
 
     El parámetro `emotion_scope` restringe qué experienciadores se analizan.
     Si es None o vacío se detectan emociones de cualquier actor. Si contiene
@@ -98,6 +98,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         tipo_discurso: str = "",
         enunciador: str = "",
         enunciatarios: str = "",
+        auditorio: str = "",
         emotion_scope: tuple[str, ...] | None = None,
         retry_config: Any | None = None,
         genre: "Genre | None" = None,
@@ -114,6 +115,9 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
             tipo_discurso: Tipo o clasificación del discurso.
             enunciador: Sujeto principal de enunciación.
             enunciatarios: Destinatarios o audiencia del discurso.
+            auditorio: Auditorio (destinatario directo, quienes efectivamente
+                escuchan o leen el discurso) del discurso, ya formateado
+                como texto. Vacío si no se conoce.
             emotion_scope: Restricción opcional de experienciadores a analizar.
                  Si es None o vacío, se analizan emociones de cualquier experienciador.
             retry_config: Política de reintentos ante errores transitorios.
@@ -127,6 +131,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         self._tipo_discurso = tipo_discurso
         self._enunciador = enunciador
         self._enunciatarios = enunciatarios
+        self._auditorio = auditorio
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else ()
         self._genre = genre
 
@@ -146,6 +151,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
             tipo_discurso=self._tipo_discurso,
             enunciador=self._enunciador,
             enunciatarios=self._enunciatarios,
+            auditorio=self._auditorio,
             alcance=self._alcance_text(),
         )
 

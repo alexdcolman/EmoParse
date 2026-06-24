@@ -3,7 +3,7 @@
 #
 #  Específicos: el batch itera sobre emociones (no frases). El user
 #  prompt formatea cada emoción con su contexto (frase de origen,
-#  experienciador, tipo, modo). El output agrega 9 columnas.
+#  experienciador, tipo, modo, fuente_marca, fuente_inferencia).
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -60,23 +60,14 @@ class _FakeBackend(LLMBackend):
 def _make_caracterizacion(**overrides: str) -> CaracterizacionEmocionSchema:
     """Helper para construir una caracterización con defaults."""
     base: dict[str, str] = {
-        # originales
         "foria": "disforico",
         "foria_justificacion": "tono negativo claro",
         "dominancia": "cognoscitiva",
         "dominancia_justificacion": "registro evaluativo",
         "intensidad": "alta",
         "intensidad_justificacion": "manifiesta y dominante",
-        "fuente": "el adversario político",
-        "tipo_fuente": "actor",
-        "fuente_justificacion": "se nombra explícitamente como causa",
-        # nuevas — valores dentro del Literal del schema
         "duracion": "instantanea",
         "duracion_justificacion": "sin marcas de persistencia",
-        "modo_semiotizacion": "dicha",
-        "modo_semiotizacion_justificacion": "nombre de emoción explícito",
-        "modo_identificacion": "directa",
-        "modo_identificacion_justificacion": "el hablante se nombra a sí mismo",
         "tipo_atribucion": "auto_atribucion",
         "tipo_atribucion_justificacion": "el hablante se atribuye la emoción en primera persona",
     }
@@ -90,7 +81,7 @@ def _make_caracterizacion(**overrides: str) -> CaracterizacionEmocionSchema:
 class TestUserPrompt:
 
     def test_emotion_context_in_each_unit(self) -> None:
-        """Cada unidad del prompt incluye experienciador + tipo + modo + frase."""
+        """Cada unidad del prompt incluye experienciador + tipo + modo + fuente_marca + fuente_inferencia + frase."""
         backend = _FakeBackend([
             ListaCaracterizacionBatchSchema(root=[
                 CaracterizacionBatchItemSchema(
@@ -107,6 +98,8 @@ class TestUserPrompt:
                 "experienciador": "el orador",
                 "tipo_emocion": "miedo",
                 "modo_existencia": "realizada",
+                "fuente_marca": "marca",
+                "fuente_inferencia": "inferencia",
             },
         ])
         agent.run(df)
@@ -118,6 +111,8 @@ class TestUserPrompt:
         assert "el orador" in user
         assert "miedo" in user
         assert "realizada" in user
+        assert "marca" in user
+        assert "inferencia" in user
         assert "Tengo miedo del futuro." in user
 
     def test_unit_indexed_zero_based(self) -> None:
@@ -134,9 +129,11 @@ class TestUserPrompt:
         agent = CharacterizerAgent(backend)
         df = pd.DataFrame([
             {"codigo": "A", "frase": "f0", "experienciador": "X",
-             "tipo_emocion": "alegria", "modo_existencia": "realizada"},
+             "tipo_emocion": "alegria", "modo_existencia": "realizada",
+             "fuente_marca": "marca", "fuente_inferencia": "inferencia"},
             {"codigo": "A", "frase": "f1", "experienciador": "Y",
-             "tipo_emocion": "tristeza", "modo_existencia": "realizada"},
+             "tipo_emocion": "tristeza", "modo_existencia": "realizada",
+             "fuente_marca": "marca", "fuente_inferencia": "inferencia"},
         ])
         agent.run(df)
 
@@ -160,7 +157,8 @@ class TestOutputMapping:
         agent = CharacterizerAgent(backend)
         df = pd.DataFrame([
             {"codigo": "A", "frase": "x", "experienciador": "X",
-             "tipo_emocion": "miedo", "modo_existencia": "realizada"},
+             "tipo_emocion": "miedo", "modo_existencia": "realizada",
+             "fuente_marca": "marca", "fuente_inferencia": "inferencia"},
         ])
         out = agent.run(df)
 
@@ -175,29 +173,26 @@ class TestOutputMapping:
                     caracterizacion=_make_caracterizacion(
                         foria="euforico",
                         intensidad="baja",
-                        tipo_fuente="situacion",
-                        fuente="la victoria electoral",
                     ),
                 ),
             ]),
         ])
         agent = CharacterizerAgent(backend)
         df = pd.DataFrame([
-            {"codigo": "A", "frase": "x", "experienciador": "X",
+            {"codigo": "A", "frase": "x", "experienciador": "X", "fuente_marca": "marca",
+             "fuente_inferencia": "inferencia",
              "tipo_emocion": "alegria", "modo_existencia": "realizada"},
         ])
         out = agent.run(df)
 
         assert out.iloc[0]["foria"] == "euforico"
         assert out.iloc[0]["intensidad"] == "baja"
-        assert out.iloc[0]["tipo_fuente"] == "situacion"
-        assert out.iloc[0]["fuente"] == "la victoria electoral"
         # Las justificaciones también.
         assert "tono negativo" in out.iloc[0]["foria_justificacion"]
 
 
 class TestPreservesEmotionMetadata:
-    """Las columnas de la emoción original (experienciador, tipo, modo)
+    """Las columnas de la emoción original (experienciador, tipo, modo, fuente_marca, fuente_inferencia)
     se preservan en el output."""
 
     def test_original_columns_preserved(self) -> None:
@@ -211,7 +206,8 @@ class TestPreservesEmotionMetadata:
         agent = CharacterizerAgent(backend)
         df = pd.DataFrame([
             {"codigo": "DISC_A", "frase": "x", "experienciador": "el orador",
-             "tipo_emocion": "miedo", "modo_existencia": "realizada"},
+             "tipo_emocion": "miedo", "modo_existencia": "realizada",
+             "fuente_marca": "marca", "fuente_inferencia": "inferencia"},
         ])
         out = agent.run(df)
 
@@ -220,3 +216,5 @@ class TestPreservesEmotionMetadata:
         assert out.iloc[0]["experienciador"] == "el orador"
         assert out.iloc[0]["tipo_emocion"] == "miedo"
         assert out.iloc[0]["modo_existencia"] == "realizada"
+        assert out.iloc[0]["fuente_marca"] == "marca"
+        assert out.iloc[0]["fuente_inferencia"] == "inferencia"

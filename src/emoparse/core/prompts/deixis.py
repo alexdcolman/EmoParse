@@ -1,7 +1,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
-# emoparse.core.prompts.normalize_experiencers
+#  emoparse.core.prompts.deixis
 #
-# Wrappers tipados para renderizar los prompts del NormalizeExperiencersAgent.
+#  Wrapper Jinja2. Firma pública estable.
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -10,10 +10,16 @@ from emoparse.core.prompts._loader import render
 
 
 def render_system() -> str:
-    """System prompt de NormalizeExperiencersAgent."""
-    return render("normalize_experiencers_system")
+    """SYSTEM de deixis: reglas de resolución de marcas deícticas."""
+    return render("deixis_system")
 
 
-def render_user(unidades_block: str) -> str:
-    """User prompt con el bloque de discursos y sus experienciadores."""
-    return render("normalize_experiencers_user", unidades=unidades_block)
+def render_user(codigo: str, referentes: str, marcas: str, resumen: str = "") -> str:
+    """USER de deixis con los referentes del discurso y las marcas a resolver."""
+    return render(
+        "deixis_user",
+        codigo=codigo,
+        referentes=referentes,
+        marcas=marcas,
+        resumen=resumen,
+    )

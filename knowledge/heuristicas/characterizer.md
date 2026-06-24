@@ -33,20 +33,6 @@ Si no hay suficientes elementos, inferí el valor genérico según el tipo de em
 - Alegría → eufórica
 
 ------------------------------------------------------------
-FUENTE
-------------------------------------------------------------
-Identificá el origen o causa de la emoción para el experienciador:
-
-- Actor: personas o grupos que provocan la emoción.
-- Situación: eventos o circunstancias externas.
-- Objeto: elementos materiales que generan la emoción.
-- Experiencia: recuerdos o vivencias previas.
-- Espacio: lugares o entornos que generan la emoción.
-
-Observá sustantivos, verbos y contexto para determinar la fuente.
-Si no podés determinarla con exactitud, devolvé: “no se identifica”.
-
-------------------------------------------------------------
 INTENSIDAD
 ------------------------------------------------------------
 Inferí el grado de fuerza de la emoción expresada o inferible:

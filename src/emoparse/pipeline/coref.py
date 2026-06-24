@@ -10,22 +10,21 @@ from __future__ import annotations
 import unicodedata
 from collections.abc import Iterable
 
+from emoparse.core.text import STOPWORDS
+
 #: Mention key: (unit_idx, mention_idx_within_frase).
 MentionKey = tuple[int, int]
 
 
-#: Stopwords castellanas a descartar para el match por tokens.
-_STOPWORDS: frozenset[str] = frozenset({
-    "el", "la", "los", "las",
-    "un", "una", "unos", "unas",
-    "de", "del", "al",
-    "y", "o", "u",
-    "a", "en", "con", "por", "para", "sobre",
-    "que", "se", "su", "sus",
-    "mi", "tu",
-    "este", "esta", "estos", "estas",
-    "ese", "esa", "esos", "esas",
-})
+#: Mínimo de tokens significativos compartidos para agrupar dos menciones que
+#: no son subconjunto una de la otra. Evita unir "víctimas del Holocausto" con
+#: "víctimas del atentado a la AMIA" (un solo token en común).
+_MIN_SHARED_TOKENS = 3
+
+#: Mínimo de tokens del set contenido para aceptar una fusión por subconjunto.
+#: Permite unir "presidente de la nación" con "presidente de la nación
+#: argentina" (subconjunto de 2 tokens), pero no fusiona por un único token.
+_MIN_SUBSET_TOKENS = 2
 
 
 def _strip_accents(s: str) -> str:
@@ -44,7 +43,7 @@ def _normalize(s: str) -> str:
 def _tokenize(s: str) -> list[str]:
     """Tokeniza por whitespace; filtra stopwords y tokens cortísimos."""
     raw = _normalize(s).split()
-    return [t for t in raw if len(t) > 1 and t not in _STOPWORDS]
+    return [t for t in raw if len(t) > 1 and t not in STOPWORDS]
 
 
 def cluster_mentions_within_discurso(
@@ -55,12 +54,16 @@ def cluster_mentions_within_discurso(
     Heurística conservadora:
       1. Normalización (lowercase, sin tildes, strip).
       2. Match exacto sobre el string normalizado → mismo cluster.
-      3. Match por subset de tokens significativos: si ambas menciones
-         comparten al menos un token no-stopword Y uno está contenido
-         en el otro (subset de tokens), se agrupan.
+      3. Subconjunto de tokens significativos: si el set de tokens de una
+         mención está contenido en el de la otra Y tiene al menos
+         `_MIN_SUBSET_TOKENS` tokens, se agrupan.
+      4. Solapamiento sin subconjunto: si comparten al menos
+         `_MIN_SHARED_TOKENS` tokens significativos, se agrupan.
 
     No agrupa (para evitar falsos positivos):
-      - Aposiciones implícitas.
+      - Menciones que comparten un único token significativo sin relación de
+        subconjunto (p. ej. "víctimas del Holocausto" / "víctimas del atentado").
+      - Subconjuntos de un solo token (p. ej. apellido suelto).
       - Menciones cuyos únicos tokens en común sean stopwords.
     """
     mentions: list[tuple[MentionKey, str, frozenset[str]]] = []
@@ -104,7 +107,14 @@ def cluster_mentions_within_discurso(
 
             if not toks_i or not toks_j:
                 continue
-            if toks_i <= toks_j or toks_j <= toks_i:
+
+            is_subset = toks_i <= toks_j or toks_j <= toks_i
+            smaller = min(len(toks_i), len(toks_j))
+            if is_subset and smaller >= _MIN_SUBSET_TOKENS:
+                union(i, j)
+                continue
+
+            if len(toks_i & toks_j) >= _MIN_SHARED_TOKENS:
                 union(i, j)
 
     clusters: dict[int, set[MentionKey]] = {}

@@ -17,6 +17,7 @@ def render_system(
     tipo_discurso: str,
     enunciador: str,
     enunciatarios: str = "",
+    auditorio: str = "",
     alcance: str = "",
 ) -> str:
     """Renderiza el system prompt de EmotionsAgent.
@@ -31,6 +32,8 @@ def render_system(
         enunciador: Identificación del enunciador.
         enunciatarios: Enunciatarios del discurso, ya formateados como texto.
             Vacío si no se conocen.
+        auditorio: Auditorio del discurso, ya formateado como texto. Vacío
+            si no se conoce.
         alcance: Frase que restringe los experienciadores a analizar. Vacío
             para analizar emociones de cualquier actor.
     """
@@ -43,6 +46,7 @@ def render_system(
         tipo_discurso=tipo_discurso,
         enunciador=enunciador,
         enunciatarios=enunciatarios,
+        auditorio=auditorio,
         alcance=alcance,
     )
 

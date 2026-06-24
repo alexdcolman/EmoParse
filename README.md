@@ -83,8 +83,6 @@ emoparse scrape      Scrapea discursos desde una source registrada
 emoparse status      Resumen pending/failed/completed por stage
 emoparse inspect     Estado completo de un discurso particular
 emoparse retry       Limpia errores para reintentar (modo legacy o policy YAML)
-emoparse discoveries Gestiona actores no reconocidos por la homogeneización (listar, exportar, promover, fusionar, descartar)
-emoparse experiencers Gestiona equivalencias de experienciador por discurso (listar, exportar, aceptar, rechazar, aplicar)
 emoparse validate    Corre los domain validators sobre las emociones
 emoparse judge       Resumen de veredictos del LLM-as-judge
 emoparse metrics     Métricas persistidas por stage
@@ -100,13 +98,15 @@ emoparse run --help
 
 ---
 
-## Foco de análisis y normalización de experienciadores
+## Foco de análisis, referentes y deixis
 
 Por defecto `emoparse run` detecta emociones de todos los experienciadores. Para acotar el análisis a ciertos roles, `run` acepta `--enunciador`, `--enunciatarios` y `--actores` (combinables): si se pasa alguno, solo se analizan las emociones de esos experienciadores, en ambos pases de detección.
 
-La etapa opcional `normalize_experiencers` resuelve las distintas formas en que un discurso nombra a quien siente (por ejemplo "yo" o "el orador" → el enunciador de ese discurso). Propone equivalencias para revisión humana; se revisan con `emoparse experiencers list/accept/reject` (o desde el dashboard) y se materializan en `emociones.experienciador_canonico` con `emoparse experiencers apply`.
+Las marcas discursivas de actores, experienciadores y fuentes se agrupan en una base de menciones y se vinculan a **referentes canónicos**. El agrupamiento es automático (correferencia léxica conservadora) y los canónicos se construyen descartando artículos y prefiriendo la inferencia dominante del LLM. La revisión humana —agrupar, aceptar, reasignar, mergear canónicos, dar de alta/baja, asignar semas— vive en la tab **Referentes** del dashboard.
 
-Para los actores nuevos, `normalize_actors` resuelve correferencias y vincula contra la base de actores conocidos; además, en la misma pasada, propone una forma canónica (id, nombre y tipo) para cada actor no reconocido, con una regla de estabilidad (el mismo actor recibe el mismo slug aunque la mención cambie). El dashboard agrupa esos hallazgos por canónico sugerido y permite confirmar un grupo entero (un promote + sus merges) en un paso, sin llamadas extra al modelo. La revisión también se puede hacer con `emoparse discoveries`.
+La etapa opcional `deixis` (se corre con `--stages …,deixis`, luego de `enunciation` y `emotions`) resuelve las marcas deícticas de 1ª y 2ª persona ("yo", "nosotros", "veamos"…) a los referentes concretos del discurso: el **enunciador**, el **auditorio** (destinatario directo) o los **colectivos de identificación** del enunciador, todos identificados por `enunciation`. La asignación puede ser múltiple (p. ej. "nosotros" → el enunciador y su colectivo). Sus sugerencias se revisan en la tab **Deixis**: al aceptarlas, la marca queda inscripta en el referente concreto (p. ej. "yo" → *Javier Milei*) y se sobreescribe el canónico que el modelo había inventado.
+
+El dashboard incluye además tabs de **Búsqueda** (por texto o por selección de emoción/actor/experienciador/fuente, con contexto de frases), **Co-ocurrencia** de emociones por frase y **Simulacros** (reconstrucción de cada emoción con sus funciones actanciales, filtrable por actantes, semas y texto).
 
 ---
 

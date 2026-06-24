@@ -64,15 +64,8 @@ def _make_carac(**overrides) -> CaracterizacionEmocionSchema:
         "dominancia_justificacion": "jus dom",
         "intensidad": "alta",
         "intensidad_justificacion": "jus int",
-        "fuente": "el acuerdo",
-        "tipo_fuente": "situacion",
-        "fuente_justificacion": "jus fuente",
         "duracion": "durable",
         "duracion_justificacion": "jus dur",
-        "modo_semiotizacion": "dicha",
-        "modo_semiotizacion_justificacion": "jus semiot",
-        "modo_identificacion": "directa",
-        "modo_identificacion_justificacion": "jus iden",
         "tipo_atribucion": "auto_atribucion",
         "tipo_atribucion_justificacion": "jus atr",
     }
@@ -93,8 +86,6 @@ class TestCharacterizerTier1Output:
         cols = CharacterizerAgent.OUTPUT_COLUMNS
         for field in (
             "duracion", "duracion_justificacion",
-            "modo_semiotizacion", "modo_semiotizacion_justificacion",
-            "modo_identificacion", "modo_identificacion_justificacion",
             "tipo_atribucion", "tipo_atribucion_justificacion",
         ):
             assert field in cols, f"Campo Tier 1 ausente en OUTPUT_COLUMNS: {field}"
@@ -112,18 +103,18 @@ class TestCharacterizerTier1Output:
             "experienciador": "el presidente",
             "tipo_emocion": "orgullo",
             "modo_existencia": "realizada",
+            "fuente_marca": "la riqueza",
+            "fuente_inferencia": "riqueza",
             "frase_idx": 0,
             "emocion_idx": 0,
         }])
         df_out = agent.run(df_in)
 
-        for col in ("duracion", "modo_semiotizacion", "modo_identificacion", "tipo_atribucion"):
+        for col in ("duracion", "tipo_atribucion"):
             assert col in df_out.columns, f"Columna Tier 1 ausente en output: {col}"
 
         row = df_out.iloc[0]
         assert row["duracion"] == "durable"
-        assert row["modo_semiotizacion"] == "dicha"
-        assert row["modo_identificacion"] == "directa"
         assert row["tipo_atribucion"] == "auto_atribucion"
         assert row["duracion_justificacion"] == "jus dur"
         assert row["tipo_atribucion_justificacion"] == "jus atr"
@@ -141,11 +132,13 @@ class TestCharacterizerTier1Output:
             "experienciador": "y",
             "tipo_emocion": "miedo",
             "modo_existencia": "realizada",
+            "fuente_marca": "la pobreza",
+            "fuente_inferencia": "pobreza",
             "frase_idx": 0,
             "emocion_idx": 0,
         }])
         agent.run(df_in)
 
         system = backend.calls[0]["system"]
-        for keyword in ("DURACION", "MODO_SEMIOTIZACION", "MODO_IDENTIFICACION", "TIPO_ATRIBUCION"):
+        for keyword in ("DURACION", "TIPO_ATRIBUCION"):
             assert keyword in system, f"Keyword '{keyword}' ausente en system prompt"

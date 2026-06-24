@@ -158,7 +158,7 @@ def runner(tmp_path: Path):
     # Todas las etapas, incluidas las opcionales.
     all_stages = (
         "summarizer", "metadata", "enunciation", "actors",
-        "normalize_actors", "emotions", "emotions_pass2",
+        "emotions", "emotions_pass2",
         "explode_emociones", "normalize_emotions",
         "characterizer", "actants", "judge",
     )
@@ -217,8 +217,8 @@ def test_full_pipeline_all_stages(runner) -> None:
     # 1. El reporte cubre todas las etapas con LLM habilitadas.
     for stage in (
         "summarizer", "metadata", "enunciation", "actors",
-        "normalize_actors", "emotions", "emotions_pass2",
-        "normalize_emotions", "characterizer", "actants", "judge",
+        "emotions", "emotions_pass2",
+        "characterizer", "actants", "judge",
     ):
         assert stage in report, f"Etapa ausente en el reporte: {stage}"
 
@@ -279,7 +279,7 @@ def test_default_stages_skip_optional(tmp_path: Path) -> None:
         report = run.run()
 
     # Las opcionales no deben aparecer como ejecutadas.
-    for opt in ("normalize_actors", "emotions_pass2", "actants", "judge"):
+    for opt in ("emotions_pass2", "actants", "judge"):
         assert opt not in report, (
             f"La etapa opcional '{opt}' se ejecutó sin pedirla"
         )

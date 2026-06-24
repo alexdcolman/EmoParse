@@ -75,6 +75,46 @@ class KnowledgeLoader:
         )
         return data
 
+    def load_semas(self, filename: str = "semas.json") -> dict[str, Any]:
+        """Devuelve el vocabulario de semas crudo (dimensiones + lista plana)."""
+        return self._read_json(self._resolve(filename))
+
+    def load_colectivos(
+        self,
+        filename: str = "colectivos.json",
+    ) -> dict[str, Any]:
+        """Devuelve la ontología de colectivos de identificación, por tipo de discurso.
+
+        Estructura esperada:
+        `{"version": "...", "<tipo_discurso>": {<clase>: {"descripcion": ..., "ejemplo": ...}}}`.
+        Inyectada en el system prompt de enunciation para acotar las clases
+        válidas de colectivo de identificación según el género discursivo.
+        """
+        path = self._resolve(filename)
+        data = self._read_json(path)
+        logger.debug(
+            f"[Knowledge] Cargada ontología de colectivos: {path.name} "
+            f"({sum(1 for k in data if k != 'version')} tipos)"
+        )
+        return data
+
+    def load_referentes_kb(
+        self,
+        filename: str = "referentes_kb.json",
+    ) -> dict[str, Any]:
+        """Devuelve el dict crudo de la KB de referentes, sin formateo.
+
+        Estructura esperada:
+        `{"version": "...", "referentes": {<canonical_id>: {...}}}`.
+        """
+        path = self._resolve(filename)
+        data = self._read_json(path)
+        logger.debug(
+            f"[Knowledge] Cargada KB de referentes: {path.name} "
+            f"({len(data.get('referentes', {}))} entradas)"
+        )
+        return data
+
     def load_actors_kb(self, filename: str = "actors_kb.json") -> dict[str, Any]:
         """Devuelve el dict crudo de la KB de actores, sin formateo.
 

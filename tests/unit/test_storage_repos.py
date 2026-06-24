@@ -227,14 +227,16 @@ class TestEmociones:
         repo.upsert_emociones([
             {
                 "codigo": "A", "frase_idx": 0, "emocion_idx": 0,
-                "experienciador": "orador", "tipo_emocion": "miedo",
+                "experienciador": "orador", "experienciador_marca": "yo", 
+                "tipo_emocion": "miedo",
                 "modo_existencia": "realizada",
-                "deteccion_justificacion": "tiembla",
+                "fuente_marca": "marca", "fuente_inferencia": "inferencia",
             },
             {
                 "codigo": "A", "frase_idx": 0, "emocion_idx": 1,
-                "experienciador": "pueblo", "tipo_emocion": "esperanza",
+                "experienciador": "pueblo", "experienciador_marca": "ellos", "tipo_emocion": "esperanza",
                 "modo_existencia": "potencial",
+                "fuente_marca": "marca", "fuente_inferencia": "inferencia",
             },
         ])
         emos = repo.list_emociones_of_discurso("A")
@@ -246,8 +248,8 @@ class TestEmociones:
         repo = EmocionesRepository(emos_setup)
         repo.upsert_emociones([
             {"codigo": "A", "frase_idx": 0, "emocion_idx": 0,
-             "experienciador": "x", "tipo_emocion": "miedo",
-             "modo_existencia": "realizada"},
+             "experienciador": "x", "experienciador_marca": "yo", "tipo_emocion": "miedo",
+             "modo_existencia": "realizada", "fuente_marca": "marca", "fuente_inferencia": "inferencia"},
         ])
         pending = repo.list_pending_caracterizacion("A")
         assert pending == [("A", 0, 0)]
@@ -263,8 +265,8 @@ class TestEmociones:
         repo = EmocionesRepository(emos_setup)
         repo.upsert_emociones([
             {"codigo": "A", "frase_idx": 0, "emocion_idx": 0,
-             "experienciador": "x", "tipo_emocion": "miedo",
-             "modo_existencia": "realizada"},
+             "experienciador": "x", "experienciador_marca": "yo", "tipo_emocion": "miedo",
+             "modo_existencia": "realizada", "fuente_marca": "marca", "fuente_inferencia": "inferencia"},
         ])
         payload = {"foria": "disforico", "intensidad": "alta"}
         repo.set_caracterizacion("A", 0, 0, payload=payload, version="v1")

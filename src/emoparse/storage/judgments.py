@@ -173,6 +173,26 @@ class JudgmentsRepository:
             cur.execute(sql, params)
             return cur.rowcount
 
+    def invalidate(
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+    ) -> bool:
+        """Borra el veredicto de UNA emoción para forzar su re-juicio.
+
+        Tras esto, en cuanto la emoción vuelva a estar caracterizada, reaparece
+        en `list_pending` (porque el LEFT JOIN deja de encontrar fila). Se usa
+        cuando cambia el experienciador y hay que recalcular downstream.
+        Devuelve True si había una fila que borrar."""
+        with self._db.transaction() as cur:
+            cur.execute(
+                "DELETE FROM judgments "
+                "WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
+                (codigo, frase_idx, emocion_idx),
+            )
+            return cur.rowcount > 0
+
     def count_by_coherence(self, codigo: str | None = None) -> dict[str, int]:
         """Conteos simples de coherencia y errores."""
         sql = """

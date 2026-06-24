@@ -124,8 +124,11 @@ def populated_db(empty_db: Path) -> Path:
                 "p-v3",
                 json.dumps([
                     {"experienciador": "yo",
+                     "experienciador_marca": "yo",
                      "tipo_emocion": "indignación",
-                     "modo_existencia": "actualizado"},
+                     "modo_existencia": "actualizado",
+                     "fuente_inferencia": "accidente",
+                     "fuente_marca": "marca1",},
                 ]),
                 "p-v3",
             ),
@@ -142,8 +145,11 @@ def populated_db(empty_db: Path) -> Path:
                 "p-v3",
                 json.dumps([
                     {"experienciador": "yo",
+                     "experienciador_marca": "yo",
                      "tipo_emocion": "esperanza",
-                     "modo_existencia": "virtualizado"},
+                     "modo_existencia": "virtualizado",
+                     "fuente_inferencia": "gobierno",
+                     "fuente_marca": "marca1",},
                 ]),
                 "p-v3",
             ),
@@ -172,18 +178,16 @@ def populated_db(empty_db: Path) -> Path:
         conn.execute(
             """INSERT INTO emociones (
                 codigo, frase_idx, emocion_idx,
-                experienciador, tipo_emocion, modo_existencia,
-                deteccion_justificacion,
+                experienciador, experienciador_marca, tipo_emocion, modo_existencia,
+                fuente_inferencia, fuente_marca,
                 caracterizacion_payload, caracterizacion_version
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 "D1", 0, 0,
-                "yo", "indignación", "actualizado",
-                "primera persona expresando indignación",
+                "yo", "yo", "indignación", "actualizado", "accidente", "marca1",
                 json.dumps({"foria": "disfórico",
                             "dominancia": "alta",
-                            "intensidad": "alta",
-                            "fuente": "moral"}),
+                            "intensidad": "alta"}),
                 "p-v3",
             ),
         )
@@ -191,16 +195,16 @@ def populated_db(empty_db: Path) -> Path:
         conn.execute(
             """INSERT INTO emociones (
                 codigo, frase_idx, emocion_idx,
-                experienciador, tipo_emocion, modo_existencia,
+                experienciador, experienciador_marca, tipo_emocion, modo_existencia,
+                fuente_inferencia, fuente_marca,
                 caracterizacion_payload, caracterizacion_version
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 "D1", 1, 0,
-                "yo", "esperanza", "virtualizado",
+                "yo", "yo", "esperanza", "virtualizado", "gobierno", "marca1",
                 json.dumps({"foria": "eufórico",
                             "dominancia": "media",
-                            "intensidad": "media",
-                            "fuente": "personal"}),
+                            "intensidad": "media"}),
                 "p-v3",
             ),
         )
@@ -208,12 +212,15 @@ def populated_db(empty_db: Path) -> Path:
         conn.execute(
             """INSERT INTO emociones (
                 codigo, frase_idx, emocion_idx,
-                experienciador, tipo_emocion, modo_existencia,
+                experienciador, experienciador_marca, tipo_emocion, modo_existencia,
+                fuente_inferencia, fuente_marca,
                 caracterizacion_error
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 "D1", 1, 1,
-                "ellos", "miedo", "potencializado",
+                "ellos", "ellos","miedo", "potencializado",
+                "terrorismo",
+                "marca1",
                 "GBNF rechazó respuesta",
             ),
         )
@@ -221,25 +228,27 @@ def populated_db(empty_db: Path) -> Path:
         conn.execute(
             """INSERT INTO emociones (
                 codigo, frase_idx, emocion_idx,
-                experienciador, tipo_emocion, modo_existencia
-            ) VALUES (?, ?, ?, ?, ?, ?)""",
-            ("D1", 0, 1, "ellos", "ira", "actualizado"),
+                experienciador, experienciador_marca, tipo_emocion, modo_existencia,
+                fuente_inferencia, fuente_marca
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            ("D1", 0, 1, "ellos", "ellos", "ira", "actualizado", "socialistas", "marca1"),
         )
         # D2 emoción 0: caracterizada (aunque la frase tuvo error,
         # podemos tener emociones pre-existentes de un run parcial).
         conn.execute(
             """INSERT INTO emociones (
                 codigo, frase_idx, emocion_idx,
-                experienciador, tipo_emocion, modo_existencia,
+                experienciador, experienciador_marca, tipo_emocion, modo_existencia,
+                fuente_inferencia, fuente_marca,
                 caracterizacion_payload, caracterizacion_version
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 "D2", 0, 0,
-                "yo", "tristeza", "actualizado",
+                "yo", "yo", "tristeza", "actualizado",
+                "socialistas", "marca1",
                 json.dumps({"foria": "disfórico",
                             "dominancia": "baja",
-                            "intensidad": "baja",
-                            "fuente": "personal"}),
+                            "intensidad": "baja"}),
                 "p-v3",
             ),
         )
@@ -434,13 +443,12 @@ def test_get_emociones_all(populated_db: Path) -> None:
 
 
 def test_get_emociones_columns(populated_db: Path) -> None:
-    """Caracterización flat: foria, dominancia, intensidad, fuente."""
+    """Caracterización flat: foria, dominancia, intensidad."""
     df = data_layer.get_emociones(populated_db)
     em = df[(df["codigo"] == "D1") & (df["frase_idx"] == 0) & (df["emocion_idx"] == 0)].iloc[0]
     assert em["foria"] == "disfórico"
     assert em["dominancia"] == "alta"
     assert em["intensidad"] == "alta"
-    assert em["fuente"] == "moral"
 
 
 def test_get_emociones_join_frase(populated_db: Path) -> None:

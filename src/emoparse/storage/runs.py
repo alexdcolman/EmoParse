@@ -95,6 +95,11 @@ class RunsRepository:
             type_def="REAL",
         )
         self._add_column_if_missing(
+            table="mencion_canonico",
+            column="deixis_tipo",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
             table="emociones",
             column="tipo_emocion_canonico",
             type_def="TEXT",
@@ -111,27 +116,7 @@ class RunsRepository:
         )
         self._add_column_if_missing(
             table="emociones",
-            column="normalize_experiencers_version",
-            type_def="TEXT",
-        )
-        self._add_column_if_missing(
-            table="emociones",
             column="tipo_configuracion",
-            type_def="TEXT",
-        )
-        self._add_column_if_missing(
-            table="frases",
-            column="actores_canonicos_payload",
-            type_def="TEXT",
-        )
-        self._add_column_if_missing(
-            table="frases",
-            column="actores_canonicos_version",
-            type_def="TEXT",
-        )
-        self._add_column_if_missing(
-            table="frases",
-            column="actores_canonicos_error",
             type_def="TEXT",
         )
         self._add_column_if_missing(
@@ -148,26 +133,6 @@ class RunsRepository:
             table="emociones",
             column="actantes_error",
             type_def="TEXT",
-        )
-        self._add_column_if_missing(
-            table="actors_kb_discoveries",
-            column="canonical_id_sugerido",
-            type_def="TEXT",
-        )
-        self._add_column_if_missing(
-            table="actors_kb_discoveries",
-            column="display_name_sugerido",
-            type_def="TEXT",
-        )
-        self._add_column_if_missing(
-            table="actors_kb_discoveries",
-            column="tipo_sugerido",
-            type_def="TEXT",
-        )
-        self._add_column_if_missing(
-            table="actors_kb_discoveries",
-            column="alias_candidato",
-            type_def="INTEGER",
         )
 
     def _add_column_if_missing(

@@ -42,6 +42,7 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
         titulo: str = "",
         tipo_discurso: str = "",
         heuristicas: str | None = None,
+        ontologia: str | None = None,
         retry_config: Any | None = None,
         genre: Genre | None = None,
     ) -> None:
@@ -52,6 +53,8 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
             tipo_discurso: Clasificación o tipo del discurso.
             heuristicas: Reglas heurísticas para evaluación de coherencia.
                 Si None, no se inyectan heurísticas en el system prompt.
+            ontologia: Ontología de emociones serializada. Si None, el juez no
+                recibe las definiciones de emociones (comportamiento previo).
             retry_config: Política de reintentos ante errores transitorios.
             genre: Configuración opcional de género discursivo. Puede
                 ajustar parámetros como `BATCH_SIZE`.
@@ -59,6 +62,7 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
         self._titulo = titulo
         self._tipo_discurso = tipo_discurso
         self._heuristicas = heuristicas
+        self._ontologia = ontologia
         self._genre = genre
 
         if genre is not None and "judge" in genre.batch_size:
@@ -73,6 +77,7 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
             titulo=self._titulo,
             tipo_discurso=self._tipo_discurso,
             heuristicas=self._heuristicas,
+            ontologia=self._ontologia,
         )
 
     def _build_user(self, batch: pd.DataFrame) -> str:
@@ -86,8 +91,7 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
             foria = str(row.get("foria", ""))
             dominancia = str(row.get("dominancia", ""))
             intensidad = str(row.get("intensidad", ""))
-            fuente = str(row.get("fuente", ""))
-            tipo_fuente = str(row.get("tipo_fuente", ""))
+            fuente = str(row.get("fuente_inferencia", ""))
 
             bloques.append(
                 f"UNIDAD [{i}] (codigo={codigo}):\n"
@@ -100,7 +104,7 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
                 f"    Foria:       {foria}\n"
                 f"    Dominancia:  {dominancia}\n"
                 f"    Intensidad:  {intensidad}\n"
-                f"    Fuente:      {fuente} ({tipo_fuente})"
+                f"    Fuente:      {fuente}"
             )
         unidades_block = "\n\n".join(bloques)
         return prompts.render_user(unidades_block=unidades_block)

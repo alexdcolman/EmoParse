@@ -88,6 +88,8 @@ class EmocionExplodedContract(DataFrameModel):
     emocion_idx: Series[int] = pa.Field(nullable=False, ge=0)
     experienciador: Series[str] = pa.Field(nullable=False)
     tipo_emocion: Series[str] = pa.Field(nullable=False)
+    fuente_marca: Series[str] = pa.Field(nullable=False)
+    fuente_inferencia: Series[str] = pa.Field(nullable=False)
     modo_existencia: Series[str] = pa.Field(nullable=False)
     tipo_configuracion: Series[str] = pa.Field(nullable=True)
 

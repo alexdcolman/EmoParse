@@ -29,8 +29,10 @@ def _base_kwargs(**overrides):
         "experienciador": "el pueblo",
         "tipo_emocion": "indignacion",
         "modo_existencia": "realizada",
+        "experienciador_marca": "el pueblo",
+        "fuente_marca": "el socialismo",
+        "fuente_inferencia": "socialismo",
         "tipo_configuracion": "sostenido_en_sustantivos",
-        "justificacion": "se nombra 'la indignación de los presentes'.",
     }
     base.update(overrides)
     return base

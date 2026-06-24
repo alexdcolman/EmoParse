@@ -1,0 +1,17 @@
+{
+  "version": "v1",
+  "discurso político": {
+    "institucional": {
+      "descripcion": "Colectivo definido por una posición institucional o de gobierno que el enunciador encarna o representa.",
+      "ejemplo": "el gobierno, la gestión, la administración, el Estado nacional"
+    },
+    "partidario": {
+      "descripcion": "Colectivo definido por la pertenencia a un partido, frente o agrupación política.",
+      "ejemplo": "La Libertad Avanza, el peronismo, nuestro espacio"
+    },
+    "ideológico": {
+      "descripcion": "Colectivo definido por una adscripción doctrinaria, ideológica o de valores compartidos, sin frontera institucional ni partidaria.",
+      "ejemplo": "los libertarios, el campo nacional y popular, los que creemos en la libertad"
+    }
+  }
+}

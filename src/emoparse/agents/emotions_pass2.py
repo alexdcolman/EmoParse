@@ -61,6 +61,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         tipo_discurso: str = "",
         enunciador: str = "",
         enunciatarios: str = "",
+        auditorio: str = "",
         emotion_scope: tuple[str, ...] | None = None,
         context_mode: Literal["rolling", "full"] = "rolling",
         retry_config: RetryConfig | None = None,
@@ -78,6 +79,9 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
             tipo_discurso: Tipo o clasificación del discurso.
             enunciador: Sujeto principal de enunciación del discurso.
             enunciatarios: Destinatarios o audiencias del discurso.
+            auditorio: Auditorio (destinatario directo, quienes efectivamente
+                escuchan o leen el discurso) del discurso, ya formateado
+                como texto. Vacío si no se conoce.
             emotion_scope: Restricción de experienciadores a analizar. Si se
                 pasa, el prompt enfatiza que solo se consideren emociones
                 relacionadas con esos actores específicos. Si no se pasa, se
@@ -95,6 +99,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         self._tipo_discurso = tipo_discurso
         self._enunciador = enunciador
         self._enunciatarios = enunciatarios
+        self._auditorio = auditorio
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else ()
         self._context_mode = context_mode
         self._genre = genre
@@ -121,6 +126,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
             tipo_discurso=self._tipo_discurso,
             enunciador=self._enunciador,
             enunciatarios=self._enunciatarios,
+            auditorio=self._auditorio,
             alcance=alcance_text(
                 self._emotion_scope, self._enunciador, self._enunciatarios
             ),

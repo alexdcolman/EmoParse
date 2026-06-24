@@ -56,8 +56,9 @@ def test_pre_v03_db_gets_column_via_migration(tmp_path: Path) -> None:
                 emocion_idx INTEGER NOT NULL,
                 experienciador TEXT NOT NULL,
                 tipo_emocion TEXT NOT NULL,
+                fuente_marca TEXT NOT NULL,
+                fuente_inferencia TEXT NOT NULL,
                 modo_existencia TEXT NOT NULL,
-                deteccion_justificacion TEXT,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 PRIMARY KEY (codigo, frase_idx, emocion_idx)
@@ -95,10 +96,12 @@ def test_upsert_persists_tipo_configuracion(tmp_path: Path) -> None:
     repo.upsert_emocion(
         codigo="A", frase_idx=0, emocion_idx=0,
         experienciador="el pueblo",
+        experienciador_marca="el pueblo",
         tipo_emocion="indignacion",
         modo_existencia="realizada",
         tipo_configuracion="sostenido_en_sustantivos",
-        deteccion_justificacion="evidencia",
+        fuente_marca="el socialismo",
+        fuente_inferencia="socialismo",
     )
     row = repo.get_emocion("A", 0, 0)
     assert row is not None

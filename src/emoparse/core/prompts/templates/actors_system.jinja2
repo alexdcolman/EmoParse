@@ -16,7 +16,13 @@ HEURÍSTICAS DE INFERENCIA:
 REGLAS:
 
 - Por cada actor, indicá:
-    * actor:         nombre o denominación tal como aparece en el texto.
+    * marca:         la expresión LITERAL de la unidad que habilita al
+                     actor (mención de superficie tal cual: "Javier Milei",
+                     "ellos", "la Casa Rosada", "represión"). Si es sujeto
+                     tácito, transcribí el verbo/construcción ("ordenaron").
+    * actor:         referente inferido de la marca (a quién refiere). Si la
+                     marca ya lo nombra, repetilo; si es deíctico/tácito/
+                     metonímico, poné el referente deducido del contexto.
     * tipo:          humano_individual | colectivo | institucional.
     * modo:          'explicito' si se nombra literalmente,
                      'inferido' si se deduce del contexto.

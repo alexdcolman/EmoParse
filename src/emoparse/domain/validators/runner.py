@@ -120,13 +120,14 @@ class ValidationRunner:
                         frase_idx=emo["frase_idx"],
                         emocion_idx=emo["emocion_idx"],
                         experienciador=emo.get("experienciador", ""),
+                        experienciador_marca=emo.get("experienciador_marca", ""),
                         tipo_emocion=emo.get("tipo_emocion", ""),
+                        fuente_marca=emo.get("fuente_marca", ""),
+                        fuente_inferencia=emo.get("fuente_inferencia", ""),
                         modo_existencia=emo.get("modo_existencia", ""),
                         foria=emo.get("foria", ""),
                         dominancia=emo.get("dominancia", ""),
                         intensidad=emo.get("intensidad", ""),
-                        tipo_fuente=emo.get("tipo_fuente", ""),
-                        fuente=emo.get("fuente", ""),
                         enunciador=enunciador,
                         enunciatarios=enunciatarios,
                     )
@@ -176,6 +177,7 @@ class ValidationRunner:
                 frase_idx,
                 emocion_idx,
                 experienciador,
+                experienciador_marca,
                 tipo_emocion,
                 modo_existencia,
                 caracterizacion_payload
@@ -202,13 +204,14 @@ class ValidationRunner:
                 "frase_idx": row["frase_idx"],
                 "emocion_idx": row["emocion_idx"],
                 "experienciador": row["experienciador"] or "",
+                "experienciador_marca": row["experienciador_marca"] or "",
                 "tipo_emocion": row["tipo_emocion"] or "",
                 "modo_existencia": row["modo_existencia"] or "",
                 "foria": caract.get("foria", ""),
                 "dominancia": caract.get("dominancia", ""),
                 "intensidad": caract.get("intensidad", ""),
-                "tipo_fuente": caract.get("tipo_fuente", ""),
-                "fuente": caract.get("fuente", ""),
+                "fuente_marca": caract.get("fuente_marca", ""),
+                "fuente_inferencia": caract.get("fuente_inferencia", ""),
             })
 
         return result

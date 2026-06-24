@@ -20,7 +20,6 @@ from emoparse.domain.validators.rules import (
     V04_AforicoConIntensidadAlta,
     V05_AmbiforicaConIntensidadBaja,
     V06_VirtualConForiaAforica,
-    V07_TipoFuenteActorSinFuenteNombrada,
     V08_ActorCoincideConEnunciador,
     V09_EmocionDuplicadaMismoActorMismaFrase,
     V10_ModoPotencialConExperienciadorNoEnunciatario,
@@ -41,13 +40,14 @@ def _base_kwargs(**overrides) -> dict[str, Any]:
         frase_idx=0,
         emocion_idx=0,
         experienciador="el pueblo",
+        experienciador_marca="el pueblo",
         tipo_emocion="alegria",
         modo_existencia="realizada",
         foria="euforico",
         dominancia="cognoscitiva",
         intensidad="alta",
-        tipo_fuente="situacion",
-        fuente="la victoria electoral",
+        fuente_inferencia="la victoria electoral",
+        fuente_marca="marca1",
         enunciador="Javier Milei",
         enunciatarios=[],
     )
@@ -108,9 +108,11 @@ def _bootstrap_db(db: Database) -> None:
                 frase_idx INTEGER NOT NULL,
                 emocion_idx INTEGER NOT NULL,
                 experienciador TEXT NOT NULL,
+                experienciador_marca TEXT NOT NULL,
                 tipo_emocion TEXT NOT NULL,
                 modo_existencia TEXT NOT NULL,
-                deteccion_justificacion TEXT,
+                fuente_marca TEXT NOT NULL,
+                fuente_inferencia TEXT NOT NULL,
                 caracterizacion_payload TEXT,
                 caracterizacion_version TEXT,
                 caracterizacion_error TEXT,
@@ -136,19 +138,20 @@ def _insert_discurso(db: Database, codigo: str, enunciador: str = "el presidente
 
 
 def _insert_emocion(db: Database, codigo: str, frase_idx: int, emocion_idx: int,
-                    experienciador: str, tipo_emocion: str, modo_existencia: str,
+                    experienciador: str, experienciador_marca: str, tipo_emocion: str, modo_existencia: str,
+                    fuente_marca: str, fuente_inferencia: str,
                     caract: dict | None = None) -> None:
     caract_json = json.dumps(caract) if caract else None
     with db.transaction() as cur:
         cur.execute(
             """
             INSERT INTO emociones
-                (codigo, frase_idx, emocion_idx, experienciador, tipo_emocion,
-                 modo_existencia, caracterizacion_payload)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
+                (codigo, frase_idx, emocion_idx, experienciador, experienciador_marca, tipo_emocion,
+                 modo_existencia, fuente_marca, fuente_inferencia, caracterizacion_payload)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            (codigo, frase_idx, emocion_idx, experienciador, tipo_emocion,
-             modo_existencia, caract_json),
+            (codigo, frase_idx, emocion_idx, experienciador, experienciador_marca, tipo_emocion,
+             modo_existencia, fuente_marca, fuente_inferencia, caract_json),
         )
 
 
@@ -160,9 +163,6 @@ def _default_caract(**overrides) -> dict:
         dominancia_justificacion="j",
         intensidad="alta",
         intensidad_justificacion="j",
-        fuente="la situación",
-        tipo_fuente="situacion",
-        fuente_justificacion="j",
     )
     base.update(overrides)
     return base
@@ -227,7 +227,7 @@ class TestV02:
 
     def test_dispara_cuando_no_identificada_y_alta(self):
         issues = self.v.validate(**_base_kwargs(
-            tipo_fuente="no_se_identifica",
+            fuente_inferencia="no identificado",
             intensidad="alta",
         ))
         assert len(issues) == 1
@@ -235,14 +235,14 @@ class TestV02:
 
     def test_no_dispara_si_intensidad_baja(self):
         issues = self.v.validate(**_base_kwargs(
-            tipo_fuente="no_se_identifica",
+            fuente_inferencia="no identificado",
             intensidad="baja",
         ))
         assert issues == []
 
     def test_no_dispara_si_fuente_identificada(self):
         issues = self.v.validate(**_base_kwargs(
-            tipo_fuente="actor",
+            fuente_inferencia="identificado",
             intensidad="alta",
         ))
         assert issues == []
@@ -335,44 +335,6 @@ class TestV06:
         issues = self.v.validate(**_base_kwargs(
             modo_existencia="realizada",
             foria="aforico",
-        ))
-        assert issues == []
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  V-07
-# ══════════════════════════════════════════════════════════════════════════════
-
-class TestV07:
-    v = V07_TipoFuenteActorSinFuenteNombrada()
-
-    def test_dispara_tipo_actor_fuente_no_identificada(self):
-        issues = self.v.validate(**_base_kwargs(
-            tipo_fuente="actor",
-            fuente="no identificado",
-        ))
-        assert len(issues) == 1
-        assert issues[0].validator_id == "V-07"
-
-    def test_dispara_tipo_actor_fuente_sentinel_alternativo(self):
-        issues = self.v.validate(**_base_kwargs(
-            tipo_fuente="actor",
-            fuente="no_se_identifica",
-        ))
-        assert len(issues) == 1
-
-    def test_no_dispara_tipo_actor_con_fuente_nombrada(self):
-        issues = self.v.validate(**_base_kwargs(
-            tipo_fuente="actor",
-            fuente="el ministro de economía",
-        ))
-        assert issues == []
-
-    def test_no_dispara_tipo_situacion_sin_fuente(self):
-        """Otro tipo de fuente no activa la regla aunque fuente sea genérica."""
-        issues = self.v.validate(**_base_kwargs(
-            tipo_fuente="situacion",
-            fuente="no identificado",
         ))
         assert issues == []
 
@@ -679,8 +641,11 @@ class TestValidationRunner:
         self,
         codigo: str = "D001",
         experienciador: str = "la oposición",
+        experienciador_marca: str = "marca de prueba",
         tipo_emocion: str = "miedo",
         modo_existencia: str = "realizada",
+        fuente_marca: str = "marca de prueba",
+        fuente_inferencia: str = "inferencia de prueba",
         enunciador: str = "el presidente",
         enunciatarios: list[dict] | None = None,
         caract: dict | None = None,
@@ -689,7 +654,8 @@ class TestValidationRunner:
         _bootstrap_db(db)
         _insert_discurso(db, codigo, enunciador, enunciatarios or [])
         _insert_emocion(
-            db, codigo, 0, 0, experienciador, tipo_emocion, modo_existencia,
+            db, codigo, 0, 0, experienciador, experienciador_marca, tipo_emocion, modo_existencia,
+            fuente_marca, fuente_inferencia,
             caract=caract or _default_caract(),
         )
         return db
@@ -730,7 +696,8 @@ class TestValidationRunner:
         db = _make_db()
         _bootstrap_db(db)
         _insert_discurso(db, "D001")
-        _insert_emocion(db, "D001", 0, 0, "la oposición", "miedo", "realizada",
+        _insert_emocion(db, "D001", 0, 0, "la oposición", "marca de prueba", "miedo", "realizada",
+                        "el socialismo", "inferencia de prueba",
                         caract=None)  # sin caracterización
         runner = ValidationRunner(db)
         issues = runner.run()

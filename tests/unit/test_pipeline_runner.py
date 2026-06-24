@@ -43,8 +43,10 @@ from emoparse.core.schemas import (
     ListaActoresBatchSchema,
     ListaCaracterizacionBatchSchema,
     ListaEmocionesBatchSchema,
+    ListaSemasBatchSchema,
     ListaJuiciosBatchSchema,
     MetadatosSchema,
+    SemasBatchItemSchema,
 )
 from emoparse.knowledge import KnowledgeLoader
 from emoparse.pipeline import STAGE_ORDER, PipelineRunner
@@ -132,17 +134,29 @@ class _MockBackend(LLMBackend):
         if schema is ListaActoresBatchSchema:
             return ListaActoresBatchSchema(root=[
                 ActoresBatchItemSchema(unit_idx=i, actores=[
-                    ActorSchema(actor="X", tipo="colectivo", modo="explicito",
+                    ActorSchema(marca="X", actor="X", tipo="colectivo", modo="explicito",
                                 justificacion="j"),
                 ]) for i in range(5)
             ])
         if schema is ListaEmocionesBatchSchema:
             return ListaEmocionesBatchSchema(root=[
                 EmocionesBatchItemSchema(unit_idx=i, emociones=[
-                    EmocionSchema(experienciador="X", tipo_emocion="miedo",
+                    EmocionSchema(experienciador="X", experienciador_marca="X", tipo_emocion="miedo",
                                   tipo_configuracion="sostenido_en_sustantivos",
-                                  modo_existencia="realizada", justificacion="j"),
+                                  fuente_marca="X", fuente_inferencia="X",
+                                  modo_existencia="realizada"),
                 ]) for i in range(3)
+            ])
+        if schema is ListaSemasBatchSchema:
+            return ListaSemasBatchSchema(root=[
+                SemasBatchItemSchema(
+                    unit_idx=i,
+                    semas=[
+                        "sema_1",
+                        "sema_2",
+                    ],
+                )
+                for i in range(5)
             ])
         if schema is ListaCaracterizacionBatchSchema:
             return ListaCaracterizacionBatchSchema(root=[
@@ -152,11 +166,7 @@ class _MockBackend(LLMBackend):
                         foria="disforico",             foria_justificacion="j",
                         dominancia="cognoscitiva",     dominancia_justificacion="j",
                         intensidad="alta",             intensidad_justificacion="j",
-                        fuente="X", tipo_fuente="actor", fuente_justificacion="j",
-                        # nuevas dimensiones — literales válidos según el schema
                         duracion="instantanea",        duracion_justificacion="j",
-                        modo_semiotizacion="dicha",    modo_semiotizacion_justificacion="j",
-                        modo_identificacion="directa", modo_identificacion_justificacion="j",
                         tipo_atribucion="auto_atribucion", tipo_atribucion_justificacion="j",
                     ),
                 ) for i in range(5)

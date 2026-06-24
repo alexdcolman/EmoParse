@@ -21,6 +21,18 @@ intensidad, sino de la configuración de actantes que la rodea:
   - Si el discurso interfiere ACTIVAMENTE sobre la emoción del
     experienciador (operador de modificación).
 
+PRINCIPIO DE ANCLAJE (LEER PRIMERO)
+───────────────────────────────────
+Cada emoción del batch viene con un EXPERIENCIADOR y una FUENTE ya
+fijados. Analizá los cuatro componentes SIEMPRE relativos a ESE par
+(experienciador ↔ fuente) y a ESA emoción. Nunca reatribuyas un
+componente a otro experienciador (por ejemplo, la audiencia) ni a otra
+emoción de la misma frase: si algo opera sobre un experienciador
+distinto del fijado, ESO NO forma parte de este análisis (pertenece al
+análisis de esa otra emoción). Una misma frase puede contener varias
+emociones con experienciadores distintos; cada una se analiza por
+separado.
+
 Cada uno de estos componentes puede estar PRESENTE o AUSENTE en una
 emoción particular. Cuando un componente está ausente, devolvé el
 sub-objeto con `presente=false`, `descripcion=null`, `tipo="ausente"`
@@ -50,11 +62,21 @@ experienciador. Las emociones pueden ser activadas, transformadas o
 conservadas mediante dispositivos, discursos, documentos, objetos o
 acciones.
 
+El mediador conecta EXCLUSIVAMENTE la FUENTE fijada con el
+EXPERIENCIADOR fijado de esta emoción. Antes de elegir un `tipo`,
+verificá que el vehículo propuesto efectivamente transporte la emoción
+DESDE esa fuente HACIA ese experienciador. Si el "vehículo" que se te
+ocurre en realidad busca producir una emoción en OTRO experienciador
+(p. ej. el discurso del orador que busca conmover a su audiencia), eso
+NO es el mediador de esta emoción. En ese caso el mediador suele ser
+`ausente` (la fuente afecta al experienciador sin vehículo discernible).
+
 Valores posibles para `tipo`:
 
   - discurso_propio: el propio enunciado o discurso opera como
-    mediador. Caso típico de manipulación afectiva, donde el discurso
-    busca producir la emoción en el destinatario.
+    mediador HACIA EL EXPERIENCIADOR FIJADO. Solo aplica si ese
+    experienciador recibe la emoción a través del discurso; no uses
+    este tipo para describir el efecto del discurso sobre terceros.
   - discurso_ajeno: testimonios, citas o voces reportadas que
     transportan la emoción.
   - documento_o_registro: textos, archivos, imágenes o documentos
@@ -131,6 +153,18 @@ El operador de modificación es una operación discursiva DIRIGIDA a
 modificar o interferir sobre la emoción de un experienciador. No se
 trata simplemente de que una emoción exista, sino de que el discurso
 DESPLIEGUE una operación sobre ella.
+
+El operador SIEMPRE opera SOBRE la emoción del EXPERIENCIADOR FIJADO:
+es algo (un actor, un discurso, una operación) que intenta activar,
+argumentar, persuadir o inhibir ESA emoción EN ESE experienciador. NO
+es el experienciador fijado actuando sobre la emoción de terceros: si
+el experienciador fijado es quien, con su discurso, busca producir una
+emoción en OTROS (p. ej. su audiencia), eso NO es un operador de esta
+emoción (sería, en todo caso, el operador de la emoción de esos otros,
+que se analiza por separado). Distinguilo también de la FUENTE: la
+fuente ORIGINA la emoción; el operador INTERVIENE sobre ella (p. ej. si
+alguien habla mal de un tercero para indignar al experienciador, la
+fuente es ese tercero y el operador es quien habla mal).
 
 Valores posibles para `funcion`:
 

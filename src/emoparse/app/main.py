@@ -17,10 +17,15 @@ import streamlit as st
 from emoparse.app.components import (
     run_selector,
     tab_actores,
+    tab_busqueda,
     tab_comparacion,
+    tab_correlacion,
     tab_curva,
+    tab_deixis,
     tab_estado,
+    tab_referentes,
     tab_revision,
+    tab_simulacros,
     tab_tabla,
 )
 from emoparse.app.styles import CSS
@@ -87,11 +92,16 @@ def main() -> None:
     )
     st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
 
-    tab_curva_, tab_act, tab_tab, tab_comp, tab_rev, tab_est = st.tabs([
+    tab_curva_, tab_act, tab_tab, tab_comp, tab_busq, tab_corr, tab_sim, tab_dx, tab_ref, tab_rev, tab_est = st.tabs([
         "📈 Curva emocional",
         "👥 Por actor",
         "📋 Tabla",
         "↔ Comparar discursos",
+        "🔎 Búsqueda",
+        "🔗 Co-ocurrencia",
+        "🎭 Simulacros",
+        "🧭 Deixis",
+        "🏷 Referentes",
         "📝 Revisión",
         "🔁 Estado del run",
     ])
@@ -104,6 +114,16 @@ def main() -> None:
         tab_tabla.render(db_path)
     with tab_comp:
         tab_comparacion.render(db_path)
+    with tab_busq:
+        tab_busqueda.render(db_path)
+    with tab_corr:
+        tab_correlacion.render(db_path)
+    with tab_sim:
+        tab_simulacros.render(db_path)
+    with tab_dx:
+        tab_deixis.render(db_path)
+    with tab_ref:
+        tab_referentes.render(db_path)
     with tab_rev:
         tab_revision.render(db_path)
     with tab_est:

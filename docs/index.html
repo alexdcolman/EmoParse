@@ -900,7 +900,7 @@ body.at-home main > footer { display: block; }
     <a href="#home" style="text-decoration:none;color:inherit;">
       <div class="logo">Emo<span class="accent">Parse</span></div>
     </a>
-    <div class="tag">Docs · v0.3.5</div>
+    <div class="tag">Docs · v0.4.0</div>
   </div>
 
   <nav>
@@ -921,6 +921,7 @@ body.at-home main > footer { display: block; }
         <li><a href="#arquitectura">Arquitectura</a></li>
         <li><a href="#pipeline">El pipeline</a></li>
         <li><a href="#actantes">Análisis actancial</a></li>
+        <li><a href="#referentes">Marcas y referentes</a></li>
         <li><a href="#backends">Backends LLM</a></li>
         <li><a href="#cache">Cache y versionado</a></li>
         <li><a href="#generos">Géneros</a></li>
@@ -937,8 +938,6 @@ body.at-home main > footer { display: block; }
         <li><a href="#cli-status" class="depth-2">status</a></li>
         <li><a href="#cli-inspect" class="depth-2">inspect</a></li>
         <li><a href="#cli-retry" class="depth-2">retry</a></li>
-        <li><a href="#cli-discoveries" class="depth-2">discoveries</a></li>
-        <li><a href="#cli-experiencers" class="depth-2">experiencers</a></li>
         <li><a href="#cli-validate" class="depth-2">validate</a></li>
         <li><a href="#cli-judge" class="depth-2">judge</a></li>
         <li><a href="#cli-metrics" class="depth-2">metrics</a></li>
@@ -987,7 +986,7 @@ body.at-home main > footer { display: block; }
 
 <!-- HOME / PORTADA ───────────────────────────────────────────── -->
 <header class="hero" id="home" data-title="Inicio">
-  <div class="hero-eyebrow">Documentación oficial · v0.3.5 · Beta</div>
+  <div class="hero-eyebrow">Documentación oficial · v0.4.0 · Beta</div>
   <h1>Emo<span class="em">Parse</span></h1>
   <p class="hero-lede">
     Un sistema reproducible de <em>análisis de emociones</em> en discursos,
@@ -1025,6 +1024,7 @@ body.at-home main > footer { display: block; }
           <li><a href="#arquitectura">Arquitectura</a></li>
           <li><a href="#pipeline">El pipeline</a></li>
           <li><a href="#actantes">Análisis actancial</a></li>
+          <li><a href="#referentes">Marcas y referentes</a></li>
           <li><a href="#backends">Backends LLM</a></li>
           <li><a href="#cache">Cache y versionado</a></li>
           <li><a href="#generos">Géneros</a></li>
@@ -1298,8 +1298,8 @@ docker run --gpus all -v <span class="c-acc">$PWD</span>/data:/data -v <span cla
       pero flojo en experienciador; <code>qwen3.6-35b-a3b</code> es el mejor en
       experienciador y precisión, aunque sub-detecta. <code>mistral-24b</code>
       queda balanceado. El experienciador sigue siendo el frente más difícil:
-      por eso conviene reforzarlo aparte con la etapa
-      <code>normalize_experiencers</code>.
+      por eso conviene reforzarlo en la revisión de referentes (correferencia
+      automática + tab Referentes).
     </p>
   </div>
 
@@ -1474,7 +1474,7 @@ huggingface-cli download Qwen/Qwen3-14B-Instruct-GGUF \
   <ol>
     <li>Se ingieren los discursos al storage SQLite.</li>
     <li>Se chunkean en frases (porque <code>discurso_presidencial.unit == "frase"</code>).</li>
-    <li>Se corren las stages activas por defecto en orden topológico: <code>summarizer → metadata → enunciation → actors → emotions → explode_emociones → normalize_emotions → characterizer</code>.</li>
+    <li>Se corren las stages activas por defecto en orden topológico: <code>summarizer → metadata → enunciation → actors → emotions → explode_emociones → normalize_emotions → characterizer → semas</code>. La correferencia entre marcas se construye automáticamente dentro de <code>explode_emociones</code>.</li>
     <li>Cada llamada al LLM pasa por el cache. Si una stage falla, el discurso queda marcado como failed y el resto sigue.</li>
     <li>Al final se imprime un reporte con conteos por stage.</li>
   </ol>
@@ -1494,18 +1494,15 @@ emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
 
   <h3>5. Activar etapas opcionales</h3>
 
-<pre data-lang="bash"><code><span class="c-comment"># normalize_actors: unifica menciones de un mismo actor y detecta desconocidos</span>
+<pre data-lang="bash"><code><span class="c-comment"># La correferencia entre marcas (actores, experienciadores y fuentes) se</span>
+<span class="c-comment"># construye automáticamente dentro de explode_emociones (coref léxico +</span>
+<span class="c-comment"># inferencia por marca + deixis + match contra referentes_kb). No hay stage</span>
+<span class="c-comment"># de normalización aparte: la revisión se hace en la tab Referentes del dashboard.</span>
+
+<span class="c-comment"># semas: asigna semas (del vocabulario curado) a cada referente canónico</span>
 emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
   --run-id presidencial_q1_2024 \
-  --stages normalize_actors
-
-<span class="c-comment"># Revisar y resolver los actores no reconocidos</span>
-emoparse discoveries list   --db runs/presidencial_q1_2024.sqlite
-emoparse discoveries promote --db runs/presidencial_q1_2024.sqlite --id 3 \
-  --canonical-id milei_javier --display-name <span class="c-str">"Javier Milei"</span> --tipo persona
-emoparse discoveries merge   --db runs/presidencial_q1_2024.sqlite --id 7 --into milei_javier
-emoparse discoveries discard --db runs/presidencial_q1_2024.sqlite --id 12
-emoparse discoveries apply   --db runs/presidencial_q1_2024.sqlite --kb knowledge/actors.json
+  --stages semas
 
 <span class="c-comment"># emotions_pass2: segunda lectura de emociones con contexto del discurso</span>
 emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
@@ -1520,19 +1517,7 @@ emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
 <span class="c-comment"># judge: evalúa la coherencia de las caracterizaciones</span>
 emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
   --run-id presidencial_q1_2024 \
-  --stages judge
-
-<span class="c-comment"># normalize_experiencers: propone equivalencias de experienciador por discurso</span>
-emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
-  --run-id presidencial_q1_2024 \
-  --stages explode_emociones,normalize_experiencers
-
-<span class="c-comment"># Revisar y resolver las equivalencias propuestas; apply las materializa</span>
-emoparse experiencers list   --db runs/presidencial_q1_2024.sqlite
-emoparse experiencers accept --db runs/presidencial_q1_2024.sqlite --id 3 \
-  --canonical <span class="c-str">"Javier Milei"</span>
-emoparse experiencers reject --db runs/presidencial_q1_2024.sqlite --id 7
-emoparse experiencers apply  --db runs/presidencial_q1_2024.sqlite</code></pre>
+  --stages judge</code></pre>
 
   <p>
     Además, <code>emoparse run</code> acepta <code>--enunciador</code>,
@@ -1718,12 +1703,12 @@ streamlit run src/emoparse/app/__main__.py
         enunciation       x=400  w=125  cx=462
 
         actors            x=110  w=100  cx=160
-        normalize_actors  x=240  w=155  cx=317  [opt, bajo actors]
         emotions          x=110  w=100  cx=160  (segunda fila de frase)
         emotions_pass2    x=240  w=150  cx=315  [opt, bajo emotions]
 
         explode_emociones x=110  w=160  cx=190
         normalize_emoc.   x=300  w=165  cx=382
+        semas             x=470  w=120  cx=530  (rama desde explode)
         characterizer     x=110  w=135  cx=177  (segunda fila emoción)
         actants           x=275  w=110  cx=330  [opt]
         judge             x=415  w=90   cx=460  [opt]
@@ -1770,16 +1755,11 @@ streamlit run src/emoparse/app/__main__.py
       <!-- enunciation → actors (baja a la banda frase, columna izquierda) -->
       <path d="M 437,77 Q 437,105 155,105 L 155,130" class="ar" marker-end="url(#arr)"/>
 
-      <!-- ══ BANDA FRASE (fila 1: actors + normalize_actors opcional) ══ -->
+      <!-- ══ BANDA FRASE (fila 1: actors) ══ -->
       <!-- actors -->
       <rect x="95"  y="130" width="100" height="36" rx="3" class="st"/>
       <text x="145" y="148" class="stx">actors</text>
-      <!-- normalize_actors [opt] -->
-      <rect x="220" y="130" width="160" height="36" rx="3" class="sto"/>
-      <text x="300" y="148" class="stx">normalize_actors</text>
 
-      <!-- actors → normalize_actors -->
-      <line x1="195" y1="148" x2="218" y2="148" class="ar" marker-end="url(#arr)"/>
       <!-- actors → emotions (baja dentro de la misma banda) -->
       <line x1="145" y1="166" x2="145" y2="188" class="ar" marker-end="url(#arr)"/>
 
@@ -1803,14 +1783,14 @@ streamlit run src/emoparse/app/__main__.py
       <!-- normalize_emotions -->
       <rect x="285" y="289" width="165" height="36" rx="3" class="st"/>
       <text x="367" y="307" class="stx">normalize_emotions</text>
-      <!-- normalize_experiencers [opt] -->
-      <rect x="470" y="289" width="185" height="36" rx="3" class="sto"/>
-      <text x="562" y="307" class="stx">normalize_experiencers</text>
+      <!-- semas -->
+      <rect x="470" y="289" width="120" height="36" rx="3" class="st"/>
+      <text x="530" y="307" class="stx">semas</text>
 
       <!-- explode → normalize_emotions -->
       <line x1="260" y1="307" x2="283" y2="307" class="ar" marker-end="url(#arr)"/>
-      <!-- explode → normalize_experiencers (segunda rama opcional desde explode) -->
-      <path d="M 200,289 Q 200,273 230,273 L 532,273 Q 562,273 562,289" class="ar" marker-end="url(#arr)"/>
+      <!-- explode → semas (rama desde explode) -->
+      <path d="M 200,289 Q 200,273 230,273 L 500,273 Q 530,273 530,289" class="ar" marker-end="url(#arr)"/>
       <!-- normalize_emotions → characterizer (baja fila 2) -->
       <path d="M 367,325 Q 367,344 177,344 L 177,349" class="ar" marker-end="url(#arr)"/>
 
@@ -1877,12 +1857,6 @@ streamlit run src/emoparse/app/__main__.py
           <td>activa</td>
         </tr>
         <tr>
-          <td><code>normalize_actors</code></td>
-          <td>frase</td>
-          <td>Unifica las distintas formas de nombrar a un mismo actor. Resuelve correferencias dentro del discurso (con el LLM) y vincula cada mención con la base de actores conocidos por matching determinístico (sin meter la KB en el prompt). Para los actores no reconocidos, distingue nombres propios (propone una forma canónica para revisión) de deícticos y roles; los deícticos de 1ª persona se atribuyen al enunciador por discurso, sin incorporarse a la KB.</td>
-          <td>opcional</td>
-        </tr>
-        <tr>
           <td><code>emotions</code></td>
           <td>frase</td>
           <td>Primera lectura de emociones por frase, usando la ontología emocional, las heurísticas y los actores ya detectados.</td>
@@ -1897,7 +1871,7 @@ streamlit run src/emoparse/app/__main__.py
         <tr>
           <td><code>explode_emociones</code></td>
           <td>emoción</td>
-          <td>Etapa sin modelo: separa la lista de emociones de cada frase en filas individuales, una por emoción.</td>
+          <td>Etapa sin modelo: separa la lista de emociones de cada frase en filas individuales, una por emoción. Además reconstruye la base de marcas discursivas (actores, experienciadores, fuentes) y siembra los vínculos marca↔referente canónico automáticamente: correferencia léxica (coref), la inferencia por marca del LLM, deixis de 1ª persona y match contra <code>referentes_kb</code>.</td>
           <td>activa</td>
         </tr>
         <tr>
@@ -1905,12 +1879,6 @@ streamlit run src/emoparse/app/__main__.py
           <td>emoción</td>
           <td>Asigna a cada emoción un nombre canónico de la ontología, de modo que variantes equivalentes ("bronca", "enojo", "indignación") se puedan agrupar en el análisis.</td>
           <td>activa</td>
-        </tr>
-        <tr>
-          <td><code>normalize_experiencers</code></td>
-          <td>emoción</td>
-          <td>Resuelve, por discurso, las distintas formas de nombrar a quien siente una emoción ("yo", "el orador" → el enunciador; otras menciones → enunciatarios o actores). Cuando el experienciador es un actor, la sugerencia se reconcilia contra la KB de actores por coincidencia conservadora (mismo matcher que <code>normalize_actors</code>); si no hay correspondencia, queda la del LLM. Propone equivalencias para revisión humana; lo aceptado se escribe en <code>experienciador_canonico</code> con <code>emoparse experiencers apply</code>. La normalización es 1-a-1 por experienciador, así que se procesa en lotes (<code>chunk_size</code>, default 15) para que la salida del LLM no exceda el límite de tokens en discursos largos.</td>
-          <td>opcional</td>
         </tr>
         <tr>
           <td><code>characterizer</code></td>
@@ -1929,6 +1897,12 @@ streamlit run src/emoparse/app/__main__.py
           <td>emoción</td>
           <td>Un segundo modelo evalúa la coherencia de las caracterizaciones y emite un veredicto con nivel de confianza.</td>
           <td>opcional</td>
+        </tr>
+        <tr>
+          <td><code>semas</code></td>
+          <td>referente</td>
+          <td>Asigna a cada referente canónico semas de un vocabulario curado (individual/colectivo, humano/no-humano, actor/circunstante, institucional, víctima/victimario, enunciador/enunciatario…), normalizados contra el vocabulario. Permiten filtrar el análisis por rasgos del referente.</td>
+          <td>activa</td>
         </tr>
       </tbody>
     </table>
@@ -1973,6 +1947,53 @@ streamlit run src/emoparse/app/__main__.py
     El splitter de frases es regex-puro, respeta abreviaciones del español,
     combina oraciones muy cortas y subdivide oraciones muy largas por
     <code>;</code> o <code>,</code>.
+  </p>
+</section>
+
+<!-- ═══════ MARCAS Y REFERENTES ════════════════════════════════════════ -->
+<section id="referentes">
+  <h2>Marcas discursivas y referentes canónicos<a class="anchor" href="#referentes">#</a></h2>
+  <p>
+    El análisis de actores, experienciadores y fuentes se organiza sobre una
+    base relacional de <strong>marcas discursivas</strong>. Una <em>mención</em>
+    es una marca en su lugar (discurso, unidad) — "Javier Milei", "ellos",
+    "tomamos", "la barbarie invasora" — independiente de su función. Las
+    funciones actanciales (actor, experienciador, fuente, circunstante) viven
+    aparte, de modo que una misma marca puede ser a la vez actor y
+    experienciador sin duplicarse. Cada marca se liga (muchos-a-muchos) a uno o
+    más <strong>referentes canónicos</strong>, lo que resuelve casos como el
+    "nosotros" inclusivo ("tomamos" → Milei <em>y</em> audiencia).
+  </p>
+  <p>
+    Los agentes de actores y emociones emiten, junto a cada inferencia, su
+    marca de superficie. Al explotar las emociones, la base de marcas se
+    reconstruye por discurso y cada marca arranca con un canónico
+    <em>propuesto</em>: desde una correferencia automática (clustering léxico conservador, el reemplazo de las viejas stages normalize_*), desde la inferencia del modelo, desde la deixis de 1ª
+    persona (sugerencia destildable, ya no resolución automática) y desde la
+    coincidencia contra el <code>referentes_kb</code>. Un analista revisa todo
+    en la tab <strong>Referentes</strong>: marcas agrupadas por canónico,
+    buscables, con la frase completa al pasar el cursor, y acciones de aceptar,
+    rechazar, quitar o reasignar el vínculo.
+  </p>
+  <div class="callout note">
+    <span class="callout-label">Semas</span>
+    <p>
+      Cada referente puede recibir <strong>semas</strong> de un vocabulario
+      curado (individual/colectivo, humano/no-humano, actor/circunstante,
+      institucional, víctima/victimario, enunciador/enunciatario…). Una stage
+      los propone y se normalizan contra el vocabulario; el analista los
+      acepta. Permiten filtrar el análisis (p. ej. emociones cuyo experienciador
+      es individual + víctima).
+    </p>
+  </div>
+  <p>
+    En la revisión, cuando una emoción tiene un canónico aceptado para su
+    experienciador o su fuente, ese canónico es el que <strong>vale</strong>: se
+    muestra como autoritativo y se marca el crudo del modelo cuando difiere. El
+    juez recibe la ontología de emociones y razona cada simulacro en sus propios
+    términos (no por el tono global de la frase); el análisis actancial ancla
+    mediador y operador al par experienciador↔fuente fijado. La semiotización y
+    la identificación se derivan de la configuración de la emoción.
   </p>
 </section>
 
@@ -2372,80 +2393,42 @@ streamlit run src/emoparse/app/__main__.py
       al analizar tendencias.
     </li>
     <li>
-      Una tercera, opcional, normaliza el <em>experienciador</em>: resuelve,
-      discurso por discurso, las distintas formas de nombrar a quien siente
-      ("yo", "el orador" → el enunciador; otras menciones → enunciatarios o
-      actores). La correspondencia es local a cada discurso, pero cuando el
-      experienciador es un <em>actor</em> la sugerencia se reconcilia además
-      contra la KB de actores por coincidencia literal/cuasi-literal
-      conservadora (el mismo matcher determinístico que usa
-      <code>normalize_actors</code>): un experienciador que es un actor conocido
-      recibe su canónico de la KB y, si no hay correspondencia, se conserva la
-      sugerencia del LLM. Propone equivalencias para revisión y, al aceptarlas,
-      escribe el canónico en <code>emociones.experienciador_canonico</code>
-      (o, desde el dashboard, en el overlay de revisión — ver más abajo).
+      Una capa relacional liga cada <strong>marca discursiva</strong> (actor,
+      experienciador o fuente, en su lugar del texto) a uno o más
+      <strong>referentes canónicos</strong>. Una misma marca puede cumplir
+      varias funciones sin duplicarse, y un referente puede recibir varias
+      marcas (resuelve el "nosotros" inclusivo).
     </li>
   </ul>
   <p>
-    Los hallazgos de actores no reconocidos se gestionan con el
-    subcomando <code>emoparse discoveries</code> (listar, exportar,
-    promover a nuevo actor, fusionar con uno existente o descartar).
+    La <strong>construcción de correferencias es automática</strong> y vive
+    dentro de <code>explode_emociones</code>: cada marca arranca con un referente
+    canónico propuesto desde cuatro fuentes combinadas — correferencia léxica
+    conservadora (<code>coref</code>, que agrupa "Javier Milei" y "Milei" pero no
+    une cosas distintas), la inferencia por marca que ya emiten los agentes de
+    detección, la deixis de 1ª persona (atribuida al enunciador del discurso) y
+    el match contra <code>referentes_kb</code>. Es el reemplazo de las viejas
+    stages LLM <code>normalize_actors</code> / <code>normalize_experiencers</code>:
+    determinista, reproducible y sin costo de modelo. El trade-off es que el
+    agrupamiento semántico fino que un LLM podría inferir entre marcas sin solape
+    léxico ("la sociedad" ≈ "el pueblo") queda para la revisión humana.
   </p>
   <p>
-    Para reducir el trabajo manual, <code>normalize_actors</code> propone, en
-    la misma pasada, una forma canónica para cada actor nuevo
-    (<code>canonical_id</code>, nombre y tipo), con una regla de estabilidad:
-    el mismo actor del mundo real recibe el mismo slug aunque la mención
-    cambie ("LLA" y "La Libertad Avanza" → <code>la_libertad_avanza</code>).
-    El dashboard usa esas propuestas para <strong>agrupar</strong> los
-    hallazgos que parecen el mismo actor y ofrecer un único "Confirmar grupo"
-    (un promote + los merges), editable antes de aplicar. El agrupamiento es
-    determinista y no usa el LLM: la coreferencia ya la propuso la etapa.
+    Toda la revisión ocurre en la tab <strong>Referentes</strong> del dashboard:
+    las marcas se muestran agrupadas por referente, buscables, con la frase
+    completa al pasar el cursor, y con acciones de aceptar, rechazar, quitar o
+    reasignar el vínculo. El botón <em>"Promover referentes aceptados → KB"</em>
+    materializa los canónicos aceptados en <code>referentes_kb.json</code> (con
+    backup atómico, sin pisar campos editados a mano), de modo que el
+    conocimiento persiste y crece entre corridas.
   </p>
   <p>
-    Para que la KB no se contamine, la etapa distingue dos cosas. Las
-    <strong>menciones identificantes sin contexto</strong> (nombres propios,
-    denominaciones estables) son candidatas a alias y son las únicas que se
-    agrupan para promover. Los <strong>deícticos y roles dependientes del
-    contexto</strong> ("yo", "mí", "nosotros", "el presidente") no se
-    incorporan a la KB: un "yo" en otro discurso es otra persona. Los
-    deícticos de 1ª persona se resuelven de forma determinista al
-    <em>enunciador del discurso</em> (el mismo dato que usa
-    <code>normalize_experiencers</code>), por discurso y sin tocar la KB, de
-    modo que esas menciones se atribuyen al hablante en el agregado sin crear
-    un alias ambiguo.
-  </p>
-  <p>
-    <strong>Escalabilidad de la KB.</strong> Para que el prompt no crezca con
-    la base de actores (lo que disparaba <code>ContextLengthExceeded</code> y
-    enlentecía la inferencia a medida que la KB se llenaba),
-    <code>normalize_actors</code> ya <em>no inyecta la KB en el prompt</em> por
-    defecto: el LLM solo correferencia y propone canónicos, con un prompt de
-    tamaño constante. El cruce contra los canónicos existentes se hace después,
-    de forma <strong>determinística</strong> (sin LLM y sin contexto), por
-    coincidencia literal/cuasi-literal <em>conservadora</em> contra los aliases,
-    <code>display_name</code> y <code>canonical_id</code> de la KB
-    (insensible a tildes, mayúsculas, puntuación y artículos iniciales; nunca
-    une cosas distintas como "víctimas del holocausto" y "víctimas del atentado
-    a la AMIA"). Lo que matchea se linkea solo; lo que no, queda como hallazgo y
-    se mergea con un canónico existente desde la tab de grupos / merge masivo.
-    Se puede volver al modo anterior con <code>normalize_actors_inject_kb</code>.
-  </p>
-  <p>
-    Las equivalencias de experienciador se gestionan con
-    <code>emoparse experiencers</code> (listar, exportar, aceptar —con destino
-    editable—, rechazar) y se materializan con <code>experiencers apply</code>.
-    Desde el dashboard la revisión es más rica: para cada experienciador se ve
-    la <strong>frase completa</strong> y la <strong>emoción</strong> a la que
-    corresponde, se pueden <strong>destildar emociones puntuales</strong> del
-    grupo (no hace falta aceptar todo el grupo de un crudo), se puede asignar
-    <strong>más de un canónico</strong> (p. ej. "Javier Milei" + la audiencia)
-    buscándolos en la KB con un selector múltiple o escribiéndolos a mano, y lo
-    aceptado se escribe <strong>por emoción en el overlay de revisión</strong>,
-    con lo que aparece de inmediato en la tab Revisión. (El botón
-    <code>experiencers apply</code> sigue materializando en la base, pero a
-    nivel de todas las ocurrencias del crudo; la granularidad por emoción vive
-    en el overlay.)
+    Para la <strong>revisión del experienciador a nivel emoción</strong>, el
+    overlay de revisión permite ajustar y deseleccionar por emoción y asignar más
+    de un canónico; el botón <em>"Commit revisión → base"</em> materializa el
+    experienciador revisado en <code>emociones.experienciador_canonico</code> e
+    invalida <code>characterizer</code>/<code>actants</code>/<code>judge</code> de
+    lo que cambió, para recalcular en la próxima corrida.
   </p>
 </section>
 
@@ -2464,7 +2447,6 @@ streamlit run src/emoparse/app/__main__.py
     <span class="pill"><code>status</code></span>
     <span class="pill"><code>inspect</code></span>
     <span class="pill"><code>retry</code></span>
-    <span class="pill"><code>discoveries</code></span>
     <span class="pill"><code>validate</code></span>
     <span class="pill"><code>judge</code></span>
     <span class="pill"><code>metrics</code></span>
@@ -2613,199 +2595,7 @@ emoparse retry \
   <code>contains</code>, <code>is_null</code>, <code>is_not_null</code>.
 </p>
 
-<!-- ───── discoveries ─────────────────────────────────────────────── -->
-<h3 id="cli-discoveries"><code>emoparse discoveries</code></h3>
-<p>
-  Gestiona los actores no reconocidos que la etapa <code>normalize_actors</code>
-  registró como hallazgos (<em>discoveries</em>). Flujo típico: revisar con
-  <code>list</code>, registrar decisiones con <code>promote</code> /
-  <code>merge</code> / <code>discard</code>, y aplicarlas al JSON de la base de
-  knowledge con <code>apply</code>.
-</p>
-
-<h4>list — listar discoveries pendientes</h4>
-
-<pre data-lang="bash"><code>emoparse discoveries list \
-  <span class="c-flag">--db</span>         runs/mi_run.sqlite \
-  [<span class="c-flag">--codigo</span>     2024-03-15-anuncio-medida] \
-  [<span class="c-flag">--confianza</span>  alta]</code></pre>
-
-<div class="table-wrap">
-  <table>
-    <thead><tr><th>Flag</th><th>Qué hace</th></tr></thead>
-    <tbody>
-      <tr><td><code>--db</code></td><td>Path a la DB SQLite del run. Requerido.</td></tr>
-      <tr><td><code>--codigo</code></td><td>Filtra por código de discurso.</td></tr>
-      <tr><td><code>--confianza</code></td><td>Filtra por nivel de confianza del detector (<code>alta</code>, <code>media</code>, <code>baja</code>).</td></tr>
-    </tbody>
-  </table>
-</div>
-
-<p>
-  Muestra ID, código, índice de unidad, confianza y mención de cada discovery.
-  Si ya tiene una decisión registrada (pendiente de aplicar o fallida), la
-  indica al lado.
-</p>
-
-<h4>export — exportar a CSV</h4>
-
-<pre data-lang="bash"><code>emoparse discoveries export \
-  <span class="c-flag">--db</span>     runs/mi_run.sqlite \
-  <span class="c-flag">--output</span> exports/discoveries.csv \
-  [<span class="c-flag">--codigo</span> 2024-03-15-anuncio-medida]</code></pre>
-
-<p>
-  Exporta los discoveries pendientes a CSV (UTF-8), incluyendo contexto,
-  justificación y decisión actual si la hay. Útil para revisar en bloque
-  fuera del terminal.
-</p>
-
-<h4>promote — promover a actor canónico nuevo</h4>
-
-<pre data-lang="bash"><code>emoparse discoveries promote \
-  <span class="c-flag">--db</span>           runs/mi_run.sqlite \
-  <span class="c-flag">--id</span>           42 \
-  <span class="c-flag">--canonical-id</span> milei_javier \
-  <span class="c-flag">--display-name</span> <span class="c-str">"Javier Milei"</span> \
-  [<span class="c-flag">--tipo</span>         persona] \
-  [<span class="c-flag">--rol</span>          presidente]</code></pre>
-
-<div class="table-wrap">
-  <table>
-    <thead><tr><th>Flag</th><th>Qué hace</th></tr></thead>
-    <tbody>
-      <tr><td><code>--id</code></td><td>ID del discovery (ver <code>list</code>). Requerido.</td></tr>
-      <tr><td><code>--canonical-id</code></td><td>Identificador canónico del nuevo actor en la KB. Requerido.</td></tr>
-      <tr><td><code>--display-name</code></td><td>Nombre de display. Requerido.</td></tr>
-      <tr><td><code>--tipo</code></td><td>Tipo de actor (<code>persona</code>, <code>colectivo</code>, <code>institución</code>, etc.).</td></tr>
-      <tr><td><code>--rol</code></td><td>Rol opcional en el corpus.</td></tr>
-    </tbody>
-  </table>
-</div>
-
-<p>
-  Registra la decisión en la DB. No modifica la KB hasta correr <code>apply</code>.
-</p>
-
-<h4>merge — fusionar como alias de un actor existente</h4>
-
-<pre data-lang="bash"><code>emoparse discoveries merge \
-  <span class="c-flag">--db</span>   runs/mi_run.sqlite \
-  <span class="c-flag">--id</span>   42 \
-  <span class="c-flag">--into</span> milei_javier</code></pre>
-
-<p>
-  Registra que la mención del discovery es un alias del actor canónico
-  <code>--into</code>. Pendiente de aplicar con <code>apply</code>.
-</p>
-
-<h4>discard — descartar como ruido</h4>
-
-<pre data-lang="bash"><code>emoparse discoveries discard \
-  <span class="c-flag">--db</span> runs/mi_run.sqlite \
-  <span class="c-flag">--id</span> 42</code></pre>
-
-<p>
-  Registra que el discovery es ruido y no corresponde agregar el actor a la KB.
-  Pendiente de aplicar con <code>apply</code>.
-</p>
-
-<h4>apply — aplicar decisiones a la base de knowledge</h4>
-
-<pre data-lang="bash"><code>emoparse discoveries apply \
-  <span class="c-flag">--db</span>       runs/mi_run.sqlite \
-  <span class="c-flag">--kb</span>       knowledge/actors.json \
-  [<span class="c-flag">--dry-run</span>]   <span class="c-comment"># muestra qué haría sin modificar nada</span></code></pre>
-
-<div class="table-wrap">
-  <table>
-    <thead><tr><th>Flag</th><th>Qué hace</th></tr></thead>
-    <tbody>
-      <tr><td><code>--kb</code></td><td>Path al JSON de la base de knowledge de actores. Requerido.</td></tr>
-      <tr><td><code>--dry-run</code></td><td>Lista las decisiones que se aplicarían sin tocar la KB.</td></tr>
-    </tbody>
-  </table>
-</div>
-
-<p>
-  Aplica todas las decisiones con estado <code>pending</code>: crea actores nuevos
-  (<code>promote</code>), agrega aliases (<code>merge</code>) o descarta menciones
-  (<code>discard</code>). Hace backup automático de la KB antes de cualquier
-  mutación. Es idempotente: re-correrlo sobre decisiones ya aplicadas no produce
-  efectos.
-</p>
-
-<div class="callout note">
-  <span class="callout-label">Flujo recomendado</span>
-  <p>
-    <code>list</code> → revisar en terminal o <code>export</code> a CSV para
-    lotes grandes → registrar decisiones con <code>promote</code> /
-    <code>merge</code> / <code>discard</code> → <code>apply --dry-run</code>
-    para confirmar → <code>apply</code>. Las decisiones fallidas quedan
-    marcadas con su error y se pueden corregir registrando una nueva decisión
-    (sobrescribe la anterior).
-  </p>
-</div>
-
-<!-- ───── validate ────────────────────────────────────────────────── -->
-<h3 id="cli-experiencers"><code>emoparse experiencers</code></h3>
-<p>
-  Gestiona las equivalencias de experienciador que la etapa
-  <code>normalize_experiencers</code> propone por discurso (por ejemplo "yo" o
-  "el orador" → el enunciador). Flujo típico: revisar con <code>list</code>,
-  decidir con <code>accept</code> / <code>reject</code>, y materializar lo
-  aceptado con <code>apply</code>, que escribe
-  <code>emociones.experienciador_canonico</code>. A diferencia de
-  <code>discoveries</code> (que muta el JSON global de actores), acá la
-  normalización es local al discurso y se aplica directamente sobre la DB.
-</p>
-
-<h4>list / export — revisar las propuestas</h4>
-
-<pre data-lang="bash"><code>emoparse experiencers list \
-  <span class="c-flag">--db</span>      runs/mi_run.sqlite \
-  [<span class="c-flag">--codigo</span> 2024-03-15-anuncio-medida] \
-  [<span class="c-flag">--status</span> pending]
-
-emoparse experiencers export \
-  <span class="c-flag">--db</span>     runs/mi_run.sqlite \
-  <span class="c-flag">--output</span> exports/experiencers.csv \
-  [<span class="c-flag">--status</span> pending]</code></pre>
-
-<div class="table-wrap">
-  <table>
-    <thead><tr><th>Flag</th><th>Qué hace</th></tr></thead>
-    <tbody>
-      <tr><td><code>--db</code></td><td>Path a la DB SQLite del run. Requerido.</td></tr>
-      <tr><td><code>--codigo</code></td><td>Filtra por código de discurso.</td></tr>
-      <tr><td><code>--status</code></td><td>Estado a listar/exportar: <code>pending</code> (default), <code>accepted</code>, <code>rejected</code>, <code>applied</code>.</td></tr>
-    </tbody>
-  </table>
-</div>
-
-<h4>accept / reject — decidir</h4>
-
-<pre data-lang="bash"><code><span class="c-comment"># Acepta la equivalencia. Sin --canonical usa el destino sugerido</span>
-<span class="c-comment"># (o el propio crudo si la clase es 'literal').</span>
-emoparse experiencers accept \
-  <span class="c-flag">--db</span> runs/mi_run.sqlite \
-  <span class="c-flag">--id</span> 3 \
-  [<span class="c-flag">--canonical</span> <span class="c-str">"Javier Milei"</span>]
-
-emoparse experiencers reject <span class="c-flag">--db</span> runs/mi_run.sqlite <span class="c-flag">--id</span> 7</code></pre>
-
-<h4>apply — materializar lo aceptado</h4>
-
-<pre data-lang="bash"><code>emoparse experiencers apply \
-  <span class="c-flag">--db</span> runs/mi_run.sqlite \
-  [<span class="c-flag">--dry-run</span>]</code></pre>
-
-<p>
-  Escribe el canónico en todas las emociones cuyo experienciador crudo
-  coincide, discurso por discurso. Es idempotente: re-correr es seguro.
-  <code>--dry-run</code> muestra lo que se aplicaría sin tocar la DB.
-</p>
-
+<!-- ───── validate ───────────────────────────────────────────────── -->
 <h3 id="cli-validate"><code>emoparse validate</code></h3>
 <p>Corre los <em>domain validators</em> sobre las emociones caracterizadas e imprime resumen.</p>
 
@@ -2935,7 +2725,7 @@ python -m emoparse.app</code></pre>
     </div>
     <div class="card">
       <h4>🔁 Estado del run</h4>
-      <p>Progreso de cada stage con pendientes / errores / completados y lista de códigos fallidos. Incluye el triage de actores nuevos (sugerencias agrupadas y merge masivo por mención) y el de experienciadores (frase y emoción a la vista, deselección por emoción y canónicos múltiples). Suma un <strong>editor de la KB de actores</strong>: ver / buscar / corregir <code>display_name</code>, tipo, rol, notas y aliases (equivalencias), y dar de alta actores.</p>
+      <p>Progreso de cada stage con pendientes / errores / completados y lista de códigos fallidos. Incluye el triage de actores nuevos (sugerencias agrupadas y merge masivo por mención) y el de experienciadores (frase y emoción a la vista, deselección por emoción y canónicos múltiples, con <strong>commit a la base</strong> que propaga a downstream). Suma un <strong>editor de la KB de actores</strong>: ver / buscar / corregir <code>display_name</code>, tipo, rol, notas y aliases (equivalencias), y dar de alta actores.</p>
     </div>
   </div>
 
@@ -2954,18 +2744,19 @@ python -m emoparse.app</code></pre>
   </div>
 
   <div class="callout note">
-    <span class="callout-label">Editar la KB de actores desde el dashboard</span>
+    <span class="callout-label">Revisar referentes y promover a la KB</span>
     <p>
-      La tab <strong>Estado</strong> permite corregir la KB de actores
-      (<code>display_name</code>, tipo, rol, notas y los aliases /
-      equivalencias) y dar de alta actores nuevos. Cada guardado hace
-      <strong>backup</strong> y escritura atómica a través del editor de la KB.
-      El <code>canonical_id</code> no se cambia desde la UI —renombrarlo
-      rompería las referencias ya escritas (<code>experienciador_canonico</code>,
-      <code>actores_canonicos</code> y el overlay apuntan al slug)—; para
-      fusionar o renombrar se sigue usando el flujo de
-      <code>discoveries</code>. Los nombres corregidos se reflejan en la tab
-      Revisión.
+      La tab <strong>Referentes</strong> muestra todas las marcas (actores,
+      experienciadores, fuentes) agrupadas por referente canónico, buscables y
+      con la frase completa al pasar el cursor. Desde ahí se aceptan, rechazan,
+      quitan o reasignan los vínculos marca↔referente. El botón
+      <em>"Promover referentes aceptados → KB"</em> materializa los canónicos
+      aceptados en <code>referentes_kb.json</code> con <strong>backup</strong> y
+      escritura atómica, sin pisar los campos editados a mano
+      (<code>display_name</code>, clase, tipo, notas). El
+      <code>canonical_id</code> es un slug estable: no se renombra desde la UI
+      porque las referencias ya escritas (<code>experienciador_canonico</code>,
+      los vínculos y el overlay) apuntan a él.
     </p>
   </div>
 </section>
@@ -3442,8 +3233,8 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
 
     <span class="c-kw">def</span> <span class="c-acc">validate</span>(
         self, codigo, frase_idx, emocion_idx,
-        experienciador, tipo_emocion, modo_existencia,
-        foria, dominancia, intensidad, tipo_fuente, fuente,
+        experienciador, experienciador_marca, tipo_emocion, modo_existencia,
+        fuente_marca, fuente_inferencia, foria, dominancia, intensidad,
         enunciador, enunciatarios,
     ) -> <span class="c-acc">list</span>[ValidationIssue]:
 
@@ -3682,17 +3473,22 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
         <tr>
           <td><code>frases</code></td>
           <td>1 row × (codigo, unit_idx)</td>
-          <td>Texto de la frase y resultados de las etapas a nivel frase: actores detectados, actores normalizados, emociones de la primera y la segunda lectura.</td>
+          <td>Texto de la frase y resultados de las etapas a nivel frase: actores detectados y emociones de la primera y la segunda lectura.</td>
         </tr>
         <tr>
           <td><code>emociones</code></td>
           <td>1 row × emoción individual</td>
-          <td>Una fila por emoción individual: quién la siente, tipo, modo y justificación, más el nombre canónico de la emoción, el experienciador canónico (si se normalizó), la caracterización detallada y, si se ejecutó, el análisis actancial.</td>
+          <td>Una fila por emoción individual: quién la siente, tipo, modo y justificación, más el nombre canónico de la emoción, el experienciador canónico (si se revisó), la caracterización detallada y, si se ejecutó, el análisis actancial.</td>
         </tr>
         <tr>
-          <td><code>experiencer_equivalences</code></td>
-          <td>1 row × (codigo, experienciador crudo)</td>
-          <td>Equivalencias de experienciador propuestas por <code>normalize_experiencers</code> y su decisión de triage (pending / accepted / rejected / applied). Al aplicarlas se escribe <code>emociones.experienciador_canonico</code>.</td>
+          <td><code>menciones</code> · <code>mencion_funcion</code> · <code>mencion_canonico</code></td>
+          <td>marcas discursivas</td>
+          <td>Base relacional de marcas: cada marca en su lugar (codigo, unit_idx), sus funciones (actor / experienciador / fuente, una marca puede tener varias) y sus vínculos muchos-a-muchos con referentes canónicos, con estado (proposed / accepted / rejected) y origen (llm / coref / deixis / auto / human).</td>
+        </tr>
+        <tr>
+          <td><code>canonico_semas</code></td>
+          <td>1 row × (referente, sema)</td>
+          <td>Semas asignados a cada referente canónico, con estado y origen.</td>
         </tr>
         <tr>
           <td><code>llm_cache</code></td>
@@ -3861,7 +3657,7 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
 
 <footer>
   <div>
-    <span class="mark">EmoParse</span> · Análisis de emociones en discursos · documentación v0.3.5
+    <span class="mark">EmoParse</span> · Análisis de emociones en discursos · documentación v0.4.0
   </div>
 </footer>
 

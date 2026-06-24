@@ -17,6 +17,7 @@ def render_system(
     tipo_discurso: str,
     enunciador: str,
     enunciatarios: str = "",
+    auditorio: str = "",
     alcance: str = "",
 ) -> str:
     """SYSTEM del pase 2.
@@ -35,6 +36,7 @@ def render_system(
         tipo_discurso=tipo_discurso,
         enunciador=enunciador,
         enunciatarios=enunciatarios,
+        auditorio=auditorio,
         alcance=alcance,
     )
 

@@ -100,9 +100,11 @@ def _insert_emocion(
     frase_idx: int,
     emocion_idx: int,
     experienciador: str = "Pueblo",
+    experienciador_marca: str = "el pueblo",
     tipo_emocion: str = "miedo",
+    fuente_marca: str = "marca de prueba",
+    fuente_inferencia: str = "inferencia de prueba",
     modo_existencia: str = "realizada",
-    deteccion_justificacion: str | None = "justificacion de prueba",
     caracterizacion_payload: dict | None = None,
 ) -> None:
     with db.transaction() as cur:
@@ -110,14 +112,15 @@ def _insert_emocion(
             """
             INSERT INTO emociones (
                 codigo, frase_idx, emocion_idx,
-                experienciador, tipo_emocion, modo_existencia,
-                deteccion_justificacion, caracterizacion_payload
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                experienciador, experienciador_marca, tipo_emocion, modo_existencia,
+                fuente_inferencia, fuente_marca,
+                caracterizacion_payload
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 codigo, frase_idx, emocion_idx,
-                experienciador, tipo_emocion, modo_existencia,
-                deteccion_justificacion,
+                experienciador, experienciador_marca, tipo_emocion, modo_existencia,
+                fuente_inferencia, fuente_marca,
                 json.dumps(caracterizacion_payload, ensure_ascii=False) if caracterizacion_payload else None,
             ),
         )
@@ -154,7 +157,8 @@ def populated_db(tmp_path: Path) -> Database:
     _insert_frase(
         db, "D1", 0, "Compatriotas, hoy comienza una nueva etapa.",
         actores_payload=[{"actor": "Pueblo", "tipo": "colectivo", "modo": "explicito", "justificacion": "j"}],
-        emociones_payload=[{"experienciador": "Pueblo", "tipo_emocion": "esperanza", "modo_existencia": "realizada", "justificacion": "j"}],
+        emociones_payload=[{"experienciador": "Pueblo", "experienciador_marca": "el pueblo", "tipo_emocion": "esperanza", "modo_existencia": "realizada",
+                            "fuente_marca": "marca de prueba", "fuente_inferencia": "inferencia de prueba", "justificacion": "j"}],
     )
     _insert_frase(
         db, "D1", 1, "Vamos a trabajar juntos.",
@@ -165,8 +169,11 @@ def populated_db(tmp_path: Path) -> Database:
     _insert_emocion(
         db, "D1", 0, 0,
         experienciador="Pueblo",
+        experienciador_marca="el pueblo",
         tipo_emocion="esperanza",
         modo_existencia="realizada",
+        fuente_marca="marca de prueba",
+        fuente_inferencia="inferencia de prueba",
         caracterizacion_payload={
             "foria": "euforico",
             "foria_justificacion": "positiva",
@@ -174,16 +181,16 @@ def populated_db(tmp_path: Path) -> Database:
             "dominancia_justificacion": "j",
             "intensidad": "alta",
             "intensidad_justificacion": "j",
-            "fuente": "Presidente",
-            "tipo_fuente": "actor",
-            "fuente_justificacion": "j",
         },
     )
     _insert_emocion(
         db, "D1", 0, 1,
         experienciador="Presidente",
+        experienciador_marca="el presidente",
         tipo_emocion="orgullo",
         modo_existencia="virtualizada",
+        fuente_marca="marca de prueba",
+        fuente_inferencia="inferencia de prueba",
         caracterizacion_payload=None,  # sin caracterización aún
     )
 
@@ -193,7 +200,6 @@ def populated_db(tmp_path: Path) -> Database:
 # ══════════════════════════════════════════════════════════════════════════════
 #  export_discursos_csv
 # ══════════════════════════════════════════════════════════════════════════════
-
 
 class TestExportDiscursosCsv:
 
@@ -433,7 +439,8 @@ class TestExportEmocionesCsv:
         with out.open(encoding="utf-8") as f:
             rows = list(csv.DictReader(f))
 
-        base = {"codigo", "frase_idx", "emocion_idx", "experienciador", "tipo_emocion", "modo_existencia"}
+        base = {"codigo", "frase_idx", "emocion_idx", "experienciador", "experienciador_marca",
+                "tipo_emocion", "fuente_inferencia", "fuente_marca", "modo_existencia"}
 
         assert base.issubset(set(rows[0].keys()))
 
@@ -451,7 +458,6 @@ class TestExportEmocionesCsv:
         assert em0["caracterizacion__foria"] == "euforico"
         assert em0["caracterizacion__dominancia"] == "cognoscitiva"
         assert em0["caracterizacion__intensidad"] == "alta"
-        assert em0["caracterizacion__fuente"] == "Presidente"
 
     def test_missing_caracterizacion_is_empty_string(self, populated_db: Database, tmp_path: Path) -> None:
         out = tmp_path / "emociones.csv"
@@ -496,21 +502,10 @@ class TestExportEmocionesCsv:
         assert n == 0
         assert out.read_text(encoding="utf-8") == ""
 
-    def test_deteccion_justificacion_present(self, populated_db: Database, tmp_path: Path) -> None:
-        out = tmp_path / "emociones.csv"
-        export_emociones_csv(populated_db, out)
-
-        with out.open(encoding="utf-8") as f:
-            rows = list(csv.DictReader(f))
-
-        assert "deteccion_justificacion" in rows[0]
-        assert rows[0]["deteccion_justificacion"] == "justificacion de prueba"
-
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  export_full_run
 # ══════════════════════════════════════════════════════════════════════════════
-
 
 class TestExportFullRun:
 
@@ -521,14 +516,12 @@ class TestExportFullRun:
         assert (out_dir / "discursos.csv").is_file()
         assert (out_dir / "frases.csv").is_file()
         assert (out_dir / "emociones.csv").is_file()
-        assert (out_dir / "discoveries.csv").is_file()
 
     def test_returns_correct_counts(self, populated_db: Database, tmp_path: Path) -> None:
         counts = export_full_run(populated_db, tmp_path / "out")
 
         assert counts == {
             "discursos": 1,
-            "discoveries": 0,
             "frases": 2,
             "emociones": 2,
         }
@@ -547,7 +540,6 @@ class TestExportFullRun:
 
         assert counts == {
             "discursos": 0,
-            "discoveries": 0,
             "frases": 0,
             "emociones": 0,
         }

@@ -22,33 +22,30 @@ from emoparse.core.backend.registry import BackendRegistry
 from emoparse.core.backend.retry import RetryConfig
 from emoparse.core.cache.backend import CachedBackend
 from emoparse.core.cache.repository import CacheRepository
-from emoparse.knowledge.loader import KnowledgeLoader
+from emoparse.knowledge.loader import KnowledgeError, KnowledgeLoader
 from emoparse.pipeline.dag import EMOPARSE_DAG
 from emoparse.pipeline.stages import (
     ActantsStage,
     ActorsStage,
     CharacterizerStage,
+    DeixisStage,
     EmotionsPass2Stage,
     EmotionsStage,
     EnunciationStage,
     ExplodeEmocionesStage,
     JudgeStage,
     MetadataStage,
-    NormalizeActorsStage,
     NormalizeEmotionsStage,
-    NormalizeExperiencersStage,
+    SemasStage,
     Stage,
     SummarizerStage,
 )
-from emoparse.storage.actors_kb_discoveries import ActorsKbDiscoveriesRepository
 from emoparse.storage.db import Database
 from emoparse.storage.discursos import DiscursosRepository
 from emoparse.storage.emociones import EmocionesRepository
-from emoparse.storage.experiencer_equivalences import (
-    ExperiencerEquivalencesRepository,
-)
 from emoparse.storage.frases import FrasesRepository
 from emoparse.storage.judgments import JudgmentsRepository
+from emoparse.storage.menciones import MencionesRepository
 from emoparse.storage.metrics import (
     MetricsRepository,
     StageMetricsAccumulator,
@@ -66,15 +63,10 @@ STAGE_ORDER: tuple[str, ...] = EMOPARSE_DAG.toposort()
 
 
 #: Stages ejecutadas por default.
-#: `normalize_actors` queda OPT-IN: requiere KB poblada y se piloteaba sobre
-#: un subset antes de tirarla a producción.
 #: `actants` queda OPT-IN: análisis fino opcional sobre emociones detectadas.
-#: `normalize_experiencers` queda OPT-IN: propone equivalencias de
-#: experienciador para revisión humana; no corre en el pipeline base.
 DEFAULT_ENABLED_STAGES: tuple[str, ...] = tuple(
     s for s in STAGE_ORDER
-    if s not in ("emotions_pass2", "judge", "normalize_actors", "actants",
-                 "normalize_experiencers")
+    if s not in ("emotions_pass2", "deixis", "judge", "actants")
 )
 
 
@@ -134,6 +126,7 @@ class PipelineRunner:
         ontology_filename: str = "emociones.json",
         heuristics_filename: str = "heuristicas.md",
         diccionario_filename: str = "tipos_discurso.json",
+        colectivos_filename: str = "colectivos.json",
         configurations_filename: str = "configuraciones_emocion.json",
         actors_kb_filename: str = "actors_kb.json",
         actors_heuristics_filename: str | None = "heuristicas/actors.md",
@@ -165,8 +158,8 @@ class PipelineRunner:
                 archivo no existe en knowledge_dir, EmotionsStage falla con
                 un mensaje claro: se asume que la knowledge base lo provee.
             actors_kb_filename: Nombre del archivo JSON con la KB de actores
-                conocidos (entity linking). Usado solo si la stage
-                `normalize_actors` está habilitada.
+                conocidos (entity linking). Inerte en el pipeline base; se
+                conserva por compatibilidad de configuración.
             actors_heuristics_filename: Heurísticas para ActorsAgent.
                 Si None, usa heuristics_filename.
             emotions_heuristics_filename: Heurísticas para EmotionsAgent (pase 1).
@@ -221,6 +214,7 @@ class PipelineRunner:
         self._ontology_filename = ontology_filename
         self._heuristics_filename = heuristics_filename  # fallback monolítico
         self._diccionario_filename = diccionario_filename
+        self._colectivos_filename = colectivos_filename
         self._configurations_filename = configurations_filename
         self._actors_kb_filename = actors_kb_filename
         self._db = Database(Path(db_path))
@@ -229,10 +223,9 @@ class PipelineRunner:
         self._f_repo = FrasesRepository(self._db)
         self._e_repo = EmocionesRepository(self._db)
         self._j_repo = JudgmentsRepository(self._db)
+        self._m_repo = MencionesRepository(self._db)
         self._cache_repo = CacheRepository(self._db)
         self._metrics_repo = MetricsRepository(self._db)
-        self._discoveries_repo = ActorsKbDiscoveriesRepository(self._db)
-        self._equivalences_repo = ExperiencerEquivalencesRepository(self._db)
         self._current_accumulator: StageMetricsAccumulator | None = None
         self._ctx = self._build_run_context()
         self._runs_repo.bootstrap(self._ctx)
@@ -407,6 +400,27 @@ class PipelineRunner:
 
     # ── Construcción de stages ───────────────────────────────────────────────
 
+    def _load_referentes_kb_safe(self) -> dict[str, Any]:
+        """Carga el referentes_kb; devuelve {} si no existe todavía."""
+        try:
+            return self._knowledge.load_referentes_kb()
+        except KnowledgeError:
+            return {}
+
+    def _load_colectivos_safe(self) -> dict[str, Any]:
+        """Carga la ontología de colectivos; devuelve {} si no existe."""
+        try:
+            return self._knowledge.load_colectivos(self._colectivos_filename)
+        except KnowledgeError:
+            return {}
+
+    def _load_semas_vocab_safe(self) -> dict[str, Any]:
+        """Carga el vocabulario de semas; devuelve {} si no existe."""
+        try:
+            return self._knowledge.load_semas()
+        except KnowledgeError:
+            return {}
+
     def _build_stage(self, name: str) -> Stage:
         """Construye el Stage con sus dependencias."""
         if name == "summarizer":
@@ -450,6 +464,7 @@ class PipelineRunner:
                 heuristicas=self._knowledge.load_heuristics(
                     self._enunciation_heuristics_filename
                 ) if self._enunciation_heuristics_filename else None,
+                colectivos=self._load_colectivos_safe() or None,
             )
             return EnunciationStage(
                 agent, self._d_repo, agent_version=self._cfg.versions.prompt
@@ -465,19 +480,6 @@ class PipelineRunner:
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
-            )
-
-        if name == "normalize_actors":
-            backend = self._get_backend(name)
-            actors_kb = self._knowledge.load_actors_kb(self._actors_kb_filename)
-            return NormalizeActorsStage(
-                backend, self._d_repo, self._f_repo,
-                actors_kb=actors_kb,
-                discoveries_repo=self._discoveries_repo,
-                agent_version=self._cfg.versions.prompt,
-                retry_config=self._retry_config,
-                genre=self._genre,
-                inject_kb=bool(getattr(self._cfg, "normalize_actors_inject_kb", False)),
             )
 
         if name == "emotions":
@@ -522,7 +524,17 @@ class PipelineRunner:
 
         if name == "explode_emociones":
             return ExplodeEmocionesStage(
-                self._d_repo, self._f_repo, self._e_repo
+                self._d_repo, self._f_repo, self._e_repo, self._m_repo,
+                referentes_kb=self._load_referentes_kb_safe(),
+            )
+
+        if name == "deixis":
+            backend = self._get_backend(name)
+            return DeixisStage(
+                backend, self._d_repo, self._m_repo,
+                agent_version=self._cfg.versions.prompt,
+                retry_config=self._retry_config,
+                genre=self._genre,
             )
 
         if name == "normalize_emotions":
@@ -533,18 +545,6 @@ class PipelineRunner:
                 emociones_repo=self._e_repo,
                 emotion_ontology=ontology,
                 agent_version=self._cfg.versions.ontology,
-            )
-
-        if name == "normalize_experiencers":
-            backend = self._get_backend(name)
-            actors_kb = self._knowledge.load_actors_kb(self._actors_kb_filename)
-            return NormalizeExperiencersStage(
-                backend, self._d_repo, self._f_repo, self._e_repo,
-                equivalences_repo=self._equivalences_repo,
-                actors_kb=actors_kb,
-                agent_version=self._cfg.versions.prompt,
-                retry_config=self._retry_config,
-                genre=self._genre,
             )
 
         if name == "characterizer":
@@ -559,6 +559,17 @@ class PipelineRunner:
                 genre=self._genre,
             )
 
+        if name == "semas":
+            backend = self._get_backend(name)
+            return SemasStage(
+                backend,
+                self._m_repo,
+                semas_vocab=self._load_semas_vocab_safe(),
+                agent_version=self._cfg.versions.prompt,
+                retry_config=self._retry_config,
+                genre=self._genre,
+            )
+
         if name == "judge":
             backend = self._get_backend(name)
             return JudgeStage(
@@ -567,6 +578,7 @@ class PipelineRunner:
                 heuristicas=self._knowledge.load_heuristics(
                     self._judge_heuristics_filename
                 ) if self._judge_heuristics_filename else None,
+                ontologia=self._knowledge.load_ontology(self._ontology_filename),
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,

@@ -62,15 +62,38 @@ emociones para arrastrar hacia adelante.
 REGLAS DE FORMATO (igual al pase 1):
 
 - Por cada emoción identificada, indicá:
-    * experienciador:   actor que experimenta la emoción.
+    * experienciador:   referente CONCRETO del actor que experimenta la
+                        emoción (ej. "el presidente", "los manifestantes").
+                        Puede ocupar el rol de enunciador, enunciatario o
+                        actor mencionado, pero NUNCA uses la etiqueta de
+                        rol como valor ("enunciador", "enunciatario/s",
+                        "actor"): identificá a QUIÉN designa en este
+                        discurso. Es la inferencia, no la marca.
+    * experienciador_marca: el sintagma o ítem léxico LITERAL y BREVE de la
+                        unidad que identifica al experienciador ("nosotros",
+                        "el presidente", o el verbo si el sujeto es tácito:
+                        "tienen miedo"). NUNCA una cláusula entera.
     * tipo_emocion:     nombre concreto (ej. miedo, alegría, indignación).
-    * modo_existencia:  realizada | potencial | actual | virtual | inducida_proyectada.
-    * justificacion:    evidencia semiótica concreta TOMADA DE LA FRASE
-                        ACTUAL (una palabra, una construcción, una
-                        situación que esta frase describe). Está PROHIBIDO
-                        justificar con "el contexto anterior" o "mantiene
-                        la emoción previa": si ese es el único apoyo, la
-                        emoción NO va.
+                        NO uses categorías abstractas tipo "negativa".
+    * fuente_inferencia: el actor o circunstante CONCRETO que DESENCADENA la
+                        emoción en el experienciador, es decir su ORIGEN
+                        (nunca la etiqueta de rol "enunciador",
+                        "enunciatario/s" o "actor", sino a quién designan).
+                        Sintagma nominal BREVE (máx ~6 palabras), no una
+                        explicación. "no identificado" si no es determinable.
+    * fuente_marca:     el sintagma o ítem léxico LITERAL que nombra esa fuente,
+                        CONTIGUO y BREVE (máx ~6 palabras), copiado tal cual del
+                        texto, SIN elipsis ("...") ni saltos entre cláusulas
+                        ("la barbarie invasora"). "no identificado" si no aparece
+                        en la unidad.
+    * modo_existencia:  realizada | potencial | actual | virtual | inducida_proyectada
+                        - realizada:           efectivamente sentida en el discurso.
+                        - potencial:           susceptible de aparecer pero no manifiesta.
+                        - actual:              ocurriendo en el presente del enunciado.
+                        - virtual:             presupuesta sin manifestarse.
+                        - inducida_proyectada: provocada/atribuida por el discurso a otros.
+    * tipo_configuracion: una de las 8 configuraciones listadas arriba
+                          (usá exactamente el nombre canónico de la clave).
 {% if alcance %}
 
 - ALCANCE RESTRINGIDO: detectá ÚNICAMENTE emociones cuyo experienciador sea {{ alcance }}. Ignorá (no devuelvas) emociones de cualquier otro actor, aunque la frase actual las exprese.
@@ -88,4 +111,5 @@ CONTEXTO GLOBAL DEL DISCURSO:
   Tipo:       {{ tipo_discurso }}
   Enunciador: {{ enunciador }}
 {% if enunciatarios %}  Enunciatarios: {{ enunciatarios }}
+{% endif %}{% if auditorio %}  Auditorio: {{ auditorio }}
 {% endif %}

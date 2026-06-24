@@ -134,12 +134,14 @@ class TestOutputMapping:
                     unit_idx=0,
                     actores=[
                         ActorSchema(
+                            marca="el presidente",
                             actor="el presidente",
                             tipo="humano_individual",
                             modo="explicito",
                             justificacion="Mencionado por nombre.",
                         ),
                         ActorSchema(
+                            marca="el pueblo",
                             actor="el pueblo",
                             tipo="colectivo",
                             modo="inferido",
@@ -160,6 +162,7 @@ class TestOutputMapping:
         assert len(parsed) == 2
         assert parsed[0]["actor"] == "el presidente"
         assert parsed[0]["tipo"] == "humano_individual"
+        assert parsed[1]["marca"] == "el pueblo"
         assert parsed[1]["modo"] == "inferido"
 
     def test_empty_actors_list_serialized_as_empty_json_list(self) -> None:

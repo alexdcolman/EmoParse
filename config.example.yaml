@@ -70,8 +70,7 @@ models:
 #
 #    Opcionales (se declaran acá para asignarles modelo, pero solo
 #    se ejecutan si se piden con `--stages` en la CLI):
-#      normalize_actors, emotions_pass2, actants, judge,
-#      normalize_experiencers.
+#      emotions_pass2, deixis, semas, actants, judge.
 #
 #  Las etapas `explode_emociones` y `normalize_emotions` son internas
 #  (sin LLM) y no requieren modelo asignado.
@@ -91,12 +90,16 @@ pipeline:
     # default. Para correrlas, pasarlas en `--stages` al invocar
     # `emoparse run` (junto con sus dependencias).
 
-    # Unifica las menciones de un mismo actor (correferencia intra
-    # discurso + vínculo contra la base de actores conocidos).
-    normalize_actors: qwen3-14b
-
     # Segunda lectura de emociones con contexto de las frases previas.
     emotions_pass2:  qwen3-14b
+
+    # Resolución de marcas deícticas (yo/nosotros/veamos…) a los referentes
+    # concretos del discurso (enunciador, auditorio, colectivo de
+    # identificación). Requiere `enunciation` corrido previamente.
+    deixis:          qwen3-14b
+
+    # Asignación de semas a actores, experienciadores y fuentes.
+    semas:         qwen3-14b
 
     # Análisis actancial de cada emoción: mediador, verificadores y
     # operador de modificación.
@@ -104,11 +107,6 @@ pipeline:
 
     # Un segundo modelo evalúa la coherencia de las caracterizaciones.
     judge:           qwen3-14b
-
-    # Propone equivalencias de experienciador por discurso (p. ej. "yo" →
-    # el enunciador) para revisión humana. Se revisa con `emoparse
-    # experiencers` y se materializa con `experiencers apply`.
-    normalize_experiencers: qwen3-14b
 
   # Si false, los backends no se envuelven con CachedBackend. Útil
   # solo para benchmarks; en producción dejar siempre true.

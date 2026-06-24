@@ -195,6 +195,17 @@ class RevisionOverlay:
                  {"deleted": False, "overrides": {}, "confirmado": {}})
         )
 
+    def iter_emocion_overrides(self):
+        """Itera (codigo, frase_idx, emocion_idx, overrides) de todas las emociones
+        con ediciones en el overlay. Pensado para materializar (commit) las
+        correcciones a la base sin acceder a la estructura interna."""
+        for codigo, frases in self._data.get("emociones", {}).items():
+            for fi, emos in frases.items():
+                for ei, node in emos.items():
+                    overrides = (node or {}).get("overrides", {})
+                    if overrides:
+                        yield codigo, int(fi), int(ei), dict(overrides)
+
     def is_emocion_deleted(self, codigo: str, frase_idx: int, emocion_idx: int) -> bool:
         return bool(self.get_emocion(codigo, frase_idx, emocion_idx).get("deleted"))
 

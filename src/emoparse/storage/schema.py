@@ -90,13 +90,6 @@ CREATE TABLE IF NOT EXISTS frases (
     emociones_pass2_version TEXT,
     emociones_pass2_error   TEXT,
 
-    -- Output de NormalizeActorsStage (opt-in).
-    -- JSON con el linking de cada actor mencionado en la frase contra la
-    -- KB de actores conocidos. NULL = stage no corrida.
-    actores_canonicos_payload TEXT,
-    actores_canonicos_version TEXT,
-    actores_canonicos_error   TEXT,
-
     created_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at              TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -121,25 +114,25 @@ CREATE TABLE IF NOT EXISTS emociones (
     -- porque consultar "todas las emociones de tipo miedo" sin un join
     -- es órdenes de magnitud más rápido. Storage es barato.
     experienciador          TEXT NOT NULL,
+    experienciador_marca    TEXT NOT NULL,
     tipo_emocion            TEXT NOT NULL,
+    fuente_marca            TEXT NOT NULL,
+    fuente_inferencia       TEXT NOT NULL,
     modo_existencia         TEXT NOT NULL,
     -- Configuración del simulacro emocional (TIPO_CONF, 1..8).
     -- Emitido por EmotionsAgent junto con la detección. NULL solo en bases
     -- pre-V0.3.0 que aún no han re-ejecutado emotions con la versión nueva.
     tipo_configuracion      TEXT,
-    deteccion_justificacion TEXT,
 
     -- Output de NormalizeEmotionsStage. Canónico según ontología.
     -- NULL = stage no corrida o emoción no cubierta por la ontología.
     tipo_emocion_canonico       TEXT,
     normalize_emotions_version  TEXT,
 
-    -- Output de NormalizeExperiencersStage (opt-in), tras aplicar las
-    -- equivalencias aceptadas. Es un string legible por discurso (p. ej. el
-    -- nombre del enunciador), NO un canonical_id de actors_kb. NULL = stage
-    -- no corrida, equivalencia no aceptada, o aún sin aplicar.
+    -- Experienciador canónico, materializado por el commit de la revisión
+    -- (overlay → base). String legible por discurso (p. ej. el nombre del
+    -- enunciador). NULL = sin revisión commiteada para esa emoción.
     experienciador_canonico        TEXT,
-    normalize_experiencers_version TEXT,
 
     -- Output del CharacterizerAgent. JSON con los 4 atributos.
     caracterizacion_payload TEXT,
@@ -283,107 +276,126 @@ CREATE INDEX IF NOT EXISTS idx_judgments_codigo
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  Tabla `actors_kb_discoveries`: actores detectados como nuevos por el
-#  agente de linking, para revisión posterior.
-# ══════════════════════════════════════════════════════════════════════════════
-
-CREATE_ACTORS_KB_DISCOVERIES = """
-CREATE TABLE IF NOT EXISTS actors_kb_discoveries (
-    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    codigo              TEXT NOT NULL,
-    unit_idx            INTEGER NOT NULL,
-    actor_mencionado    TEXT NOT NULL,
-    contexto            TEXT,
-    confianza           TEXT NOT NULL,
-    justificacion       TEXT,
-    canonical_id_sugerido   TEXT,
-    display_name_sugerido   TEXT,
-    tipo_sugerido           TEXT,
-    alias_candidato         INTEGER,
-    discovered_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    reviewed            INTEGER NOT NULL DEFAULT 0
-)
-""".strip()
-
-
-CREATE_ACTORS_KB_DISCOVERIES_INDEX = """
-CREATE INDEX IF NOT EXISTS idx_actors_kb_discoveries_codigo
-    ON actors_kb_discoveries(codigo)
-""".strip()
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  Tabla `actors_kb_decisions`: decisiones de triage sobre discoveries.
-# ══════════════════════════════════════════════════════════════════════════════
-
-CREATE_ACTORS_KB_DECISIONS = """
-CREATE TABLE IF NOT EXISTS actors_kb_decisions (
-    discovery_id        INTEGER PRIMARY KEY,
-    decision            TEXT NOT NULL,    -- 'promote' | 'merge' | 'discard'
-    -- Para 'promote': canonical_id sugerido (debe ser slug válido).
-    -- Para 'merge':   canonical_id destino (debe existir en la KB al aplicar).
-    -- Para 'discard': NULL.
-    canonical_id        TEXT,
-    -- Solo para 'promote': metadatos del nuevo canónico.
-    display_name        TEXT,
-    tipo                TEXT,
-    rol                 TEXT,
-    -- Estado de aplicación.
-    status              TEXT NOT NULL DEFAULT 'pending',  -- 'pending' | 'applied' | 'failed'
-    error_message       TEXT,
-    -- Auditoría.
-    origin              TEXT NOT NULL DEFAULT 'cli',      -- 'dashboard' | 'cli'
-    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    applied_at          TIMESTAMP,
-    FOREIGN KEY (discovery_id) REFERENCES actors_kb_discoveries(id)
-        ON DELETE CASCADE
-)
-""".strip()
-
-
-CREATE_ACTORS_KB_DECISIONS_INDEX = """
-CREATE INDEX IF NOT EXISTS idx_actors_kb_decisions_status
-    ON actors_kb_decisions(status)
-""".strip()
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  Tabla `experiencer_equivalences`: equivalencias de experienciador propuestas
-#  por normalize_experiencers, por discurso, para revisión humana.
+#  Marcas discursivas → referentes canónicos
 #
-#  A diferencia de los actores (KB global en JSON), la normalización de
-#  experienciadores es dependiente del discurso ("yo" → el enunciador de ESE
-#  discurso), así que no hay JSON externo que mutar: el `apply` escribe el
-#  canónico directamente en `emociones.experienciador_canonico`. Por eso una
-#  sola tabla (propuesta + decisión), no el par discoveries/decisions.
+#  Una `mencion` es una marca discursiva en su lugar (codigo, unit_idx),
+#  independiente de su función actancial. `mencion_funcion` registra las
+#  funciones de cada marca: una misma marca puede ser a la vez actor y
+#  experienciador (una mención, varias funciones). `mencion_canonico` liga la
+#  marca (muchos-a-muchos) a uno o más referentes de `referentes_kb` (resuelve
+#  el "nosotros" inclusivo: una marca → varios canónicos). `canonico_semas`
+#  adjunta semas al referente.
 # ══════════════════════════════════════════════════════════════════════════════
 
-CREATE_EXPERIENCER_EQUIVALENCES = """
-CREATE TABLE IF NOT EXISTS experiencer_equivalences (
-    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
-    codigo              TEXT NOT NULL,
-    raw_experienciador  TEXT NOT NULL,
-    -- Propuesta del LLM.
-    canonical_sugerido  TEXT,
-    clase               TEXT NOT NULL,    -- enunciador|enunciatario|actor|otro|literal
-    confianza           TEXT NOT NULL,    -- alta|media|baja
-    justificacion       TEXT,
-    ocurrencias         INTEGER NOT NULL DEFAULT 0,
-    -- Triage.
-    status              TEXT NOT NULL DEFAULT 'pending',  -- pending|accepted|rejected|applied
-    canonical_final     TEXT,             -- destino efectivo al aceptar
-    origin              TEXT NOT NULL DEFAULT 'cli',       -- cli|dashboard
-    discovered_at       TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    reviewed_at         TIMESTAMP,
-    applied_at          TIMESTAMP,
-    UNIQUE (codigo, raw_experienciador)
+CREATE_MENCIONES = """
+CREATE TABLE IF NOT EXISTS menciones (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo          TEXT NOT NULL,
+    unit_idx        INTEGER NOT NULL,
+    -- Marca discursiva tal como aparece ("tomamos", "Javier Milei",
+    -- "la barbarie invasora", "ellos").
+    marca           TEXT NOT NULL,
+    -- Referente inferido por el LLM en origen (auditoría; el vínculo efectivo
+    -- vive en mencion_canonico).
+    llm_inferencia  TEXT,
+    origin          TEXT NOT NULL DEFAULT 'llm',   -- 'llm'|'human'
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (codigo, unit_idx, marca),
+    FOREIGN KEY (codigo) REFERENCES discursos(codigo) ON DELETE CASCADE
 )
 """.strip()
 
 
-CREATE_EXPERIENCER_EQUIVALENCES_INDEX = """
-CREATE INDEX IF NOT EXISTS idx_experiencer_equivalences_codigo_status
-    ON experiencer_equivalences(codigo, status)
+CREATE_MENCIONES_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_menciones_codigo_unit
+    ON menciones(codigo, unit_idx)
+""".strip()
+
+
+CREATE_MENCION_FUNCION = """
+CREATE TABLE IF NOT EXISTS mencion_funcion (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    mencion_id  INTEGER NOT NULL,
+    funcion     TEXT NOT NULL,    -- 'actor'|'experienciador'|'fuente'|'circunstante'
+    origin      TEXT NOT NULL DEFAULT 'llm',   -- 'llm'|'human'
+    created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (mencion_id, funcion),
+    FOREIGN KEY (mencion_id) REFERENCES menciones(id) ON DELETE CASCADE
+)
+""".strip()
+
+
+CREATE_MENCION_FUNCION_MENCION_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_mencion_funcion_mencion
+    ON mencion_funcion(mencion_id)
+""".strip()
+
+
+CREATE_MENCION_FUNCION_FUNCION_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_mencion_funcion_funcion
+    ON mencion_funcion(funcion)
+""".strip()
+
+
+CREATE_MENCION_CANONICO = """
+CREATE TABLE IF NOT EXISTS mencion_canonico (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    mencion_id      INTEGER NOT NULL,
+    -- Referente canónico (slug en referentes_kb). Una mención puede ligarse a
+    -- varios canónicos (UNIQUE por par, no por mención).
+    canonical_id    TEXT NOT NULL,
+    status          TEXT NOT NULL DEFAULT 'proposed',  -- 'proposed'|'accepted'|'rejected'
+    -- Procedencia del vínculo: el deíctico entra como sugerencia ('deixis'),
+    -- no como resolución automática.
+    origin          TEXT NOT NULL DEFAULT 'llm',        -- 'llm'|'deixis'|'deixis_llm'|'auto'|'coref'|'human'
+    -- Categoría esquemática cuando el vínculo proviene de la resolución de
+    -- deixis: 'enunciador'|'auditorio'|'colectivo_identificacion'. NULL si no
+    -- es un vínculo deíctico. El canonical_id sigue siendo el referente concreto.
+    deixis_tipo     TEXT,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    reviewed_at     TIMESTAMP,
+    UNIQUE (mencion_id, canonical_id),
+    FOREIGN KEY (mencion_id) REFERENCES menciones(id) ON DELETE CASCADE
+)
+""".strip()
+
+
+CREATE_MENCION_CANONICO_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_mencion_canonico_canonical_status
+    ON mencion_canonico(canonical_id, status)
+""".strip()
+
+
+CREATE_MENCION_CANONICO_MENCION_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_mencion_canonico_mencion
+    ON mencion_canonico(mencion_id)
+""".strip()
+
+
+CREATE_CANONICO_SEMAS = """
+CREATE TABLE IF NOT EXISTS canonico_semas (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    -- Referente canónico (slug en referentes_kb). El sema se adjunta al
+    -- referente, no a una mención puntual.
+    canonical_id    TEXT NOT NULL,
+    sema            TEXT NOT NULL,    -- del vocabulario curado (knowledge/semas.json)
+    status          TEXT NOT NULL DEFAULT 'proposed',  -- 'proposed'|'accepted'|'rejected'
+    origin          TEXT NOT NULL DEFAULT 'llm',        -- 'llm'|'human'
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (canonical_id, sema)
+)
+""".strip()
+
+
+CREATE_CANONICO_SEMAS_CANONICAL_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_canonico_semas_canonical
+    ON canonico_semas(canonical_id)
+""".strip()
+
+
+CREATE_CANONICO_SEMAS_SEMA_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_canonico_semas_sema
+    ON canonico_semas(sema)
 """.strip()
 
 
@@ -405,10 +417,15 @@ ALL_TABLES_DDL: list[str] = [
     CREATE_RUN_METRICS_INDEX,
     CREATE_JUDGMENTS,
     CREATE_JUDGMENTS_INDEX,
-    CREATE_ACTORS_KB_DISCOVERIES,
-    CREATE_ACTORS_KB_DISCOVERIES_INDEX,
-    CREATE_ACTORS_KB_DECISIONS,
-    CREATE_ACTORS_KB_DECISIONS_INDEX,
-    CREATE_EXPERIENCER_EQUIVALENCES,
-    CREATE_EXPERIENCER_EQUIVALENCES_INDEX,
+    CREATE_MENCIONES,
+    CREATE_MENCIONES_INDEX,
+    CREATE_MENCION_FUNCION,
+    CREATE_MENCION_FUNCION_MENCION_INDEX,
+    CREATE_MENCION_FUNCION_FUNCION_INDEX,
+    CREATE_MENCION_CANONICO,
+    CREATE_MENCION_CANONICO_INDEX,
+    CREATE_MENCION_CANONICO_MENCION_INDEX,
+    CREATE_CANONICO_SEMAS,
+    CREATE_CANONICO_SEMAS_CANONICAL_INDEX,
+    CREATE_CANONICO_SEMAS_SEMA_INDEX,
 ]

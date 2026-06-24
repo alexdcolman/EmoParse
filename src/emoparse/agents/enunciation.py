@@ -22,11 +22,13 @@ from emoparse.genres.schema_factory import enunciacion_schema
 class EnunciationAgent(BaseAgent[EnunciacionSchema]):
     """Identifica la estructura enunciativa de un discurso.
 
-    Procesa una unidad completa por llamada y agrega tres columnas:
+    Procesa una unidad completa por llamada y agrega estas columnas:
 
         - `enunciador`
         - `enunciador_justificacion`
         - `enunciatarios` (JSON serializado)
+        - `auditorio` (JSON serializado)
+        - `colectivos_identificacion` (JSON serializado)
     """
 
     NAME = "enunciation"
@@ -38,6 +40,8 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         "enunciador",
         "enunciador_justificacion",
         "enunciatarios",
+        "auditorio",
+        "colectivos_identificacion",
     )
 
     def __init__(
@@ -45,6 +49,7 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         backend: LLMBackend,
         diccionario_tipos: dict[str, Any],
         heuristicas: str | None = None,
+        colectivos: dict[str, Any] | None = None,
         retry_config: Any | None = None,
         genre: Genre | None = None,
     ) -> None:
@@ -56,6 +61,8 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
             heuristicas: Reglas heurísticas para identificación de
                 estructura enunciativa. Si None, no se inyectan en el
                 system prompt.
+            colectivos: Ontología de colectivos de identificación por tipo de
+                discurso. Si None, no se piden colectivos.
             retry_config: Política de reintentos ante errores transitorios.
             genre: Configuración opcional de género discursivo. Si se
                 provee, restringe los roles enunciativos válidos del schema.
@@ -64,6 +71,8 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
             diccionario_tipos, ensure_ascii=False, indent=2
         )
         self._heuristicas = heuristicas
+        self._colectivos_str = _format_colectivos(colectivos)
+        self._clases_validas = _allowed_colectivo_clases(colectivos)
         self._genre = genre
 
         # Si se define genre, reemplazar el schema antes de llamar a
@@ -80,6 +89,7 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         return prompts.render_system(
             diccionario=self._diccionario_str,
             heuristicas=self._heuristicas,
+            colectivos=self._colectivos_str or None,
         )
 
     def _build_user(self, row: pd.Series) -> str:
@@ -103,11 +113,64 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
             [e.model_dump() for e in parsed.enunciatarios],
             ensure_ascii=False,
         )
+        auditorio_json = json.dumps(
+            [a.model_dump() for a in parsed.auditorio],
+            ensure_ascii=False,
+        )
+        # Validación post-hoc de la clase de colectivo contra la ontología:
+        # se descartan las clases no reconocidas (el schema deja `clase` libre).
+        colectivos = [
+            c.model_dump()
+            for c in parsed.colectivos
+            if not self._clases_validas
+            or c.clase.strip().lower() in self._clases_validas
+        ]
+        colectivos_json = json.dumps(colectivos, ensure_ascii=False)
         return {
             "enunciador": parsed.enunciador.actor,
             "enunciador_justificacion": parsed.enunciador.justificacion,
             "enunciatarios": enunciatarios_json,
+            "auditorio": auditorio_json,
+            "colectivos_identificacion": colectivos_json,
         }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Helpers de colectivos de identificación
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _format_colectivos(colectivos: dict[str, Any] | None) -> str:
+    """Formatea la ontología de colectivos por tipo de discurso para el prompt."""
+    if not colectivos:
+        return ""
+    lines: list[str] = []
+    for tipo, clases in colectivos.items():
+        if tipo == "version" or not isinstance(clases, dict):
+            continue
+        lines.append(f"* {tipo.upper()}:")
+        for clase, info in clases.items():
+            desc = info.get("descripcion", "") if isinstance(info, dict) else ""
+            ejemplo = info.get("ejemplo", "") if isinstance(info, dict) else ""
+            linea = f"    - {clase}"
+            if desc:
+                linea += f": {desc}"
+            if ejemplo:
+                linea += f" Ej: {ejemplo}"
+            lines.append(linea)
+    return "\n".join(lines)
+
+
+def _allowed_colectivo_clases(colectivos: dict[str, Any] | None) -> set[str]:
+    """Conjunto de clases de colectivo válidas (unión sobre tipos de discurso)."""
+    allowed: set[str] = set()
+    if not colectivos:
+        return allowed
+    for tipo, clases in colectivos.items():
+        if tipo == "version" or not isinstance(clases, dict):
+            continue
+        for clase in clases:
+            allowed.add(str(clase).strip().lower())
+    return allowed
 
 
 # ══════════════════════════════════════════════════════════════════════════════

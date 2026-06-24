@@ -158,10 +158,12 @@ class TestOutputMapping:
                     emociones=[
                         EmocionSchema(
                             experienciador="el presidente",
+                            experienciador_marca="el presidente",
                             tipo_emocion="orgullo",
                             tipo_configuracion="cualificacion_por_indicadores_comportamiento",
                             modo_existencia="realizada",
-                            justificacion="Habla con voz firme y sonríe.",
+                            fuente_marca="la riqueza",
+                            fuente_inferencia="riqueza",
                         ),
                     ],
                 ),
@@ -176,3 +178,5 @@ class TestOutputMapping:
         assert len(parsed) == 1
         assert parsed[0]["tipo_emocion"] == "orgullo"
         assert parsed[0]["modo_existencia"] == "realizada"
+        assert parsed[0]["fuente_marca"] == "la riqueza"
+        assert parsed[0]["fuente_inferencia"] == "riqueza"

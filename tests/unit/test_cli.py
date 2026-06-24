@@ -98,6 +98,7 @@ class _MockBackend(LLMBackend):
             parsed = ListaEmocionesBatchSchema(root=[
                 EmocionesBatchItemSchema(unit_idx=i, emociones=[
                     EmocionSchema(experienciador="X", tipo_emocion="miedo",
+                                  fuente_inferencia="actor", fuente_marca="marca",
                                   modo_existencia="realizada", justificacion="j"),
                 ]) for i in range(n_units)
             ])
@@ -109,7 +110,6 @@ class _MockBackend(LLMBackend):
                         foria="disforico", foria_justificacion="j",
                         dominancia="cognoscitiva", dominancia_justificacion="j",
                         intensidad="alta", intensidad_justificacion="j",
-                        fuente="X", tipo_fuente="actor", fuente_justificacion="j",
                     ),
                 ) for i in range(n_units)
             ])

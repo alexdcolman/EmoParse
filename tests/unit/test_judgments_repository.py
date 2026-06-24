@@ -36,9 +36,9 @@ def db(tmp_path: Path) -> Database:
     f_repo.upsert_frases([("D1", 0, "frase de prueba")])
     e_repo.upsert_emociones([{
         "codigo": "D1", "frase_idx": 0, "emocion_idx": 0,
-        "experienciador": "X", "tipo_emocion": "miedo",
+        "experienciador": "X", "experienciador_marca": "yo", "tipo_emocion": "miedo",
+        "fuente_marca": "marca", "fuente_inferencia": "inferencia",
         "modo_existencia": "realizada",
-        "deteccion_justificacion": "j",
     }])
     # Caracterización completa (necesaria para que sea pending de judge).
     e_repo.set_caracterizacion(
@@ -47,8 +47,6 @@ def db(tmp_path: Path) -> Database:
             "foria": "disforico", "foria_justificacion": "j",
             "dominancia": "cognoscitiva", "dominancia_justificacion": "j",
             "intensidad": "alta", "intensidad_justificacion": "j",
-            "fuente": "X", "tipo_fuente": "actor",
-            "fuente_justificacion": "j",
         },
     )
     return db
@@ -138,7 +136,8 @@ class TestListPending:
         f_repo.upsert_frases([("D2", 0, "otra")])
         e_repo.upsert_emociones([{
             "codigo": "D2", "frase_idx": 0, "emocion_idx": 0,
-            "experienciador": "Y", "tipo_emocion": "alegria",
+            "experienciador": "Y", "experienciador_marca": "yo", "tipo_emocion": "alegria",
+            "fuente_marca": "marca", "fuente_inferencia": "inferencia",
             "modo_existencia": "realizada",
         }])
         e_repo.set_caracterizacion(
@@ -147,8 +146,6 @@ class TestListPending:
                 "foria": "euforico", "foria_justificacion": "j",
                 "dominancia": "mixta", "dominancia_justificacion": "j",
                 "intensidad": "alta", "intensidad_justificacion": "j",
-                "fuente": "Y", "tipo_fuente": "actor",
-                "fuente_justificacion": "j",
             },
         )
 
@@ -170,7 +167,8 @@ class TestListPending:
         f_repo.upsert_frases([("D1", 0, "frase")])
         e_repo.upsert_emociones([{
             "codigo": "D1", "frase_idx": 0, "emocion_idx": 0,
-            "experienciador": "X", "tipo_emocion": "miedo",
+            "experienciador": "X", "experienciador_marca": "yo", "tipo_emocion": "miedo",
+            "fuente_marca": "marca", "fuente_inferencia": "inferencia",
             "modo_existencia": "realizada",
         }])
         # No setear caracterización.

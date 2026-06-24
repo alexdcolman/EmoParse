@@ -73,6 +73,8 @@ def _df_emocion_valido() -> pd.DataFrame:
             "tipo_emocion": "alegria",
             "tipo_configuracion": "sostenido_en_sustantivos",
             "modo_existencia": "actualizado",
+            "fuente_marca": "la riqueza",
+            "fuente_inferencia": "riqueza",
         },
     ])
 
@@ -245,6 +247,21 @@ class TestEmocionExplodedContract:
 
     def test_falta_modo_existencia(self) -> None:
         df = _df_emocion_valido().drop(columns=["modo_existencia"])
+        with pytest.raises(pa.errors.SchemaError):
+            validate(EmocionExplodedContract, df)
+
+    def test_falta_tipo_configuracion(self) -> None:
+        df = _df_emocion_valido().drop(columns=["tipo_configuracion"])
+        with pytest.raises(pa.errors.SchemaError):
+            validate(EmocionExplodedContract, df)
+
+    def test_falta_fuente_marca(self) -> None:
+        df = _df_emocion_valido().drop(columns=["fuente_marca"])
+        with pytest.raises(pa.errors.SchemaError):
+            validate(EmocionExplodedContract, df)
+
+    def test_falta_fuente_inferencia(self) -> None:
+        df = _df_emocion_valido().drop(columns=["fuente_inferencia"])
         with pytest.raises(pa.errors.SchemaError):
             validate(EmocionExplodedContract, df)
 
@@ -466,7 +483,7 @@ class TestContractActivoEnStages:
         stage = ExplodeEmocionesStage(mock_d_repo, mock_f_repo, mock_e_repo)
         stage.validate_contracts = True
 
-        # El contrato exige que tipo_emocion y modo_existencia sean str no-null.
+        # El contrato exige que tipo_emocion, modo_existencia, fuente_marca y fuente_inferencia sean str no-null.
         # Como get() con default "" los rellena, el DF es válido.
         # Para forzar violación, se testea con un campo null explícito:
         mock_f_repo.get_payload.return_value = [
@@ -474,6 +491,8 @@ class TestContractActivoEnStages:
                 "experienciador": None,  # null → viola EmocionExplodedContract
                 "tipo_emocion": "alegria",
                 "modo_existencia": "actualizado",
+                "fuente_marca": "la riqueza",
+                "fuente_inferencia": "riqueza",
             }
         ]
 
@@ -508,6 +527,8 @@ class TestContractActivoEnStages:
                 "tipo_emocion": "Z",
                 "tipo_configuracion": "sostenido_en_sustantivos",
                 "modo_existencia": "W",
+                "fuente_marca": "la riqueza",
+                "fuente_inferencia": "riqueza",
             }])
 
         stage._build_input_df = bad_build_input_df  # type: ignore[method-assign]

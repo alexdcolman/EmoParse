@@ -51,10 +51,11 @@ def _make_populated_db(tmp_path: Path) -> Path:
         cur.execute(
             """
             INSERT INTO emociones
-                (codigo, frase_idx, emocion_idx, experienciador, tipo_emocion, modo_existencia)
-            VALUES (?, ?, ?, ?, ?, ?)
+                (codigo, frase_idx, emocion_idx, experienciador, experienciador_marca,
+                fuente_marca, fuente_inferencia, tipo_emocion, modo_existencia)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            ("D1", 0, 0, "Pueblo", "alegria", "realizada"),
+            ("D1", 0, 0, "Pueblo", "el pueblo", "el socialismo", "socialismo", "alegria", "realizada"),
         )
 
     return db_path
@@ -158,3 +159,6 @@ class TestExportHandleDirect:
 
         assert len(e_rows) == 1
         assert e_rows[0]["tipo_emocion"] == "alegria"
+        assert e_rows[0]["experienciador_marca"] == "el pueblo"
+        assert e_rows[0]["fuente_marca"] == "el socialismo"
+        assert e_rows[0]["fuente_inferencia"] == "socialismo"

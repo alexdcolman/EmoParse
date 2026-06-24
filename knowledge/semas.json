@@ -1,0 +1,47 @@
+{
+  "version": "v1",
+  "dimensiones": {
+    "individuacion": {
+      "descripcion": "Grado de individuación del referente.",
+      "valores": ["individual", "colectivo"]
+    },
+    "naturaleza": {
+      "descripcion": "Naturaleza ontológica del referente.",
+      "valores": ["humano", "animal", "sobrenatural", "no_humano"]
+    },
+    "estatus_actancial": {
+      "descripcion": "Si el referente es un actor o un circunstante.",
+      "valores": ["actor", "circunstante"]
+    },
+    "circunstante_tipo": {
+      "descripcion": "Tipo de circunstante (solo si estatus_actancial=circunstante).",
+      "valores": ["temporal", "espacial", "espaciotemporal", "acontecimiento", "objeto"]
+    },
+    "institucionalidad": {
+      "descripcion": "Carácter institucional del referente.",
+      "valores": ["institucional", "no_institucional"]
+    },
+    "rol_enunciativo": {
+      "descripcion": "Posición del referente respecto de la enunciación.",
+      "valores": ["enunciador", "enunciatario", "nombrado"]
+    },
+    "rol_narrativo": {
+      "descripcion": "Rol del referente en la narrativa afectiva.",
+      "valores": ["victima", "victimario", "testigo", "beneficiario", "adversario", "aliado"]
+    },
+    "tipo_fuente": {
+      "descripcion": "Naturaleza del referente cuando opera como fuente de una emoción (qué la desencadena).",
+      "valores": ["actor", "situacion", "objeto", "experiencia", "espacio", "discurso_ajeno"]
+    }
+  },
+  "semas": [
+    "individual", "colectivo",
+    "humano", "animal", "sobrenatural", "no_humano",
+    "actor", "circunstante",
+    "temporal", "espacial", "espaciotemporal", "acontecimiento", "objeto",
+    "institucional", "no_institucional",
+    "enunciador", "enunciatario", "nombrado",
+    "victima", "victimario", "testigo", "beneficiario", "adversario", "aliado",
+    "situacion", "experiencia", "espacio", "discurso_ajeno"
+  ]
+}

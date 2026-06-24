@@ -16,10 +16,9 @@ from loguru import logger
 
 from emoparse.agents.actors import ActorsAgent
 from emoparse.agents.actants import ACTANTS_COMPONENTS, ActantsAgent
-from emoparse.agents.normalize_actors import NormalizeActorsAgent
-from emoparse.agents.normalize_experiencers import NormalizeExperiencersAgent
-from emoparse.pipeline.deixis import resolve_deictic_to_enunciador
-from emoparse.pipeline.kb_matching import KbMatcher
+from emoparse.agents.deixis import DeixisAgent
+from emoparse.core.text import canonical_slug
+from emoparse.pipeline.deixis import is_deictic, resolve_deictic_to_enunciador
 from emoparse.pipeline.contracts import (
     DiscursoInputContract,
     EmocionExplodedContract,
@@ -37,22 +36,16 @@ from emoparse.agents.emotions import (
 )
 from emoparse.agents.emotions_pass2 import EmotionsAgentPass2
 from emoparse.agents.judge import JudgeAgent
+from emoparse.agents.semas import SemasAgent
 from emoparse.core.backend.base import LLMBackend
 from emoparse.core.backend.retry import RetryConfig
 from emoparse.genres.base import Genre
 from emoparse.knowledge.normalization import build_emotion_alias_lookup
-from emoparse.pipeline.coref import (
-    cluster_mentions_within_discurso,
-    pick_representative,
-)
-from emoparse.storage.actors_kb_discoveries import ActorsKbDiscoveriesRepository
 from emoparse.storage.discursos import DiscursosRepository
 from emoparse.storage.emociones import EmocionesRepository
-from emoparse.storage.experiencer_equivalences import (
-    ExperiencerEquivalencesRepository,
-)
 from emoparse.storage.frases import FrasesRepository
 from emoparse.storage.judgments import JudgmentsRepository
+from emoparse.storage.menciones import MencionesRepository
 from emoparse.storage.metrics import StageMetricsAccumulator
 
 
@@ -221,14 +214,17 @@ class EnunciationStage(_DiscursoStage):
     STAGE_KEY = "enunciation"
 
     def _extract_payload(self, row: pd.Series) -> dict[str, Any] | None:
-        """Payload con enunciador y enunciatarios."""
+        """Payload con enunciador, enunciatarios, auditorio y colectivos."""
         if pd.isna(row.get("enunciador")):
             return None
-        # `enunciatarios` ya es string JSON desde el agente.
+        # `enunciatarios`, `auditorio` y `colectivos_identificacion` ya son
+        # strings JSON desde el agente.
         return {
             "enunciador": row.get("enunciador"),
             "enunciador_justificacion": row.get("enunciador_justificacion"),
             "enunciatarios": row.get("enunciatarios"),
+            "auditorio": row.get("auditorio"),
+            "colectivos_identificacion": row.get("colectivos_identificacion"),
         }
 
 
@@ -395,346 +391,8 @@ class ActorsStage(_FraseStage):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  NormalizeActorsStage
-# ══════════════════════════════════════════════════════════════════════════════
-
-class NormalizeActorsStage(Stage):
-    """Linkea menciones de actores contra una KB conocida (opt-in).
-
-    Procesamiento por discurso:
-      A. Coref intra-discurso por heurística léxica conservadora
-         (`pipeline.coref.cluster_mentions_within_discurso`). Las menciones
-         que claramente refieren a la misma entidad se agrupan; se llama
-         al LLM una sola vez por cluster en lugar de una por mención.
-      B. Entity linking con LLM contra la KB: para cada cluster, se envía
-         la mención representativa + un contexto breve (la frase) y se
-         obtiene `actor_canonico` o `es_nuevo=True`.
-      C. Persistencia: el linking se propaga a TODAS las menciones del
-         cluster y se escribe en `frases.actores_canonicos_payload` (una
-         lista, en el orden original de actores por frase). Las entidades
-         nuevas (`es_nuevo=true`) se acumulan en `actors_kb_discoveries`
-         para revisión humana.
-
-    La stage es OPT-IN: no se incluye en `DEFAULT_ENABLED_STAGES`. El
-    pipeline de emociones no depende de ella, por lo que puede correrse
-    a posteriori sobre runs existentes sin invalidar resultados.
-    """
-
-    NAME = "normalize_actors"
-    STAGE_KEY = "actores_canonicos"
-
-    def __init__(
-        self,
-        backend: LLMBackend,
-        discursos_repo: DiscursosRepository,
-        frases_repo: FrasesRepository,
-        actors_kb: dict[str, Any],
-        discoveries_repo: ActorsKbDiscoveriesRepository | None = None,
-        agent_version: str | None = None,
-        retry_config: RetryConfig | None = None,
-        genre: Genre | None = None,
-        inject_kb: bool = False,
-    ) -> None:
-        super().__init__()
-        self.validate_contracts = True
-        self._backend = backend
-        self._d_repo = discursos_repo
-        self._f_repo = frases_repo
-        self._discoveries_repo = discoveries_repo
-        self._kb = actors_kb
-        # La KB se inyecta en el prompt SOLO si se pide explícitamente. Por
-        # defecto no se inyecta (prompt de tamaño constante) y el linking con
-        # canónicos existentes se resuelve con KbMatcher (determinístico).
-        self._inject_kb = inject_kb
-        self._kb_serialized = self._serialize_kb(actors_kb) if inject_kb else ""
-        self._kb_matcher = KbMatcher(actors_kb)
-        self._version = agent_version
-        self._retry_config = retry_config
-        self._genre = genre
-
-    # ── API ──────────────────────────────────────────────────────────────────
-
-    def run_pending(self) -> int:
-        """Procesa frases pendientes agrupadas por discurso."""
-        all_pending = self._f_repo.list_pending(self.STAGE_KEY)  # type: ignore[arg-type]
-        if not all_pending:
-            logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
-            return 0
-
-        by_codigo: dict[str, list[int]] = {}
-        for codigo, unit_idx in all_pending:
-            by_codigo.setdefault(codigo, []).append(unit_idx)
-
-        logger.info(
-            f"[Stage:{self.NAME}] Procesando {len(by_codigo)} discurso(s) "
-            f"con {sum(len(v) for v in by_codigo.values())} frases pendientes."
-        )
-
-        total_ok = 0
-        for codigo, pending_idxs in by_codigo.items():
-            total_ok += self._process_discurso(codigo, set(pending_idxs))
-
-        logger.info(f"[Stage:{self.NAME}] Completado: {total_ok} frases ok.")
-        return total_ok
-
-    # ── Procesamiento por discurso ───────────────────────────────────────────
-
-    def _process_discurso(
-        self,
-        codigo: str,
-        pending_idxs: set[int],
-    ) -> int:
-        """Procesa todas las frases pendientes de un discurso.
-
-        El coref aprovecha menciones de todas las frases del discurso
-        (no solo las pendientes) para tener contexto completo. El linking
-        se aplica únicamente a las frases pendientes.
-        """
-        actors_by_frase: list[tuple[int, list[dict]]] = []
-        actors_by_frase_map: dict[int, list[dict]] = {}
-        frases_text: dict[int, str] = {}
-
-        enun = self._d_repo.get_payload(codigo, "enunciation") or {}
-        enunciador = str(enun.get("enunciador", "") or "").strip()
-
-        for unit_idx, frase_text in self._f_repo.list_frases_of_discurso(codigo):
-            frases_text[unit_idx] = frase_text
-            actores_payload = self._f_repo.get_payload(codigo, unit_idx, "actores")
-            if not isinstance(actores_payload, list):
-                if unit_idx in pending_idxs:
-                    self._f_repo.set_payload(
-                        codigo, unit_idx, self.STAGE_KEY,  # type: ignore[arg-type]
-                        [],
-                        version=self._version,
-                    )
-                    self.metrics.record_item_ok()
-                continue
-            actors_by_frase.append((unit_idx, actores_payload))
-            actors_by_frase_map[unit_idx] = actores_payload
-
-        if not actors_by_frase:
-            return 0
-
-        # Paso A: coref léxico.
-        clusters = cluster_mentions_within_discurso(actors_by_frase)
-
-        # Paso B: linking por cluster (una fila por cluster que toca alguna
-        # frase pendiente).
-        df_in, _ = self._build_linking_df(
-            codigo,
-            clusters,
-            actors_by_frase_map,
-            frases_text,
-            pending_idxs,
-        )
-
-        cluster_link: dict[int, dict[str, Any]] = {}
-
-        if not df_in.empty:
-            self._validate(FraseParaLinkingContract, df_in, "entrada")
-            agent = NormalizeActorsAgent(
-                self._backend,
-                actors_kb_serialized=self._kb_serialized,
-                retry_config=self._retry_config,
-                genre=self._genre,
-            )
-            try:
-                df_out = agent.run(df_in)
-            except Exception as e:
-                logger.error(
-                    f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}"
-                )
-                for unit_idx in pending_idxs:
-                    self._f_repo.set_error(
-                        codigo, unit_idx, self.STAGE_KEY, str(e)  # type: ignore[arg-type]
-                    )
-                    self.metrics.record_item_failed()
-                return 0
-
-            for _, row in df_out.iterrows():
-                cluster_idx = int(row["cluster_idx"])
-                actores_canonicos_str = row.get("actores_canonicos")
-                if pd.isna(actores_canonicos_str):
-                    cluster_link[cluster_idx] = self._unknown_linking_dict()
-                    continue
-                try:
-                    linkings = json.loads(actores_canonicos_str)
-                except (json.JSONDecodeError, TypeError):
-                    cluster_link[cluster_idx] = self._unknown_linking_dict()
-                    continue
-                if isinstance(linkings, list) and linkings:
-                    cluster_link[cluster_idx] = linkings[0]
-                else:
-                    cluster_link[cluster_idx] = self._unknown_linking_dict()
-
-        # Paso C: persistencia por frase pendiente.
-        total_ok = 0
-        for unit_idx in pending_idxs:
-            actores = actors_by_frase_map.get(unit_idx)
-            if actores is None:
-                continue
-
-            payload: list[dict[str, Any]] = []
-            for mention_idx, actor in enumerate(actores):
-                mention_key = (unit_idx, mention_idx)
-                cluster_idx = self._find_cluster_idx(mention_key, clusters)
-                mencion = str(actor.get("actor", ""))
-                if cluster_idx is None or cluster_idx not in cluster_link:
-                    link = self._unknown_linking_dict(actor_mencionado=mencion)
-                else:
-                    link = dict(cluster_link[cluster_idx])
-                    # actor_mencionado debe reflejar la mención de esta frase,
-                    # no la del representante del cluster.
-                    link["actor_mencionado"] = mencion
-                link = resolve_deictic_to_enunciador(link, enunciador)
-                link = self._match_kb(link)
-                payload.append(link)
-
-            self._f_repo.set_payload(
-                codigo, unit_idx, self.STAGE_KEY,  # type: ignore[arg-type]
-                payload,
-                version=self._version,
-            )
-            total_ok += 1
-            self.metrics.record_item_ok()
-
-            if self._discoveries_repo is not None:
-                for link in payload:
-                    if link.get("es_nuevo") is True:
-                        self._discoveries_repo.insert(
-                            codigo=codigo,
-                            unit_idx=unit_idx,
-                            actor_mencionado=str(link.get("actor_mencionado", "")),
-                            confianza=str(link.get("confianza", "baja")),
-                            contexto=frases_text.get(unit_idx),
-                            justificacion=str(link.get("justificacion", "")),
-                            canonical_id_sugerido=(
-                                link.get("canonical_id_sugerido") or None
-                            ),
-                            display_name_sugerido=(
-                                link.get("display_name_sugerido") or None
-                            ),
-                            tipo_sugerido=link.get("tipo_sugerido") or None,
-                            alias_candidato=bool(
-                                link.get("alias_candidato", True)
-                            ),
-                        )
-
-        return total_ok
-
-    # ── Helpers ──────────────────────────────────────────────────────────────
-
-    def _build_linking_df(
-        self,
-        codigo: str,
-        clusters: list[set[tuple[int, int]]],
-        actors_by_frase_map: dict[int, list[dict]],
-        frases_text: dict[int, str],
-        pending_idxs: set[int],
-    ) -> tuple[pd.DataFrame, dict[int, int]]:
-        """Una fila por cluster que toca alguna frase pendiente."""
-        rows: list[dict[str, Any]] = []
-        cluster_to_row: dict[int, int] = {}
-
-        for cluster_idx, cluster in enumerate(clusters):
-            touched_pending = any(uidx in pending_idxs for uidx, _ in cluster)
-            if not touched_pending:
-                continue
-
-            rep_name = pick_representative(cluster, actors_by_frase_map)
-            if not rep_name:
-                continue
-
-            rep_unit_idx: int | None = None
-            for uidx, _ in sorted(cluster):
-                if uidx in pending_idxs:
-                    rep_unit_idx = uidx
-                    break
-            if rep_unit_idx is None:
-                rep_unit_idx = next(iter(sorted(cluster)))[0]
-
-            frase = frases_text.get(rep_unit_idx, "")
-            actores_a_linkear = json.dumps(
-                [{"actor": rep_name, "tipo": "?"}],
-                ensure_ascii=False,
-            )
-
-            cluster_to_row[cluster_idx] = len(rows)
-            rows.append({
-                "codigo": codigo,
-                "unit_idx": rep_unit_idx,
-                "frase": frase,
-                "actores_a_linkear": actores_a_linkear,
-                "cluster_idx": cluster_idx,
-            })
-
-        return pd.DataFrame(rows), cluster_to_row
-
-    @staticmethod
-    def _find_cluster_idx(
-        mention_key: tuple[int, int],
-        clusters: list[set[tuple[int, int]]],
-    ) -> int | None:
-        """Devuelve el índice del cluster que contiene la mención."""
-        for i, c in enumerate(clusters):
-            if mention_key in c:
-                return i
-        return None
-
-    @staticmethod
-    def _serialize_kb(kb: dict[str, Any]) -> str:
-        """Serializa la KB en formato compacto para el system prompt."""
-        actors = kb.get("actors") or {}
-        if not isinstance(actors, dict) or not actors:
-            return "(KB vacía)"
-        lines: list[str] = []
-        for canonical_id, entry in actors.items():
-            if not isinstance(entry, dict):
-                continue
-            display = str(entry.get("display_name", canonical_id))
-            tipo = str(entry.get("tipo", "?"))
-            aliases = entry.get("aliases") or []
-            aliases_str = "; ".join(str(a) for a in aliases) if aliases else "(sin aliases)"
-            lines.append(
-                f"- {canonical_id} [tipo={tipo}]: {display} | aliases: {aliases_str}"
-            )
-        return "\n".join(lines)
-
-    def _match_kb(self, link: dict[str, Any]) -> dict[str, Any]:
-        """Linkea con un canónico existente por match literal/cuasi-literal.
-
-        Determinístico (sin LLM, sin contexto). Solo actúa sobre menciones aún
-        nuevas y sin canónico; si matchea, deja `es_nuevo=False` (no genera
-        discovery) y marca `resuelto_por='kb_literal'`. Lo que no matchea queda
-        como discovery y se mergea con canónicos en la tab de grupos.
-        """
-        if link.get("actor_canonico"):
-            return link
-        if not link.get("es_nuevo"):
-            return link
-        cid = self._kb_matcher.match(str(link.get("actor_mencionado", "")))
-        if cid:
-            link["actor_canonico"] = cid
-            link["es_nuevo"] = False
-            link["resuelto_por"] = "kb_literal"
-        return link
-
-    @staticmethod
-    def _unknown_linking_dict(actor_mencionado: str = "") -> dict[str, Any]:
-        """Linking de fallback cuando el LLM falló o no devolvió resultado."""
-        return {
-            "actor_mencionado": actor_mencionado,
-            "actor_canonico": None,
-            "confianza": "baja",
-            "es_nuevo": False,
-            "justificacion": "Sin linking (backend error o cluster sin output).",
-        }
-
-
-# ══════════════════════════════════════════════════════════════════════════════
 #  EmotionsStage
 # ══════════════════════════════════════════════════════════════════════════════
-
 
 def _format_enunciatarios(raw: Any) -> str:
     """Extrae los nombres de los enunciatarios desde el payload de enunciation.
@@ -846,7 +504,7 @@ class EmotionsStage(_FraseStage):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  Etapa de explode
+#  Etapa de explosión de emociones detectadas en la tabla `emociones`
 # ══════════════════════════════════════════════════════════════════════════════
 
 class ExplodeEmocionesStage(Stage):
@@ -859,11 +517,15 @@ class ExplodeEmocionesStage(Stage):
         discursos_repo: DiscursosRepository,
         frases_repo: FrasesRepository,
         emociones_repo: EmocionesRepository,
+        menciones_repo: MencionesRepository | None = None,
+        referentes_kb: dict[str, Any] | None = None,
     ) -> None:
         super().__init__()
         self._d_repo = discursos_repo
         self._f_repo = frases_repo
         self._e_repo = emociones_repo
+        self._m_repo = menciones_repo
+        self._referentes_kb = referentes_kb
 
     def run_pending(self) -> int:
         """Procesa discursos y explota emociones pendientes."""
@@ -879,13 +541,26 @@ class ExplodeEmocionesStage(Stage):
         return total
 
     def _explode_for_codigo(self, codigo: str) -> int:
-        """Explota emociones de un discurso a filas individuales."""
+        """Explota emociones de un discurso a filas individuales.
+
+        Además, si hay repositorio de menciones, reconstruye la base de marcas
+        discursivas del discurso (actor / experienciador / fuente) a partir de
+        los mismos payloads ya leídos. Es el punto natural de materialización
+        per-código; la derivación vive en `storage.menciones`.
+        """
         frases = self._f_repo.list_frases_of_discurso(codigo)
         rows: list[dict[str, Any]] = []
+        emociones_by_unit: dict[int, Any] = {}
+        actores_by_unit: dict[int, Any] = {}
         for frase_idx, _frase_text in frases:
+            if self._m_repo is not None:
+                actores_by_unit[frase_idx] = self._f_repo.get_payload(
+                    codigo, frase_idx, "actores"
+                )
             emos_payload = self._select_emociones_payload(codigo, frase_idx)
             if not isinstance(emos_payload, list):
                 continue
+            emociones_by_unit[frase_idx] = emos_payload
             for emo_idx, emo in enumerate(emos_payload):
                 if not isinstance(emo, dict):
                     continue
@@ -894,15 +569,27 @@ class ExplodeEmocionesStage(Stage):
                     "frase_idx": frase_idx,
                     "emocion_idx": emo_idx,
                     "experienciador": emo.get("experienciador", ""),
+                    "experienciador_marca": emo.get("experienciador_marca", ""),
                     "tipo_emocion": emo.get("tipo_emocion", ""),
                     "modo_existencia": emo.get("modo_existencia", ""),
+                    "fuente_marca": emo.get("fuente_marca", ""),
+                    "fuente_inferencia": emo.get("fuente_inferencia", ""),
                     "tipo_configuracion": emo.get("tipo_configuracion"),
-                    "deteccion_justificacion": emo.get("justificacion"),
                 })
         if rows:
             df_rows = pd.DataFrame(rows)
             self._validate(EmocionExplodedContract, df_rows, "salida")
             self._e_repo.upsert_emociones(rows)
+        if self._m_repo is not None:
+            self._m_repo.rebuild_for_codigo(
+                codigo, actores_by_unit, emociones_by_unit
+            )
+            self._m_repo.propose_coref_equivalences(codigo)
+            enun = self._d_repo.get_payload(codigo, "enunciation") or {}
+            self._m_repo.add_deixis_suggestions(
+                codigo, str(enun.get("enunciador", ""))
+            )
+            self._m_repo.propose_kb_equivalences(codigo, self._referentes_kb)
         return len(rows)
 
     def _select_emociones_payload(self, codigo: str, frase_idx: int) -> Any:
@@ -923,7 +610,191 @@ class ExplodeEmocionesStage(Stage):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  Etapa normalización de emociones (sin LLM)
+#  Etapa de resolución de deixis (LLM)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _parse_json_list(raw: Any) -> list[Any]:
+    """Parsea un valor a lista JSON; devuelve [] ante cualquier problema."""
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+        except (json.JSONDecodeError, TypeError):
+            return []
+        return parsed if isinstance(parsed, list) else []
+    return []
+
+
+def _extract_enunciation_referentes(
+    payload: dict[str, Any],
+) -> tuple[str, tuple[str, ...], tuple[str, ...]]:
+    """Extrae (enunciador, auditorio, colectivos) del payload de enunciation."""
+    enunciador = str(payload.get("enunciador") or "").strip()
+    auditorio = tuple(
+        str(a.get("actor", "")).strip()
+        for a in _parse_json_list(payload.get("auditorio"))
+        if isinstance(a, dict) and str(a.get("actor", "")).strip()
+    )
+    colectivos = tuple(
+        str(c.get("nombre", "")).strip()
+        for c in _parse_json_list(payload.get("colectivos_identificacion"))
+        if isinstance(c, dict) and str(c.get("nombre", "")).strip()
+    )
+    return enunciador, auditorio, colectivos
+
+
+class DeixisStage(Stage):
+    """Resuelve marcas deícticas a referentes concretos del discurso (vía LLM).
+
+    Corre después de `explode_emociones` (necesita la base de marcas). Para
+    cada discurso con marcas deícticas no resueltas: toma el enunciador, el
+    auditorio y los colectivos del payload de enunciation, le pide al LLM la
+    asignación (posiblemente múltiple) y la persiste como propuestas
+    destildables en `mencion_canonico` (origin='deixis_llm', con su
+    `deixis_tipo`). El canónico es siempre el referente CONCRETO, nunca el tipo.
+    """
+
+    NAME = "deixis"
+
+    #: Cantidad de marcas deícticas por llamada al LLM (configurable vía
+    #: genre.batch_size["deixis"]). Mantiene acotado el contexto y la salida.
+    MARCAS_PER_CALL = 5
+    #: Tope de caracteres del resumen inyectado como contexto.
+    _RESUMEN_CHAR_LIMIT = 1500
+
+    def __init__(
+        self,
+        backend: LLMBackend,
+        discursos_repo: DiscursosRepository,
+        menciones_repo: MencionesRepository,
+        agent_version: str | None = None,
+        retry_config: RetryConfig | None = None,
+        genre: Genre | None = None,
+        marcas_per_call: int | None = None,
+    ) -> None:
+        super().__init__()
+        self.validate_contracts = False  # no hay contrato de DataFrame acá
+        self._backend = backend
+        self._d_repo = discursos_repo
+        self._m_repo = menciones_repo
+        self._version = agent_version
+        self._retry_config = retry_config
+        self._genre = genre
+        n = marcas_per_call
+        if n is None and genre is not None:
+            n = genre.batch_size.get("deixis")
+        self._marcas_per_call = max(1, int(n)) if n else self.MARCAS_PER_CALL
+
+    def run_pending(self) -> int:
+        """Resuelve la deixis de los discursos que aún no la tienen."""
+        codigos = [
+            c for c in self._d_repo.list_codigos()
+            if not self._m_repo.has_deixis_llm(c)
+        ]
+        if not codigos:
+            logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
+            return 0
+
+        total = 0
+        for codigo in codigos:
+            total += self._resolve_for_codigo(codigo)
+        logger.info(f"[Stage:{self.NAME}] {total} vínculos deícticos propuestos.")
+        return total
+
+    def _resumen_for(self, codigo: str) -> str:
+        """Resumen del discurso para contexto: summarizer → fallback contenido."""
+        summ = self._d_repo.get_payload(codigo, "summarizer") or {}
+        resumen = str(summ.get("resumen_global") or "").strip()
+        if not resumen:
+            inp = self._d_repo.get_input(codigo) or {}
+            resumen = str(inp.get("contenido") or "").strip()
+        if len(resumen) > self._RESUMEN_CHAR_LIMIT:
+            resumen = resumen[: self._RESUMEN_CHAR_LIMIT] + "..."
+        return resumen
+
+    def _resolve_for_codigo(self, codigo: str) -> int:
+        enun = self._d_repo.get_payload(codigo, "enunciation") or {}
+        enunciador, auditorio, colectivos = _extract_enunciation_referentes(enun)
+        if not (enunciador or auditorio or colectivos):
+            return 0
+
+        # Pre-filtro determinista: solo marcas con deixis de 1ª/2ª persona.
+        marca_ids: dict[str, list[int]] = {}
+        for m in self._m_repo.list_marcas_for_deixis(codigo):
+            marca = str(m["marca"])
+            if is_deictic(marca):
+                marca_ids.setdefault(marca.strip().lower(), []).append(int(m["id"]))
+        if not marca_ids:
+            return 0
+
+        marcas_unicas = sorted({m for m in marca_ids})
+        # Una fila por chunk de marcas: acota contexto y salida del LLM.
+        n = self._marcas_per_call
+        df_in = pd.DataFrame([
+            {
+                "codigo": codigo,
+                "marcas": "\n".join(f"- {m}" for m in marcas_unicas[i:i + n]),
+            }
+            for i in range(0, len(marcas_unicas), n)
+        ])
+
+        agent = DeixisAgent(
+            self._backend,
+            enunciador=enunciador,
+            auditorio=auditorio,
+            colectivos=colectivos,
+            resumen=self._resumen_for(codigo),
+            retry_config=self._retry_config,
+            genre=self._genre,
+        )
+        try:
+            df_out = agent.run(df_in)
+        except Exception as e:
+            logger.error(f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}")
+            self.metrics.record_item_failed()
+            return 0
+
+        resoluciones: list[Any] = []
+        for raw in df_out.get("deixis", []):
+            if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+                continue
+            try:
+                parsed = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if isinstance(parsed, list):
+                resoluciones.extend(parsed)
+
+        linked = 0
+        for res in resoluciones:
+            if not isinstance(res, dict):
+                continue
+            marca = str(res.get("marca", "")).strip().lower()
+            ids = marca_ids.get(marca)
+            if not ids:
+                continue
+            for ref in res.get("referentes") or []:
+                if not isinstance(ref, dict):
+                    continue
+                tipo = str(ref.get("tipo_referente_deixis", "")).strip()
+                nombre = str(ref.get("referente_deixis", "")).strip()
+                canonical = canonical_slug(nombre)
+                if not canonical or not tipo:
+                    continue
+                for mid in ids:
+                    linked += self._m_repo.link_deixis(mid, canonical, tipo)
+        logger.debug(
+            f"[Stage:{self.NAME}] {codigo}: {len(marca_ids)} marcas candidatas, "
+            f"{len(resoluciones)} resoluciones, {linked} vínculos."
+        )
+        for _ in range(linked):
+            self.metrics.record_item_ok()
+        return linked
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Etapa normalización de emociones
 # ══════════════════════════════════════════════════════════════════════════════
 
 class NormalizeEmotionsStage(Stage):
@@ -977,198 +848,7 @@ class NormalizeEmotionsStage(Stage):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  Etapa normalización de experienciadores (opt-in)
-# ══════════════════════════════════════════════════════════════════════════════
-
-class NormalizeExperiencersStage(Stage):
-    """Propone equivalencias de experienciador por discurso (opt-in).
-
-    Para cada discurso reúne los experienciadores crudos distintos de sus
-    emociones y, con el enunciador, los enunciatarios y los actores como
-    contexto, pide al LLM una propuesta de normalización por cada uno. Las
-    propuestas se escriben como pendientes en ``experiencer_equivalences``
-    para revisión humana; esta stage NO toca ``experienciador_canonico`` (eso
-    lo hace ``emoparse experiencers apply`` tras aceptar).
-
-    Incremental e idempotente: solo propone para experienciadores que aún no
-    tienen una fila de equivalencia en el discurso, así que re-ejecutarla tras
-    nuevas emociones agrega únicamente lo nuevo y respeta lo ya decidido.
-    """
-
-    NAME = "normalize_experiencers"
-
-    def __init__(
-        self,
-        backend: LLMBackend,
-        discursos_repo: DiscursosRepository,
-        frases_repo: FrasesRepository,
-        emociones_repo: EmocionesRepository,
-        equivalences_repo: ExperiencerEquivalencesRepository,
-        agent_version: str | None = None,
-        retry_config: RetryConfig | None = None,
-        genre: Genre | None = None,
-        chunk_size: int = 15,
-        actors_kb: dict[str, Any] | None = None,
-    ) -> None:
-        super().__init__()
-        self.validate_contracts = False
-        self._backend = backend
-        self._d_repo = discursos_repo
-        self._f_repo = frases_repo
-        self._e_repo = emociones_repo
-        self._eq_repo = equivalences_repo
-        self._version = agent_version
-        self._retry_config = retry_config
-        self._genre = genre
-        # Reconciliación determinística contra la KB de actores: la sugerencia
-        # del LLM se intenta primero adecuar a un canónico conocido por
-        # coincidencia literal/cuasi-literal (mismo KbMatcher que normalize_actors).
-        # Con actors_kb=None el matcher queda vacío y no altera nada (no-op).
-        self._kb_matcher = KbMatcher(actors_kb)
-        # Los experienciadores se normalizan 1-a-1 (cada raw → una propuesta
-        # independiente), así que se procesan en lotes para que la salida del
-        # LLM no exceda el límite de tokens en discursos largos.
-        self._chunk_size = max(1, int(chunk_size))
-
-    def run_pending(self) -> int:
-        """Genera propuestas para los experienciadores aún no propuestos."""
-        total = 0
-        for codigo in self._d_repo.list_codigos():
-            total += self._process_discurso(codigo)
-        if total:
-            logger.info(
-                f"[Stage:{self.NAME}] {total} equivalencia(s) propuesta(s)."
-            )
-        else:
-            logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
-        return total
-
-    def _process_discurso(self, codigo: str) -> int:
-        distinct = self._e_repo.list_distinct_experiencers(codigo)
-        if not distinct:
-            return 0
-        counts = {raw: n for raw, n in distinct}
-        ya = self._eq_repo.list_existing_raw(codigo)
-        faltan = [raw for raw, _ in distinct if raw not in ya]
-        if not faltan:
-            return 0
-
-        enun = self._d_repo.get_payload(codigo, "enunciation") or {}
-        ctx = {
-            "codigo": codigo,
-            "enunciador": str(enun.get("enunciador", "")),
-            "enunciatarios": _format_enunciatarios(enun.get("enunciatarios")),
-            "actores": self._collect_actor_names(codigo),
-        }
-        agent = NormalizeExperiencersAgent(
-            self._backend,
-            retry_config=self._retry_config,
-            genre=self._genre,
-        )
-
-        faltan_set = set(faltan)
-        total = 0
-        n_chunks = (len(faltan) + self._chunk_size - 1) // self._chunk_size
-        for ci in range(n_chunks):
-            chunk = faltan[ci * self._chunk_size : (ci + 1) * self._chunk_size]
-            total += self._process_chunk(
-                agent, codigo, chunk, counts, faltan_set, ctx, ci + 1, n_chunks
-            )
-        return total
-
-    def _process_chunk(
-        self,
-        agent: NormalizeExperiencersAgent,
-        codigo: str,
-        chunk: list[str],
-        counts: dict[str, int],
-        faltan_set: set[str],
-        ctx: dict[str, str],
-        idx: int,
-        n_chunks: int,
-    ) -> int:
-        df_in = pd.DataFrame([{
-            **ctx,
-            "experienciadores": json.dumps(
-                [{"raw": raw, "ocurrencias": counts.get(raw, 0)} for raw in chunk],
-                ensure_ascii=False,
-            ),
-        }])
-        suf = f" (lote {idx}/{n_chunks})" if n_chunks > 1 else ""
-        try:
-            df_out = agent.run(df_in)
-        except Exception as e:
-            logger.error(f"[Stage:{self.NAME}] {codigo}{suf}: error inesperado: {e}")
-            self.metrics.record_item_failed()
-            return 0
-
-        row = df_out.iloc[0]
-        equivalencias_str = row.get("equivalencias")
-        if pd.isna(equivalencias_str):
-            logger.warning(f"[Stage:{self.NAME}] {codigo}{suf}: sin salida del agente.")
-            self.metrics.record_item_failed()
-            return 0
-        try:
-            propuestas = json.loads(equivalencias_str)
-        except (json.JSONDecodeError, TypeError):
-            logger.warning(f"[Stage:{self.NAME}] {codigo}{suf}: salida no parseable.")
-            self.metrics.record_item_failed()
-            return 0
-
-        chunk_set = set(chunk)
-        n = 0
-        for p in propuestas if isinstance(propuestas, list) else []:
-            if not isinstance(p, dict):
-                continue
-            raw = str(p.get("raw_experienciador", "")).strip()
-            if raw not in faltan_set or raw not in chunk_set:
-                continue
-            clase = str(p.get("clase", "otro"))
-            canonical = p.get("canonical_sugerido")
-            # Solo los experienciadores que son actores se reconcilian contra la
-            # KB de actores. Se intenta primero el texto crudo (evidencia
-            # literal) y, si no, la sugerencia del LLM. Si el matcher (conservador)
-            # devuelve un canónico, esa sugerencia reemplaza a la del LLM; si no
-            # hay equivalencia, se conserva la sugerencia del LLM.
-            if clase == "actor":
-                kb_hit = self._kb_matcher.match(raw)
-                if not kb_hit and canonical:
-                    kb_hit = self._kb_matcher.match(str(canonical))
-                if kb_hit:
-                    canonical = kb_hit
-            self._eq_repo.upsert_proposal(
-                codigo,
-                raw,
-                canonical_sugerido=canonical,
-                clase=clase,
-                confianza=str(p.get("confianza", "baja")),
-                justificacion=str(p.get("justificacion", "")),
-                ocurrencias=counts.get(raw, 0),
-            )
-            n += 1
-            self.metrics.record_item_ok()
-        return n
-
-    def _collect_actor_names(self, codigo: str) -> str:
-        """Nombres de actores distintos mencionados en el discurso."""
-        vistos: list[str] = []
-        seen: set[str] = set()
-        for unit_idx, _txt in self._f_repo.list_frases_of_discurso(codigo):
-            payload = self._f_repo.get_payload(codigo, unit_idx, "actores")
-            if not isinstance(payload, list):
-                continue
-            for a in payload:
-                if isinstance(a, dict):
-                    nombre = str(a.get("actor", "")).strip()
-                    key = nombre.lower()
-                    if nombre and key not in seen:
-                        seen.add(key)
-                        vistos.append(nombre)
-        return "; ".join(vistos)
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  Etapa caracterización
+#  Etapa de caracterización
 # ══════════════════════════════════════════════════════════════════════════════
 
 class CharacterizerStage(Stage):
@@ -1276,7 +956,9 @@ class CharacterizerStage(Stage):
             if emo is None:
                 continue
             frase_text = self._f_repo.get_frase(codigo, frase_idx) or ""
-            rows.append({**emo, "frase": frase_text})
+            row = {**emo, "frase": frase_text}
+            row["experienciador"] = _effective_experiencer(emo)
+            rows.append(row)
         return pd.DataFrame(rows)
 
     @staticmethod
@@ -1291,15 +973,8 @@ class CharacterizerStage(Stage):
             "dominancia_justificacion": row.get("dominancia_justificacion"),
             "intensidad": row.get("intensidad"),
             "intensidad_justificacion": row.get("intensidad_justificacion"),
-            "fuente": row.get("fuente"),
-            "tipo_fuente": row.get("tipo_fuente"),
-            "fuente_justificacion": row.get("fuente_justificacion"),
             "duracion": row.get("duracion"),
             "duracion_justificacion": row.get("duracion_justificacion"),
-            "modo_semiotizacion": row.get("modo_semiotizacion"),
-            "modo_semiotizacion_justificacion": row.get("modo_semiotizacion_justificacion"),
-            "modo_identificacion": row.get("modo_identificacion"),
-            "modo_identificacion_justificacion": row.get("modo_identificacion_justificacion"),
             "tipo_atribucion": row.get("tipo_atribucion"),
             "tipo_atribucion_justificacion": row.get("tipo_atribucion_justificacion"),
         }
@@ -1323,7 +998,7 @@ class EmotionsPass2Stage(Stage):
         ontologia: str,
         heuristicas: str,
         configuraciones: str = "",
-        rolling_window: int = 5,
+        rolling_window: int = 3,
         context_mode: Literal["rolling", "full"] = "rolling",
         # "full" da más contexto de continuidad para detectar escaladas, a costa de prompt más largo
         emotion_scope: tuple[str, ...] | None = None,
@@ -1492,7 +1167,7 @@ class ActantsStage(Stage):
     de la persistencia, manteniendo invariante la forma del JSON
     guardado en `emociones.actantes_payload`.
 
-    La stage es opt-in: no forma parte del pipeline default y puede
+    La stage no forma parte del pipeline default y puede
     correrse a posteriori sobre runs existentes sin invalidar
     resultados previos.
     """
@@ -1607,7 +1282,9 @@ class ActantsStage(Stage):
             if emo is None:
                 continue
             frase_text = self._f_repo.get_frase(codigo, frase_idx) or ""
-            rows.append({**emo, "frase": frase_text})
+            row = {**emo, "frase": frase_text}
+            row["experienciador"] = _effective_experiencer(emo)
+            rows.append(row)
         return pd.DataFrame(rows)
 
     @staticmethod
@@ -1657,6 +1334,19 @@ def _none_if_nan(value: Any) -> Any:
     return value
 
 
+def _effective_experiencer(emo: dict[str, Any]) -> str:
+    """Experienciador efectivo para las stages downstream.
+
+    Prefiere ``experienciador_canonico`` (no nulo SOLO cuando hubo aceptación
+    humana: commit de la revisión) y cae al crudo ``experienciador``. Así la
+    revisión humana propaga a characterizer/actants/judge sin que esas stages
+    conozcan la KB ni el overlay.
+    """
+    canon = emo.get("experienciador_canonico")
+    canon = str(canon).strip() if canon is not None else ""
+    return canon or str(emo.get("experienciador", "") or "")
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  Judge
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1674,6 +1364,7 @@ class JudgeStage(Stage):
         emociones_repo: EmocionesRepository,
         judgments_repo: JudgmentsRepository,
         heuristicas: str | None = None,
+        ontologia: str = "",
         agent_version: str | None = None,
         retry_config: RetryConfig | None = None,
         genre: Genre | None = None,
@@ -1685,6 +1376,7 @@ class JudgeStage(Stage):
         self._e_repo = emociones_repo
         self._j_repo = judgments_repo
         self._heuristicas = heuristicas
+        self._ontologia = ontologia
         self._version = agent_version
         self._retry_config = retry_config
         self._genre = genre
@@ -1714,6 +1406,7 @@ class JudgeStage(Stage):
                 titulo=str(input_data.get("titulo", "")),
                 tipo_discurso=str(meta.get("tipo_discurso", "")),
                 heuristicas=self._heuristicas,
+                ontologia=self._ontologia,
                 retry_config=self._retry_config,
                 genre=self._genre,
             )
@@ -1783,17 +1476,122 @@ class JudgeStage(Stage):
             rows.append({
                 **emo,
                 "frase": frase_text,
+                "experienciador": _effective_experiencer(emo),
+                "fuente_inferencia": carac.get("fuente_inferencia", ""),
                 # Campos de caracterización desempaquetados desde el JSON embebido.
                 "foria": carac.get("foria", ""),
                 "dominancia": carac.get("dominancia", ""),
                 "intensidad": carac.get("intensidad", ""),
-                "fuente": carac.get("fuente", ""),
-                "tipo_fuente": carac.get("tipo_fuente", ""),
                 "duracion": carac.get("duracion", ""),
-                "modo_semiotizacion": carac.get("modo_semiotizacion", ""),
-                "modo_identificacion": carac.get("modo_identificacion", ""),
                 "tipo_atribucion": carac.get("tipo_atribucion", ""),
             })
         df = pd.DataFrame(rows)
         self._validate(EmocionExplodedContract, df, "entrada")
         return df
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  SemasStage — asignación de semas a referentes canónicos
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _format_semas_vocabulario(vocab: dict[str, Any]) -> str:
+    """Formatea el vocabulario de semas por dimensión para el prompt."""
+    dims = vocab.get("dimensiones") or {}
+    lines: list[str] = []
+    for dim, info in dims.items():
+        if not isinstance(info, dict):
+            continue
+        valores = ", ".join(str(v) for v in (info.get("valores") or []))
+        desc = info.get("descripcion", "")
+        line = f"- {dim}: {valores}"
+        if desc:
+            line += f"  ({desc})"
+        lines.append(line)
+    return "\n".join(lines)
+
+
+def _semas_allowed(vocab: dict[str, Any]) -> set[str]:
+    """Conjunto de semas válidos del vocabulario."""
+    return {str(s).strip().lower() for s in (vocab.get("semas") or [])}
+
+
+class SemasStage(Stage):
+    """Asigna semas a cada referente canónico vía LLM, normalizados al vocabulario."""
+
+    NAME = "semas"
+
+    def __init__(
+        self,
+        backend: LLMBackend,
+        menciones_repo: MencionesRepository,
+        semas_vocab: dict[str, Any] | None = None,
+        titulo: str = "",
+        tipo_discurso: str = "",
+        agent_version: str | None = None,
+        retry_config: RetryConfig | None = None,
+        genre: Genre | None = None,
+    ) -> None:
+        super().__init__()
+        self._backend = backend
+        self._m_repo = menciones_repo
+        self._vocab = semas_vocab or {}
+        self._titulo = titulo
+        self._tipo_discurso = tipo_discurso
+        self._version = agent_version
+        self._retry_config = retry_config
+        self._genre = genre
+
+    def run_pending(self) -> int:
+        """Propone semas para los referentes que aún no tienen ninguno."""
+        ya = self._m_repo.canonicos_con_semas()
+        pendientes = [
+            c for c in self._m_repo.list_canonicos()
+            if c["canonical_id"] not in ya
+        ]
+        if not pendientes:
+            logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
+            return 0
+
+        allowed = _semas_allowed(self._vocab)
+        vocab_str = _format_semas_vocabulario(self._vocab)
+        df = pd.DataFrame([
+            {
+                "canonical_id": c["canonical_id"],
+                "display": c["canonical_id"],
+                "marcas": c["marcas"],
+            }
+            for c in pendientes
+        ])
+
+        agent = SemasAgent(
+            self._backend,
+            vocab_str,
+            titulo=self._titulo,
+            tipo_discurso=self._tipo_discurso,
+            retry_config=self._retry_config,
+            genre=self._genre,
+        )
+        out = agent.run(df)
+
+        total = 0
+        for _, row in out.iterrows():
+            raw = row.get("semas")
+            if not raw:
+                continue
+            try:
+                semas = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if not isinstance(semas, list):
+                continue
+            total += self._m_repo.propose_semas(
+                str(row["canonical_id"]),
+                [str(s) for s in semas],
+                allowed=allowed,
+                origin="llm",
+            )
+        logger.info(
+            f"[Stage:{self.NAME}] {len(pendientes)} referentes, "
+            f"{total} semas propuestos."
+        )
+        return total

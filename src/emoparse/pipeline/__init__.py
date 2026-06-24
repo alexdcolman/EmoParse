@@ -7,6 +7,7 @@ from emoparse.pipeline.stages import (
     ActorsStage,
     CharacterizerStage,
     EmotionsPass2Stage,
+    DeixisStage,
     EmotionsStage,
     EnunciationStage,
     ExplodeEmocionesStage,
@@ -33,6 +34,7 @@ __all__ = [
     "EmotionsStage",
     "EmotionsPass2Stage",
     "ExplodeEmocionesStage",
+    "DeixisStage",
     "CharacterizerStage",
     "JudgeStage",
 ]

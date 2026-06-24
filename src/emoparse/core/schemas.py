@@ -111,6 +111,46 @@ class EnunciatarioSchema(StrictBase):
     )
 
 
+class AuditorioSchema(StrictBase):
+    """Auditorio: destinatario DIRECTO del discurso (quien lo escucha o lee).
+
+    Se distingue de los enunciatarios (pro/para/contradestinatario), que son
+    posiciones de destinación construidas por el discurso. El auditorio es el
+    público concreto presente en la situación de enunciación.
+    """
+    actor: str = Field(
+        description="Auditorio directo del discurso (p. ej. 'los presentes en "
+                    "el Foro de Davos', 'la cadena nacional'). Si es "
+                    "indeterminable: 'no identificado'.",
+    )
+    justificacion: str = Field(
+        description="Justificación breve, citando elementos del texto o de la "
+                    "situación de enunciación.",
+    )
+
+
+class ColectivoIdentificacionSchema(StrictBase):
+    """Colectivo con el que el enunciador se identifica o al que se adscribe.
+
+    La `clase` se valida contra la ontología de colectivos del género (no es un
+    Literal cerrado en el schema para no multiplicar variantes por tipo de
+    discurso). Las clases inválidas se descartan al persistir.
+    """
+    clase: str = Field(
+        description="Clase del colectivo según la ontología provista para el "
+                    "tipo de discurso (p. ej. institucional, partidario, "
+                    "ideológico). Usar EXACTAMENTE uno de los identificadores "
+                    "listados.",
+    )
+    nombre: str = Field(
+        description="Denominación concreta del colectivo (p. ej. 'gobierno de "
+                    "Milei', 'La Libertad Avanza', 'libertarismo').",
+    )
+    justificacion: str = Field(
+        description="Justificación breve, citando elementos del texto.",
+    )
+
+
 class EnunciacionSchema(StrictBase):
     """Estructura enunciativa completa: enunciador + enunciatarios."""
     enunciador: EnunciadorSchema = Field(
@@ -120,6 +160,17 @@ class EnunciacionSchema(StrictBase):
         description="Lista de enunciatarios identificados. Puede haber 1 o "
                     "varios. Si solo se identifica uno, devolver una lista "
                     "con un solo elemento.",
+    )
+    auditorio: list[AuditorioSchema] = Field(
+        description="Auditorio directo (quienes escuchan o leen el discurso). "
+                    "Puede haber varios. Devolvé lista vacía SOLO si es "
+                    "realmente indeterminable; si el discurso da pistas del "
+                    "público presente, identificalo.",
+    )
+    colectivos: list[ColectivoIdentificacionSchema] = Field(
+        description="Colectivos de identificación del enunciador, según la "
+                    "ontología provista. Pueden ser varios. Devolvé lista vacía "
+                    "solo si no hay evidencia en el discurso.",
     )
 
 
@@ -133,9 +184,18 @@ ModoActor = Literal["explicito", "inferido"]
 
 class ActorSchema(StrictBase):
     """Actor mencionado o inferido en una unidad textual."""
+    marca: str = Field(
+        description="Marca discursiva: la expresión LITERAL de la unidad que "
+                    "habilita al actor (la mención de superficie tal cual: "
+                    "'Javier Milei', 'ellos', 'la Casa Rosada', 'represión', "
+                    "'tomamos'). Si es un sujeto tácito, transcribí el verbo o "
+                    "construcción que lo porta (ej. 'ordenaron').",
+    )
     actor: str = Field(
-        description="Nombre o denominación del actor. Mantener el nombre "
-                    "tal como aparece en el texto cuando es explícito.",
+        description="Referente inferido de la marca: a quién refiere. Si la "
+                    "marca ya nombra al actor explícitamente, repetilo; si es "
+                    "inferido (deíctico, tácito, metonimia), poné el referente "
+                    "deducido del contexto.",
     )
     tipo: TipoActor = Field(  # type: ignore[valid-type]
         description="Tipo de actor según naturaleza ontológica.",
@@ -167,156 +227,6 @@ class ListaActoresBatchSchema(RootModel[list[ActoresBatchItemSchema]]):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  Normalización de actores (entity linking contra KB)
-# ══════════════════════════════════════════════════════════════════════════════
-
-ConfianzaLinking = Literal["alta", "media", "baja"]
-
-
-class ActorLinkingSchema(StrictBase):
-    """Resultado del entity linking para un actor mencionado.
-
-    El LLM compara una mención con la KB de actores conocidos y decide
-    si refiere a una entidad existente (devuelve `actor_canonico`) o si
-    es una entidad nueva (`es_nuevo=True`). En caso de duda debe marcar
-    `confianza="baja"` antes que adivinar un `actor_canonico` incorrecto.
-    """
-    actor_mencionado: str = Field(
-        description="String del actor tal como lo emitió ActorsAgent. "
-                    "Debe replicarse literal para que el caller correlacione "
-                    "con la mención original.",
-    )
-    actor_canonico: str | None = Field(
-        description="canonical_id de actors_kb.json (la clave del dict "
-                    "'actors'), o null si no matchea con ninguna entrada "
-                    "conocida. NO inventar canonical_ids: si la entidad "
-                    "es nueva, dejar null y marcar es_nuevo=true.",
-    )
-    confianza: ConfianzaLinking = Field(  # type: ignore[valid-type]
-        description="Cuán seguro está el modelo del linking: alta, media, baja. "
-                    "Usar 'baja' ante ambigüedad antes que adivinar.",
-    )
-    es_nuevo: bool = Field(
-        description="True si el modelo considera que la mención refiere a "
-                    "una entidad NO presente en la KB. False si encontró un "
-                    "canónico que matchea (en cuyo caso actor_canonico no "
-                    "debe ser null).",
-    )
-    alias_candidato: bool = Field(
-        description="True SOLO si la mención identifica al actor de forma "
-                    "inequívoca SIN contexto: un nombre propio o una "
-                    "denominación estable ('Javier Milei', 'La Libertad "
-                    "Avanza', 'el FMI'). False para deícticos y pronombres "
-                    "('yo', 'mí', 'nosotros'), roles dependientes del contexto "
-                    "('el presidente', 'el ministro') y apodos no "
-                    "identificantes ('el león'). Solo las menciones "
-                    "alias_candidato=true son aptas para incorporarse a la KB "
-                    "como alias; las demás se resuelven por discurso, no a "
-                    "nivel global.",
-    )
-    canonical_id_sugerido: str | None = Field(
-        description="Solo si es_nuevo=true Y alias_candidato=true: slug ASCII "
-                    "propuesto para el actor nuevo (minúsculas, dígitos y "
-                    "guiones bajos; empieza por letra). REGLA DE ESTABILIDAD: "
-                    "el MISMO actor del mundo real debe recibir el MISMO slug "
-                    "aunque la mención cambie (p. ej. 'LLA' y 'La Libertad "
-                    "Avanza' → 'la_libertad_avanza'). null en cualquier otro "
-                    "caso.",
-    )
-    display_name_sugerido: str | None = Field(
-        description="Solo si es_nuevo=true Y alias_candidato=true: nombre "
-                    "canónico legible del actor nuevo, expandiendo siglas o "
-                    "apodos a la forma más completa y estable. null en "
-                    "cualquier otro caso.",
-    )
-    tipo_sugerido: str | None = Field(
-        description="Solo si es_nuevo=true Y alias_candidato=true: tipo del "
-                    "actor nuevo, uno de 'individuo', 'institucion', "
-                    "'colectivo' o 'desconocido'. null en cualquier otro caso.",
-    )
-    justificacion: str = Field(
-        description="Justificación breve del linking, citando aliases o "
-                    "elementos del contexto que respalden la decisión.",
-    )
-
-
-class ActorLinkingBatchItemSchema(StrictBase):
-    """Ítem del batch de linking: unit_idx + linkings de esa unidad."""
-    unit_idx: int = Field(
-        description="Índice 0-based de la unidad en el batch. DEBE coincidir "
-                    "con el número entre corchetes del prompt: UNIDAD [N].",
-    )
-    linkings: list[ActorLinkingSchema] = Field(
-        description="Resultado del linking para cada actor mencionado en "
-                    "la unidad. Mismo orden y misma cantidad que los actores "
-                    "del prompt.",
-    )
-
-
-class ListaActorLinkingBatchSchema(RootModel[list[ActorLinkingBatchItemSchema]]):
-    """Batch response del entity linking de actores."""
-
-
-# ══════════════════════════════════════════════════════════════════════════════
-#  Equivalencias de experienciador
-# ══════════════════════════════════════════════════════════════════════════════
-
-ClaseExperienciador = Literal[
-    "enunciador", "enunciatario", "actor", "otro", "literal"
-]
-
-
-class ExperiencerEquivalenceSchema(StrictBase):
-    """Propuesta de normalización para un experienciador crudo de un discurso.
-
-    La normalización es local al discurso: 'yo', 'enunciador', 'el orador'
-    refieren al enunciador de ESE discurso. El modelo NO debe inventar un
-    destino: ante duda, usar clase 'otro' con confianza 'baja'.
-    """
-    raw_experienciador: str = Field(
-        description="Experienciador tal como aparece en las emociones. Debe "
-                    "replicarse literal para que el caller correlacione.",
-    )
-    clase: ClaseExperienciador = Field(  # type: ignore[valid-type]
-        description="A quién refiere: 'enunciador' (incl. 'yo', 'el orador', "
-                    "'quien habla'); 'enunciatario' (el/los destinatarios); "
-                    "'actor' (un tercero mencionado); 'literal' (ya es un "
-                    "nombre propio que no necesita cambio); 'otro' (no "
-                    "resoluble con seguridad).",
-    )
-    canonical_sugerido: str | None = Field(
-        description="Nombre canónico legible propuesto (p. ej. el nombre del "
-                    "enunciador, o el del actor). Para 'literal' repetir el "
-                    "crudo. Para 'otro' dejar null.",
-    )
-    confianza: ConfianzaLinking = Field(  # type: ignore[valid-type]
-        description="alta | media | baja. Usar 'baja' ante ambigüedad antes "
-                    "que forzar un destino.",
-    )
-    justificacion: str = Field(
-        description="Justificación breve citando la evidencia del discurso.",
-    )
-
-
-class ExperiencerEquivalenceBatchItemSchema(StrictBase):
-    """Ítem del batch: un discurso (unit_idx) y sus equivalencias."""
-    unit_idx: int = Field(
-        description="Índice 0-based del discurso en el batch. DEBE coincidir "
-                    "con el número entre corchetes del prompt: DISCURSO [N].",
-    )
-    equivalencias: list[ExperiencerEquivalenceSchema] = Field(
-        description="Una entrada por experienciador a normalizar de ese "
-                    "discurso. Mismo conjunto que la lista del prompt.",
-    )
-
-
-class ListaExperiencerEquivalenceBatchSchema(
-    RootModel[list[ExperiencerEquivalenceBatchItemSchema]]
-):
-    """Batch response de la normalización de experienciadores."""
-
-
-# ══════════════════════════════════════════════════════════════════════════════
 #  Emociones
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -343,15 +253,55 @@ TipoConfiguracion = Literal[
 ]
 
 
+#: Derivación determinista: tipo_configuracion → (modo_semiotizacion,
+#: modo_identificacion). Reemplaza la inferencia LLM de esas dos variables, que
+#: están atadas a la configuración. Se pierde la identificación "mixta".
+SEMIOSIS_POR_CONFIGURACION: dict[str, tuple[str, str]] = {
+    "sostenido_en_sustantivos": ("dicha", "directa"),
+    "sostenido_en_adjetivos": ("dicha", "directa"),
+    "ordenado_alrededor_de_verbos_psicologicos": ("dicha", "directa"),
+    "cualificacion_por_indicadores_cognitivos": ("mostrada", "por_senales_salida"),
+    "cualificacion_por_indicadores_comportamiento": ("mostrada", "por_senales_salida"),
+    "cualificacion_por_indicadores_axiologicos": ("mostrada", "por_senales_salida"),
+    "cualificacion_por_componentes_descriptivo_narrativos": ("sostenida", "por_senales_entrada"),
+    "transposicion_situacion_reconocimiento_potencial": ("sostenida", "por_senales_entrada"),
+}
+
+
+def semiosis_from_config(tipo_configuracion: str | None) -> tuple[str, str]:
+    """Deriva (modo_semiotizacion, modo_identificacion) de la configuración.
+
+    Devuelve ("", "") si la configuración es desconocida o nula.
+    """
+    return SEMIOSIS_POR_CONFIGURACION.get(tipo_configuracion or "", ("", ""))
+
+
 class EmocionSchema(StrictBase):
     """Una emoción detectada en una unidad textual."""
     experienciador: str = Field(
-        description="Actor que experimenta la emoción. Puede ser el "
-                    "enunciador, un enunciatario o un actor mencionado.",
+        description="Referente del experienciador: actor que experimenta la "
+                    "emoción (enunciador, enunciatario o actor mencionado). Es "
+                    "la INFERENCIA del referente, no la marca de superficie.",
+    )
+    experienciador_marca: str = Field(
+        description="Marca discursiva del experienciador: la expresión LITERAL "
+                    "de la unidad que lo porta ('nosotros', 'el presidente', "
+                    "sujeto tácito como 'tienen miedo'). Transcribila tal cual.",
     )
     tipo_emocion: str = Field(
         description="Nombre de la emoción (ej. miedo, alegría, indignación). "
                     "Usar nombres concretos, no categorías abstractas.",
+    )
+    fuente_marca: str = Field(
+        description="Marca discursiva de la FUENTE de la emoción: la expresión "
+                    "LITERAL que la porta ('la barbarie invasora', 'el "
+                    "capitalismo de libre empresa'). Si la fuente no es "
+                    "identificable en la unidad, poné \"no identificado\".",
+    )
+    fuente_inferencia: str = Field(
+        description="Quién o qué desencadena la emoción. Si no se puede "
+                    "determinar, escribir literalmente 'no identificado'. "
+                    "NO dejar vacío.",
     )
     modo_existencia: ModoExistenciaEmocion = Field(  # type: ignore[valid-type]
         description="Modo de existencia semiótica de la emoción: "
@@ -380,11 +330,6 @@ class EmocionSchema(StrictBase):
                     "lo determina con claridad, usar la configuración 8 "
                     "(transposicion_situacion_reconocimiento_potencial) "
                     "como fallback de proyección situacional.",
-    )
-    justificacion: str = Field(
-        max_length=600,
-        description="Justificación semiótica de la detección, citando "
-                    "elementos del texto.",
     )
 
 
@@ -439,16 +384,6 @@ Dominancia = Literal["corporal", "cognoscitiva", "mixta"]
 
 Intensidad = Literal["alta", "baja", "neutra_ambivalente"]
 
-TipoFuente = Literal[
-    "actor",
-    "situacion",
-    "objeto",
-    "experiencia",
-    "espacio",
-    "discurso_ajeno",
-    "no_se_identifica",
-]
-
 
 class CaracterizacionEmocionSchema(StrictBase):
     """Caracterización completa de una emoción detectada."""
@@ -473,20 +408,6 @@ class CaracterizacionEmocionSchema(StrictBase):
     intensidad_justificacion: str = Field(
         description="Justificación breve de la intensidad.",
     )
-    fuente: str = Field(
-        description="Quién o qué desencadena la emoción. Si no se puede "
-                    "determinar, escribir literalmente 'no identificado'. "
-                    "NO dejar vacío.",
-    )
-    tipo_fuente: TipoFuente = Field(  # type: ignore[valid-type]
-        description="Categoría de la fuente: actor, situación, objeto, "
-                    "experiencia, espacio, discurso_ajeno, no_se_identifica. "
-                    "Usar 'no_se_identifica' SOLO cuando la fuente es "
-                    "indeterminable; nunca dejar el campo en blanco.",
-    )
-    fuente_justificacion: str = Field(
-        description="Justificación breve de la fuente identificada.",
-    )
     duracion: TipoDuracion = Field(  # type: ignore[valid-type]
         description="Duración de la emoción en el texto: "
                     "'instantanea' (punto, evento único), "
@@ -496,32 +417,6 @@ class CaracterizacionEmocionSchema(StrictBase):
     duracion_justificacion: str = Field(
         description="Justificación breve de la duración, citando marcadores "
                     "temporales o de aspecto presentes en el texto.",
-    )
-    modo_semiotizacion: TipoModoSemiotizacion = Field(  # type: ignore[valid-type]
-        description="Modo en que la emoción es semiotizada en el discurso: "
-                    "'dicha' (nombrada con un término de la familia léxica de "
-                    "una emoción, y nada más: un rol, cualidad o valoración no "
-                    "emocional como 'aliado' o 'inclaudicable' NO es 'dicha'), "
-                    "'mostrada' (inferida por comportamiento, gesto o acción descritos), "
-                    "'sostenida' (construida acumulativamente a lo largo del texto, "
-                    "sin nombrarse ni mostrarse en un solo punto).",
-    )
-    modo_semiotizacion_justificacion: str = Field(
-        description="Justificación breve del modo de semiotización, citando "
-                    "el fragmento textual que lo determina.",
-    )
-    modo_identificacion: TipoModoIdentificacion = Field(  # type: ignore[valid-type]
-        description="Modo en que el analista identifica la emoción: "
-                    "'directa' (la emoción está 'dicha'; solo válida si "
-                    "modo_semiotizacion es 'dicha'), "
-                    "'por_senales_salida' (identificada por señales expresivas: "
-                    "llanto, risa, tono, etc.), "
-                    "'por_senales_entrada' (identificada por el estímulo desencadenante), "
-                    "'mixta' (combinación de señales de salida y entrada).",
-    )
-    modo_identificacion_justificacion: str = Field(
-        description="Justificación breve del modo de identificación, citando "
-                    "los indicadores concretos usados.",
     )
     tipo_atribucion: TipoAtribucion = Field(  # type: ignore[valid-type]
         description="Cómo se atribuye EXPLÍCITAMENTE la emoción: "
@@ -813,3 +708,76 @@ class ActantesBatchItemSchema(StrictBase):
 
 class ListaActantesBatchSchema(RootModel[list[ActantesBatchItemSchema]]):
     """Batch response de configuraciones actanciales."""
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Semas de referentes canónicos
+# ══════════════════════════════════════════════════════════════════════════════
+
+class SemasBatchItemSchema(StrictBase):
+    """Ítem del batch de semas: unit_idx + semas del referente."""
+    unit_idx: int = Field(
+        description="Índice 0-based del referente en el batch. DEBE coincidir "
+                    "con el número entre corchetes del prompt: REFERENTE [N].",
+    )
+    semas: list[str] = Field(
+        description="Semas del vocabulario provisto que aplican al referente. "
+                    "Lista vacía si ninguno aplica con evidencia suficiente.",
+    )
+
+
+class ListaSemasBatchSchema(RootModel[list[SemasBatchItemSchema]]):
+    """Batch response: lista de items, uno por referente del batch."""
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Deixis: resolución de marcas deícticas a referentes concretos
+# ══════════════════════════════════════════════════════════════════════════════
+
+#: Categorías esquemáticas de referente deíctico. Conjunto cerrado: ninguna
+#: marca puede asignarse a un tipo fuera de esta lista.
+TipoReferenteDeixis = Literal[
+    "enunciador",
+    "auditorio",
+    "colectivo_identificacion",
+]
+
+
+class ReferenteDeixisSchema(StrictBase):
+    """Un referente concreto al que apunta una marca deíctica.
+
+    `tipo_referente_deixis` es la categoría esquemática (cerrada);
+    `referente_deixis` es el nombre CONCRETO elegido entre los referentes del
+    discurso (enunciador, auditorio o colectivo), nunca el tipo.
+    """
+    tipo_referente_deixis: TipoReferenteDeixis = Field(  # type: ignore[valid-type]
+        description="Categoría esquemática del referente.",
+    )
+    referente_deixis: str = Field(
+        description="Nombre concreto del referente (p. ej. 'Javier Milei', "
+                    "'los presentes en el Foro de Davos', 'La Libertad "
+                    "Avanza'). Debe elegirse de los referentes provistos del "
+                    "discurso, no inventarse.",
+    )
+
+
+class MarcaDeixisSchema(StrictBase):
+    """Resolución deíctica de una marca: puede apuntar a varios referentes."""
+    marca: str = Field(
+        description="La marca deíctica tal como aparece en el discurso "
+                    "(p. ej. 'tenemos', 'nuestro equipo', 'veamos').",
+    )
+    referentes: list[ReferenteDeixisSchema] = Field(
+        description="Uno o varios referentes a los que apunta la marca. "
+                    "'nuestro equipo' puede apuntar al enunciador Y a su "
+                    "colectivo de identificación a la vez.",
+    )
+
+
+class DeixisSchema(StrictBase):
+    """Resolución deíctica de todas las marcas candidatas de un discurso."""
+    resoluciones: list[MarcaDeixisSchema] = Field(
+        description="Una entrada por marca deíctica resuelta. Marcas sin "
+                    "deixis de 1ª/2ª persona se omiten. Devolvé lista vacía "
+                    "solo si ninguna marca tiene deixis resoluble.",
+    )

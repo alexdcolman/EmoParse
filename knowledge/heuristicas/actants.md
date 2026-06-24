@@ -22,6 +22,11 @@ afinen según el corpus si fuera necesario.
 
 ## Mediador
 
+- El mediador conecta **exclusivamente** la fuente fijada con el
+  experienciador fijado de la emoción analizada. No lo reatribuyas a
+  otro experienciador (p. ej. la audiencia): si el "vehículo" en
+  realidad apunta a producir una emoción en un tercero, no es el
+  mediador de esta emoción.
 - El mediador no es la *fuente* de la emoción. La fuente es lo que
   la origina; el mediador es lo que la **vehiculiza** o
   **transporta** hacia el experienciador.
@@ -75,6 +80,10 @@ afinen según el corpus si fuera necesario.
 
 ## Operador de modificación
 
+- El operador opera **sobre la emoción del experienciador fijado**. No
+  es el experienciador fijado actuando sobre la emoción de terceros: si
+  su discurso busca producir una emoción en otros (su audiencia), eso
+  pertenece al análisis de la emoción de esos otros, no a esta.
 - No basta con que una emoción exista para que haya operador de
   modificación. El operador implica una **operación discursiva
   dirigida** a modificar la emoción de un experienciador.

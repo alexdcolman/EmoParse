@@ -80,7 +80,7 @@ def _apply_filters(df: pd.DataFrame, level: str) -> pd.DataFrame:
     candidatos = {
         "discursos": ["codigo", "metadata__tipo_discurso", "summarizer__status"],
         "frases":    ["codigo"],
-        "emociones": ["codigo", "tipo_emocion", "experienciador", "foria", "modo_existencia"],
+        "emociones": ["codigo", "tipo_emocion", "experienciador", "fuente_inferencia", "foria", "modo_existencia"],
     }.get(level, [])
 
     for i, col_name in enumerate(candidatos):

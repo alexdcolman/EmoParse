@@ -756,3 +756,21 @@ def timeline_corpus(
         height=380,
     ))
     return fig
+
+
+def filtrar_por_canonicos(
+    df: pd.DataFrame,
+    canonicos: set[str] | list[str],
+    col: str = "experienciador_canonico",
+) -> pd.DataFrame:
+    """Filtra un DataFrame de emociones por referentes canónicos.
+
+    Pensado para los semas: el llamador obtiene el conjunto de canónicos que
+    tienen un sema dado y filtra las emociones cuyo experienciador canónico
+    pertenece a ese conjunto. Si la columna no existe o el conjunto está vacío,
+    devuelve el DataFrame sin cambios.
+    """
+    canonicos = set(canonicos)
+    if df.empty or not canonicos or col not in df.columns:
+        return df
+    return df[df[col].isin(canonicos)]

@@ -28,10 +28,12 @@ class EmocionesRepository:
         frase_idx: int,
         emocion_idx: int,
         experienciador: str,
+        experienciador_marca: str,
         tipo_emocion: str,
+        fuente_marca: str,
+        fuente_inferencia: str,
         modo_existencia: str,
         tipo_configuracion: str | None = None,
-        deteccion_justificacion: str | None = None,
     ) -> None:
         """Insert/update de una emoción individual."""
         with self._db.transaction() as cur:
@@ -39,24 +41,27 @@ class EmocionesRepository:
                 """
                 INSERT INTO emociones (
                     codigo, frase_idx, emocion_idx,
-                    experienciador, tipo_emocion, modo_existencia,
-                    tipo_configuracion,
-                    deteccion_justificacion
+                    experienciador, experienciador_marca, tipo_emocion, fuente_marca,
+                    fuente_inferencia, modo_existencia,
+                    tipo_configuracion
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(codigo, frase_idx, emocion_idx) DO UPDATE SET
                     experienciador          = excluded.experienciador,
+                    experienciador_marca    = excluded.experienciador_marca,
                     tipo_emocion            = excluded.tipo_emocion,
+                    fuente_marca            = excluded.fuente_marca,
+                    fuente_inferencia       = excluded.fuente_inferencia,
                     modo_existencia         = excluded.modo_existencia,
                     tipo_configuracion      = excluded.tipo_configuracion,
-                    deteccion_justificacion = excluded.deteccion_justificacion,
                     updated_at              = ?
                 """,
                 (
                     codigo, frase_idx, emocion_idx,
-                    experienciador, tipo_emocion, modo_existencia,
+                    experienciador, experienciador_marca, 
+                    tipo_emocion, fuente_marca,
+                    fuente_inferencia, modo_existencia,
                     tipo_configuracion,
-                    deteccion_justificacion,
                     datetime.now(timezone.utc),
                 ),
             )
@@ -70,9 +75,10 @@ class EmocionesRepository:
         params = [
             (
                 r["codigo"], r["frase_idx"], r["emocion_idx"],
-                r["experienciador"], r["tipo_emocion"], r["modo_existencia"],
+                r["experienciador"], r["experienciador_marca"],
+                r["tipo_emocion"], r["fuente_marca"],
+                r["fuente_inferencia"], r["modo_existencia"],
                 r.get("tipo_configuracion"),
-                r.get("deteccion_justificacion"),
                 now,
             )
             for r in rows
@@ -82,17 +88,19 @@ class EmocionesRepository:
                 """
                 INSERT INTO emociones (
                     codigo, frase_idx, emocion_idx,
-                    experienciador, tipo_emocion, modo_existencia,
-                    tipo_configuracion,
-                    deteccion_justificacion
+                    experienciador, experienciador_marca, tipo_emocion, fuente_marca,
+                    fuente_inferencia, modo_existencia,
+                    tipo_configuracion
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(codigo, frase_idx, emocion_idx) DO UPDATE SET
                     experienciador          = excluded.experienciador,
+                    experienciador_marca    = excluded.experienciador_marca,
                     tipo_emocion            = excluded.tipo_emocion,
+                    fuente_marca            = excluded.fuente_marca,
+                    fuente_inferencia       = excluded.fuente_inferencia,
                     modo_existencia         = excluded.modo_existencia,
                     tipo_configuracion      = excluded.tipo_configuracion,
-                    deteccion_justificacion = excluded.deteccion_justificacion,
                     updated_at              = ?
                 """,
                 params,
@@ -390,13 +398,12 @@ class EmocionesRepository:
             cur.execute(
                 """
                 UPDATE emociones SET
-                    experienciador_canonico        = ?,
-                    normalize_experiencers_version = ?,
-                    updated_at                     = ?
+                    experienciador_canonico = ?,
+                    updated_at              = ?
                 WHERE codigo = ? AND experienciador = ?
                 """,
                 (
-                    canonical, version,
+                    canonical,
                     datetime.now(timezone.utc),
                     codigo, raw_experienciador,
                 ),

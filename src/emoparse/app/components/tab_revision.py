@@ -31,21 +31,18 @@ try:
     _OPTS: dict[str, list[str]] = {
         "foria": list(get_args(_sc.Foria)),
         "intensidad": list(get_args(_sc.Intensidad)),
-        "tipo_fuente": list(get_args(_sc.TipoFuente)),
         "dominancia": list(get_args(_sc.Dominancia)),
         "duracion": list(get_args(_sc.TipoDuracion)),
-        "modo_semiotizacion": list(get_args(_sc.TipoModoSemiotizacion)),
-        "modo_identificacion": list(get_args(_sc.TipoModoIdentificacion)),
         "atribucion": list(get_args(_sc.TipoAtribucion)),
         "modo_existencia": list(get_args(_sc.ModoExistenciaEmocion)),
         "tipo_configuracion": list(get_args(_sc.TipoConfiguracion)),
+        "fuente_marca": list(get_args(_sc.FuenteMarca)),
+        "fuente_inferencia": list(get_args(_sc.FuenteInferencia)),
     }
 except Exception:  # pragma: no cover - fallback defensivo
     _OPTS = {
         "foria": ["euforico", "disforico", "aforico", "ambiforico", "indeterminado"],
         "intensidad": ["alta", "baja", "neutra_ambivalente"],
-        "tipo_fuente": ["actor", "situacion", "objeto", "experiencia", "espacio",
-                        "discurso_ajeno", "no_se_identifica"],
     }
 
 _KB_TIPOS = ("individuo", "institucion", "colectivo", "desconocido")
@@ -74,18 +71,22 @@ def _parse_canon(s: str) -> Any:
     return parts[0] if len(parts) == 1 else parts
 
 
-def _kb_display(db_path: Path, ov: RevisionOverlay) -> dict[str, str]:
-    """Mapa canonical_id → display_name (KB + actores propuestos en el overlay).
-
-    Reusa el loader de la KB de la tab Estado, igual que `_kb_ids`.
-    """
-    disp: dict[str, str] = {}
+def _referentes_kb_index() -> dict[str, str]:
+    """Lee referentes_kb.json (KB persistente de referentes) → {canonical_id: display_name}."""
+    import json
+    import os
+    path = Path(os.environ.get("EMOPARSE_KNOWLEDGE_DIR", "knowledge")) / "referentes_kb.json"
     try:
-        from emoparse.app.components.tab_estado import _try_load_kb_index
-        for m in _try_load_kb_index(db_path):
-            disp[m["id"]] = m["display_name"]
-    except Exception:
-        pass
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    refs = data.get("referentes", {}) if isinstance(data, dict) else {}
+    return {cid: str(info.get("display_name") or cid) for cid, info in refs.items()}
+
+
+def _kb_display(db_path: Path, ov: RevisionOverlay) -> dict[str, str]:
+    """Mapa canonical_id → display_name (referentes_kb + actores propuestos en el overlay)."""
+    disp: dict[str, str] = dict(_referentes_kb_index())
     try:
         for cid, info in ov.list_proposed_actors().items():
             disp.setdefault(cid, str(info.get("display_name") or cid))
@@ -144,15 +145,7 @@ def render(db_path: Path) -> None:
     if df_fr.empty:
         st.info("Este discurso no tiene frases procesadas.")
         return
-    actores_by_frase = data_layer.get_actores_canonicos(db_path, codigo)
-    actor_decisions = data_layer.get_actor_decisions(db_path, codigo)
-    for uidx, links in actores_by_frase.items():
-        for link in links:
-            dec = actor_decisions.get(
-                (int(uidx), str(link.get("actor_mencionado", "")))
-            )
-            if dec is not None:
-                link["_decision"] = dec
+    actores_by_frase = data_layer.get_actores_por_frase(db_path, codigo)
     emos_full = data_layer.get_emociones_full(db_path, codigo)
     emos_by_frase: dict[int, list[dict[str, Any]]] = {}
     for em in emos_full:
@@ -160,6 +153,8 @@ def render(db_path: Path) -> None:
 
     kb_ids = _kb_ids(db_path, ov)
     kb_disp = _kb_display(db_path, ov)
+    fuente_canon = data_layer.get_fuente_canonico_map(db_path, codigo)
+    exp_canon = data_layer.get_experienciador_canonico_map(db_path, codigo)
 
     st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
     for _, fr in df_fr.sort_values("unit_idx").iterrows():
@@ -171,6 +166,8 @@ def render(db_path: Path) -> None:
             emociones=emos_by_frase.get(int(fr["unit_idx"]), []),
             kb_ids=kb_ids,
             kb_disp=kb_disp,
+            fuente_canon=fuente_canon,
+            exp_canon=exp_canon,
         )
 
 
@@ -240,6 +237,8 @@ def _render_frase(
     ov: RevisionOverlay, codigo: str, *, unit_idx: int, frase: str,
     actores: list[dict[str, Any]], emociones: list[dict[str, Any]],
     kb_ids: list[str], kb_disp: dict[str, str],
+    fuente_canon: dict[tuple[int, int], str] | None = None,
+    exp_canon: dict[tuple[int, int], str] | None = None,
 ) -> None:
     n_emo = len([
         e for e in emociones
@@ -261,7 +260,8 @@ def _render_frase(
         _render_actores(ov, codigo, unit_idx, actores, kb_ids, kb_disp)
         st.markdown("**Emociones**")
         for em in emociones:
-            _render_emocion(ov, codigo, unit_idx, em, kb_ids, kb_disp)
+            _render_emocion(ov, codigo, unit_idx, em, kb_ids, kb_disp,
+                            fuente_canon or {}, exp_canon or {})
         _render_new_emociones(ov, codigo, unit_idx)
         _render_add_emocion(ov, codigo, unit_idx)
     st.markdown(
@@ -285,24 +285,10 @@ def _render_actores(
         mencion = str(link.get("actor_mencionado", ""))
         canon = link.get("actor_canonico")
         resuelto = link.get("resuelto_por")
-        dec = link.get("_decision")
-        dec_badge = ""
-        if isinstance(dec, dict):
-            kind = dec.get("decision")
-            if kind in ("merge", "promote") and dec.get("canonical_id"):
-                canon = dec["canonical_id"]
-                dec_badge = (
-                    " <span style='color:#6ec89a;font-size:0.7rem;'>[decidido]</span>"
-                )
-            elif kind == "discard":
-                canon = None
-                dec_badge = (
-                    " <span style='color:#c87c7c;font-size:0.7rem;'>[descartado]</span>"
-                )
         badge = (
             " <span style='color:#7c9ec8;font-size:0.7rem;'>[deixis]</span>"
             if resuelto == "deixis_enunciador" else ""
-        ) + dec_badge
+        )
         is_removed = key in removed
         style = "text-decoration:line-through;opacity:0.5;" if is_removed else ""
         c1, c2 = st.columns([5, 1])
@@ -367,7 +353,7 @@ def _render_add_actor(
             st.session_state.pop(f"addact_men_{codigo}_{unit_idx}", None)
             st.rerun()
     else:
-        from emoparse.triage.discovery_grouping import slugify
+        from emoparse.core.text import slugify
         nombre = st.text_input("Nombre del actor nuevo", key=f"addact_nom_{codigo}_{unit_idx}")
         tipo = st.selectbox("Tipo", _KB_TIPOS, key=f"addact_tipo_{codigo}_{unit_idx}")
         slug = slugify(nombre) if nombre.strip() else ""
@@ -400,6 +386,8 @@ def _render_add_actor(
 def _render_emocion(
     ov: RevisionOverlay, codigo: str, unit_idx: int,
     em: dict[str, Any], kb_ids: list[str], kb_disp: dict[str, str],
+    fuente_canon: dict[tuple[int, int], str] | None = None,
+    exp_canon: dict[tuple[int, int], str] | None = None,
 ) -> None:
     eidx = int(em["emocion_idx"])
     eff = ov.effective_emocion(codigo, unit_idx, eidx, em)
@@ -422,11 +410,18 @@ def _render_emocion(
         return
 
     tipo = eff.get("tipo_emocion_canonico") or eff.get("tipo_emocion") or "?"
-    exp_eff = (
-        _canon_display(eff.get("experienciador_canonico"), kb_disp)
-        or eff.get("experienciador")
-        or "?"
-    )
+    raw_exp = eff.get("experienciador") or "?"
+    # Canónico del experienciador: prioriza el override de revisión; si no hay,
+    # usa el resuelto por la base de marcas (incluye deixis: "yo" → "javier_milei").
+    canon_exp = _canon_display(eff.get("experienciador_canonico"), kb_disp)
+    if not canon_exp:
+        deixis_cid = (exp_canon or {}).get((unit_idx, eidx))
+        if deixis_cid:
+            canon_exp = _canon_label(deixis_cid, kb_disp)
+    if canon_exp and canon_exp != raw_exp:
+        exp_eff = f"{canon_exp} ⟵ canónico (LLM: {raw_exp})"
+    else:
+        exp_eff = canon_exp or raw_exp
     chk = "✓ " if confirmado.get("_emocion") else ""
     if not _toggle(
         f"{chk}#{eidx} · {tipo} · {exp_eff}",
@@ -434,8 +429,17 @@ def _render_emocion(
     ):
         return
 
+    fcanon = (fuente_canon or {}).get((unit_idx, eidx))
+    if fcanon:
+        st.markdown(
+            f"<p style='font-size:0.78rem;color:#5a5d6e;'>fuente · "
+            f"canónico (vale): <code>{_esc(_canon_label(fcanon, kb_disp))}</code></p>",
+            unsafe_allow_html=True,
+        )
+
     base = ["experienciador", "experienciador_canonico", "tipo_emocion",
-            "modo_existencia", "tipo_configuracion", "deteccion_justificacion"]
+            "modo_existencia", "fuente_marca", "fuente_inferencia", 
+            "tipo_configuracion"]
     st.markdown("<u>Detección</u>", unsafe_allow_html=True)
     for f in base:
         _edit_scalar(ov, codigo, unit_idx, eidx, [f], f, eff.get(f))
@@ -565,12 +569,14 @@ def _render_add_emocion(ov: RevisionOverlay, codigo: str, unit_idx: int) -> None
         _OPTS.get("modo_existencia", ["realizada"]),
         key=f"addem_modo_{codigo}_{unit_idx}",
     )
+    fuente = st.text_input("Fuente de la emoción", key=f"addem_fte_{codigo}_{unit_idx}")
     if st.button("Agregar emoción", key=f"addem_btn_{codigo}_{unit_idx}",
                  disabled=not (exp.strip() and tipo.strip())):
         ov.add_emocion(codigo, unit_idx, {
             "experienciador": exp.strip(),
             "tipo_emocion": tipo.strip(),
             "modo_existencia": modo,
+            "fuente_inferencia": fuente.strip(),
             "origen": "revision",
         })
         for k in ("exp", "tipo"):
@@ -581,11 +587,7 @@ def _render_add_emocion(ov: RevisionOverlay, codigo: str, unit_idx: int) -> None
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
 def _kb_ids(db_path: Path, ov: RevisionOverlay) -> list[str]:
-    """canonical_ids de la KB + los propuestos en el overlay (para no chocar)."""
+    """canonical_ids del referentes_kb + los propuestos en el overlay (para no chocar)."""
     ids: set[str] = set(ov.list_proposed_actors().keys())
-    try:
-        from emoparse.app.components.tab_estado import _try_load_kb_ids
-        ids |= set(_try_load_kb_ids(db_path))
-    except Exception:
-        pass
+    ids |= set(_referentes_kb_index().keys())
     return sorted(ids)

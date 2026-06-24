@@ -32,15 +32,8 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
         "dominancia_justificacion",
         "intensidad",
         "intensidad_justificacion",
-        "fuente",
-        "tipo_fuente",
-        "fuente_justificacion",
         "duracion",
         "duracion_justificacion",
-        "modo_semiotizacion",
-        "modo_semiotizacion_justificacion",
-        "modo_identificacion",
-        "modo_identificacion_justificacion",
         "tipo_atribucion",
         "tipo_atribucion_justificacion",
     )
@@ -96,12 +89,16 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
             experienciador = str(row.get("experienciador", ""))
             tipo_emocion = str(row.get("tipo_emocion", ""))
             modo = str(row.get("modo_existencia", ""))
+            fuente_marca = str(row.get("fuente_marca", ""))
+            fuente_inferencia = str(row.get("fuente_inferencia", ""))
 
             bloques.append(
                 f"EMOCIÓN [{i}] (codigo={codigo}):\n"
                 f"  Experienciador:  {experienciador}\n"
                 f"  Tipo emoción:    {tipo_emocion}\n"
                 f"  Modo existencia: {modo}\n"
+                f"  Fuente marca:    {fuente_marca}\n"
+                f"  Fuente inferencia: {fuente_inferencia}\n"
                 f"  Frase de origen: {frase}"
             )
         unidades_block = "\n\n".join(bloques)
@@ -120,15 +117,8 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
             "dominancia_justificacion": c.dominancia_justificacion,
             "intensidad": c.intensidad,
             "intensidad_justificacion": c.intensidad_justificacion,
-            "fuente": c.fuente,
-            "tipo_fuente": c.tipo_fuente,
-            "fuente_justificacion": c.fuente_justificacion,
             "duracion": c.duracion,
             "duracion_justificacion": c.duracion_justificacion,
-            "modo_semiotizacion": c.modo_semiotizacion,
-            "modo_semiotizacion_justificacion": c.modo_semiotizacion_justificacion,
-            "modo_identificacion": c.modo_identificacion,
-            "modo_identificacion_justificacion": c.modo_identificacion_justificacion,
             "tipo_atribucion": c.tipo_atribucion,
             "tipo_atribucion_justificacion": c.tipo_atribucion_justificacion,
         }

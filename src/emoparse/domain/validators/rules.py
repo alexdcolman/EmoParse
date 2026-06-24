@@ -38,8 +38,9 @@ class V01_ModoPotencialVirtualExperienciador(RowValidator):
     VALIDATOR_ID = "V-01"
 
     def validate(self, *, codigo, frase_idx, emocion_idx,
-                 experienciador, tipo_emocion, modo_existencia,
-                 foria, dominancia, intensidad, tipo_fuente, fuente,
+                 experienciador, experienciador_marca, tipo_emocion, modo_existencia,
+                 fuente_marca, fuente_inferencia,
+                 foria, dominancia, intensidad,
                  enunciador, enunciatarios) -> list[ValidationIssue]:
         modos_aplica = {"virtual", "potencial"}
         if modo_existencia.lower() not in modos_aplica:
@@ -77,26 +78,25 @@ class V02_FuenteNoIdentificadaConIntensidadAlta(RowValidator):
     """V-02: fuente no identificada con intensidad alta.
 
     Fuente ontológica:
-      fuente.txt    — "Si no lográs determinar la fuente con exactitud,
+      fuente.json    — "Si no lográs determinar la fuente con exactitud,
                        devolvé: 'no se identifica'"
       intensidad.json — "Alta: emociones intensamente expresadas o inferibles"
 
-    Regla: si tipo_fuente == "no_se_identifica" e intensidad == "alta",
+    Regla: si fuente_inferencia == "no identificado" e intensidad == "alta",
     hay tensión semiótica: una emoción muy intensa debería tener fuente
     identificable (la intensidad presupone un estímulo claro). La
     coexistencia de ambos valores es sospechosa pero no imposible (ej.
     angustia difusa intensa), por eso es warning.
-
-    No dispara si tipo_fuente es "discurso_ajeno" (tiene fuente implícita).
     """
 
     VALIDATOR_ID = "V-02"
 
     def validate(self, *, codigo, frase_idx, emocion_idx,
-                 experienciador, tipo_emocion, modo_existencia,
-                 foria, dominancia, intensidad, tipo_fuente, fuente,
+                 experienciador, experienciador_marca, tipo_emocion, modo_existencia,
+                 fuente_marca, fuente_inferencia,
+                 foria, dominancia, intensidad,
                  enunciador, enunciatarios) -> list[ValidationIssue]:
-        if tipo_fuente.lower() != "no_se_identifica":
+        if fuente_inferencia.lower() != "no identificado":
             return []
         if intensidad.lower() != "alta":
             return []
@@ -105,7 +105,7 @@ class V02_FuenteNoIdentificadaConIntensidadAlta(RowValidator):
             validator_id=self.VALIDATOR_ID,
             mensaje=(
                 f"Emoción '{tipo_emocion}' tiene intensidad 'alta' pero "
-                f"fuente 'no_se_identifica'. Las emociones de alta intensidad "
+                f"fuente 'no identificado'. Las emociones de alta intensidad "
                 f"suelen tener fuente identificable. Revisar si la fuente "
                 f"quedó sin detectar."
             ),
@@ -115,7 +115,7 @@ class V02_FuenteNoIdentificadaConIntensidadAlta(RowValidator):
             contexto={
                 "tipo_emocion": tipo_emocion,
                 "intensidad": intensidad,
-                "tipo_fuente": tipo_fuente,
+                "fuente_inferencia": fuente_inferencia,
             },
         )]
 
@@ -137,8 +137,9 @@ class V04_AforicoConIntensidadAlta(RowValidator):
     VALIDATOR_ID = "V-04"
 
     def validate(self, *, codigo, frase_idx, emocion_idx,
-                 experienciador, tipo_emocion, modo_existencia,
-                 foria, dominancia, intensidad, tipo_fuente, fuente,
+                 experienciador, experienciador_marca, tipo_emocion, modo_existencia,
+                 fuente_marca, fuente_inferencia,
+                 foria, dominancia, intensidad,
                  enunciador, enunciatarios) -> list[ValidationIssue]:
         if foria.lower() != "aforico":
             return []
@@ -178,8 +179,9 @@ class V05_AmbiforicaConIntensidadBaja(RowValidator):
     VALIDATOR_ID = "V-05"
 
     def validate(self, *, codigo, frase_idx, emocion_idx,
-                 experienciador, tipo_emocion, modo_existencia,
-                 foria, dominancia, intensidad, tipo_fuente, fuente,
+                 experienciador, experienciador_marca, tipo_emocion, modo_existencia,
+                 fuente_marca, fuente_inferencia,
+                 foria, dominancia, intensidad,
                  enunciador, enunciatarios) -> list[ValidationIssue]:
         if foria.lower() != "ambiforico":
             return []
@@ -222,8 +224,9 @@ class V06_VirtualConForiaAforica(RowValidator):
     VALIDATOR_ID = "V-06"
 
     def validate(self, *, codigo, frase_idx, emocion_idx,
-                 experienciador, tipo_emocion, modo_existencia,
-                 foria, dominancia, intensidad, tipo_fuente, fuente,
+                 experienciador, experienciador_marca, tipo_emocion, modo_existencia,
+                 fuente_marca, fuente_inferencia,
+                 foria, dominancia, intensidad,
                  enunciador, enunciatarios) -> list[ValidationIssue]:
         if modo_existencia.lower() != "virtual":
             return []
@@ -245,116 +248,6 @@ class V06_VirtualConForiaAforica(RowValidator):
                 "tipo_emocion": tipo_emocion,
                 "modo_existencia": modo_existencia,
                 "foria": foria,
-            },
-        )]
-
-
-class V07_TipoFuenteActorSinFuenteNombrada(RowValidator):
-    """V-07: tipo_fuente == 'actor' pero fuente no nombra a ningún actor.
-
-    Fuente ontológica:
-      fuente.json — "Actor: persona o grupo que provoca la emoción."
-                    Ejemplo: 'Juan la hizo enojar' → actor.
-
-    Regla: si el tipo de fuente es 'actor', el campo `fuente` debería
-    contener un nombre o denominación concreta. Las señales de ausencia
-    son strings genéricos o el sentinel "no identificado".
-    """
-
-    VALIDATOR_ID = "V-07"
-
-    #: Valores que indican fuente no nombrada aunque tipo_fuente sea "actor".
-    _SENTINELAS = frozenset({
-        "no identificado",
-        "no_se_identifica",
-        "no se identifica",
-        "no identificada",
-        "",
-    })
-
-    def validate(self, *, codigo, frase_idx, emocion_idx,
-                 experienciador, tipo_emocion, modo_existencia,
-                 foria, dominancia, intensidad, tipo_fuente, fuente,
-                 enunciador, enunciatarios) -> list[ValidationIssue]:
-        if tipo_fuente.lower() != "actor":
-            return []
-
-        fuente_norm = fuente.strip().lower()
-        if fuente_norm not in self._SENTINELAS:
-            return []
-
-        return [ValidationIssue(
-            validator_id=self.VALIDATOR_ID,
-            mensaje=(
-                f"Emoción '{tipo_emocion}': tipo_fuente es 'actor' pero el campo "
-                f"fuente contiene '{fuente}' (sin actor nombrado). "
-                f"Si el tipo es 'actor', debe identificarse quién provoca la emoción."
-            ),
-            codigo=codigo,
-            frase_idx=frase_idx,
-            emocion_idx=emocion_idx,
-            contexto={
-                "tipo_emocion": tipo_emocion,
-                "tipo_fuente": tipo_fuente,
-                "fuente": fuente,
-            },
-        )]
-
-
-class V12_FuenteEcoDeCategoria(RowValidator):
-    """V-12: el campo `fuente` repite la categoría en vez de nombrarla.
-
-    Fuente del dominio:
-      characterizer_system — "indicá la `fuente` concreta (quién o qué
-      desencadena la emoción) en lenguaje natural" y "El campo `fuente` NO
-      debe repetir el nombre de la categoría".
-
-    Regla: `fuente` debe nombrar el desencadenante concreto, no repetir el
-    literal de `tipo_fuente` ni el nombre genérico de la categoría
-    ('actor', 'situacion', 'objeto', ...). Cuando coincide, el campo no
-    aporta información: suele ser un eco de la categoría por parte del
-    modelo. No dispara con el sentinel 'no identificado' (el caso de
-    tipo_fuente 'actor' sin actor nombrado lo cubre V-07).
-    """
-
-    VALIDATOR_ID = "V-12"
-
-    #: Nombres genéricos de categoría que `fuente` no debería repetir.
-    _CATEGORIAS = frozenset({
-        "actor",
-        "situacion",
-        "objeto",
-        "experiencia",
-        "espacio",
-        "discurso_ajeno",
-        "discurso ajeno",
-    })
-
-    def validate(self, *, codigo, frase_idx, emocion_idx,
-                 experienciador, tipo_emocion, modo_existencia,
-                 foria, dominancia, intensidad, tipo_fuente, fuente,
-                 enunciador, enunciatarios) -> list[ValidationIssue]:
-        fuente_norm = strip_accents(fuente.strip().lower())
-        if not fuente_norm:
-            return []
-
-        tipo_norm = strip_accents(tipo_fuente.strip().lower())
-        if fuente_norm != tipo_norm and fuente_norm not in self._CATEGORIAS:
-            return []
-
-        return [ValidationIssue(
-            validator_id=self.VALIDATOR_ID,
-            mensaje=(
-                f"Emoción '{tipo_emocion}': el campo fuente repite la categoría "
-                f"('{fuente}') en lugar de nombrar el desencadenante concreto."
-            ),
-            codigo=codigo,
-            frase_idx=frase_idx,
-            emocion_idx=emocion_idx,
-            contexto={
-                "tipo_emocion": tipo_emocion,
-                "tipo_fuente": tipo_fuente,
-                "fuente": fuente,
             },
         )]
 
@@ -407,6 +300,7 @@ class V08_ActorCoincideConEnunciador(DiscursoValidator):
                     emocion_idx=emo.get("emocion_idx"),
                     contexto={
                         "experienciador": exp,
+                        "experienciador_marca": emo.get("experienciador_marca", ""),
                         "enunciador": enunciador,
                         "tipo_emocion": emo.get("tipo_emocion", ""),
                     },
@@ -465,6 +359,7 @@ class V09_EmocionDuplicadaMismoActorMismaFrase(DiscursoValidator):
                 contexto={
                     "tipo_emocion": tipo,
                     "experienciador": exp,
+                    "experienciador_marca": emo.get("experienciador_marca", ""),
                     "frase_idx": fi,
                     "ocurrencias": len(ocurrencias),
                     "emocion_idxs": [ei for _, ei in ocurrencias],
@@ -539,6 +434,7 @@ class V10_ModoPotencialConExperienciadorNoEnunciatario(DiscursoValidator):
                         "tipo_emocion": emo.get("tipo_emocion", ""),
                         "modo_existencia": "potencial",
                         "experienciador": exp,
+                        "experienciador_marca": emo.get("experienciador_marca", ""),
                         "enunciatarios": [e.get("actor") for e in enunciatarios],
                     },
                 ))
@@ -556,7 +452,7 @@ class V11_DesviacionOntologica(RowValidator):
     según la ontología de emociones del proyecto.
 
     Fuente ontológica:
-      knowledge/emociones_ontologia.json — constraints por emoción y dimensión.
+      emociones_ontologia.json — constraints por emoción y dimensión.
 
     Regla: para cada emoción conocida (matcheada por nombre canónico o
     alias, con tolerancia de tildes), se verifican las cuatro dimensiones
@@ -620,13 +516,14 @@ class V11_DesviacionOntologica(RowValidator):
         frase_idx: int,
         emocion_idx: int,
         experienciador: str,
+        experienciador_marca: str,
         tipo_emocion: str,
+        fuente_marca: str,
+        fuente_inferencia: str,
         modo_existencia: str,
         foria: str,
         dominancia: str,
         intensidad: str,
-        tipo_fuente: str,
-        fuente: str,
         enunciador: str,
         enunciatarios: list[dict[str, Any]],
     ) -> list[ValidationIssue]:
@@ -691,8 +588,6 @@ ROW_VALIDATORS: list[RowValidator] = [
     V04_AforicoConIntensidadAlta(),
     V05_AmbiforicaConIntensidadBaja(),
     V06_VirtualConForiaAforica(),
-    V07_TipoFuenteActorSinFuenteNombrada(),
-    V12_FuenteEcoDeCategoria(),
 ]
 
 #: Lista de DiscursoValidators activos.

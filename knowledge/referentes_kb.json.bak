@@ -1,0 +1,47 @@
+{
+  "version": "v1",
+  "referentes": {
+    "empresa_s": {
+      "display_name": "las empresas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "sere_s_humano_s": {
+      "display_name": "ser(es) humano(s)",
+      "clase": "",
+      "tipo": "",
+      "notas": ""
+    },
+    "regulacion_es": {
+      "display_name": "regulacion(es)",
+      "clase": "",
+      "tipo": "",
+      "notas": ""
+    },
+    "pais_es_libre_s": {
+      "display_name": "pais(es) libre(s)",
+      "clase": "",
+      "tipo": "",
+      "notas": ""
+    },
+    "abandono_del_modelo_de_la_libertad": {
+      "display_name": "abandono del modelo de la libertad",
+      "clase": "",
+      "tipo": "",
+      "notas": ""
+    },
+    "abrazar_a_los_empresarios": {
+      "display_name": "abrazar a los empresarios",
+      "clase": "",
+      "tipo": "",
+      "notas": ""
+    },
+    "empresario": {
+      "display_name": "empresario_s",
+      "clase": "",
+      "tipo": "",
+      "notas": ""
+    }
+  }
+}

@@ -79,14 +79,15 @@ class RowValidator(ABC):
         emocion_idx: int,
         # Campos de detección (tabla emociones):
         experienciador: str,
+        experienciador_marca: str,
         tipo_emocion: str,
         modo_existencia: str,
+        fuente_marca: str,
+        fuente_inferencia: str,
         # Campos de caracterización (de caracterizacion_payload):
         foria: str,
         dominancia: str,
         intensidad: str,
-        tipo_fuente: str,
-        fuente: str,
         # Contexto del discurso (de discursos):
         enunciador: str,
         enunciatarios: list[dict[str, Any]],

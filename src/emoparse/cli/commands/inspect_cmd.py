@@ -61,13 +61,6 @@ def handle(args: argparse.Namespace) -> int:
               f"{len(frases) - ok_actores - fail_actores} pending")
         print(f"  emociones: {ok_emociones} ok, {fail_emociones} failed, "
               f"{len(frases) - ok_emociones - fail_emociones} pending")
-        ok_can, fail_can = _count_frase_status_safe(
-            f_repo, codigo, "actores_canonicos"
-        )
-        if ok_can is not None and fail_can is not None:
-            pending_can = len(frases) - ok_can - fail_can
-            print(f"  actores_canonicos: {ok_can} ok, {fail_can} failed, "
-                  f"{pending_can} pending")
     print()
 
     emociones = e_repo.list_emociones_of_discurso(codigo)
@@ -146,18 +139,3 @@ def _count_frase_status(
     return int(row["ok"] or 0), int(row["failed"] or 0)
 
 
-def _count_frase_status_safe(
-    f_repo: FrasesRepository,
-    codigo: str,
-    stage_key: str,
-) -> tuple[int | None, int | None]:
-    """Variante tolerante a columnas faltantes."""
-    col_p = f"{stage_key}_payload"
-    col_e = f"{stage_key}_error"
-    existing = {
-        row["name"]
-        for row in f_repo._db.execute("PRAGMA table_info(frases)").fetchall()
-    }
-    if col_p not in existing or col_e not in existing:
-        return None, None
-    return _count_frase_status(f_repo, codigo, stage_key)
