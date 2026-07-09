@@ -1,7 +1,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
-#  tests.unit.test_explode_emociones_propagates_config
+#  tests.unit.test_explode_emotions_propagates_config
 #
-#  Verifica que ExplodeEmocionesStage propaga tipo_configuracion desde el
+#  Verifica que ExplodeEmotionsStage propaga tipo_configuracion desde el
 #  payload de la frase al upsert de la tabla emociones, y que el contrato
 #  Pandera lo admite como nullable.
 # ══════════════════════════════════════════════════════════════════════════════
@@ -12,7 +12,7 @@ from typing import Any
 
 import pandas as pd
 
-from emoparse.pipeline.stages import ExplodeEmocionesStage
+from emoparse.pipeline.stages import ExplodeEmotionsStage
 
 
 class _FakeDiscursosRepo:
@@ -72,7 +72,7 @@ def test_explode_propagates_tipo_configuracion() -> None:
         },
     )
     e_repo = _FakeEmocionesRepo()
-    stage = ExplodeEmocionesStage(d_repo, f_repo, e_repo)
+    stage = ExplodeEmotionsStage(d_repo, f_repo, e_repo)
     stage.validate_contracts = True
 
     n = stage.run_pending()
@@ -103,7 +103,7 @@ def test_explode_tolerates_missing_tipo_configuracion() -> None:
         },
     )
     e_repo = _FakeEmocionesRepo()
-    stage = ExplodeEmocionesStage(d_repo, f_repo, e_repo)
+    stage = ExplodeEmotionsStage(d_repo, f_repo, e_repo)
     stage.validate_contracts = True
 
     n = stage.run_pending()

@@ -21,8 +21,10 @@ from emoparse.cli.commands import (
     inspect_cmd,
     judge_cmd,
     metrics_cmd,
+    modalidad_cmd,
     retry_cmd,
     run_cmd,
+    semas_cmd,
     stats_cmd,
     status_cmd,
     validate_cmd,
@@ -88,9 +90,9 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Lista comma-separated de stages a correr (subset de "
             "summarizer,metadata,enunciation,actors,emotions,emotions_pass2,"
-            "explode_emociones,deixis,normalize_emotions,characterizer,actants,judge,"
-            "semas). Default: las stages por default "
-            "(opt-in: emotions_pass2, actants, judge)."
+            "explode_emotions,deixis,modalidad,normalize_emotions,characterizer,"
+            "actants,judge,semas). Default: las stages por default "
+            "(opt-in: emotions_pass2, deixis, modalidad, actants, judge)."
         ),
     )
     p_run.add_argument(
@@ -253,6 +255,55 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Listar también las emociones juzgadas como coherentes.",
     )
     p_judge.set_defaults(handler=judge_cmd.handle)
+
+    # ── modalidad ────────────────────────────────────────────────────────────
+    p_modalidad = sub.add_parser(
+        "modalidad",
+        help="Clasifica la modalidad referencial de los vínculos (NLP-only).",
+        description=(
+            "Clasifica, con el pre-pass NLP (spaCy) y SIN LLM, la modalidad "
+            "referencial (designacion / referencia_gramatical / "
+            "identificacion_inferencial) y la naturaleza del referente de cada "
+            "vínculo marca→referente de una DB existente. Idempotente: solo "
+            "clasifica lo que aún no tiene modalidad y no pisa lo editado a "
+            "mano. La variante CON LLM (para los casos ambiguos) se corre vía "
+            "`emoparse run --stages ...,modalidad`."
+        ),
+    )
+    p_modalidad.add_argument("--db", required=True, help="Path al .sqlite del run.")
+    p_modalidad.add_argument(
+        "--nlp-model",
+        dest="nlp_model",
+        default=None,
+        help=(
+            "Modelo spaCy a usar (ES). Default: es_core_news_md con fallback a "
+            "sm/lg. Instalá el modelo con `python -m spacy download <modelo>`."
+        ),
+    )
+    p_modalidad.set_defaults(handler=modalidad_cmd.handle)
+
+    # ── semas ────────────────────────────────────────────────────────────────
+    p_semas = sub.add_parser(
+        "semas",
+        help="Mantenimiento de los semas de referentes canónicos de una DB.",
+        description=(
+            "Read-only por default (no ejecuta nada sin flags). Con --reset, "
+            "borra TODOS los semas persistidos en `canonico_semas` (propuestos "
+            "y editados a mano), sin distinguir origen. Para reasignarlos con "
+            "el vocabulario vigente, correr después "
+            "`emoparse run --stages ...,semas` sobre el mismo run."
+        ),
+    )
+    p_semas.add_argument("--db", required=True, help="Path al .sqlite del run.")
+    p_semas.add_argument(
+        "--reset",
+        action="store_true",
+        help=(
+            "Borra todos los semas existentes (propuestos y humanos). "
+            "No hay vuelta atrás."
+        ),
+    )
+    p_semas.set_defaults(handler=semas_cmd.handle)
 
     # ── export ───────────────────────────────────────────────────────────────
     p_export = sub.add_parser(

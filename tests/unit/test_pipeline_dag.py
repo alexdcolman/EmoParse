@@ -145,8 +145,8 @@ class TestEmoparseDAG:
         assert idx["metadata"] < idx["enunciation"]
         assert idx["enunciation"] < idx["actors"]
         assert idx["actors"] < idx["emotions"]
-        assert idx["emotions"] < idx["explode_emociones"]
-        assert idx["explode_emociones"] < idx["characterizer"]
+        assert idx["emotions"] < idx["explode_emotions"]
+        assert idx["explode_emotions"] < idx["characterizer"]
         assert idx["characterizer"] < idx["judge"]
         assert idx["emotions"] < idx["emotions_pass2"]
 
@@ -159,10 +159,10 @@ class TestEmoparseDAG:
             )
 
     def test_emotions_pass2_optional(self) -> None:
-        """emotions_pass2 NO está en el camino crítico: explode_emociones
+        """emotions_pass2 NO está en el camino crítico: explode_emotions
         depende solo de emotions, no de emotions_pass2."""
         assert "emotions_pass2" not in EMOPARSE_DAG.transitive_deps(
-            "explode_emociones"
+            "explode_emotions"
         )
         assert "emotions_pass2" not in EMOPARSE_DAG.transitive_deps(
             "characterizer"

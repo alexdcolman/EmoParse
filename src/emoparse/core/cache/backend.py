@@ -63,6 +63,7 @@ class CachedBackend(LLMBackend):
         seed: int | None = None,
         stop: list[str] | None = None,
         reset_before: bool = False,
+        max_items: int | None = None,
     ) -> LLMResponse:
         # Construir clave; si seed no se pasa, se usa None.
         schema_qualname = (
@@ -129,6 +130,7 @@ class CachedBackend(LLMBackend):
             seed=seed,
             stop=stop,
             reset_before=reset_before,
+            max_items=max_items,
         )
 
         # Guardar en cache solo si finish_reason es "stop" o "schema".

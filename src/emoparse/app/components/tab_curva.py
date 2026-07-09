@@ -16,6 +16,8 @@ import pandas as pd
 import streamlit as st
 
 from emoparse.app import data as data_layer
+from emoparse.app._knowledge import semas_list
+from emoparse.app.components import _emofilter
 from emoparse.viz import charts
 
 
@@ -38,7 +40,7 @@ def render(db_path: Path) -> None:
     """
     st.markdown("### Curva emocional frase a frase")
 
-    df_em = data_layer.get_emociones(db_path)
+    df_em = data_layer.get_emociones_enriched(db_path)
     if df_em.empty:
         st.info("No hay emociones cargadas para este run. Corré la stage `emotions` primero.")
         return
@@ -68,85 +70,133 @@ def render(db_path: Path) -> None:
             key="curva_maxfr",
         )
 
-    # Toggle canónico: visible solo si la columna existe y tiene datos.
-    _has_canonico = (
-        "tipo_emocion_canonico" in df_em.columns
-        and df_em["tipo_emocion_canonico"].notna().any()
-    )
-    usar_canonico = False
-    if _has_canonico:
-        usar_canonico = st.toggle(
-            "Usar tipo canónico (ontología)",
-            value=False,
-            key="curva_canonico",
-            help=(
-                "Agrupa emociones por su nombre canónico según la ontología "
-                "(columna `tipo_emocion_canonico`). "
-                "Las emociones sin canónico asignado aparecen con su nombre original."
-            ),
-        )
-
-    # Columna efectiva de emoción para los charts.
-    if usar_canonico:
-        df_em = df_em.copy()
-        # Fallback al tipo original si el canónico es nulo.
-        df_em["tipo_emocion"] = df_em["tipo_emocion_canonico"].where(
-            df_em["tipo_emocion_canonico"].notna(),
-            df_em["tipo_emocion"],
-        )
-
     codigo_b: str | None = None
     if comparar:
         otros = [c for c in codigos if c != codigo_sel]
         if otros:
             codigo_b = st.selectbox("Discurso B", otros, key="curva_codigo_b")
 
+    # ── Opciones de visualización ────────────────────────────────────────────
+    opt_a, opt_b, opt_c = st.columns(3)
+    with opt_a:
+        _has_canonico = (
+            "tipo_emocion_canonico" in df_em.columns
+            and df_em["tipo_emocion_canonico"].notna().any()
+        )
+        usar_canonico = False
+        if _has_canonico:
+            usar_canonico = st.toggle(
+                "Usar tipo canónico (ontología)",
+                value=False,
+                key="curva_canonico",
+                help=(
+                    "Agrupa emociones por su nombre canónico según la ontología "
+                    "(columna `tipo_emocion_canonico`). Las emociones sin canónico "
+                    "asignado aparecen con su nombre original."
+                ),
+            )
+    with opt_b:
+        posicion_relativa = st.toggle(
+            "Posición relativa (%)",
+            value=False,
+            key="curva_posrel",
+            help="Normaliza el eje de posición a porcentaje del discurso (frase 40 de 40 → 100 %).",
+        )
+    with opt_c:
+        usar_llm = st.toggle(
+            "Usar resultados de la inferencia de los LLMs",
+            value=False,
+            key="curva_usar_llm",
+            help=(
+                "Muestra el experienciador y la fuente tal como los devolvió el LLM, "
+                "en lugar de los canónicos (revisados en Referentes)."
+            ),
+        )
+
+    # Columna efectiva de emoción para los charts.
+    if usar_canonico:
+        df_em = df_em.copy()
+        df_em["tipo_emocion"] = df_em["tipo_emocion_canonico"].where(
+            df_em["tipo_emocion_canonico"].notna(),
+            df_em["tipo_emocion"],
+        )
+
+    actor_col = "experienciador" if usar_llm else "experienciador_efectivo"
+    fuente_col = "fuente_inferencia" if usar_llm else "fuente_efectiva"
+    semas_opts = semas_list()
+
     st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
+
     if comparar and codigo_b:
+        c_a, c_b = st.columns(2)
+        with c_a:
+            df_a = _emofilter.filter_panel(
+                df_em[df_em["codigo"] == codigo_sel], key="curva_f_a",
+                semas_options=semas_opts, title=f"Filtros · {codigo_sel}",
+            )
+        with c_b:
+            df_bsel = _emofilter.filter_panel(
+                df_em[df_em["codigo"] == codigo_b], key="curva_f_b",
+                semas_options=semas_opts, title=f"Filtros · {codigo_b}",
+            )
+        df_plot = pd.concat([df_a, df_bsel], ignore_index=True)
         fig = charts.curva_emocional_comparada(
-            df_em, [codigo_sel, codigo_b], max_frases=int(max_fr),
+            df_plot, [codigo_sel, codigo_b], max_frases=int(max_fr),
+            actor_col=actor_col, fuente_col=fuente_col,
+            posicion_relativa=posicion_relativa,
         )
     else:
-        fig = charts.curva_emocional(df_em, codigo_sel, max_frases=int(max_fr))
+        df_a = _emofilter.filter_panel(
+            df_em[df_em["codigo"] == codigo_sel], key="curva_f_a",
+            semas_options=semas_opts, title="Filtros",
+        )
+        fig = charts.curva_emocional(
+            df_a, codigo_sel, max_frases=int(max_fr),
+            actor_col=actor_col, fuente_col=fuente_col,
+            posicion_relativa=posicion_relativa,
+        )
     st.plotly_chart(fig, use_container_width=True)
 
-    df_sel_a = df_em[df_em["codigo"] == codigo_sel].copy()
     st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
-
     col_dist, col_chips = st.columns(2)
     with col_dist:
         st.markdown(f"#### Distribución · {codigo_sel}")
-        fig_dist = charts.distribucion_emociones(df_em, codigo=codigo_sel)
+        fig_dist = charts.distribucion_emociones(df_a, codigo=codigo_sel)
         st.plotly_chart(fig_dist, use_container_width=True)
     with col_chips:
         st.markdown(f"#### Lista de emociones · {codigo_sel}")
-        _render_chips(df_sel_a.head(int(max_fr)))
+        _render_chips(df_a.head(int(max_fr)), usar_llm=usar_llm)
 
 
-def _render_chips(df_sel: pd.DataFrame) -> None:
-    """Renderiza la lista de emociones como chips visuales."""
+def _render_chips(df_sel: pd.DataFrame, *, usar_llm: bool = False) -> None:
+    """Renderiza la lista de emociones como chips visuales.
+
+    Por defecto muestra experienciador y fuente canónicos (resueltos en Referentes);
+    con `usar_llm`, la inferencia cruda del LLM.
+    """
     if df_sel.empty:
         st.info("Sin emociones.")
         return
 
     df_sel = df_sel.sort_values(["frase_idx", "emocion_idx"])
+    exp_col = "experienciador" if usar_llm else "experienciador_efectivo"
+    fte_col = "fuente_inferencia" if usar_llm else "fuente_efectiva"
 
     chips_html = []
     for _, row in df_sel.iterrows():
         emo = str(row.get("tipo_emocion", "") or "")
-        exp = str(row.get("experienciador", "") or "")
+        exp = str(row.get(exp_col, "") or row.get("experienciador", "") or "")
+        fte = str(row.get(fte_col, "") or "")
         modo = str(row.get("modo_existencia", "") or "")
         foria = str(row.get("foria", "") or "")
         pos = row.get("frase_idx", "—")
         color = charts.emo_color(emo)
         ficon = _FORIA_ICONS.get(foria, "")
 
-        canonico_raw = row.get("tipo_emocion_canonico")
-        canonico = str(canonico_raw) if canonico_raw and canonico_raw != emo else ""
-        canonico_badge = (
+        fte_badge = (
             f"<span class='badge badge-dim' style='font-size:0.64rem;"
-            f"color:#7c9ec8;border-color:#7c9ec840;'>≡ {canonico}</span>"
-            if canonico else ""
+            f"color:#6ec89a;border-color:#6ec89a40;'>← {fte}</span>"
+            if fte and fte != "—" else ""
         )
 
         r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
@@ -157,8 +207,8 @@ def _render_chips(df_sel: pd.DataFrame) -> None:
             f"color:#3a3d4e;min-width:2.4rem;'>#{pos}</span>"
             f"<span class='emo-chip' style='background:rgba({r},{g},{b},0.15);"
             f"color:{color};border-color:{color}40;'>{emo}</span>"
-            f"{canonico_badge}"
             f"<span style='font-size:0.76rem;color:#8a8799;'>{exp}</span>"
+            f"{fte_badge}"
             f"<span class='badge badge-dim' style='font-size:0.66rem;'>{modo}</span>"
             f"<span style='color:{color};margin-left:auto;font-size:0.82rem;'>{ficon}</span>"
             f"</div>"

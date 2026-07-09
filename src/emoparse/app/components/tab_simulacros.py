@@ -82,7 +82,7 @@ def render(db_path: Path) -> None:
     df = data_layer.get_simulacros(db_path)
     if df.empty:
         st.info(
-            "No hay emociones materializadas. Corré `explode_emociones` "
+            "No hay emociones materializadas. Corré `explode_emotions` "
             "(y opcionalmente `actants`/`semas`)."
         )
         return

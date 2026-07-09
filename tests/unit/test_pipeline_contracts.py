@@ -460,9 +460,9 @@ class TestContractActivoEnStages:
         with pytest.raises(pa.errors.SchemaError):
             stage.run_pending()
 
-    def test_explode_emociones_contract_activo(self) -> None:
-        """ExplodeEmocionesStage lanza SchemaError si rows viola EmocionExplodedContract."""
-        from emoparse.pipeline.stages import ExplodeEmocionesStage
+    def test_explode_emotions_contract_activo(self) -> None:
+        """ExplodeEmotionsStage lanza SchemaError si rows viola EmocionExplodedContract."""
+        from emoparse.pipeline.stages import ExplodeEmotionsStage
 
         mock_d_repo = MagicMock()
         mock_f_repo = MagicMock()
@@ -480,7 +480,7 @@ class TestContractActivoEnStages:
             }
         ]
 
-        stage = ExplodeEmocionesStage(mock_d_repo, mock_f_repo, mock_e_repo)
+        stage = ExplodeEmotionsStage(mock_d_repo, mock_f_repo, mock_e_repo)
         stage.validate_contracts = True
 
         # El contrato exige que tipo_emocion, modo_existencia, fuente_marca y fuente_inferencia sean str no-null.

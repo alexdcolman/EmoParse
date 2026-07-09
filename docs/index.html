@@ -1474,7 +1474,7 @@ huggingface-cli download Qwen/Qwen3-14B-Instruct-GGUF \
   <ol>
     <li>Se ingieren los discursos al storage SQLite.</li>
     <li>Se chunkean en frases (porque <code>discurso_presidencial.unit == "frase"</code>).</li>
-    <li>Se corren las stages activas por defecto en orden topológico: <code>summarizer → metadata → enunciation → actors → emotions → explode_emociones → normalize_emotions → characterizer → semas</code>. La correferencia entre marcas se construye automáticamente dentro de <code>explode_emociones</code>.</li>
+    <li>Se corren las stages activas por defecto en orden topológico: <code>summarizer → metadata → enunciation → actors → emotions → explode_emotions → normalize_emotions → characterizer → semas</code>. La correferencia entre marcas se construye automáticamente dentro de <code>explode_emotions</code>.</li>
     <li>Cada llamada al LLM pasa por el cache. Si una stage falla, el discurso queda marcado como failed y el resto sigue.</li>
     <li>Al final se imprime un reporte con conteos por stage.</li>
   </ol>
@@ -1495,7 +1495,7 @@ emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
   <h3>5. Activar etapas opcionales</h3>
 
 <pre data-lang="bash"><code><span class="c-comment"># La correferencia entre marcas (actores, experienciadores y fuentes) se</span>
-<span class="c-comment"># construye automáticamente dentro de explode_emociones (coref léxico +</span>
+<span class="c-comment"># construye automáticamente dentro de explode_emotions (coref léxico +</span>
 <span class="c-comment"># inferencia por marca + deixis + match contra referentes_kb). No hay stage</span>
 <span class="c-comment"># de normalización aparte: la revisión se hace en la tab Referentes del dashboard.</span>
 
@@ -1706,7 +1706,7 @@ streamlit run src/emoparse/app/__main__.py
         emotions          x=110  w=100  cx=160  (segunda fila de frase)
         emotions_pass2    x=240  w=150  cx=315  [opt, bajo emotions]
 
-        explode_emociones x=110  w=160  cx=190
+        explode_emotions  x=110  w=160  cx=190
         normalize_emoc.   x=300  w=165  cx=382
         semas             x=470  w=120  cx=530  (rama desde explode)
         characterizer     x=110  w=135  cx=177  (segunda fila emoción)
@@ -1773,13 +1773,13 @@ streamlit run src/emoparse/app/__main__.py
 
       <!-- emotions → emotions_pass2 -->
       <line x1="195" y1="206" x2="218" y2="206" class="ar" marker-end="url(#arr)"/>
-      <!-- emotions → explode_emociones (baja a banda emoción) -->
+      <!-- emotions → explode_emotions (baja a banda emoción) -->
       <path d="M 145,224 Q 145,258 190,258 L 190,289" class="ar" marker-end="url(#arr)"/>
 
       <!-- ══ BANDA EMOCIÓN (fila 1: explode + normalize) ══ -->
-      <!-- explode_emociones -->
+      <!-- explode_emotions -->
       <rect x="95"  y="289" width="165" height="36" rx="3" class="st"/>
-      <text x="177" y="307" class="stx">explode_emociones</text>
+      <text x="177" y="307" class="stx">explode_emotions</text>
       <!-- normalize_emotions -->
       <rect x="285" y="289" width="165" height="36" rx="3" class="st"/>
       <text x="367" y="307" class="stx">normalize_emotions</text>
@@ -1865,11 +1865,11 @@ streamlit run src/emoparse/app/__main__.py
         <tr>
           <td><code>emotions_pass2</code></td>
           <td>frase</td>
-          <td>Segunda lectura de las mismas frases, usando el <em>texto</em> de las frases previas del discurso como contexto para desambiguar —no una lista de emociones para arrastrar—. Cada emoción exige evidencia citable en la frase actual. Refina la primera lectura.</td>
+          <td>Segunda lectura de las mismas frases, usando el <em>texto</em> de las frases previas del discurso como contexto para desambiguar. Cada emoción exige evidencia citable en la frase actual. Refina la primera lectura.</td>
           <td>opcional</td>
         </tr>
         <tr>
-          <td><code>explode_emociones</code></td>
+          <td><code>explode_emotions</code></td>
           <td>emoción</td>
           <td>Etapa sin modelo: separa la lista de emociones de cada frase en filas individuales, una por emoción. Además reconstruye la base de marcas discursivas (actores, experienciadores, fuentes) y siembra los vínculos marca↔referente canónico automáticamente: correferencia léxica (coref), la inferencia por marca del LLM, deixis de 1ª persona y match contra <code>referentes_kb</code>.</td>
           <td>activa</td>
@@ -2402,7 +2402,7 @@ streamlit run src/emoparse/app/__main__.py
   </ul>
   <p>
     La <strong>construcción de correferencias es automática</strong> y vive
-    dentro de <code>explode_emociones</code>: cada marca arranca con un referente
+    dentro de <code>explode_emotions</code>: cada marca arranca con un referente
     canónico propuesto desde cuatro fuentes combinadas — correferencia léxica
     conservadora (<code>coref</code>, que agrupa "Javier Milei" y "Milei" pero no
     une cosas distintas), la inferencia por marca que ya emiten los agentes de
@@ -2533,7 +2533,7 @@ metadata                0       0         42     42
 enunciation             0       0         42     42
 actors                  0       3        756    759
 emotions               12       2        745    759
-explode_emociones      14       0       2308   2322
+explode_emotions      14       0       2308   2322
 characterizer         128       0       2194   2322</code></pre>
 
 <!-- ───── inspect ─────────────────────────────────────────────────── -->

@@ -386,7 +386,7 @@ def config(knowledge_dir: Path) -> RunConfig:
             "fake-model": ModelConfig(backend="llama_cpp", path="ignored.gguf"),
         },
         pipeline=PipelineConfig(
-            stages={s: "fake-model" for s in STAGE_ORDER if s != "explode_emociones"},
+            stages={s: "fake-model" for s in STAGE_ORDER if s != "explode_emotions"},
             cache_enabled=False,
         ),
         paths=PathsConfig(knowledge_dir=str(knowledge_dir)),
@@ -759,7 +759,7 @@ class TestRunMetrics:
         sample_df: pd.DataFrame,
         patched_build: dict[str, _MockBackend],
     ) -> None:
-        """ExplodeEmocionesStage no usa LLM: items_ok > 0, hits/misses = 0."""
+        """ExplodeEmotionsStage no usa LLM: items_ok > 0, hits/misses = 0."""
         from emoparse.storage.metrics import MetricsRepository
 
         db_path = tmp_path / "run.sqlite"
@@ -772,7 +772,7 @@ class TestRunMetrics:
         db = Database(db_path)
         repo = MetricsRepository(db)
         rows = repo.list_for_run("r1")
-        explode = next(r for r in rows if r["stage_name"] == "explode_emociones")
+        explode = next(r for r in rows if r["stage_name"] == "explode_emotions")
 
         assert explode["cache_hits"] == 0
         assert explode["cache_misses"] == 0

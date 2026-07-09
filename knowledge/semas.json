@@ -1,29 +1,33 @@
 {
-  "version": "v1",
+  "version": "v3",
   "dimensiones": {
-    "individuacion": {
-      "descripcion": "Grado de individuación del referente.",
-      "valores": ["individual", "colectivo"]
-    },
-    "naturaleza": {
-      "descripcion": "Naturaleza ontológica del referente.",
-      "valores": ["humano", "animal", "sobrenatural", "no_humano"]
-    },
-    "estatus_actancial": {
-      "descripcion": "Si el referente es un actor o un circunstante.",
-      "valores": ["actor", "circunstante"]
-    },
-    "circunstante_tipo": {
-      "descripcion": "Tipo de circunstante (solo si estatus_actancial=circunstante).",
-      "valores": ["temporal", "espacial", "espaciotemporal", "acontecimiento", "objeto"]
-    },
-    "institucionalidad": {
-      "descripcion": "Carácter institucional del referente.",
-      "valores": ["institucional", "no_institucional"]
+    "clase": {
+      "descripcion": "Clase actancial del referente: figura autónoma (actor), circunstancia (circunstante) o predicado calificante (cualidad).",
+      "valores": ["actor", "circunstante", "cualidad"]
     },
     "rol_enunciativo": {
       "descripcion": "Posición del referente respecto de la enunciación.",
-      "valores": ["enunciador", "enunciatario", "nombrado"]
+      "valores": ["enunciador", "enunciatario", "nombrado", "inferido"]
+    },
+    "naturaleza_actor": {
+      "descripcion": "Naturaleza ontológica del referente cuando es actor (unidad nominal inscripta en el discurso como figura autónoma; incluye procesos y experiencias nominalizados que operan como tales). no_aplica si clase≠actor.",
+      "valores": ["humano", "animal", "institucional", "sobrenatural", "objeto", "concepto", "experiencia", "proceso", "otro", "no_aplica"]
+    },
+    "individuacion": {
+      "descripcion": "Grado de individuación del referente. no_aplica si clase≠actor.",
+      "valores": ["individual", "colectivo", "no_aplica"]
+    },
+    "naturaleza_circunstante": {
+      "descripcion": "Tipo de circunstante. no_aplica si clase≠circunstante.",
+      "valores": ["temporal", "espacial", "espaciotemporal", "acontecimiento", "proceso", "situacion", "no_aplica"]
+    },
+    "naturaleza_cualidad": {
+      "descripcion": "Tipo de cualidad: predicado que califica a un actor o circunstante sin constituirse en figura autónoma. no_aplica si clase≠cualidad.",
+      "valores": ["estado", "atributo", "valor", "otro", "no_aplica"]
+    },
+    "temporalidad": {
+      "descripcion": "Tiempo histórico del referente (solo si clase=actor; no_aplica en otro caso). No es el tiempo gramatical de la marca: evaluá si el referente pertenece a otra época o sigue vigente en el presente del discurso.",
+      "valores": ["pasado_historico", "futuro_historico", "contemporaneidad", "indefinido", "no_aplica"]
     },
     "rol_narrativo": {
       "descripcion": "Rol del referente en la narrativa afectiva.",
@@ -32,16 +36,52 @@
     "tipo_fuente": {
       "descripcion": "Naturaleza del referente cuando opera como fuente de una emoción (qué la desencadena).",
       "valores": ["actor", "situacion", "objeto", "experiencia", "espacio", "discurso_ajeno"]
+    },
+    "modo_actancial": {
+      "descripcion": "Polaridad agente/paciente de la acción en la que participa el referente.",
+      "valores": ["agente", "paciente"]
+    },
+    "animacion": {
+      "descripcion": "Si el referente es animado o inanimado.",
+      "valores": ["animado", "inanimado"]
+    },
+    "figuratividad": {
+      "descripcion": "Si el referente se presenta con rasgos figurativos (sensorialmente representable) o no.",
+      "valores": ["figurativo", "no_figurativo"]
+    },
+    "especificidad": {
+      "descripcion": "Si el referente es genérico (una clase) o particular (una instancia concreta).",
+      "valores": ["generico", "particular"]
+    },
+    "concrecion": {
+      "descripcion": "Si el referente es abstracto o concreto.",
+      "valores": ["abstracto", "concreto"]
     }
   },
+  "jerarquia": {
+    "descripcion": "Orden de presentación de las dimensiones y su dependencia de `clase`: dimensiones base (siempre), específicas por clase actancial, y generales (aplican a cualquier clase, con evidencia).",
+    "base": ["clase", "rol_enunciativo"],
+    "por_clase": {
+      "actor": ["naturaleza_actor", "individuacion", "temporalidad"],
+      "circunstante": ["naturaleza_circunstante"],
+      "cualidad": ["naturaleza_cualidad"]
+    },
+    "opcionales": ["rol_narrativo", "tipo_fuente", "modo_actancial", "animacion", "figuratividad", "especificidad", "concrecion"]
+  },
   "semas": [
-    "individual", "colectivo",
-    "humano", "animal", "sobrenatural", "no_humano",
-    "actor", "circunstante",
-    "temporal", "espacial", "espaciotemporal", "acontecimiento", "objeto",
-    "institucional", "no_institucional",
-    "enunciador", "enunciatario", "nombrado",
+    "actor", "circunstante", "cualidad",
+    "enunciador", "enunciatario", "nombrado", "inferido",
+    "humano", "animal", "institucional", "sobrenatural", "objeto", "concepto", "experiencia", "proceso", "otro",
+    "individual", "colectivo", "no_aplica",
+    "temporal", "espacial", "espaciotemporal", "acontecimiento", "situacion",
+    "estado", "atributo", "valor",
+    "pasado_historico", "futuro_historico", "contemporaneidad", "indefinido",
     "victima", "victimario", "testigo", "beneficiario", "adversario", "aliado",
-    "situacion", "experiencia", "espacio", "discurso_ajeno"
+    "espacio", "discurso_ajeno",
+    "agente", "paciente",
+    "animado", "inanimado",
+    "figurativo", "no_figurativo",
+    "generico", "particular",
+    "abstracto", "concreto"
   ]
 }

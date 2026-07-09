@@ -32,9 +32,10 @@ from emoparse.pipeline.stages import (
     EmotionsPass2Stage,
     EmotionsStage,
     EnunciationStage,
-    ExplodeEmocionesStage,
+    ExplodeEmotionsStage,
     JudgeStage,
     MetadataStage,
+    ModalidadStage,
     NormalizeEmotionsStage,
     SemasStage,
     Stage,
@@ -522,8 +523,8 @@ class PipelineRunner:
                 genre=self._genre,
             )
 
-        if name == "explode_emociones":
-            return ExplodeEmocionesStage(
+        if name == "explode_emotions":
+            return ExplodeEmotionsStage(
                 self._d_repo, self._f_repo, self._e_repo, self._m_repo,
                 referentes_kb=self._load_referentes_kb_safe(),
             )
@@ -532,6 +533,25 @@ class PipelineRunner:
             backend = self._get_backend(name)
             return DeixisStage(
                 backend, self._d_repo, self._m_repo,
+                agent_version=self._cfg.versions.prompt,
+                retry_config=self._retry_config,
+                genre=self._genre,
+            )
+
+        if name == "modalidad":
+            # LLM por defecto para los casos ambiguos; si no hay backend
+            # configurado para esta stage, degrada a NLP-only sin romper.
+            backend = None
+            try:
+                backend = self._get_backend(name)
+            except Exception:
+                backend = None
+            nlp_model = getattr(getattr(self._cfg, "modalidad", None), "nlp_model", None)
+            return ModalidadStage(
+                self._d_repo, self._m_repo,
+                backend=backend,
+                use_llm=backend is not None,
+                nlp_model=nlp_model,
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,

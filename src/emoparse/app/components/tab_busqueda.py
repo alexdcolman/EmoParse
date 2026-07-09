@@ -36,18 +36,18 @@ def render(db_path: Path) -> None:
         st.info("No hay frases procesadas en este run.")
         return
     by_key = {(c, u): f for c, u, f in frases}
-    items_map = data_layer.get_items_by_frase(db_path)
+    brief_map = data_layer.get_frase_emociones_brief(db_path)
 
     tab_texto, tab_sel = st.tabs(["🔤 Por texto", "🎯 Por selección"])
     with tab_texto:
-        _render_text_search(db_path, frases, by_key, items_map)
+        _render_text_search(db_path, frases, by_key, brief_map)
     with tab_sel:
-        _render_selection_search(db_path, by_key, items_map)
+        _render_selection_search(db_path, by_key, brief_map)
 
 
 # ── Búsqueda por texto ───────────────────────────────────────────────────────
 
-def _render_text_search(db_path, frases, by_key, items_map) -> None:
+def _render_text_search(db_path, frases, by_key, brief_map) -> None:
     st.caption(
         "Palabra suelta: `javier milei` · Frase exacta: `\"los socialistas\"` · "
         "Término opcional: `\"abandono del modelo de (la) libertad\"`."
@@ -78,12 +78,12 @@ def _render_text_search(db_path, frases, by_key, items_map) -> None:
     if n_frases > _MAX_RESULTS:
         st.caption(f"Mostrando las primeras {_MAX_RESULTS}.")
     for c, u, f in hits[:_MAX_RESULTS]:
-        _render_hit(c, u, f, by_key, items_map)
+        _render_hit(c, u, f, by_key, brief_map)
 
 
 # ── Búsqueda por selección ───────────────────────────────────────────────────
 
-def _render_selection_search(db_path, by_key, items_map) -> None:
+def _render_selection_search(db_path, by_key, brief_map) -> None:
     opts = data_layer.list_search_options(db_path)
     kind = st.selectbox(
         "Buscar por", list(_KIND_LABEL),
@@ -107,7 +107,7 @@ def _render_selection_search(db_path, by_key, items_map) -> None:
         unsafe_allow_html=True,
     )
     for c, u in keys[:_MAX_RESULTS]:
-        _render_hit(c, u, by_key.get((c, u), ""), by_key, items_map)
+        _render_hit(c, u, by_key.get((c, u), ""), by_key, brief_map)
 
 
 # ── Render de una frase con contexto ─────────────────────────────────────────
@@ -121,7 +121,7 @@ def _compress_codigo(codigo: str, keep: int = 22) -> str:
     return f"{codigo[:head]}…{codigo[-head:]}"
 
 
-def _render_hit(codigo, unit_idx, frase, by_key, items_map=None) -> None:
+def _render_hit(codigo, unit_idx, frase, by_key, brief_map=None) -> None:
     prev = by_key.get((codigo, unit_idx - 1))
     nxt = by_key.get((codigo, unit_idx + 1))
     with st.container(border=True):
@@ -141,29 +141,26 @@ def _render_hit(codigo, unit_idx, frase, by_key, items_map=None) -> None:
             ctx += (f"<div style='color:#5a5d6e;font-size:0.8rem;line-height:1.5;'>"
                     f"{html.escape(nxt)} …</div>")
         st.markdown(ctx, unsafe_allow_html=True)
-        _render_items((items_map or {}).get((codigo, unit_idx)))
+        _render_emociones((brief_map or {}).get((codigo, unit_idx)))
 
 
-_ITEM_STYLE = [
-    ("emociones", "Emociones", "#b08ad0"),
-    ("experienciadores", "Experienciadores", "#7c9ec8"),
-    ("fuentes", "Fuentes", "#6ec89a"),
-]
-
-
-def _render_items(items) -> None:
-    if not items:
+def _render_emociones(emos) -> None:
+    """Análisis emocional de la frase, ordenado por emoción; por cada una, su
+    experienciador y su fuente (canónicos por defecto)."""
+    if not emos:
         return
     rows = ""
-    for key, label, color in _ITEM_STYLE:
-        valores = items.get(key, [])
-        if not valores:
-            continue
-        vals = " · ".join(html.escape(str(v)) for v in valores)
+    for em in sorted(emos, key=lambda e: (str(e.get("emocion", "")), e.get("emocion_idx", 0))):
+        emo = html.escape(str(em.get("emocion", "") or "—"))
+        exp = html.escape(str(em.get("experienciador", "") or "—"))
+        fte = html.escape(str(em.get("fuente", "") or "—"))
         rows += (
-            f"<div style='font-size:0.78rem;line-height:1.6;margin-top:0.15rem;'>"
-            f"<span style='color:{color};font-weight:600;'>{label}:</span> "
-            f"<span style='color:#c2bdb4;'>{vals}</span></div>"
+            f"<div style='font-size:0.78rem;line-height:1.6;margin-top:0.2rem;'>"
+            f"<span style='color:#b08ad0;font-weight:600;'>{emo}</span>"
+            f"<span style='color:#5a5d6e;'> · exp:</span> "
+            f"<span style='color:#7c9ec8;'>{exp}</span>"
+            f"<span style='color:#5a5d6e;'> · fuente:</span> "
+            f"<span style='color:#6ec89a;'>{fte}</span></div>"
         )
     if rows:
         st.markdown(

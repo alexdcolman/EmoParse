@@ -45,14 +45,32 @@ class GrammarError(ValueError):
 #  API pública
 # ══════════════════════════════════════════════════════════════════════════════
 
-def schema_to_gbnf(schema: type[BaseModel]) -> str:
+def schema_to_gbnf(
+    schema: type[BaseModel],
+    *,
+    max_items: int | None = None,
+) -> str:
     """Convierte un schema Pydantic v2 a GBNF.
 
-    Root de la gramática: regla `root`.  
+    Root de la gramática: regla `root`.
+
+    Args:
+        schema: Schema Pydantic v2.
+        max_items: Si se pasa y el top-level del schema es un array (p. ej. un
+            `RootModel[list[...]]` de batch), acota ese array a EXACTAMENTE
+            `max_items` elementos (min == max). Garantiza terminación y evita
+            tanto el "runaway" (repetir ítems hasta el tope de tokens) como la
+            lista vacía. No afecta schemas cuyo top-level no es array.
+
     Raises:
         GrammarError: si el schema usa features no soportadas.
     """
     js = schema.model_json_schema()
+    if max_items is not None and js.get("type") == "array":
+        n = max(1, int(max_items))
+        js = dict(js)  # copia superficial: solo se tocan claves top-level
+        js["minItems"] = n
+        js["maxItems"] = n
     return _build_grammar(js)
 
 

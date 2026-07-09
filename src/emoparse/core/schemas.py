@@ -384,6 +384,27 @@ Dominancia = Literal["corporal", "cognoscitiva", "mixta"]
 
 Intensidad = Literal["alta", "baja", "neutra_ambivalente"]
 
+#: Temporalidad histórica de la emoción respecto de la situación de enunciación.
+#: Se piensa en términos estrictos/históricos: la emoción *futura* de un auditorio
+#: que escucha o lee el discurso es contemporánea (no `futuro_historico`).
+Temporalidad = Literal[
+    "contemporanea",
+    "pasado_historico",
+    "futuro_historico",
+    "atemporal",
+    "indeterminada",
+]
+
+#: Aspecto gramatical de la predicación emocional (lista cerrada).
+Aspecto = Literal[
+    "perfectivo",
+    "imperfectivo",
+    "ingresivo",
+    "terminativo",
+    "iterativo",
+    "no_marcado",
+]
+
 
 class CaracterizacionEmocionSchema(StrictBase):
     """Caracterización completa de una emoción detectada."""
@@ -433,6 +454,36 @@ class CaracterizacionEmocionSchema(StrictBase):
         description="Justificación breve del tipo de atribución, citando "
                     "la construcción sintáctica o enunciativa relevante.",
     )
+    temporalidad: Temporalidad = Field(  # type: ignore[valid-type]
+        description="Locus temporal HISTÓRICO de la emoción respecto de la "
+                    "situación de enunciación: "
+                    "'contemporanea' (del presente de la enunciación; INCLUYE "
+                    "la emoción proyectada sobre el auditorio que escucha o lee "
+                    "el discurso), "
+                    "'pasado_historico' (situada en un pasado histórico, p. ej. "
+                    "el terror de víctimas de un genocidio), "
+                    "'futuro_historico' (situada en un futuro histórico, NO la "
+                    "del auditorio presente), "
+                    "'atemporal' (gnómica o rasgo sin anclaje temporal), "
+                    "'indeterminada' (no deducible).",
+    )
+    temporalidad_justificacion: str = Field(
+        description="Justificación breve, citando el marcador temporal o el "
+                    "anclaje histórico relevante del texto.",
+    )
+    aspecto: Aspecto = Field(  # type: ignore[valid-type]
+        description="Aspecto gramatical de la predicación emocional: "
+                    "'perfectivo' (completada, vista como un todo), "
+                    "'imperfectivo' (en curso o habitual), "
+                    "'ingresivo' (foco en el inicio/incoación), "
+                    "'terminativo' (foco en el cese), "
+                    "'iterativo' (repetida), "
+                    "'no_marcado' (sin marca aspectual clara).",
+    )
+    aspecto_justificacion: str = Field(
+        description="Justificación breve, citando la marca aspectual (tiempo/"
+                    "perífrasis verbal, adverbio) relevante del texto.",
+    )
 
 
 class CaracterizacionBatchItemSchema(StrictBase):
@@ -460,21 +511,66 @@ class ListaCaracterizacionBatchSchema(RootModel[list[CaracterizacionBatchItemSch
 ConfianzaJuicio = Literal["alta", "media", "baja"]
 
 
-class JuicioSchema(StrictBase):
-    """Veredicto sobre la coherencia de una caracterización de emoción.
+#: Campos del simulacro que el juez puede proponer corregir. Cerrado y ACOTADO a
+#: los elementos de mayor valor/menor ambigüedad: identidad de la emoción,
+#: experienciador y fuente, temporalidad y los actantes. Se dejan FUERA las
+#: dimensiones finas del characterizer (foria/dominancia/intensidad/duración/
+#: atribución/aspecto): son las que más hacían dudar y "loopear" al juez.
+CampoCorregible = Literal[
+    "experienciador",
+    "tipo_emocion",
+    "fuente_inferencia",
+    "modo_existencia",
+    "caracterizacion.temporalidad",
+    "actantes.mediador.tipo",
+    "actantes.verificador_normativo.tipo",
+    "actantes.verificador_normativo.evaluacion",
+    "actantes.verificador_observacional.tipo",
+    "actantes.verificador_observacional.evaluacion",
+    "actantes.operador_modificacion.funcion",
+    "actantes.polaridad.tipo",
+]
 
-    Orden de campos: decisión seguida de justificación.
+
+class CorreccionElementoSchema(StrictBase):
+    """Corrección propuesta para UN elemento del simulacro."""
+    campo: CampoCorregible = Field(  # type: ignore[valid-type]
+        description="Elemento a corregir, identificado por su ruta.",
+    )
+    valor_sugerido: str = Field(
+        max_length=60,
+        description="SOLO el valor corregido (una palabra o nombre corto), sin "
+                    "explicación ni razonamiento. Debe ser un valor VÁLIDO del "
+                    "campo (p. ej. una foria válida). Si no conocés un valor "
+                    "válido para ese campo, NO lo incluyas como corrección.",
+    )
+
+
+class JuicioSchema(StrictBase):
+    """Veredicto sobre la corrección de un simulacro emocional.
+
+    Orden de campos: decisión, sugerencias de corrección, justificación global
+    y confianza.
     """
     coherente: bool = Field(
-        description="True si la caracterización (foria/dominancia/intensidad/"
-                    "fuente) es coherente con la frase de origen y la emoción "
-                    "detectada. False si hay inconsistencias.",
+        description="True si el simulacro es CORRECTO en lo sustantivo (sin "
+                    "errores mayores). False solo cuando hay al menos un error "
+                    "sustantivo que amerite corrección.",
+    )
+    sugerencias: list[CorreccionElementoSchema] = Field(
+        default_factory=list,
+        max_length=5,
+        description="Correcciones propuestas, una por elemento a corregir. "
+                    "Lista VACÍA cuando coherente=True. Incluir SOLO errores "
+                    "sustantivos (fuente/experienciador mal atribuidos por "
+                    "retome o discurso ajeno, ironía, inversión de polaridad, "
+                    "etc.); NO correcciones menores ni de matices terminológicos.",
     )
     issues: str = Field(
-        description="Si coherente=False, descripción concreta de las "
-                    "inconsistencias (ej.: 'foria=euforico no encaja con la "
-                    "frase, que expresa miedo'). Si coherente=True, escribir "
-                    "literalmente 'no identificado'. NO dejar vacío.",
+        max_length=120,
+        description="Si coherente=False, el problema mayor en UNA frase corta "
+                    "(máx. ~15 palabras), sin razonar. Si coherente=True, "
+                    "escribir literalmente 'no identificado'. NO dejar vacío.",
     )
     confianza: ConfianzaJuicio = Field(  # type: ignore[valid-type]
         description="Cuán seguro está el juez de su veredicto: alta, media, baja.",
@@ -571,6 +667,17 @@ FuncionOpMod = Literal[
     "ausente",
 ]
 
+#: Polaridad de la predicación emocional y, si está negada, la modalidad de la
+#: negación. Es ortogonal al modo de existencia y al operador de modificación:
+#: describe si la emoción se predica afirmada o negada, y bajo qué modalidad.
+TipoPolaridad = Literal[
+    "afirmada",           # se predica positivamente (caso por defecto)
+    "negada_factual",     # se asevera que NO ocurre ("no se arrepienten")
+    "negada_deontica",    # deber-ser / argumentada ("no se dejen robar la esperanza")
+    "negada_volitiva",    # no deseada ("no quiero que sientan miedo")
+    "negada_epistemica",  # negación de apariencia/creencia ("no es que esté triste")
+]
+
 
 class MediadorSchema(StrictBase):
     """Vehículo que media entre la fuente de la emoción y el experienciador."""
@@ -664,6 +771,33 @@ class OperadorModificacionSchema(StrictBase):
     )
 
 
+class PolaridadSchema(StrictBase):
+    """Polaridad de la predicación emocional y modalidad de la negación.
+
+    A diferencia del operador de modificación (una operación DIRIGIDA a la
+    emoción de un experienciador) y del verificador observacional (autenticidad
+    de la emoción o de su desencadenante), la polaridad describe si la emoción
+    se predica AFIRMADA o NEGADA en el texto, y bajo qué modalidad se la niega.
+    """
+    negada: bool = Field(
+        description="True si la emoción se predica NEGADA en el texto (no "
+                    "ocurre, no debe ocurrir, no se desea, no aparenta). "
+                    "False si se afirma positivamente.",
+    )
+    tipo: TipoPolaridad = Field(  # type: ignore[valid-type]
+        description="'afirmada' cuando negada=false. Cuando negada=true: "
+                    "'negada_factual' (se asevera que no ocurre: 'no se "
+                    "arrepienten'), 'negada_deontica' (deber-ser / argumentada: "
+                    "'no se dejen robar la esperanza'), 'negada_volitiva' (no "
+                    "deseada: 'no quiero que sientan miedo'), 'negada_epistemica' "
+                    "(negación de apariencia o creencia: 'no es que esté triste').",
+    )
+    justificacion: str = Field(
+        description="Justificación breve, citando la marca de negación "
+                    "(adverbio, operador deóntico, verbo volitivo) del texto.",
+    )
+
+
 class ActantesEmocionSchema(StrictBase):
     """Configuración actancial completa de una emoción.
 
@@ -671,7 +805,8 @@ class ActantesEmocionSchema(StrictBase):
         - mediador (vehiculización)
         - verificador normativo
         - verificador observacional
-        - operador de modificación (manipulación actancial).
+        - operador de modificación (manipulación actancial)
+        - polaridad (afirmación / negación de la emoción y su modalidad).
 
     Cuando alguno de los componentes está deshabilitado por
     configuración del run, el agente persiste un placeholder
@@ -690,6 +825,10 @@ class ActantesEmocionSchema(StrictBase):
     )
     operador_modificacion: OperadorModificacionSchema = Field(
         description="Operador de modificación emocional.",
+    )
+    polaridad: PolaridadSchema = Field(
+        description="Polaridad de la predicación emocional (afirmada/negada) "
+                    "y modalidad de la negación.",
     )
 
 
@@ -714,15 +853,76 @@ class ListaActantesBatchSchema(RootModel[list[ActantesBatchItemSchema]]):
 #  Semas de referentes canónicos
 # ══════════════════════════════════════════════════════════════════════════════
 
+ClaseReferente = Literal["actor", "circunstante", "cualidad"]
+
+RolEnunciativoSema = Literal["enunciador", "enunciatario", "nombrado", "inferido"]
+
+# Naturaleza según clase. Cada Literal incluye "no_aplica": el modelo debe
+# declararlo explícitamente cuando la dimensión no corresponde a la `clase`
+# del referente, en vez de omitir el campo (el schema no permite omitirlo).
+NaturalezaActor = Literal[
+    "humano", "animal", "institucional", "sobrenatural", "objeto",
+    "concepto", "experiencia", "proceso", "otro", "no_aplica",
+]
+IndividuacionSema = Literal["individual", "colectivo", "no_aplica"]
+TemporalidadSema = Literal[
+    "pasado_historico", "futuro_historico", "contemporaneidad", "indefinido",
+    "no_aplica",
+]
+NaturalezaCircunstante = Literal[
+    "temporal", "espacial", "espaciotemporal", "acontecimiento", "proceso",
+    "situacion", "no_aplica",
+]
+NaturalezaCualidad = Literal["estado", "atributo", "valor", "otro", "no_aplica"]
+
+# Semas opcionales: dimensiones que no dependen de la `clase` y pueden
+# omitirse (lista vacía) sin que eso implique una generación incompleta.
+SemaOpcional = Literal[
+    "victima", "victimario", "testigo", "beneficiario", "adversario", "aliado",
+    "actor", "situacion", "objeto", "experiencia", "espacio", "discurso_ajeno",
+    "agente", "paciente", "animado", "inanimado", "figurativo", "no_figurativo",
+    "generico", "particular", "abstracto", "concreto",
+]
+
+
 class SemasBatchItemSchema(StrictBase):
-    """Ítem del batch de semas: unit_idx + semas del referente."""
+    """Ítem del batch de semas: unit_idx + clasificación completa del referente.
+
+    Todos los campos de clasificación son obligatorios en el schema (el
+    grammar GBNF los fuerza): el modelo debe declarar un valor por dimensión,
+    usando `no_aplica` cuando la dimensión no corresponde a la `clase` del
+    referente, en vez de omitir la evidencia insuficiente con una lista vacía.
+    """
     unit_idx: int = Field(
         description="Índice 0-based del referente en el batch. DEBE coincidir "
                     "con el número entre corchetes del prompt: REFERENTE [N].",
     )
-    semas: list[str] = Field(
-        description="Semas del vocabulario provisto que aplican al referente. "
-                    "Lista vacía si ninguno aplica con evidencia suficiente.",
+    clase: ClaseReferente = Field(
+        description="Clase actancial del referente: figura autónoma (actor), "
+                    "circunstancia (circunstante) o predicado calificante (cualidad).",
+    )
+    rol_enunciativo: RolEnunciativoSema = Field(
+        description="Posición del referente respecto de la enunciación.",
+    )
+    naturaleza_actor: NaturalezaActor = Field(
+        description="Naturaleza ontológica si clase=actor. no_aplica en otro caso.",
+    )
+    individuacion: IndividuacionSema = Field(
+        description="Grado de individuación si clase=actor. no_aplica en otro caso.",
+    )
+    temporalidad: TemporalidadSema = Field(
+        description="Tiempo histórico si clase=actor. no_aplica en otro caso.",
+    )
+    naturaleza_circunstante: NaturalezaCircunstante = Field(
+        description="Tipo de circunstante si clase=circunstante. no_aplica en otro caso.",
+    )
+    naturaleza_cualidad: NaturalezaCualidad = Field(
+        description="Tipo de cualidad si clase=cualidad. no_aplica en otro caso.",
+    )
+    opcionales: list[SemaOpcional] = Field(
+        description="Semas opcionales (rol narrativo, tipo de fuente, "
+                    "agente/paciente, animación, figuratividad, especificidad, "
+                    "concreción) con evidencia clara. Lista vacía si ninguno aplica.",
     )
 
 
@@ -780,4 +980,60 @@ class DeixisSchema(StrictBase):
         description="Una entrada por marca deíctica resuelta. Marcas sin "
                     "deixis de 1ª/2ª persona se omiten. Devolvé lista vacía "
                     "solo si ninguna marca tiene deixis resoluble.",
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Modalidad referencial: cómo una marca refiere a su referente
+# ══════════════════════════════════════════════════════════════════════════════
+
+#: Cómo la marca refiere al referente (eje 1+2). Conjunto cerrado.
+ModalidadReferencial = Literal[
+    "designacion",                 # SN/nombre propio que nombra o categoriza
+    "referencia_gramatical",       # deixis/morfología (pronombres, concordancia)
+    "identificacion_inferencial",  # se identifica por la actitud/valores
+]
+
+#: Naturaleza del referente al que apunta la marca. Conjunto cerrado.
+NaturalezaReferente = Literal[
+    "persona", "colectivo", "institucion", "objeto_proceso", "otro",
+]
+
+
+class ModalidadItemSchema(StrictBase):
+    """Clasificación de un vínculo marca→referente."""
+    marca: str = Field(
+        description="La marca tal como aparece (p. ej. 'ellos son la casta "
+                    "corrupta', 'el presidente', 'he defendido').",
+    )
+    referente: str = Field(
+        description="El referente concreto al que se vinculó la marca "
+                    "(p. ej. 'javier_milei').",
+    )
+    modalidad: ModalidadReferencial = Field(  # type: ignore[valid-type]
+        description="'designacion' si la marca NOMBRA o CATEGORIZA al referente "
+                    "con un sustantivo/nombre propio ('Javier Milei', 'el "
+                    "presidente', 'la academia'). 'referencia_gramatical' si lo "
+                    "refiere por deixis o morfología sin nombrarlo (pronombres, "
+                    "'yo/nosotros', concordancia verbal 'he defendido'). "
+                    "'identificacion_inferencial' si el referente se identifica "
+                    "por la actitud/valores/juicios expresados, NO por nombrarlo "
+                    "('ellos son la casta corrupta' identifica al enunciador).",
+    )
+    naturaleza: NaturalezaReferente = Field(  # type: ignore[valid-type]
+        description="Tipo del referente: 'persona' (individuo), 'colectivo' "
+                    "(grupo), 'institucion' (organización/estado), "
+                    "'objeto_proceso' (objeto de discurso, evento o "
+                    "nominalización abstracta), 'otro'.",
+    )
+    justificacion: str = Field(
+        description="Justificación breve (una oración).",
+    )
+
+
+class ModalidadSchema(StrictBase):
+    """Clasificación de modalidad referencial de un lote de vínculos."""
+    clasificaciones: list[ModalidadItemSchema] = Field(
+        description="Una entrada por vínculo marca→referente del lote. "
+                    "Devolvé una clasificación para cada uno.",
     )

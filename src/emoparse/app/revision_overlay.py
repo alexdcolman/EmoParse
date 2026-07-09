@@ -255,6 +255,39 @@ class RevisionOverlay:
         self._emo(codigo, frase_idx, emocion_idx)["confirmado"][field] = bool(value)
         self._save()
 
+    # ── Sugerencias del juez (aceptar / rechazar por campo) ──────────────────
+
+    def get_suggestion_states(
+        self, codigo: str, frase_idx: int, emocion_idx: int,
+    ) -> dict[str, str]:
+        """Estado de cada sugerencia por `campo`: 'accepted' | 'rejected'."""
+        return dict(
+            self.get_emocion(codigo, frase_idx, emocion_idx).get("sugerencias", {})
+        )
+
+    def set_suggestion_state(
+        self, codigo: str, frase_idx: int, emocion_idx: int,
+        campo: str, state: str,
+    ) -> None:
+        """Registra el estado de una sugerencia ('accepted' | 'rejected').
+
+        Aceptar/rechazar solo deja constancia; la aplicación del valor sugerido
+        (cuando se acepta) se hace aparte vía `set_emocion_override_path`, de
+        modo que el analista pueda luego editar libremente el override.
+        """
+        self._emo(codigo, frase_idx, emocion_idx).setdefault(
+            "sugerencias", {}
+        )[campo] = state
+        self._save()
+
+    def clear_suggestion_state(
+        self, codigo: str, frase_idx: int, emocion_idx: int, campo: str,
+    ) -> None:
+        self._emo(codigo, frase_idx, emocion_idx).get("sugerencias", {}).pop(
+            campo, None
+        )
+        self._save()
+
     def delete_emocion(self, codigo: str, frase_idx: int, emocion_idx: int) -> None:
         self._emo(codigo, frase_idx, emocion_idx)["deleted"] = True
         self._save()

@@ -14,12 +14,17 @@ def render_system(
     tipo_discurso: str,
     heuristicas: str | None = None,
     ontologia: str | None = None,
+    resumen: str | None = None,
+    enunciacion: str | None = None,
 ) -> str:
     """SYSTEM del juez.
-    
+
     Si titulo/tipo_discurso vienen vacíos, los reemplaza por la convención
     del proyecto ('no identificado'). `ontologia` (opcional) inyecta las
-    definiciones de emociones para que el juez sepa qué es cada una.
+    definiciones de emociones. `resumen` (resumen global del discurso) y
+    `enunciacion` (bloque preformateado con enunciador, enunciatarios,
+    auditorio y colectivos) aportan el contexto de discurso para juzgar los
+    simulacros.
     """
     return render(
         "judge_system",
@@ -27,6 +32,8 @@ def render_system(
         tipo_discurso=tipo_discurso or "no identificado",
         heuristicas=heuristicas,
         ontologia=ontologia,
+        resumen=resumen,
+        enunciacion=enunciacion,
     )
 
 

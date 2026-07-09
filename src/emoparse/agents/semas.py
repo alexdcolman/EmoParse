@@ -93,4 +93,19 @@ class SemasAgent(BaseBatchAgent[ListaSemasBatchSchema]):
         item: SemasBatchItemSchema,
         row: pd.Series,
     ) -> dict[str, Any]:
-        return {"semas": json.dumps(list(item.semas), ensure_ascii=False)}
+        # Los campos de clasificación son obligatorios en el schema (el
+        # grammar los fuerza); `no_aplica` señala que la dimensión no
+        # corresponde a la `clase` del referente y se descarta antes de
+        # persistir, para no ensuciar `canonico_semas` con ruido.
+        semas = [item.clase, item.rol_enunciativo]
+        for valor in (
+            item.naturaleza_actor,
+            item.individuacion,
+            item.temporalidad,
+            item.naturaleza_circunstante,
+            item.naturaleza_cualidad,
+        ):
+            if valor != "no_aplica":
+                semas.append(valor)
+        semas.extend(item.opcionales)
+        return {"semas": json.dumps(semas, ensure_ascii=False)}

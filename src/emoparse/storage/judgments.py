@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from typing import Any
 
@@ -29,21 +30,30 @@ class JudgmentsRepository:
         coherente: bool,
         issues: str,
         confianza: str,
+        sugerencias: list[dict[str, Any]] | None = None,
         version: str | None = None,
     ) -> None:
-        """Persiste un veredicto exitoso (upsert)."""
+        """Persiste un veredicto exitoso (upsert).
+
+        `sugerencias` es la lista de correcciones por elemento (cada una
+        {campo, valor_sugerido, justificacion}). Se serializa a JSON.
+        """
+        sugerencias_json = json.dumps(
+            sugerencias or [], ensure_ascii=False, default=str
+        )
         with self._db.transaction() as cur:
             cur.execute(
                 """
                 INSERT INTO judgments (
                     codigo, frase_idx, emocion_idx,
-                    coherente, issues, confianza,
+                    coherente, issues, confianza, sugerencias,
                     judge_version, judge_error
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, NULL)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL)
                 ON CONFLICT(codigo, frase_idx, emocion_idx) DO UPDATE SET
                     coherente     = excluded.coherente,
                     issues        = excluded.issues,
                     confianza     = excluded.confianza,
+                    sugerencias   = excluded.sugerencias,
                     judge_version = excluded.judge_version,
                     judge_error   = NULL,
                     updated_at    = ?
@@ -53,6 +63,7 @@ class JudgmentsRepository:
                     1 if coherente else 0,
                     issues,
                     confianza,
+                    sugerencias_json,
                     version,
                     datetime.now(timezone.utc),
                 ),
@@ -71,13 +82,14 @@ class JudgmentsRepository:
                 """
                 INSERT INTO judgments (
                     codigo, frase_idx, emocion_idx,
-                    coherente, issues, confianza,
+                    coherente, issues, confianza, sugerencias,
                     judge_version, judge_error
-                ) VALUES (?, ?, ?, NULL, NULL, NULL, NULL, ?)
+                ) VALUES (?, ?, ?, NULL, NULL, NULL, NULL, NULL, ?)
                 ON CONFLICT(codigo, frase_idx, emocion_idx) DO UPDATE SET
                     coherente     = NULL,
                     issues        = NULL,
                     confianza     = NULL,
+                    sugerencias   = NULL,
                     judge_version = NULL,
                     judge_error   = excluded.judge_error,
                     updated_at    = ?
@@ -101,7 +113,7 @@ class JudgmentsRepository:
         row = self._db.execute(
             """
             SELECT codigo, frase_idx, emocion_idx,
-                   coherente, issues, confianza,
+                   coherente, issues, confianza, sugerencias,
                    judge_version, judge_error,
                    created_at, updated_at
             FROM judgments
@@ -114,6 +126,7 @@ class JudgmentsRepository:
         d = dict(row)
         if d["coherente"] is not None:
             d["coherente"] = bool(d["coherente"])
+        d["sugerencias"] = _parse_sugerencias(d.get("sugerencias"))
         return d
 
     def list_for_discurso(self, codigo: str) -> list[dict[str, Any]]:
@@ -121,7 +134,7 @@ class JudgmentsRepository:
         rows = self._db.execute(
             """
             SELECT codigo, frase_idx, emocion_idx,
-                   coherente, issues, confianza,
+                   coherente, issues, confianza, sugerencias,
                    judge_version, judge_error
             FROM judgments
             WHERE codigo = ?
@@ -134,6 +147,7 @@ class JudgmentsRepository:
             d = dict(row)
             if d["coherente"] is not None:
                 d["coherente"] = bool(d["coherente"])
+            d["sugerencias"] = _parse_sugerencias(d.get("sugerencias"))
             out.append(d)
         return out
 
@@ -216,3 +230,16 @@ class JudgmentsRepository:
             "errors": int(row["errors"] or 0),
             "total": int(row["total"] or 0),
         }
+
+
+def _parse_sugerencias(raw: Any) -> list[dict[str, Any]]:
+    """Deserializa el JSON de sugerencias a lista; [] ante nulo o error."""
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        return raw
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return []
+    return data if isinstance(data, list) else []

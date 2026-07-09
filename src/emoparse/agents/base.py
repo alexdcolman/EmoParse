@@ -300,6 +300,7 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
                         system=self._system,
                         user=user,
                         schema=self.SCHEMA,
+                        max_items=batch_size,
                     )
                     if not isinstance(response.parsed, self.SCHEMA):
                         raise BackendError(

@@ -1,44 +1,1808 @@
 {
   "version": "v1",
   "referentes": {
-    "empresa_s": {
-      "display_name": "las empresas",
+    "academia": {
+      "display_name": "la academia",
       "clase": "actor",
       "tipo": "",
       "notas": ""
     },
-    "sere_s_humano_s": {
-      "display_name": "ser(es) humano(s)",
-      "clase": "",
+    "academicos": {
+      "display_name": "académicos",
+      "clase": "actor",
       "tipo": "",
       "notas": ""
     },
-    "regulacion_es": {
+    "adam_smith": {
+      "display_name": "Adam Smith",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "argentinos": {
+      "display_name": "argentinos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "asistentes_acto_oficial_museo_holocausto": {
+      "display_name": "asistentes al acto oficial del Museo del Holocausto (CABA)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "asistentes_conferencia_politica_accion_conservadora_cpac_washing": {
+      "display_name": "asistentes a la Conferencia Política de Acción Conservadora (CPAC)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "israel": {
+      "display_name": "Israel",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "javier_milei": {
+      "display_name": "Javier Milei",
+      "clase": "actor",
+      "tipo": "persona",
+      "notas": ""
+    },
+    "libertarios": {
+      "display_name": "libertarios",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "organismos_internacionales": {
+      "display_name": "organismos internacionales",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "persona_generica_individuo": {
+      "display_name": "persona genérica/individuo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "promotores_justicia_social": {
+      "display_name": "promotores de la idea de justicia social",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "socialismo": {
+      "display_name": "socialismo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "agenda_aborto": {
+      "display_name": "agenda del aborto",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "alberto_benegas_lynch_h": {
+      "display_name": "Alberto Benegas Lynch (h)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "burocrata_s": {
+      "display_name": "burócrata(s)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "casta": {
+      "display_name": "la casta",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "antisemitismo": {
+      "display_name": "antisemitismo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "argentina": {
+      "display_name": "la Argentina",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "argentinos_bien": {
+      "display_name": "los argentinos de bien",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "babilonios": {
+      "display_name": "babilonios",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "banco_central_republica_argentina": {
+      "display_name": "BCRA",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "bastiat": {
+      "display_name": "Bastiat",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "beneficiarios_sistema_decadente": {
+      "display_name": "los beneficiarios de este sistema decadente",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "boda": {
+      "display_name": "una boda",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "capitalista": {
+      "display_name": "el capitalista",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "ciudadanos_paises_libres": {
+      "display_name": "los ciudadanos de los países libres",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "ciudadanos_paises_reprimidos": {
+      "display_name": "los ciudadanos de los países reprimidos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "clase_politica": {
+      "display_name": "la clase política",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "club_roma": {
+      "display_name": "el Club de Roma",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "colectivistas": {
+      "display_name": "los colectivistas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "comunistas": {
+      "display_name": "comunistas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "crecimiento_poblacion": {
+      "display_name": "crecimiento de la población",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "medios_comunicacion": {
+      "display_name": "medios de comunicación",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "paises_libres": {
+      "display_name": "países libres",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "politicos_corruptos": {
+      "display_name": "políticos corruptos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "pueblo_judio": {
+      "display_name": "pueblo judío",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "pueblos": {
+      "display_name": "pueblos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "secuestrados": {
+      "display_name": "nuestros once compatriotas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "socialistas": {
+      "display_name": "socialistas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "conflictos_sociales": {
+      "display_name": "conflictos sociales",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "campos_concentracion": {
+      "display_name": "campos de concentración",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "capitalismo": {
+      "display_name": "el capitalismo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "colegas_rabi_akiva": {
+      "display_name": "los colegas de Rabi Akiva",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "comunidad_judia": {
+      "display_name": "la comunidad judía",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "conferencia_cpac": {
+      "display_name": "Conferencia Política de Acción Conservadora (CPAC)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "consumidores": {
+      "display_name": "los consumidores",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "control_estatal": {
+      "display_name": "control estatal",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "democratas_cristianos": {
+      "display_name": "demócratas cristianos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "dios": {
+      "display_name": "Dios",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "estatistas": {
+      "display_name": "estatistas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "ecologismo": {
+      "display_name": "ecologismo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "dia_memoria_victimas_holocausto": {
+      "display_name": "Día de la Memoria de las Víctimas del Holocausto",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "doxa_izquierda": {
+      "display_name": "la doxa de izquierda",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "economistas_neoclasicos": {
+      "display_name": "economistas neoclásicos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "egipcios": {
+      "display_name": "egipcios",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "embajada_israel": {
+      "display_name": "embajada de Israel",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "ericsson": {
+      "display_name": "Ericsson",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "estatismo": {
+      "display_name": "el estatismo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "fabricantes_velas": {
+      "display_name": "los fabricantes de velas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "familia_judia": {
+      "display_name": "familia judía",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "gobierno_javier_milei": {
+      "display_name": "gobierno de Javier Milei",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "foro_economico_mundial": {
+      "display_name": "Foro Económico Mundial",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "gallina": {
+      "display_name": "una gallina",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "gente": {
+      "display_name": "la gente",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "hamas": {
+      "display_name": "Hamas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "henry_hazlitt": {
+      "display_name": "Henry Hazlitt",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "hombre": {
+      "display_name": "el hombre",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "humanidad": {
+      "display_name": "la humanidad",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "instituciones": {
+      "display_name": "las instituciones",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "mundo": {
+      "display_name": "el mundo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "silencio": {
+      "display_name": "silencio",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "pobreza": {
+      "display_name": "pobreza",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "empobrecimiento": {
+      "display_name": "empobrecimiento",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "indigentes": {
+      "display_name": "indigentes",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "john_locke": {
+      "display_name": "Locke",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "joseph_schumpeter": {
+      "display_name": "Schumpeter",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "judios": {
+      "display_name": "los judíos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "justicia_social": {
+      "display_name": "la justicia social",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "kissinger": {
+      "display_name": "Kissinger",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "libertarismo": {
+      "display_name": "el libertarismo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "lideres": {
+      "display_name": "líderes",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "malthus": {
+      "display_name": "Malthus",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "marcelo_mindlin": {
+      "display_name": "presidente del Museo del Holocausto Marcelo Mindlin",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "marxismo": {
+      "display_name": "el marxismo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "mcdonald_s": {
+      "display_name": "McDonald´s",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "mercado": {
+      "display_name": "el mercado",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "mercados": {
+      "display_name": "los mercados",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "ministerios_mujer": {
+      "display_name": "ministerios de la mujer",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "mozart": {
+      "display_name": "Mozart",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "mujer": {
+      "display_name": "la mujer",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "murray_newton_rothbard": {
+      "display_name": "Murray Newton Rothbard",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "museo_holocausto_yad_vashem": {
+      "display_name": "Museo del Holocausto Yad Vashem",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "naturaleza": {
+      "display_name": "la naturaleza",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "nazis": {
+      "display_name": "nazis",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "nazismo": {
+      "display_name": "nazismo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "neomarxistas": {
+      "display_name": "los neomarxistas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "nixon": {
+      "display_name": "Nixon",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "occidente": {
+      "display_name": "Occidente",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "opresion": {
+      "display_name": "la opresión",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "organizaciones_comunidad_judio_argentina": {
+      "display_name": "organizaciones de la comunidad judío-argentina",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "poblacion": {
+      "display_name": "la población",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "poblacion_mundial": {
+      "display_name": "población mundial",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "presidencia_nacion_argentina": {
+      "display_name": "la Presidencia de la Argentina",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "primer_mundo": {
+      "display_name": "Primer Mundo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "productores": {
+      "display_name": "los productores",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "pueblos_perseguidos": {
+      "display_name": "pueblos perseguidos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "ricos": {
+      "display_name": "los ricos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "romanos": {
+      "display_name": "romanos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "sector_privado": {
+      "display_name": "sector privado",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "terrorismo": {
+      "display_name": "terrorismo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "universidades": {
+      "display_name": "las universidades",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "venezuela": {
+      "display_name": "Venezuela",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "victimas_holocausto": {
+      "display_name": "las víctimas del Holocausto",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "zorro": {
+      "display_name": "un zorro",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "analisis_economico": {
+      "display_name": "análisis económico",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "denegacion_asilo_refugio": {
+      "display_name": "denegación de asilo/refugio",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "diferencias_diversidad": {
+      "display_name": "diferencias/diversidad",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "abrir_puertas_socialismo": {
+      "display_name": "abrirle las puertas al socialismo",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "acto_oficial_reconocimiento": {
+      "display_name": "invitación al acto oficial",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "agentes_economicos": {
+      "display_name": "agentes económicos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "apropiacion_instituciones": {
+      "display_name": "apropiación de instituciones",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "argentina_futuro": {
+      "display_name": "la argentina del futuro",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "asistentes_foro_economico_mundial_davos": {
+      "display_name": "asistentes al Foro Económico Mundial de Davos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "asistentes_visita_milei_museo_yad_vashem": {
+      "display_name": "asistentes a la visita de Milei al Muso Yad Vashem (Israel)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "autores_atentado_amia": {
+      "display_name": "autores del atentado a la AMIA",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "autoridades_estatales": {
+      "display_name": "autoridades estatales",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "avance_socialismo": {
+      "display_name": "avance del socialismo",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "baja_precios": {
+      "display_name": "baja de precios",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "barbarie_invasora": {
+      "display_name": "la barbarie invasora",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "bien": {
+      "display_name": "bien",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "bienestar": {
+      "display_name": "bienestar",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "caida_ranking_mundial": {
+      "display_name": "caída en el ranking mundial",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "camino_servidumbre": {
+      "display_name": "camino de servidumbre",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "colapso_poblacional": {
+      "display_name": "colapso poblacional",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "colectivismo": {
+      "display_name": "el colectivismo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "condiciones_laborales_extremas": {
+      "display_name": "trabajar los 7 días de la semana 24 horas",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "contribuyentes": {
+      "display_name": "contribuyentes",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "cooptacion_defensores_occidente": {
+      "display_name": "cooptación de los defensores de Occidente",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "criticos_monopolios": {
+      "display_name": "críticos de los monopolios",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "decadencia_economica_argentina": {
+      "display_name": "decadencia económica argentina",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "defensores_modelo_libertad_capitalismo_libre_empresa": {
+      "display_name": "defensores del modelo de la libertad/del capitalismo de libre empresa",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "definicion": {
+      "display_name": "definición",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "degradacion_sociedad": {
+      "display_name": "degradación de la sociedad",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "descubridor_productor": {
+      "display_name": "descubridor/productor",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "destruccion_ciudad": {
+      "display_name": "la destrucción de su ciudad",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "destruccion_profecia": {
+      "display_name": "la destrucción",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "estado": {
+      "display_name": "Estado",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "estados": {
+      "display_name": "los estados",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "estructuras_concentradas_economia": {
+      "display_name": "las estructuras concentradas de la economía",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "exploradores_conquistadores_europeos": {
+      "display_name": "exploradores/conquistadores europeos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "gobierno": {
+      "display_name": "el gobierno",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "hayek": {
+      "display_name": "Hayek",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "hombres_mujeres": {
+      "display_name": "los sexos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "kirzner": {
+      "display_name": "Israel Kirzner",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "lobos": {
+      "display_name": "lobos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "opositores_adversarios_politicos": {
+      "display_name": "opositores/adversarios políticos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "opresores": {
+      "display_name": "opresores",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "paises_occidente": {
+      "display_name": "países de occidente",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "personas_situacion_pobreza": {
+      "display_name": "personas en situación de pobreza",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "populismo": {
+      "display_name": "populismo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "postmarxismo": {
+      "display_name": "el postmarxismo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "profecia": {
+      "display_name": "profecía",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "projimo": {
+      "display_name": "el prójimo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "promotores_ideas_estatistas_colectivistas_socialistas_populistas": {
+      "display_name": "promotores de ideas estatistas/colectivistas/socialistas/populistas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "propuesta_exterminio_neomarxistas": {
+      "display_name": "propuesta de exterminio de los neomarxistas",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "segregacionistas": {
+      "display_name": "segregacionistas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "sindicalistas": {
+      "display_name": "los sindicalistas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "sociedad": {
+      "display_name": "sociedad",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "tora": {
+      "display_name": "La Torá",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "victimas_atentado_amia": {
+      "display_name": "las víctimas del atentado a la AMIA",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "economista_s": {
+      "display_name": "economista(s)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "empresa_s": {
+      "display_name": "empresa(s)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "empresario_s": {
+      "display_name": "empresario(s)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "fracaso_modelo": {
+      "display_name": "fracaso del modelo",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "individuo_s": {
+      "display_name": "individuo(s)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "monopolio_s": {
+      "display_name": "monopolio(s)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "monopolista_s": {
+      "display_name": "monopolista(s)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "museo_holocausto_caba": {
+      "display_name": "Museo del Holocausto (CABA)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "crecimiento_libertarios": {
+      "display_name": "crecimiento de los libertarios",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "eliminacion_pauta_oficial": {
+      "display_name": "eliminación de la pauta oficial",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "embajada_argentina_israel": {
+      "display_name": "embajada argentina en Israel",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "emprendedor": {
+      "display_name": "el emprendedor",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "escasez_alimentos": {
+      "display_name": "escasez de alimentos",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "escena": {
+      "display_name": "escena",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "estado_israel": {
+      "display_name": "Estado de Israel",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "estancamiento": {
+      "display_name": "estancamiento económico",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "evidencia_empirica": {
+      "display_name": "la evidencia empírica",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "explosion_riqueza": {
+      "display_name": "explosión de riqueza",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "fatalismo": {
+      "display_name": "fatalismo",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "feminismo_radical": {
+      "display_name": "feminismo radical",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "funcionamiento_mercado": {
+      "display_name": "funcionamiento del mercado",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "futuro": {
+      "display_name": "futuro",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "globalistas": {
+      "display_name": "globalistas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "hambre": {
+      "display_name": "el hambre",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "idea_combinacion_social": {
+      "display_name": "idea de combinación social",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "idea_democracia_ilimitada": {
+      "display_name": "idea de la democracia ilimitada",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "idea_fallos_mercado": {
+      "display_name": "idea de fallos del mercado",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "ideas_estupidas": {
+      "display_name": "ideas estúpidas",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "ideas_nocivas": {
+      "display_name": "ideas nocivas",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "inaccion_mundo_libre": {
+      "display_name": "inacción del mundo libre",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "indiferencia": {
+      "display_name": "la indiferencia",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "indigencia": {
+      "display_name": "la indigencia",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "inestabilidad": {
+      "display_name": "la inestabilidad",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "injusticia": {
+      "display_name": "la injusticia",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "inmigrantes": {
+      "display_name": "inmigrantes",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "intervencionistas": {
+      "display_name": "los intervencionistas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "invitados": {
+      "display_name": "los invitados",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "jerusalen": {
+      "display_name": "Jerusalén",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "jesus_huerta_soto": {
+      "display_name": "Jesús Huerta de Soto",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "judios_exiliados": {
+      "display_name": "judíos exiliados",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "julian_simon": {
+      "display_name": "Julian Simon",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "keynesianos": {
+      "display_name": "los keynesianos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "libertad": {
+      "display_name": "la libertad",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "libertad_economica": {
+      "display_name": "libertad económica",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "libre_comercio": {
+      "display_name": "el libre comercio",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "libro_henry_hazlitt": {
+      "display_name": "libro de Henry Hazlitt",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "lucha_libertad": {
+      "display_name": "la lucha por la libertad",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "lucha_politica_milei_aliados": {
+      "display_name": "lucha política de Milei y sus aliados",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "mejores_telefonos_mejor_precio": {
+      "display_name": "tener mejores teléfonos a un mejor precio",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "mensaje_libertad": {
+      "display_name": "mensaje de la libertad",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "miseria": {
+      "display_name": "la miseria",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "modelo_economico": {
+      "display_name": "modelo económico",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "muerte_masiva": {
+      "display_name": "muerte masiva",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "nacionalistas": {
+      "display_name": "nacionalistas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "nazismo_moderno": {
+      "display_name": "nazismo moderno",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "paz": {
+      "display_name": "paz",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "pelea_hombre_mujer": {
+      "display_name": "pelea entre el hombre y la mujer",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "prosperidad": {
+      "display_name": "prosperidad",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "regulaciones": {
       "display_name": "regulacion(es)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "riqueza": {
+      "display_name": "riqueza",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "terror_hamas": {
+      "display_name": "terror de Hamas",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "ser_es_humano_s": {
+      "display_name": "ser(es) humano(s)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "mundo_libre": {
+      "display_name": "mundo libre",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "justicia": {
+      "display_name": "la justicia",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "contradiccion_discursiva": {
+      "display_name": "contradicción discursiva",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "derrota_socialistas": {
+      "display_name": "derrota de los socialistas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "equivocacion_adversarios": {
+      "display_name": "equivocación de adversarios",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "neokeynesianos": {
+      "display_name": "neokeynesianos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "novio_s": {
+      "display_name": "novio(s)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "nuevo_comienzo": {
+      "display_name": "un lugar para empezar de nuevo",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "objeto_analisis": {
+      "display_name": "objeto de análisis",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "opresion_romana": {
+      "display_name": "opresión del yugo romano",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "pago_impuestos": {
+      "display_name": "pago de impuestos",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "paises_reprimidos": {
+      "display_name": "países reprimidos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "parasitos_viven_estado": {
+      "display_name": "los parásitos que viven del estado",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "peligro_occidente": {
+      "display_name": "Occidente está en peligro",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "pensadores": {
+      "display_name": "pensadores",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "perdida_libertad": {
+      "display_name": "pérdida de libertad",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "perdida_propia_fuente_beneficio": {
+      "display_name": "pérdida de la propia fuente de beneficio",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "persecucion": {
+      "display_name": "la persecución",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "personas_externas_criticos": {
+      "display_name": "críticos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "pertenecer_casta_privilegiada": {
+      "display_name": "pertenecer a una casta privilegiada",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "poder": {
+      "display_name": "el poder",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "politica": {
+      "display_name": "la política",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "populistas": {
+      "display_name": "populista(s)",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "potencias": {
+      "display_name": "potencias del mundo",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "presion_fiscal": {
+      "display_name": "presión fiscal",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "primera_participacion_como_presidente": {
+      "display_name": "primera participación como presidente",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "privilegios": {
+      "display_name": "privilegios",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "problemas": {
+      "display_name": "problemas",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "progresistas": {
+      "display_name": "progresistas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "progreso_tecnologico": {
+      "display_name": "el progreso tecnológico",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "propietarios": {
+      "display_name": "propietarios",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "rabi_akiva": {
+      "display_name": "Rabí Akiva",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "rabinos": {
+      "display_name": "los rabinos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "reaccion_rabi_akiva": {
+      "display_name": "reacción de Rabi Akiva",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "realidad": {
+      "display_name": "la realidad",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "reconstruccion": {
+      "display_name": "reconstrucción",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "reduccion_pobreza": {
+      "display_name": "reducción de la pobreza",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "reduccion_produccion_economica": {
+      "display_name": "reducción de la producción económica",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "reformas_estructurales": {
+      "display_name": "reformas estructurales",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "repeticion_historia": {
+      "display_name": "repetición de la historia",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "sector_productor_alimentos": {
+      "display_name": "sector productor de alimentos",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "sectores_establishment_politico": {
+      "display_name": "sectores del establishment político",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "servicio": {
+      "display_name": "servicio",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "situacion_historica_actual": {
+      "display_name": "el mejor momento de la historia",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "situacion_secuestrados": {
+      "display_name": "la liberación de los secuestrados",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "sobrevivientes": {
+      "display_name": "mil millones de personas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "sobrevivientes_holocausto": {
+      "display_name": "sobrevivientes del Holocausto",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "socialdemocratas": {
+      "display_name": "socialdemócratas",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "sociedad_mas_respetuosa": {
+      "display_name": "sociedad más respetuosa",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "templo_ruinas": {
+      "display_name": "templo en ruinas",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "teoria_economica": {
+      "display_name": "la teoría económica",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "terror": {
+      "display_name": "el terror",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "tesis_milei_occidente": {
+      "display_name": "plantear que occidente se ha volcado al socialismo",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "tortura": {
+      "display_name": "la tortura",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "trabajo": {
+      "display_name": "trabajo",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "uniformidad_gris_socialismo": {
+      "display_name": "la uniformidad gris del socialismo",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "vida": {
+      "display_name": "la vida",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "violencia": {
+      "display_name": "violencia",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "holocausto_shoah": {
+      "display_name": "Holocausto/Shoah",
+      "clase": "actor",
+      "tipo": "",
+      "notas": ""
+    },
+    "vinculo_fraternal_entre_argentina_israel": {
+      "display_name": "la fraternidad entre Argentina e Israel",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "lamparita_ericsson": {
+      "display_name": "lamparita de Ericsson",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "acto_denunciar_expresarse": {
+      "display_name": "acto de denunciar/expresarse",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "economistas_libertarios": {
+      "display_name": "economistas libertarios",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "experiencia_historica": {
+      "display_name": "experiencia histórica",
+      "clase": "circunstante",
+      "tipo": "",
+      "notas": ""
+    },
+    "idea_injusticia_sistema_capitalista": {
+      "display_name": "idea de injusticia del sistema capitalista",
       "clase": "",
       "tipo": "",
       "notas": ""
     },
-    "pais_es_libre_s": {
-      "display_name": "pais(es) libre(s)",
+    "impunidad_atentado_amia": {
+      "display_name": "impunidad del atentado a la AMIA",
       "clase": "",
       "tipo": "",
       "notas": ""
     },
-    "abandono_del_modelo_de_la_libertad": {
-      "display_name": "abandono del modelo de la libertad",
+    "lado_correcto_mundo": {
+      "display_name": "lado correcto del mundo",
       "clase": "",
       "tipo": "",
       "notas": ""
     },
-    "abrazar_a_los_empresarios": {
-      "display_name": "abrazar a los empresarios",
-      "clase": "",
-      "tipo": "",
-      "notas": ""
-    },
-    "empresario": {
-      "display_name": "empresario_s",
+    "propia_condicion_humana": {
+      "display_name": "propia condición humana",
       "clase": "",
       "tipo": "",
       "notas": ""

@@ -62,6 +62,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         enunciador: str = "",
         enunciatarios: str = "",
         auditorio: str = "",
+        resumen: str = "",
         emotion_scope: tuple[str, ...] | None = None,
         context_mode: Literal["rolling", "full"] = "rolling",
         retry_config: RetryConfig | None = None,
@@ -100,6 +101,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         self._enunciador = enunciador
         self._enunciatarios = enunciatarios
         self._auditorio = auditorio
+        self._resumen = resumen
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else ()
         self._context_mode = context_mode
         self._genre = genre
@@ -127,6 +129,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
             enunciador=self._enunciador,
             enunciatarios=self._enunciatarios,
             auditorio=self._auditorio,
+            resumen=self._resumen,
             alcance=alcance_text(
                 self._emotion_scope, self._enunciador, self._enunciatarios
             ),

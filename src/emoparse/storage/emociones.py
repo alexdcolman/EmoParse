@@ -409,3 +409,181 @@ class EmocionesRepository:
                 ),
             )
             return cur.rowcount
+
+    # ── Atribución por emoción (revisión) ────────────────────────────────────
+
+    def set_experienciador_canonico_at(
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+        canonical: str | None,
+        version: str | None = None,
+    ) -> bool:
+        """Fija (o limpia) el experienciador canónico de UNA emoción puntual.
+
+        Devuelve True si el valor cambió respecto del que había. Como
+        characterizer/actants/judge prefieren `experienciador_canonico` cuando
+        existe (helper `_effective_experiencer`), un cambio debe invalidarlos
+        vía `invalidate_downstream`. `version` se acepta por simetría de API;
+        no se persiste (igual que `set_experienciador_canonico`)."""
+        return self._set_canonico_at(
+            "experienciador_canonico",
+            codigo, frase_idx, emocion_idx, canonical,
+        )
+
+    def set_fuente_canonico_at(
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+        canonical: str | None,
+        version: str | None = None,
+    ) -> bool:
+        """Fija (o limpia) la fuente canónica de UNA emoción puntual.
+
+        Devuelve True si el valor cambió. A diferencia del experienciador, la
+        fuente canónica es una etiqueta de referente (no la consume ningún
+        stage LLM), por lo que no requiere invalidación downstream."""
+        return self._set_canonico_at(
+            "fuente_canonico",
+            codigo, frase_idx, emocion_idx, canonical,
+        )
+
+    def _set_canonico_at(
+        self,
+        column: str,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+        canonical: str | None,
+    ) -> bool:
+        """Setea una columna canónica por emoción; True si cambió."""
+        row = self._db.execute(
+            f"SELECT {column} AS val FROM emociones "
+            "WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
+            (codigo, frase_idx, emocion_idx),
+        ).fetchone()
+        if row is None:
+            return False
+        new = canonical if (canonical or "").strip() else None
+        if (row["val"] or None) == new:
+            return False
+        with self._db.transaction() as cur:
+            cur.execute(
+                f"UPDATE emociones SET {column} = ?, updated_at = ? "
+                "WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
+                (new, datetime.now(timezone.utc), codigo, frase_idx, emocion_idx),
+            )
+        return True
+
+    def invalidate_downstream(
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+    ) -> None:
+        """Anula characterizer y actants de UNA emoción para forzar su
+        recálculo (vuelven a `list_pending_*`). Se usa tras cambiar el
+        experienciador canónico por emoción. El juicio se invalida por separado
+        (`JudgmentsRepository.invalidate`)."""
+        with self._db.transaction() as cur:
+            cur.execute(
+                """
+                UPDATE emociones SET
+                    caracterizacion_payload = NULL,
+                    caracterizacion_version = NULL,
+                    caracterizacion_error   = NULL,
+                    actantes_payload        = NULL,
+                    actantes_version        = NULL,
+                    actantes_error          = NULL,
+                    updated_at              = ?
+                WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?
+                """,
+                (datetime.now(timezone.utc), codigo, frase_idx, emocion_idx),
+            )
+    # ── Resolución de canónicos por marca (refleja tab Referentes) ────────────
+
+    _MARCA_FIELDS = {"experienciador_marca", "fuente_marca"}
+
+    def resolve_canonico_map(
+        self,
+        codigo: str,
+        funcion: str,
+        marca_field: str,
+    ) -> dict[tuple[int, int], list[str]]:
+        """(frase_idx, emocion_idx) → [canonical_id] resueltos desde las marcas y
+        los vínculos mención↔referente de una `funcion`
+        ('experienciador'/'fuente').
+
+        Es la MISMA resolución que usa el dashboard (Referentes/Simulacros): por
+        eso refleja las ediciones hechas en la tab Referentes. Devuelve {} si no
+        hay base de menciones todavía."""
+        if marca_field not in self._MARCA_FIELDS:
+            raise ValueError(f"marca_field inválido: {marca_field}")
+        tables = {
+            r["name"]
+            for r in self._db.execute(
+                "SELECT name FROM sqlite_master WHERE type='table'"
+            ).fetchall()
+        }
+        if not {"menciones", "mencion_funcion", "mencion_canonico"} <= tables:
+            return {}
+        rank = {"accepted": 0, "proposed": 1}
+        origin_rank = {"deixis_llm": 0, "human": 1, "auto": 2, "coref": 3, "llm": 4}
+        per: dict[int, dict[str, dict[str, tuple[int, int]]]] = {}
+        for r in self._db.execute(
+            "SELECT m.unit_idx AS u, m.marca AS marca, mc.canonical_id AS cid, "
+            "mc.status AS status, mc.origin AS origin "
+            "FROM menciones m "
+            "JOIN mencion_funcion mf ON mf.mencion_id = m.id AND mf.funcion = ? "
+            "JOIN mencion_canonico mc ON mc.mencion_id = m.id "
+            "WHERE mc.status != 'rejected' AND m.codigo = ?",
+            (funcion, codigo),
+        ).fetchall():
+            cid = r["cid"]
+            mm = (r["marca"] or "").strip().lower()
+            if not cid or not mm:
+                continue
+            score = (rank.get(r["status"], 9), origin_rank.get(r["origin"], 9))
+            d = per.setdefault(int(r["u"]), {}).setdefault(mm, {})
+            if cid not in d or score < d[cid]:
+                d[cid] = score
+        if not per:
+            return {}
+        out: dict[tuple[int, int], list[str]] = {}
+        for r in self._db.execute(
+            f"SELECT frase_idx, emocion_idx, {marca_field} AS marca "
+            "FROM emociones WHERE codigo = ?",
+            (codigo,),
+        ).fetchall():
+            marca_map = per.get(int(r["frase_idx"]))
+            if not marca_map:
+                continue
+            cids = _match_canonicos_emo(
+                marca_map, str(r["marca"] or "").strip().lower()
+            )
+            if cids:
+                out[(int(r["frase_idx"]), int(r["emocion_idx"]))] = cids
+        return out
+
+
+def _match_canonicos_emo(
+    marca_map: dict[str, dict[str, tuple[int, int]]] | None, fm: str
+) -> list[str]:
+    """Resuelve la marca `fm` (normalizada) contra las menciones de la frase.
+
+    Match exacto; si no, por contención en ambos sentidos. Dedup por
+    canonical_id, ordenado por preferencia (aceptado/deixis primero)."""
+    if not marca_map or not fm:
+        return []
+    if fm in marca_map:
+        matched = {fm: marca_map[fm]}
+    else:
+        matched = {mm: c for mm, c in marca_map.items() if mm in fm or fm in mm}
+    scored: dict[str, tuple[int, int]] = {}
+    for cids in matched.values():
+        for cid, sc in cids.items():
+            if cid not in scored or sc < scored[cid]:
+                scored[cid] = sc
+    return [cid for cid, _ in sorted(scored.items(), key=lambda kv: (kv[1], kv[0]))]

@@ -28,6 +28,12 @@ REGLAS:
                      'inferido' si se deduce del contexto.
     * justificacion: oración breve citando elementos del texto.
 
+- UNA entidad por actor. Si la marca enumera varias entidades distintas
+  ("los K y los radicales", "Milei y Villarruel"), devolvé UN actor por
+  entidad (marca "los K" y marca "los radicales"), nunca la conjunción.
+  Los pronombres plurales ("nosotros", "ellos") sí quedan como UNA marca:
+  su referencia múltiple se resuelve después.
+
 - NO uses contenido de OTRAS unidades para inferir actores en una unidad.
   Cada unidad se analiza de forma aislada, salvo el contexto global del
   discurso que se da arriba.

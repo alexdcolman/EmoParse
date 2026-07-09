@@ -99,6 +99,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         enunciador: str = "",
         enunciatarios: str = "",
         auditorio: str = "",
+        resumen: str = "",
         emotion_scope: tuple[str, ...] | None = None,
         retry_config: Any | None = None,
         genre: "Genre | None" = None,
@@ -132,6 +133,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         self._enunciador = enunciador
         self._enunciatarios = enunciatarios
         self._auditorio = auditorio
+        self._resumen = resumen
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else ()
         self._genre = genre
 
@@ -152,6 +154,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
             enunciador=self._enunciador,
             enunciatarios=self._enunciatarios,
             auditorio=self._auditorio,
+            resumen=self._resumen,
             alcance=self._alcance_text(),
         )
 

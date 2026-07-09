@@ -212,7 +212,7 @@ def populated_setup(
         "models": {"m": {"backend": "llama_cpp", "path": "ignored.gguf"}},
         "pipeline": {
             "stages": {
-                s: "m" for s in STAGE_ORDER if s != "explode_emociones"
+                s: "m" for s in STAGE_ORDER if s != "explode_emotions"
             }
         },
         "paths": {

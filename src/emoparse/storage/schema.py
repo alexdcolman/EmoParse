@@ -134,6 +134,11 @@ CREATE TABLE IF NOT EXISTS emociones (
     -- enunciador). NULL = sin revisión commiteada para esa emoción.
     experienciador_canonico        TEXT,
 
+    -- Fuente canónica por emoción, fijada en la revisión de referentes. NULL =
+    -- sin atribución por emoción (la fuente se resuelve por marca). Prima sobre
+    -- la resolución por marca en las vistas de referentes/simulacros/búsqueda.
+    fuente_canonico                TEXT,
+
     -- Output del CharacterizerAgent. JSON con los 4 atributos.
     caracterizacion_payload TEXT,
     caracterizacion_version TEXT,
@@ -256,6 +261,9 @@ CREATE TABLE IF NOT EXISTS judgments (
     coherente               INTEGER,           -- 0/1 (SQLite no tiene BOOL nativo)
     issues                  TEXT,
     confianza               TEXT,              -- 'alta'|'media'|'baja'
+    -- Correcciones propuestas por elemento (JSON: lista de
+    -- {campo, valor_sugerido, justificacion}). NULL o '[]' = sin sugerencias.
+    sugerencias             TEXT,
     -- Metadata.
     judge_version           TEXT,
     judge_error             TEXT,
@@ -352,6 +360,17 @@ CREATE TABLE IF NOT EXISTS mencion_canonico (
     -- deixis: 'enunciador'|'auditorio'|'colectivo_identificacion'. NULL si no
     -- es un vínculo deíctico. El canonical_id sigue siendo el referente concreto.
     deixis_tipo     TEXT,
+    -- Modalidad referencial del vínculo marca→referente (stage `modalidad`):
+    --   'designacion'              (SN/nombre propio que nombra/categoriza)
+    --   'referencia_gramatical'    (deixis/morfología: pronombres, concordancia)
+    --   'identificacion_inferencial' (se identifica por la actitud/valores)
+    -- NULL si no fue clasificado.
+    modalidad       TEXT,
+    -- Naturaleza del referente al que apunta la marca:
+    --   'persona'|'colectivo'|'institucion'|'objeto_proceso'|'otro'. NULL si no.
+    naturaleza      TEXT,
+    -- Procedencia de la clasificación de modalidad/naturaleza: 'nlp'|'llm'|'human'.
+    modalidad_origin TEXT,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     reviewed_at     TIMESTAMP,
     UNIQUE (mencion_id, canonical_id),

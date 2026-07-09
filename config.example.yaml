@@ -66,13 +66,13 @@ models:
 #
 #    Activas por defecto:
 #      summarizer, metadata, enunciation, actors, emotions,
-#      explode_emociones, normalize_emotions, characterizer.
+#      explode_emotions, normalize_emotions, characterizer.
 #
 #    Opcionales (se declaran acá para asignarles modelo, pero solo
 #    se ejecutan si se piden con `--stages` en la CLI):
-#      emotions_pass2, deixis, semas, actants, judge.
+#      emotions_pass2, deixis, modalidad, semas, actants, judge.
 #
-#  Las etapas `explode_emociones` y `normalize_emotions` son internas
+#  Las etapas `explode_emotions` y `normalize_emotions` son internas
 #  (sin LLM) y no requieren modelo asignado.
 # ──────────────────────────────────────────────────────────────────────────────
 
@@ -97,6 +97,13 @@ pipeline:
     # concretos del discurso (enunciador, auditorio, colectivo de
     # identificación). Requiere `enunciation` corrido previamente.
     deixis:          qwen3-14b
+
+    # Clasificación de la MODALIDAD REFERENCIAL de cada vínculo marca→referente
+    # (designacion / referencia_gramatical / identificacion_inferencial) y la
+    # naturaleza del referente. Pre-pass NLP (spaCy) + LLM solo para los casos
+    # ambiguos. Requiere `explode_emotions` (y idealmente `deixis`) previos.
+    # Si no se le asigna modelo o falla el backend, corre NLP-only.
+    modalidad:       qwen3-14b
 
     # Asignación de semas a actores, experienciadores y fuentes.
     semas:         qwen3-14b

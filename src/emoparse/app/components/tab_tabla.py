@@ -21,6 +21,21 @@ from emoparse.app import data as data_layer
 #: Niveles de granularidad disponibles para la vista tabular.
 _LEVELS = ("discursos", "frases", "emociones")
 
+#: Columnas del nivel emociones, en orden de lectura. Se muestran las que existan.
+_EMO_COLS = (
+    "codigo", "frase_idx", "emocion_idx",
+    "tipo_emocion", "tipo_emocion_canonico", "modo_existencia", "tipo_configuracion",
+    "experienciador", "experienciador_canonico", "experienciador_marca",
+    "fuente", "fuente_canonico", "fuente_marca",
+    "foria", "dominancia", "intensidad", "duracion",
+    "temporalidad", "aspecto", "tipo_atribucion",
+    "mediador",
+    "verificador_normativo", "verificador_normativo_evaluacion",
+    "verificador_observacional", "verificador_observacional_evaluacion",
+    "operador_modificacion", "polaridad",
+    "enunciador", "frase",
+)
+
 
 def render(db_path: Path) -> None:
     """Renderiza la tab de exploración tabular.
@@ -30,11 +45,20 @@ def render(db_path: Path) -> None:
     """
     st.markdown("### Tabla de datos")
 
-    col_lvl, _ = st.columns([1, 3])
+    col_lvl, col_llm = st.columns([1, 2])
     with col_lvl:
         level = st.selectbox("Nivel", _LEVELS, key="tabla_level")
+    with col_llm:
+        usar_llm = st.toggle(
+            "Usar resultados de la inferencia de los LLMs",
+            value=False, key="tabla_usar_llm",
+            help=(
+                "Solo aplica al nivel emociones: muestra el experienciador y la "
+                "fuente crudos del LLM en lugar de los canónicos (revisados en Referentes)."
+            ),
+        )
 
-    df = _load(db_path, level)
+    df = _load(db_path, level, usar_llm=usar_llm)
     if df.empty:
         st.info(f"Sin datos en el nivel `{level}`.")
         return
@@ -56,15 +80,30 @@ def render(db_path: Path) -> None:
     )
 
 
-def _load(db_path: Path, level: str) -> pd.DataFrame:
+def _load(db_path: Path, level: str, *, usar_llm: bool = False) -> pd.DataFrame:
     """Carga el DataFrame correspondiente al nivel seleccionado."""
     if level == "discursos":
         return data_layer.get_discursos(db_path)
     if level == "frases":
         return data_layer.get_frases(db_path)
     if level == "emociones":
-        return data_layer.get_emociones(db_path)
+        return _load_emociones(db_path, usar_llm=usar_llm)
     return pd.DataFrame()
+
+
+def _load_emociones(db_path: Path, *, usar_llm: bool) -> pd.DataFrame:
+    """Nivel emociones con canónicos por defecto (o LLM) y columnas de actants."""
+    df = data_layer.get_emociones_enriched(db_path)
+    if df.empty:
+        return df
+    df = df.copy()
+    df["experienciador"] = (
+        df["experienciador"].fillna("") if usar_llm else df["experienciador_efectivo"]
+    )
+    fte_raw = df.get("fuente_inferencia", pd.Series([""] * len(df))).fillna("")
+    df["fuente"] = fte_raw if usar_llm else df["fuente_efectiva"]
+    cols = [c for c in _EMO_COLS if c in df.columns]
+    return df[cols]
 
 
 def _apply_filters(df: pd.DataFrame, level: str) -> pd.DataFrame:
@@ -78,9 +117,15 @@ def _apply_filters(df: pd.DataFrame, level: str) -> pd.DataFrame:
     out = df
 
     candidatos = {
-        "discursos": ["codigo", "metadata__tipo_discurso", "summarizer__status"],
+        "discursos": [
+            "codigo", "metadata__tipo_discurso", "enunciation__enunciador",
+            "summarizer__status",
+        ],
         "frases":    ["codigo"],
-        "emociones": ["codigo", "tipo_emocion", "experienciador", "fuente_inferencia", "foria", "modo_existencia"],
+        "emociones": [
+            "codigo", "tipo_emocion", "experienciador", "fuente",
+            "modo_existencia", "foria", "polaridad",
+        ],
     }.get(level, [])
 
     for i, col_name in enumerate(candidatos):

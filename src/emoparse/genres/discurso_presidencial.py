@@ -26,6 +26,7 @@ def get_genre() -> Genre:
             "emotions": 1,
             "emotions_pass2": 1,
             "deixis": 5,
+            "semas": 2,
             "characterizer": 1,
             "actants": 1,
             "judge": 1,

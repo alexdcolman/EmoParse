@@ -39,10 +39,39 @@ def render(db_path: Path) -> None:
     """Renderiza la tab de revisión de deixis."""
     st.markdown("### Deixis")
 
-    only_pending = st.toggle(
-        "Solo pendientes", value=True, key="deixis_only_pending"
+    fcol1, fcol2 = st.columns([1, 2])
+    with fcol1:
+        only_pending = st.toggle(
+            "Solo pendientes", value=True, key="deixis_only_pending"
+        )
+        include_unlinked = st.toggle(
+            "Incluir marcas sin sugerencia", value=False,
+            key="deixis_include_unlinked",
+            help="Muestra también marcas deícticas (yo/nosotros/ustedes…) que el "
+                 "LLM no asignó, para asignarles un referente a mano.",
+        )
+    with fcol2:
+        func_inc = st.multiselect(
+            "Función incluye",
+            ["actor", "experienciador", "fuente"],
+            key="deixis_func_inc",
+            placeholder="cualquiera",
+        )
+        func_exc = st.multiselect(
+            "Función NO incluye (excluir)",
+            ["actor", "experienciador", "fuente"],
+            key="deixis_func_exc",
+            placeholder="ninguna",
+        )
+    sugerencias = data_layer.get_deixis_suggestions(
+        db_path, only_pending=only_pending, include_unlinked=include_unlinked
     )
-    sugerencias = data_layer.get_deixis_suggestions(db_path, only_pending=only_pending)
+    if func_inc:
+        inc = set(func_inc)
+        sugerencias = [s for s in sugerencias if inc & set(s["funciones"])]
+    if func_exc:
+        exc = set(func_exc)
+        sugerencias = [s for s in sugerencias if not (exc & set(s["funciones"]))]
 
     if not sugerencias:
         st.info(
@@ -84,11 +113,19 @@ def render(db_path: Path) -> None:
     ref_map = data_layer.get_deixis_referentes_map(
         db_path, codigos=sorted({s["codigo"] for s in pagina})
     )
+    canonicos = data_layer.list_canonicos(db_path)
+    emo_brief = data_layer.get_frase_emociones_brief(db_path)
     for sug in pagina:
-        _render_sugerencia(db_path, sug, ref_map.get(sug["codigo"], []))
+        _render_sugerencia(
+            db_path, sug, ref_map.get(sug["codigo"], []), canonicos, emo_brief
+        )
 
 
-def _render_sugerencia(db_path: Path, sug: dict, referentes_discurso: list[dict]) -> None:
+def _render_sugerencia(
+    db_path: Path, sug: dict, referentes_discurso: list[dict],
+    canonicos: list[str],
+    emo_brief: dict[tuple[str, int], list[dict[str, str]]] | None = None,
+) -> None:
     funcs = "/".join(sug["funciones"]) or "—"
     with st.container(border=True):
         st.markdown(
@@ -101,11 +138,31 @@ def _render_sugerencia(db_path: Path, sug: dict, referentes_discurso: list[dict]
             unsafe_allow_html=True,
         )
         if str(sug["frase"]).strip():
+            # Tooltip: emociones de la frase (experienciador · emoción · fuente),
+            # para decidir el referente sin salir de la tab.
+            tip_attr = ""
+            hint = ""
+            briefs = (emo_brief or {}).get(
+                (str(sug["codigo"]), int(sug["unit_idx"]))
+            )
+            if briefs:
+                lineas = [
+                    f"exp: {b['experienciador']}  ·  emo: {b['emocion']}  ·  "
+                    f"fte: {b['fuente']}"
+                    for b in briefs
+                ]
+                texto = "Emociones de la frase:\n" + "\n".join(lineas)
+                tip_attr = (" title=\""
+                            + html.escape(texto, quote=True).replace("\n", "&#10;")
+                            + "\"")
+                hint = ("<span style='color:#5a5d6e;font-size:0.7rem;"
+                        "margin-left:6px;'>🛈 emociones</span>")
             st.markdown(
-                f"<div style='margin:0.3rem 0 0.5rem;padding:0.45rem 0.7rem;"
-                f"background:#15171c;border-radius:6px;font-size:0.84rem;"
-                f"line-height:1.55;color:#c2bdb4;'>{html.escape(str(sug['frase']))}"
-                f"</div>",
+                f"<div{tip_attr} style='margin:0.3rem 0 0.5rem;"
+                f"padding:0.45rem 0.7rem;background:#15171c;border-radius:6px;"
+                f"font-size:0.84rem;line-height:1.55;color:#c2bdb4;"
+                f"{'cursor:help;' if tip_attr else ''}'>"
+                f"{html.escape(str(sug['frase']))}</div>{hint}",
                 unsafe_allow_html=True,
             )
 
@@ -113,6 +170,7 @@ def _render_sugerencia(db_path: Path, sug: dict, referentes_discurso: list[dict]
             _render_referente(db_path, sug["mencion_id"], ref)
 
         _render_agregar(db_path, sug, referentes_discurso)
+        _render_agregar_canonico(db_path, sug, canonicos)
 
 
 def _render_agregar(db_path: Path, sug: dict, referentes_discurso: list[dict]) -> None:
@@ -142,6 +200,45 @@ def _render_agregar(db_path: Path, sug: dict, referentes_discurso: list[dict]) -
             actions_layer.deixis_add(db_path, mid, r["canonical_id"], r["tipo"])
             st.toast(f"«{r['nombre']}» agregado.", icon="✅")
             st.rerun()
+
+
+def _render_agregar_canonico(db_path: Path, sug: dict, canonicos: list[str]) -> None:
+    """Asigna a la marca un referente canónico existente (de tab Referentes) o nuevo."""
+    mid = sug["mencion_id"]
+    ya = {r["canonical_id"] for r in sug["referentes"]}
+    opciones = [c for c in canonicos if c not in ya]
+    tipos = list(_TIPO_LABEL)
+    with st.expander("Asignar canónico existente o nuevo", expanded=False):
+        existente = st.selectbox(
+            "Canónico existente",
+            ["— ninguno —", *opciones],
+            key=f"dxc_sel_{mid}",
+        )
+        nuevo = st.text_input(
+            "… o nuevo referente",
+            key=f"dxc_new_{mid}",
+            placeholder="nombre del referente nuevo",
+        )
+        tcol, bcol = st.columns([3, 1])
+        tipo = tcol.selectbox(
+            "Tipo",
+            tipos,
+            format_func=lambda t: _TIPO_LABEL.get(t, t),
+            key=f"dxc_tipo_{mid}",
+        )
+        with bcol:
+            st.markdown("<div style='height:1.8rem;'></div>", unsafe_allow_html=True)
+            if st.button("＋ agregar", key=f"dxc_btn_{mid}",
+                         use_container_width=True):
+                canonical = nuevo.strip() or (
+                    existente if existente != "— ninguno —" else ""
+                )
+                if not canonical:
+                    st.warning("Elegí un canónico existente o escribí uno nuevo.")
+                else:
+                    actions_layer.deixis_add(db_path, mid, canonical, tipo)
+                    st.toast(f"«{canonical}» agregado.", icon="✅")
+                    st.rerun()
 
 
 def _render_referente(db_path: Path, mencion_id: int, ref: dict) -> None:

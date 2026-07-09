@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -20,6 +21,7 @@ from emoparse.app.revision_overlay import (
     default_overlay_path,
 )
 from emoparse.storage.db import Database
+from emoparse.storage.discursos import DiscursosRepository
 from emoparse.storage.emociones import EmocionesRepository
 from emoparse.storage.judgments import JudgmentsRepository
 from emoparse.storage.menciones import MencionesRepository
@@ -108,6 +110,69 @@ def _run_prompt_version(db: Database) -> str | None:
     return ctx.versions.prompt if ctx is not None else None
 
 
+def emocion_set_experiencer_at(
+    db_path: Path,
+    codigo: str,
+    frase_idx: int,
+    emocion_idx: int,
+    canonical_id: str | None,
+) -> bool:
+    """Fija (o limpia) el experienciador canónico de UNA emoción puntual.
+
+    Permite desarticular frases con varias emociones que comparten la marca de
+    experienciador: se atribuye el canónico solo a la emoción elegida, sin tocar
+    el vínculo compartido de la mención. `canonical_id` vacío/None limpia la
+    atribución (vuelve a resolverse por marca). Devuelve True si cambió.
+
+    Al cambiar, invalida characterizer/actants (y el juicio) de esa emoción para
+    que se recalculen con el experienciador correcto.
+    """
+    db = Database(Path(db_path))
+    if not db.table_exists("emociones"):
+        raise RuntimeError("DB sin tabla emociones.")
+    RunsRepository(db).ensure_migrations()
+    emo = EmocionesRepository(db)
+    judg = JudgmentsRepository(db) if db.table_exists("judgments") else None
+    version = _run_prompt_version(db)
+    value = (canonical_id or "").strip() or None
+    changed = emo.set_experienciador_canonico_at(
+        codigo, frase_idx, emocion_idx, value, version=version
+    )
+    if changed:
+        emo.invalidate_downstream(codigo, frase_idx, emocion_idx)
+        if judg is not None:
+            judg.invalidate(codigo, frase_idx, emocion_idx)
+    return changed
+
+
+def emocion_set_fuente_at(
+    db_path: Path,
+    codigo: str,
+    frase_idx: int,
+    emocion_idx: int,
+    canonical_id: str | None,
+) -> bool:
+    """Fija (o limpia) la fuente canónica de UNA emoción puntual.
+
+    Permite desarticular frases con varias emociones que comparten la marca de
+    fuente: se atribuye el canónico solo a la emoción elegida, sin tocar el
+    vínculo compartido de la mención. `canonical_id` vacío/None limpia la
+    atribución (vuelve a resolverse por marca). Devuelve True si cambió.
+
+    La fuente canónica es una etiqueta de referente (no la consume ningún stage
+    LLM), por lo que no dispara recálculo downstream."""
+    db = Database(Path(db_path))
+    if not db.table_exists("emociones"):
+        raise RuntimeError("DB sin tabla emociones.")
+    RunsRepository(db).ensure_migrations()
+    emo = EmocionesRepository(db)
+    version = _run_prompt_version(db)
+    value = (canonical_id or "").strip() or None
+    return emo.set_fuente_canonico_at(
+        codigo, frase_idx, emocion_idx, value, version=version
+    )
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  Edición directa de la KB de actores (revisión manual desde el dashboard)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -152,6 +217,32 @@ def mencion_remove_link(db_path: Path, mencion_id: int, canonical_id: str) -> No
         mencion_id, canonical_id
     )
     _cleanup_kb_if_orphan(db_path, canonical_id)
+
+
+def bulk_set_link_status(
+    db_path: Path, pairs: list[tuple[int, str]], status: str
+) -> int:
+    """Acepta/rechaza en lote (status='accepted'|'rejected'). Limpia KB huérfana
+    solo en rechazos masivos. Devuelve cuántos vínculos se afectaron."""
+    repo = MencionesRepository(Database(Path(db_path)))
+    n = repo.bulk_set_status(pairs, status)
+    if status == "rejected":
+        for cid in {c for _, c in pairs}:
+            _cleanup_kb_if_orphan(db_path, cid)
+    return n
+
+
+def mencion_set_modalidad(
+    db_path: Path,
+    mencion_id: int,
+    canonical_id: str,
+    modalidad: str | None,
+    naturaleza: str | None,
+) -> None:
+    """Corrige a mano la modalidad/naturaleza de un vínculo (origin='human')."""
+    MencionesRepository(Database(Path(db_path))).set_modalidad(
+        mencion_id, canonical_id, modalidad or None, naturaleza or None, "human"
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -435,10 +526,11 @@ def merge_canonicals(
 ) -> dict[str, int]:
     """Fusiona el canónico `src_id` dentro de `dst_id` (queda `dst_id`).
 
-    Repunta en la DB todos los vínculos marca↔`src_id` a `dst_id` (aceptados),
-    y mueve sus semas. Si la marca ya estaba ligada a `dst_id`, descarta el
-    vínculo duplicado. Elimina `src_id` de la KB. Devuelve
-    {links_merged, semas_merged}.
+    Repunta en la DB todos los vínculos marca↔`src_id` a `dst_id`, **preservando
+    el estado de cada vínculo** (un `rejected` sigue `rejected`, un `proposed`
+    sigue `proposed`): la fusión no acepta nada por su cuenta. Si la marca ya
+    estaba ligada a `dst_id`, descarta el vínculo duplicado de `src`. Mueve sus
+    semas. Elimina `src_id` de la KB. Devuelve {links_merged, semas_merged}.
     """
     from emoparse.core.text import canonical_slug
 
@@ -457,10 +549,10 @@ def merge_canonicals(
             ")",
             (src_id, dst_id),
         )
-        # Repuntar el resto a dst, dejándolos aceptados (decisión humana).
+        # Repuntar el resto a dst SIN tocar el status (se conserva tal cual).
         cur.execute(
             "UPDATE mencion_canonico "
-            "SET canonical_id = ?, status = 'accepted', origin = 'human' "
+            "SET canonical_id = ?, origin = 'human' "
             "WHERE canonical_id = ?",
             (dst_id, src_id),
         )
@@ -528,3 +620,72 @@ def deixis_add(
     MencionesRepository(Database(Path(db_path))).add_deixis_referente(
         mencion_id, canonical_id, deixis_tipo
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Enunciación (tab Enunciación)
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _names_from_json(value: Any, key: str) -> list[str]:
+    """Nombres de una sublista del payload (JSON string) por clave."""
+    try:
+        items = json.loads(value) if isinstance(value, str) else value
+    except (json.JSONDecodeError, TypeError):
+        return []
+    if not isinstance(items, list):
+        return []
+    out = []
+    for it in items:
+        if isinstance(it, dict):
+            nom = str(it.get(key, "") or "").strip()
+            if nom:
+                out.append(nom)
+    return out
+
+
+def save_enunciation(db_path: Path, codigo: str, payload: dict) -> int:
+    """Guarda la estructura enunciativa editada y propaga a la deixis.
+
+    `payload` es el enunciation_payload completo (con enunciatarios/auditorio/
+    colectivos serializados como JSON, igual que el stage). Tras guardar, ajusta
+    los vínculos deícticos del discurso para que apunten a los referentes
+    concretos vigentes:
+      - enunciador (siempre único): todos los vínculos de tipo `enunciador` del
+        discurso pasan a ese referente.
+      - auditorio / colectivo: si hay exactamente uno, todos los vínculos de ese
+        tipo pasan a él; si hay varios, solo se aplica el renombre inequívoco
+        (uno desaparece y uno aparece) comparando contra el payload anterior.
+    Devuelve cuántos vínculos deícticos se repuntaron.
+    """
+    from emoparse.core.text import canonical_slug
+
+    db = Database(Path(db_path))
+    d_repo = DiscursosRepository(db)
+    old_payload = d_repo.get_payload(codigo, "enunciation") or {}
+    d_repo.set_payload(codigo, "enunciation", payload)
+
+    m = MencionesRepository(db)
+    moved = 0
+
+    enunciador = str(payload.get("enunciador") or "").strip()
+    if enunciador:
+        moved += m.repoint_deixis_in_discurso(codigo, "enunciador", enunciador)
+
+    for tipo, key in (("auditorio", "actor"),
+                      ("colectivo_identificacion", "nombre")):
+        new_key = "colectivos_identificacion" if tipo == "colectivo_identificacion" else tipo
+        new_names = _names_from_json(payload.get(new_key), key)
+        new_slugs = {canonical_slug(n) for n in new_names if canonical_slug(n)}
+        if len(new_slugs) == 1:
+            moved += m.repoint_deixis_in_discurso(codigo, tipo, next(iter(new_slugs)))
+        elif len(new_slugs) > 1:
+            old_names = _names_from_json(old_payload.get(new_key), key)
+            old_slugs = {canonical_slug(n) for n in old_names if canonical_slug(n)}
+            gone, added = old_slugs - new_slugs, new_slugs - old_slugs
+            if len(gone) == 1 and len(added) == 1:
+                moved += m.repoint_deixis_in_discurso(
+                    codigo, tipo, next(iter(added)), next(iter(gone))
+                )
+
+    logger.info(f"[save_enunciation] {codigo}: {moved} vínculos deícticos repuntados.")
+    return moved

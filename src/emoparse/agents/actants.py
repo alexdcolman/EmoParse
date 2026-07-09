@@ -21,6 +21,7 @@ from emoparse.core.schemas import (
     ListaActantesBatchSchema,
     MediadorSchema,
     OperadorModificacionSchema,
+    PolaridadSchema,
     VerificadorNormativoSchema,
     VerificadorObservacionalSchema,
 )
@@ -33,6 +34,7 @@ ACTANTS_COMPONENTS: tuple[str, ...] = (
     "verificador_normativo",
     "verificador_observacional",
     "operador_modificacion",
+    "polaridad",
 )
 
 
@@ -47,7 +49,7 @@ class ActantsAgent(BaseBatchAgent[ListaActantesBatchSchema]):
     """Agente batch que analiza la configuración actancial de emociones.
 
     Por cada emoción del batch, el agente devuelve un
-    `ActantesEmocionSchema` con los cuatro componentes del dispositivo
+    `ActantesEmocionSchema` con los componentes del dispositivo
     analítico:
 
       - `mediador`: vehículo entre la fuente y el experienciador.
@@ -56,6 +58,8 @@ class ActantsAgent(BaseBatchAgent[ListaActantesBatchSchema]):
         veracidad del desencadenante.
       - `operador_modificacion`: manipulación actancial sobre la
         emoción del experienciador.
+      - `polaridad`: afirmación o negación de la emoción y, si está
+        negada, la modalidad de la negación.
 
     El parámetro `enabled_components` controla qué componentes se le
     piden efectivamente al LLM. Los componentes excluidos se completan
@@ -90,6 +94,10 @@ class ActantsAgent(BaseBatchAgent[ListaActantesBatchSchema]):
         "operador_modificacion_descripcion",
         "operador_modificacion_funcion",
         "operador_modificacion_justificacion",
+        # Polaridad
+        "polaridad_negada",
+        "polaridad_tipo",
+        "polaridad_justificacion",
     )
     BATCH_SIZE = 5
 
@@ -205,6 +213,10 @@ class ActantsAgent(BaseBatchAgent[ListaActantesBatchSchema]):
             "operador_modificacion_descripcion": a.operador_modificacion.descripcion,
             "operador_modificacion_funcion": a.operador_modificacion.funcion,
             "operador_modificacion_justificacion": a.operador_modificacion.justificacion,
+            # Polaridad
+            "polaridad_negada": a.polaridad.negada,
+            "polaridad_tipo": a.polaridad.tipo,
+            "polaridad_justificacion": a.polaridad.justificacion,
         }
 
     # ── Helpers ──────────────────────────────────────────────────────────────
@@ -242,6 +254,11 @@ class ActantsAgent(BaseBatchAgent[ListaActantesBatchSchema]):
                 actantes.operador_modificacion
                 if "operador_modificacion" in self._enabled
                 else _disabled_operador_modificacion()
+            ),
+            polaridad=(
+                actantes.polaridad
+                if "polaridad" in self._enabled
+                else _disabled_polaridad()
             ),
         )
 
@@ -285,5 +302,13 @@ def _disabled_operador_modificacion() -> OperadorModificacionSchema:
         presente=False,
         descripcion=None,
         funcion="ausente",
+        justificacion=_DISABLED_JUSTIFICATION,
+    )
+
+
+def _disabled_polaridad() -> PolaridadSchema:
+    return PolaridadSchema(
+        negada=False,
+        tipo="afirmada",
         justificacion=_DISABLED_JUSTIFICATION,
     )

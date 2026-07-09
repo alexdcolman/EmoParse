@@ -22,6 +22,7 @@ from emoparse.app.components import (
     tab_correlacion,
     tab_curva,
     tab_deixis,
+    tab_enunciacion,
     tab_estado,
     tab_referentes,
     tab_revision,
@@ -92,7 +93,7 @@ def main() -> None:
     )
     st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
 
-    tab_curva_, tab_act, tab_tab, tab_comp, tab_busq, tab_corr, tab_sim, tab_dx, tab_ref, tab_rev, tab_est = st.tabs([
+    tab_curva_, tab_act, tab_tab, tab_comp, tab_busq, tab_corr, tab_sim, tab_enun, tab_dx, tab_ref, tab_rev, tab_est = st.tabs([
         "📈 Curva emocional",
         "👥 Por actor",
         "📋 Tabla",
@@ -100,6 +101,7 @@ def main() -> None:
         "🔎 Búsqueda",
         "🔗 Co-ocurrencia",
         "🎭 Simulacros",
+        "🗣 Enunciación",
         "🧭 Deixis",
         "🏷 Referentes",
         "📝 Revisión",
@@ -120,6 +122,8 @@ def main() -> None:
         tab_correlacion.render(db_path)
     with tab_sim:
         tab_simulacros.render(db_path)
+    with tab_enun:
+        tab_enunciacion.render(db_path)
     with tab_dx:
         tab_deixis.render(db_path)
     with tab_ref:

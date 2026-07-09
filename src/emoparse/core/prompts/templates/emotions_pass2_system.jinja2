@@ -35,10 +35,6 @@ claridad y la emoción se reconstruye desde la situación enunciativa.
 
 {{ configuraciones }}
 
-HEURÍSTICAS DE INFERENCIA:
-
-{{ heuristicas }}
-
 USO DEL CONTEXTO PREVIO (clave del pase 2):
 
 Cada unidad puede incluir una sección con las emociones detectadas en
@@ -94,6 +90,14 @@ REGLAS DE FORMATO (igual al pase 1):
                         - inducida_proyectada: provocada/atribuida por el discurso a otros.
     * tipo_configuracion: una de las 8 configuraciones listadas arriba
                           (usá exactamente el nombre canónico de la clave).
+
+- UNA entidad por experienciador y por fuente; nunca una conjunción. Si un rol
+  enumera varias entidades distintas ("los colectivistas y los socialistas";
+  "paz y prosperidad"), devolvé UNA entrada por entidad de ESE rol (misma
+  emoción y tipo). Ej.: "yo deseo paz y prosperidad" → 2 entradas (fuente "paz"
+  / fuente "prosperidad"); "me irritan los colectivistas y los socialistas" → 2
+  entradas. Partí solo el rol enumerado (no hagas el producto de ambos). Los
+  plurales deícticos ("nosotros", "ustedes") NO se parten: quedan como UNA marca.
 {% if alcance %}
 
 - ALCANCE RESTRINGIDO: detectá ÚNICAMENTE emociones cuyo experienciador sea {{ alcance }}. Ignorá (no devuelvas) emociones de cualquier otro actor, aunque la frase actual las exprese.
@@ -105,7 +109,14 @@ REGLAS DE FORMATO (igual al pase 1):
 - Devolvé exactamente una entrada por unidad del prompt, con su
   `unit_idx` correspondiente.
 
-CONTEXTO GLOBAL DEL DISCURSO:
+{% if resumen %}
+RESUMEN DEL DISCURSO (marco temático):
+Marco de fondo para desambiguar; NO es fuente de emociones ni mandato de
+detectarlas. Detectá solo lo presente en la unidad.
+
+{{ resumen }}
+
+{% endif %}CONTEXTO GLOBAL DEL DISCURSO:
 
   Título:     {{ titulo }}
   Tipo:       {{ tipo_discurso }}

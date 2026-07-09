@@ -33,7 +33,7 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
 
     NAME = "judge"
     SCHEMA = ListaJuiciosBatchSchema
-    OUTPUT_COLUMNS = ("coherente", "issues", "confianza")
+    OUTPUT_COLUMNS = ("coherente", "issues", "confianza", "sugerencias")
     BATCH_SIZE = 5
 
     def __init__(
@@ -43,6 +43,8 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
         tipo_discurso: str = "",
         heuristicas: str | None = None,
         ontologia: str | None = None,
+        resumen: str | None = None,
+        enunciacion: str | None = None,
         retry_config: Any | None = None,
         genre: Genre | None = None,
     ) -> None:
@@ -55,6 +57,9 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
                 Si None, no se inyectan heurísticas en el system prompt.
             ontologia: Ontología de emociones serializada. Si None, el juez no
                 recibe las definiciones de emociones (comportamiento previo).
+            resumen: Resumen global del discurso, como contexto.
+            enunciacion: Bloque preformateado con enunciador, enunciatarios,
+                auditorio y colectivos de identificación.
             retry_config: Política de reintentos ante errores transitorios.
             genre: Configuración opcional de género discursivo. Puede
                 ajustar parámetros como `BATCH_SIZE`.
@@ -63,6 +68,8 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
         self._tipo_discurso = tipo_discurso
         self._heuristicas = heuristicas
         self._ontologia = ontologia
+        self._resumen = resumen
+        self._enunciacion = enunciacion
         self._genre = genre
 
         if genre is not None and "judge" in genre.batch_size:
@@ -78,6 +85,8 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
             tipo_discurso=self._tipo_discurso,
             heuristicas=self._heuristicas,
             ontologia=self._ontologia,
+            resumen=self._resumen,
+            enunciacion=self._enunciacion,
         )
 
     def _build_user(self, batch: pd.DataFrame) -> str:
@@ -85,27 +94,29 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
         for i, (_, row) in enumerate(batch.iterrows()):
             codigo = str(row.get("codigo", ""))
             frase = str(row.get("frase", ""))
-            experienciador = str(row.get("experienciador", ""))
-            tipo_emocion = str(row.get("tipo_emocion", ""))
-            modo = str(row.get("modo_existencia", ""))
-            foria = str(row.get("foria", ""))
-            dominancia = str(row.get("dominancia", ""))
-            intensidad = str(row.get("intensidad", ""))
-            fuente = str(row.get("fuente_inferencia", ""))
+            prev = str(row.get("ventana_previa", "") or "")
+            post = str(row.get("ventana_posterior", "") or "")
+            actantes = str(row.get("actantes_texto", "") or "")
 
-            bloques.append(
-                f"UNIDAD [{i}] (codigo={codigo}):\n"
-                f"  Frase de origen: {frase}\n"
-                f"  EMOCIÓN DETECTADA:\n"
-                f"    Experienciador:  {experienciador}\n"
-                f"    Tipo:            {tipo_emocion}\n"
-                f"    Modo existencia: {modo}\n"
-                f"  CARACTERIZACIÓN A JUZGAR:\n"
-                f"    Foria:       {foria}\n"
-                f"    Dominancia:  {dominancia}\n"
-                f"    Intensidad:  {intensidad}\n"
-                f"    Fuente:      {fuente}"
+            bloque = [
+                f"UNIDAD [{i}] (codigo={codigo}):",
+            ]
+            if prev:
+                bloque.append(f"  Contexto previo:\n{prev}")
+            bloque.append(f"  FRASE OBJETIVO: {frase}")
+            if post:
+                bloque.append(f"  Contexto posterior:\n{post}")
+            bloque.append(
+                "  SIMULACRO A REVISAR:\n"
+                f"    Experienciador: {row.get('experienciador', '')}\n"
+                f"    Emoción:        {row.get('tipo_emocion', '')}\n"
+                f"    Modo:           {row.get('modo_existencia', '')}\n"
+                f"    Fuente:         {row.get('fuente_inferencia', '')}\n"
+                f"    Temporalidad:   {row.get('temporalidad', '')}"
             )
+            if actantes:
+                bloque.append(f"  ACTANTES:\n{actantes}")
+            bloques.append("\n".join(bloque))
         unidades_block = "\n\n".join(bloques)
         return prompts.render_user(unidades_block=unidades_block)
 
@@ -119,4 +130,5 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
             "coherente": j.coherente,
             "issues": j.issues,
             "confianza": j.confianza,
+            "sugerencias": [s.model_dump() for s in j.sugerencias],
         }

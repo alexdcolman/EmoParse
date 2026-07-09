@@ -180,7 +180,7 @@ class TestRoundTrip:
         repo = MetricsRepository(db)
         repo.insert(
             "test-run",
-            "explode_emociones",
+            "explode_emotions",
             StageMetricsSnapshot(n_items_ok=10),
         )
         rows = repo.list_for_run("test-run")

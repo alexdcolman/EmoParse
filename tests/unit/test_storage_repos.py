@@ -222,7 +222,7 @@ class TestEmociones:
         f_repo.upsert_frase("A", 0, "frase con dos emociones")
         return db
 
-    def test_explode_emociones(self, emos_setup: Database) -> None:
+    def test_explode_emotions(self, emos_setup: Database) -> None:
         repo = EmocionesRepository(emos_setup)
         repo.upsert_emociones([
             {

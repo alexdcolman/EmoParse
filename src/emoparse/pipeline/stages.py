@@ -17,8 +17,10 @@ from loguru import logger
 from emoparse.agents.actors import ActorsAgent
 from emoparse.agents.actants import ACTANTS_COMPONENTS, ActantsAgent
 from emoparse.agents.deixis import DeixisAgent
+from emoparse.agents.modalidad import ModalidadAgent
 from emoparse.core.text import canonical_slug
 from emoparse.pipeline.deixis import is_deictic, resolve_deictic_to_enunciador
+from emoparse.pipeline.modalidad_nlp import ModalidadNLP
 from emoparse.pipeline.contracts import (
     DiscursoInputContract,
     EmocionExplodedContract,
@@ -420,6 +422,16 @@ def _format_enunciatarios(raw: Any) -> str:
     return "; ".join(nombres)
 
 
+def _resumen_global(summ: dict | None, limit: int = 1500) -> str:
+    """Resumen global del discurso (payload `summarizer`), truncado.
+
+    Se inyecta como contexto de fondo en los prompts de emociones (pase 1 y 2).
+    Vacío si no hay resumen: el template lo omite (`{% if resumen %}`).
+    """
+    r = str((summ or {}).get("resumen_global") or "").strip()
+    return r[:limit] + "..." if len(r) > limit else r
+
+
 class EmotionsStage(_FraseStage):
     NAME = "emotions"
     STAGE_KEY = "emociones"
@@ -453,6 +465,7 @@ class EmotionsStage(_FraseStage):
         """Construye EmotionsAgent con ontología y heurísticas."""
         meta = self._d_repo.get_payload(codigo, "metadata") or {}
         enun = self._d_repo.get_payload(codigo, "enunciation") or {}
+        summ = self._d_repo.get_payload(codigo, "summarizer") or {}
         return EmotionsAgent(
             self._backend,
             ontologia=self._ontologia,
@@ -462,6 +475,8 @@ class EmotionsStage(_FraseStage):
             tipo_discurso=str(meta.get("tipo_discurso", "")),
             enunciador=str(enun.get("enunciador", "")),
             enunciatarios=_format_enunciatarios(enun.get("enunciatarios")),
+            auditorio=_format_enunciatarios(enun.get("auditorio")),
+            resumen=_resumen_global(summ),
             emotion_scope=self._emotion_scope,
             retry_config=self._retry_config,
             genre=self._genre,
@@ -507,10 +522,10 @@ class EmotionsStage(_FraseStage):
 #  Etapa de explosión de emociones detectadas en la tabla `emociones`
 # ══════════════════════════════════════════════════════════════════════════════
 
-class ExplodeEmocionesStage(Stage):
+class ExplodeEmotionsStage(Stage):
     """Explota emociones detectadas a la tabla `emociones`."""
 
-    NAME = "explode_emociones"
+    NAME = "explode_emotions"
 
     def __init__(
         self,
@@ -647,7 +662,7 @@ def _extract_enunciation_referentes(
 class DeixisStage(Stage):
     """Resuelve marcas deícticas a referentes concretos del discurso (vía LLM).
 
-    Corre después de `explode_emociones` (necesita la base de marcas). Para
+    Corre después de `explode_emotions` (necesita la base de marcas). Para
     cada discurso con marcas deícticas no resueltas: toma el enunciador, el
     auditorio y los colectivos del payload de enunciation, le pide al LLM la
     asignación (posiblemente múltiple) y la persiste como propuestas
@@ -791,6 +806,207 @@ class DeixisStage(Stage):
         for _ in range(linked):
             self.metrics.record_item_ok()
         return linked
+
+
+class ModalidadStage(Stage):
+    """Clasifica la MODALIDAD REFERENCIAL de cada vínculo marca→referente.
+
+    Corre después de deixis/coref (necesita los vínculos en `mencion_canonico`).
+    Pre-pass NLP (spaCy) para los casos claros (pronombres/verbos → referencia
+    gramatical; nombres propios → designación); LLM solo para los ambiguos (SN de
+    nombre común, que puede ser designación o identificación inferencial).
+    Persiste `modalidad`, `naturaleza` y `modalidad_origin` ('nlp'|'llm') por
+    vínculo. Opt-in. Si `use_llm=False` o no hay backend, corre NLP-only y
+    persiste el guess tentativo del NLP.
+    """
+
+    NAME = "modalidad"
+    MARCAS_PER_CALL = 8
+    _RESUMEN_CHAR_LIMIT = 1500
+    _VALID_MOD = {
+        "designacion", "referencia_gramatical", "identificacion_inferencial",
+    }
+    _VALID_NAT = {"persona", "colectivo", "institucion", "objeto_proceso", "otro"}
+
+    def __init__(
+        self,
+        discursos_repo: DiscursosRepository,
+        menciones_repo: MencionesRepository,
+        backend: LLMBackend | None = None,
+        use_llm: bool = True,
+        nlp_model: str | None = None,
+        agent_version: str | None = None,
+        retry_config: RetryConfig | None = None,
+        genre: Genre | None = None,
+        marcas_per_call: int | None = None,
+    ) -> None:
+        super().__init__()
+        self.validate_contracts = False
+        self._d_repo = discursos_repo
+        self._m_repo = menciones_repo
+        self._backend = backend
+        self._use_llm = bool(use_llm) and backend is not None
+        self._version = agent_version
+        self._retry_config = retry_config
+        self._genre = genre
+        self._nlp = ModalidadNLP(nlp_model)
+        n = marcas_per_call
+        if n is None and genre is not None:
+            n = genre.batch_size.get("modalidad")
+        self._marcas_per_call = max(1, int(n)) if n else self.MARCAS_PER_CALL
+
+    def run_pending(self) -> int:
+        total = 0
+        for codigo in self._d_repo.list_codigos():
+            total += self._classify_for_codigo(codigo)
+        logger.info(f"[Stage:{self.NAME}] {total} vínculos clasificados.")
+        return total
+
+    def _resumen_for(self, codigo: str) -> str:
+        summ = self._d_repo.get_payload(codigo, "summarizer") or {}
+        resumen = str(summ.get("resumen_global") or "").strip()
+        if not resumen:
+            inp = self._d_repo.get_input(codigo) or {}
+            resumen = str(inp.get("contenido") or "").strip()
+        if len(resumen) > self._RESUMEN_CHAR_LIMIT:
+            resumen = resumen[: self._RESUMEN_CHAR_LIMIT] + "..."
+        return resumen
+
+    def _classify_for_codigo(self, codigo: str) -> int:
+        links = self._m_repo.list_links_for_modalidad(codigo)
+        if not links:
+            return 0
+
+        nlp_guess: dict[tuple[int, str], Any] = {}
+        ambiguous: list[dict[str, Any]] = []
+        done = 0
+        for lk in links:
+            g = self._nlp.classify(str(lk["marca"]), str(lk.get("frase") or ""))
+            key = (int(lk["mencion_id"]), str(lk["canonical_id"]))
+            nlp_guess[key] = g
+            if g.confident:
+                self._m_repo.set_modalidad(
+                    key[0], key[1], g.modalidad, g.naturaleza, "nlp"
+                )
+                done += 1
+                self.metrics.record_item_ok()
+            else:
+                ambiguous.append(lk)
+
+        if not ambiguous:
+            return done
+
+        if not self._use_llm:
+            for lk in ambiguous:
+                key = (int(lk["mencion_id"]), str(lk["canonical_id"]))
+                g = nlp_guess[key]
+                self._m_repo.set_modalidad(
+                    key[0], key[1], g.modalidad, g.naturaleza, "nlp"
+                )
+                done += 1
+                self.metrics.record_item_ok()
+            return done
+
+        return done + self._classify_llm(codigo, ambiguous, nlp_guess)
+
+    def _classify_llm(
+        self,
+        codigo: str,
+        ambiguous: list[dict[str, Any]],
+        nlp_guess: dict[tuple[int, str], Any],
+    ) -> int:
+        # Índice (marca_lower, canonical) → [mencion_id] para el match-back.
+        index: dict[tuple[str, str], list[int]] = {}
+        for lk in ambiguous:
+            k = (str(lk["marca"]).strip().lower(), str(lk["canonical_id"]))
+            index.setdefault(k, []).append(int(lk["mencion_id"]))
+
+        # Ítems únicos (marca, referente, frase) para el prompt.
+        seen: set[tuple[str, str]] = set()
+        items: list[dict[str, Any]] = []
+        for lk in ambiguous:
+            k = (str(lk["marca"]).strip().lower(), str(lk["canonical_id"]))
+            if k in seen:
+                continue
+            seen.add(k)
+            items.append(lk)
+
+        n = self._marcas_per_call
+        rows = [
+            {
+                "codigo": codigo,
+                "vinculos": "\n".join(
+                    f'- marca: "{c["marca"]}" · referente: {c["canonical_id"]} '
+                    f'· frase: "{str(c.get("frase") or "").strip()}"'
+                    for c in items[i:i + n]
+                ),
+            }
+            for i in range(0, len(items), n)
+        ]
+        agent = ModalidadAgent(
+            self._backend,
+            resumen=self._resumen_for(codigo),
+            retry_config=self._retry_config,
+            genre=self._genre,
+        )
+        try:
+            df_out = agent.run(pd.DataFrame(rows))
+        except Exception as e:
+            logger.error(f"[Stage:{self.NAME}] {codigo}: error LLM: {e}")
+            df_out = pd.DataFrame()
+
+        clasif: list[Any] = []
+        for raw in df_out.get("modalidad", []) if not df_out.empty else []:
+            if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+                continue
+            try:
+                parsed = json.loads(raw)
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if isinstance(parsed, list):
+                clasif.extend(parsed)
+
+        resolved: set[tuple[int, str]] = set()
+        done = 0
+        for c in clasif:
+            if not isinstance(c, dict):
+                continue
+            marca = str(c.get("marca", "")).strip().lower()
+            ref_raw = str(c.get("referente", "")).strip()
+            mod = str(c.get("modalidad", "")).strip()
+            nat = str(c.get("naturaleza", "")).strip()
+            mod = mod if mod in self._VALID_MOD else None
+            nat = nat if nat in self._VALID_NAT else None
+            # Match-back: por (marca, canonical). El referente vuelve como el
+            # slug que le pasamos; por robustez probamos también su slug.
+            for cand in (ref_raw, canonical_slug(ref_raw)):
+                mids = index.get((marca, cand))
+                if mids:
+                    canonical = cand
+                    break
+            else:
+                # Si la marca es única entre los ambiguos, resolvés igual.
+                marca_keys = [k for k in index if k[0] == marca]
+                if len(marca_keys) == 1:
+                    canonical = marca_keys[0][1]
+                    mids = index[marca_keys[0]]
+                else:
+                    continue
+            for mid in mids:
+                self._m_repo.set_modalidad(mid, canonical, mod, nat, "llm")
+                resolved.add((mid, canonical))
+                done += 1
+                self.metrics.record_item_ok()
+
+        # Ambiguos que el LLM no resolvió → fallback al guess del NLP.
+        for lk in ambiguous:
+            key = (int(lk["mencion_id"]), str(lk["canonical_id"]))
+            if key in resolved:
+                continue
+            g = nlp_guess[key]
+            self._m_repo.set_modalidad(key[0], key[1], g.modalidad, g.naturaleza, "nlp")
+            done += 1
+        return done
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -950,6 +1166,10 @@ class CharacterizerStage(Stage):
         all_emociones = self._e_repo.list_emociones_of_discurso(codigo)
         index = {(e["frase_idx"], e["emocion_idx"]): e for e in all_emociones}
 
+        exp_map = self._e_repo.resolve_canonico_map(
+            codigo, "experienciador", "experienciador_marca"
+        )
+        fte_map = self._e_repo.resolve_canonico_map(codigo, "fuente", "fuente_marca")
         rows: list[dict[str, Any]] = []
         for frase_idx, emo_idx in items:
             emo = index.get((frase_idx, emo_idx))
@@ -957,7 +1177,8 @@ class CharacterizerStage(Stage):
                 continue
             frase_text = self._f_repo.get_frase(codigo, frase_idx) or ""
             row = {**emo, "frase": frase_text}
-            row["experienciador"] = _effective_experiencer(emo)
+            row["experienciador"] = _effective_experiencer(emo, exp_map)
+            row["fuente_inferencia"] = _effective_fuente(emo, fte_map)
             rows.append(row)
         return pd.DataFrame(rows)
 
@@ -977,6 +1198,10 @@ class CharacterizerStage(Stage):
             "duracion_justificacion": row.get("duracion_justificacion"),
             "tipo_atribucion": row.get("tipo_atribucion"),
             "tipo_atribucion_justificacion": row.get("tipo_atribucion_justificacion"),
+            "temporalidad": row.get("temporalidad"),
+            "temporalidad_justificacion": row.get("temporalidad_justificacion"),
+            "aspecto": row.get("aspecto"),
+            "aspecto_justificacion": row.get("aspecto_justificacion"),
         }
 
 
@@ -1054,6 +1279,7 @@ class EmotionsPass2Stage(Stage):
 
             meta = self._d_repo.get_payload(codigo, "metadata") or {}
             enun = self._d_repo.get_payload(codigo, "enunciation") or {}
+            summ = self._d_repo.get_payload(codigo, "summarizer") or {}
             agent = EmotionsAgentPass2(
                 self._backend,
                 ontologia=self._ontologia,
@@ -1063,6 +1289,8 @@ class EmotionsPass2Stage(Stage):
                 tipo_discurso=str(meta.get("tipo_discurso", "")),
                 enunciador=str(enun.get("enunciador", "")),
                 enunciatarios=_format_enunciatarios(enun.get("enunciatarios")),
+                auditorio=_format_enunciatarios(enun.get("auditorio")),
+                resumen=_resumen_global(summ),
                 emotion_scope=self._emotion_scope,
                 context_mode=self._context_mode,
                 retry_config=self._retry_config,
@@ -1276,6 +1504,10 @@ class ActantsStage(Stage):
         all_emociones = self._e_repo.list_emociones_of_discurso(codigo)
         index = {(e["frase_idx"], e["emocion_idx"]): e for e in all_emociones}
 
+        exp_map = self._e_repo.resolve_canonico_map(
+            codigo, "experienciador", "experienciador_marca"
+        )
+        fte_map = self._e_repo.resolve_canonico_map(codigo, "fuente", "fuente_marca")
         rows: list[dict[str, Any]] = []
         for frase_idx, emo_idx in items:
             emo = index.get((frase_idx, emo_idx))
@@ -1283,7 +1515,8 @@ class ActantsStage(Stage):
                 continue
             frase_text = self._f_repo.get_frase(codigo, frase_idx) or ""
             row = {**emo, "frase": frase_text}
-            row["experienciador"] = _effective_experiencer(emo)
+            row["experienciador"] = _effective_experiencer(emo, exp_map)
+            row["fuente_inferencia"] = _effective_fuente(emo, fte_map)
             rows.append(row)
         return pd.DataFrame(rows)
 
@@ -1319,6 +1552,11 @@ class ActantsStage(Stage):
                 "funcion": row.get("operador_modificacion_funcion"),
                 "justificacion": row.get("operador_modificacion_justificacion"),
             },
+            "polaridad": {
+                "negada": bool(row.get("polaridad_negada")),
+                "tipo": row.get("polaridad_tipo"),
+                "justificacion": row.get("polaridad_justificacion"),
+            },
         }
 
 
@@ -1334,17 +1572,137 @@ def _none_if_nan(value: Any) -> Any:
     return value
 
 
-def _effective_experiencer(emo: dict[str, Any]) -> str:
+def _effective_experiencer(
+    emo: dict[str, Any],
+    canon_map: dict[tuple[int, int], list[str]] | None = None,
+) -> str:
     """Experienciador efectivo para las stages downstream.
 
-    Prefiere ``experienciador_canonico`` (no nulo SOLO cuando hubo aceptación
-    humana: commit de la revisión) y cae al crudo ``experienciador``. Así la
-    revisión humana propaga a characterizer/actants/judge sin que esas stages
-    conozcan la KB ni el overlay.
+    Orden de preferencia: (1) ``experienciador_canonico`` por emoción (commit de
+    la revisión o atribución por emoción); (2) el canónico resuelto desde las
+    marcas ↔ referentes (`canon_map`), que refleja las ediciones de la tab
+    Referentes; (3) el crudo ``experienciador``. Así la revisión humana propaga a
+    characterizer/actants/judge sin que esas stages conozcan la KB ni el overlay.
     """
     canon = emo.get("experienciador_canonico")
     canon = str(canon).strip() if canon is not None else ""
-    return canon or str(emo.get("experienciador", "") or "")
+    if canon:
+        return canon
+    resolved = _from_canon_map(emo, canon_map)
+    return resolved or str(emo.get("experienciador", "") or "")
+
+
+def _effective_fuente(
+    emo: dict[str, Any],
+    canon_map: dict[tuple[int, int], list[str]] | None = None,
+) -> str:
+    """Fuente efectiva para las stages downstream.
+
+    Orden de preferencia: (1) ``fuente_canonico`` por emoción; (2) el canónico
+    resuelto desde las marcas ↔ referentes (refleja la tab Referentes); (3) el
+    crudo ``fuente_inferencia``.
+    """
+    canon = emo.get("fuente_canonico")
+    canon = str(canon).strip() if canon is not None else ""
+    if canon:
+        return canon
+    resolved = _from_canon_map(emo, canon_map)
+    return resolved or str(emo.get("fuente_inferencia", "") or "")
+
+
+def _from_canon_map(
+    emo: dict[str, Any],
+    canon_map: dict[tuple[int, int], list[str]] | None,
+) -> str:
+    """Une los canónicos resueltos para la emoción, o '' si no hay."""
+    if not canon_map:
+        return ""
+    try:
+        key = (int(emo["frase_idx"]), int(emo["emocion_idx"]))
+    except (KeyError, TypeError, ValueError):
+        return ""
+    return "; ".join(canon_map.get(key, []))
+
+
+#: Radio de la ventana de frases (previas/posteriores) que recibe el juez.
+_JUDGE_WINDOW = 1
+
+
+def _parse_json_safe(raw: Any) -> dict[str, Any]:
+    """json.loads tolerante: devuelve {} ante nulo o error."""
+    if not raw:
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    try:
+        data = json.loads(raw)
+    except (json.JSONDecodeError, TypeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _resumen_global(summarizer_payload: dict[str, Any]) -> str:
+    """Extrae el resumen global del payload de summarizer (tolerante a claves)."""
+    if not isinstance(summarizer_payload, dict):
+        return ""
+    for k in ("resumen_global", "resumen", "global", "summary"):
+        v = summarizer_payload.get(k)
+        if isinstance(v, str) and v.strip():
+            return v.strip()
+    return ""
+
+
+def _format_enunciacion_for_judge(enun: dict[str, Any]) -> str:
+    """Bloque de contexto enunciativo para el system del juez.
+
+    Formatea SOLO enunciador y auditorio (los enunciatarios y colectivos se
+    omiten para acotar el contexto y las decisiones del juez).
+    """
+    if not isinstance(enun, dict) or not enun:
+        return ""
+    lines: list[str] = []
+    enunciador = enun.get("enunciador")
+    if isinstance(enunciador, dict) and enunciador.get("actor"):
+        lines.append(f"  Enunciador: {enunciador['actor']}")
+
+    def _names(items: Any, *keys: str) -> str:
+        out: list[str] = []
+        if isinstance(items, list):
+            for it in items:
+                if isinstance(it, dict):
+                    for k in keys:
+                        if it.get(k):
+                            out.append(str(it[k]))
+                            break
+        return "; ".join(out)
+
+    auditorio = _names(enun.get("auditorio"), "actor")
+    if auditorio:
+        lines.append(f"  Auditorio: {auditorio}")
+    return "\n".join(lines)
+
+
+def _format_actantes_for_judge(actantes: dict[str, Any]) -> str:
+    """Resumen compacto de los actantes presentes, para el prompt del juez."""
+    if not isinstance(actantes, dict) or not actantes:
+        return ""
+    lines: list[str] = []
+    for key in (
+        "mediador",
+        "verificador_normativo",
+        "verificador_observacional",
+        "operador_modificacion",
+    ):
+        sub = actantes.get(key)
+        if isinstance(sub, dict) and sub.get("presente"):
+            attr = sub.get("funcion") or sub.get("tipo") or ""
+            evalu = sub.get("evaluacion")
+            extra = f", evaluacion={evalu}" if evalu and evalu != "sin_evaluacion" else ""
+            lines.append(f"    {key}: {attr}{extra}")
+    pol = actantes.get("polaridad")
+    if isinstance(pol, dict):
+        lines.append(f"    polaridad: {pol.get('tipo', 'afirmada')}")
+    return "\n".join(lines)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1401,12 +1759,16 @@ class JudgeStage(Stage):
         for codigo, items in by_codigo.items():
             input_data = self._d_repo.get_input(codigo) or {}
             meta = self._d_repo.get_payload(codigo, "metadata") or {}
+            summ = self._d_repo.get_payload(codigo, "summarizer") or {}
+            enun = self._d_repo.get_payload(codigo, "enunciation") or {}
             agent = JudgeAgent(
                 self._backend,
                 titulo=str(input_data.get("titulo", "")),
                 tipo_discurso=str(meta.get("tipo_discurso", "")),
                 heuristicas=self._heuristicas,
                 ontologia=self._ontologia,
+                resumen=_resumen_global(summ) or None,
+                enunciacion=_format_enunciacion_for_judge(enun) or None,
                 retry_config=self._retry_config,
                 genre=self._genre,
             )
@@ -1437,11 +1799,13 @@ class JudgeStage(Stage):
                     )
                     self.metrics.record_item_failed()
                     continue
+                sug = row.get("sugerencias")
                 self._j_repo.set_judgment(
                     codigo, frase_idx, emo_idx,
                     coherente=bool(row["coherente"]),
                     issues=str(row["issues"]),
                     confianza=str(row["confianza"]),
+                    sugerencias=sug if isinstance(sug, list) else [],
                     version=self._version,
                 )
                 total_ok += 1
@@ -1458,7 +1822,11 @@ class JudgeStage(Stage):
         """Construye DataFrame con emociones y caracterización para juicio."""
         all_emociones = self._e_repo.list_emociones_of_discurso(codigo)
         index = {(e["frase_idx"], e["emocion_idx"]): e for e in all_emociones}
- 
+        exp_map = self._e_repo.resolve_canonico_map(
+            codigo, "experienciador", "experienciador_marca"
+        )
+        fte_map = self._e_repo.resolve_canonico_map(codigo, "fuente", "fuente_marca")
+
         rows: list[dict[str, Any]] = []
         for frase_idx, emo_idx in items:
             emo = index.get((frase_idx, emo_idx))
@@ -1473,21 +1841,41 @@ class JudgeStage(Stage):
                 continue
  
             frase_text = self._f_repo.get_frase(codigo, frase_idx) or ""
+            prev_ctx, post_ctx = self._frase_window(codigo, frase_idx)
+            actantes = _parse_json_safe(emo.get("actantes_payload"))
             rows.append({
                 **emo,
                 "frase": frase_text,
-                "experienciador": _effective_experiencer(emo),
-                "fuente_inferencia": carac.get("fuente_inferencia", ""),
-                # Campos de caracterización desempaquetados desde el JSON embebido.
-                "foria": carac.get("foria", ""),
-                "dominancia": carac.get("dominancia", ""),
-                "intensidad": carac.get("intensidad", ""),
-                "duracion": carac.get("duracion", ""),
-                "tipo_atribucion": carac.get("tipo_atribucion", ""),
+                "ventana_previa": prev_ctx,
+                "ventana_posterior": post_ctx,
+                "experienciador": _effective_experiencer(emo, exp_map),
+                "fuente_inferencia": _effective_fuente(emo, fte_map),
+                # Del characterizer, el juez solo revisa la temporalidad.
+                "temporalidad": carac.get("temporalidad", ""),
+                "actantes_texto": _format_actantes_for_judge(actantes),
             })
         df = pd.DataFrame(rows)
         self._validate(EmocionExplodedContract, df, "entrada")
         return df
+
+    def _frase_window(
+        self,
+        codigo: str,
+        frase_idx: int,
+        radius: int = _JUDGE_WINDOW,
+    ) -> tuple[str, str]:
+        """Texto de las frases previas y posteriores (ventana móvil)."""
+        prev_parts: list[str] = []
+        for j in range(frase_idx - radius, frase_idx):
+            txt = self._f_repo.get_frase(codigo, j)
+            if txt:
+                prev_parts.append(f"    [#{j}] {txt}")
+        post_parts: list[str] = []
+        for j in range(frase_idx + 1, frase_idx + radius + 1):
+            txt = self._f_repo.get_frase(codigo, j)
+            if txt:
+                post_parts.append(f"    [#{j}] {txt}")
+        return "\n".join(prev_parts), "\n".join(post_parts)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

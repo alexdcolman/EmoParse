@@ -23,7 +23,7 @@ StageName = Literal[
     "actors",
     "emotions",
     "emotions_pass2",
-    "explode_emociones",
+    "explode_emotions",
     "characterizer",
     "judge",
 ]

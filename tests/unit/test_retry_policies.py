@@ -241,9 +241,9 @@ class TestRetryPolicy:
         with pytest.raises(ValueError, match="no soportada"):
             RetryPolicy(stage="judge")
 
-    def test_explode_emociones_excluded(self) -> None:
+    def test_explode_emotions_excluded(self) -> None:
         with pytest.raises(ValueError, match="no soportada"):
-            RetryPolicy(stage="explode_emociones")
+            RetryPolicy(stage="explode_emotions")
 
     def test_invalid_target_rejected(self) -> None:
         with pytest.raises(ValueError):

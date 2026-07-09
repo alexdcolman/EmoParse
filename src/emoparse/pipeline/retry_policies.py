@@ -175,7 +175,7 @@ class RetryPolicy(BaseModel):
             raise ValueError(
                 f"Stage '{v}' no soportada por retry policies. "
                 f"Soportadas: {SUPPORTED_STAGES}. "
-                f"(judge y explode_emociones se excluyen a propósito.)"
+                f"(judge y explode_emotions se excluyen a propósito.)"
             )
         # Defensa adicional: que el nombre exista en el DAG canónico.
         if v not in EMOPARSE_DAG.names():

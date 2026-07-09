@@ -6,11 +6,27 @@
 
 from __future__ import annotations
 
+import unicodedata
 from typing import Optional
 
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+
+def _fold(s: object) -> str:
+    """minúsculas sin acentos, para comparar valores de vocabulario de forma robusta."""
+    txt = unicodedata.normalize("NFKD", str(s or ""))
+    return "".join(c for c in txt if not unicodedata.combining(c)).strip().lower()
+
+
+def _short_codigo(codigo: object, keep: int = 24) -> str:
+    """Comprime un código largo dejando inicio y fin (para ejes de barras/subplots)."""
+    c = str(codigo)
+    if len(c) <= keep:
+        return c
+    head = keep // 2 - 1
+    return f"{c[:head]}…{c[-head:]}"
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -131,14 +147,64 @@ def _empty_figure(msg: str = "Sin datos") -> go.Figure:
 #  1. Curva emocional frase a frase
 # ══════════════════════════════════════════════════════════════════════════════
 
+def _apply_relative_pos(df: pd.DataFrame, relativa: bool) -> pd.DataFrame:
+    """Convierte `posicion` a porcentaje del discurso (0–100) si `relativa`.
+
+    Usa `pos_max_discurso` (longitud real del discurso) cuando está disponible;
+    si no, cae al máximo observado dentro del propio discurso.
+    """
+    if not relativa or "posicion" not in df.columns:
+        return df
+    out = df.copy()
+    if "pos_max_discurso" in out.columns and out["pos_max_discurso"].notna().any():
+        denom = pd.to_numeric(out["pos_max_discurso"], errors="coerce")
+    else:
+        denom = out["posicion"]
+    denom = denom.where(denom > 0, other=pd.NA)
+    out["posicion"] = out["posicion"] / denom * 100.0
+    return out
+
+
+def _curva_hover(
+    df_emo: pd.DataFrame, emo: str, *, text_col: str, actor_col: str,
+    fuente_col: Optional[str], relativa: bool, prefix: str = "",
+) -> list[str]:
+    """Texto de tooltip de cada punto de la curva (actor/fuente canónicos + posición)."""
+    n = len(df_emo)
+    textos = df_emo[text_col] if text_col in df_emo.columns else pd.Series([""] * n)
+    actores = df_emo[actor_col] if actor_col in df_emo.columns else pd.Series(["?"] * n)
+    modos = df_emo["modo_existencia"] if "modo_existencia" in df_emo.columns else pd.Series(["?"] * n)
+    fuentes = (
+        df_emo[fuente_col] if fuente_col and fuente_col in df_emo.columns
+        else pd.Series([None] * n)
+    )
+    pos_fmt = (lambda p: f"{p:.0f}%") if relativa else (lambda p: f"{int(p)}")
+    out: list[str] = []
+    for p, a, m, f, t in zip(df_emo["posicion"], actores, modos, fuentes, textos):
+        linea_f = f"<br>Fuente: {f}" if f not in (None, "", "—") else ""
+        out.append(
+            f"<b>{emo}</b>{prefix}<br>Pos: {pos_fmt(p)}<br>Actor: {a}<br>"
+            f"Modo: {m}{linea_f}<br><i>{str(t)[:120]}…</i>"
+        )
+    return out
+
+
 def curva_emocional(
     df: pd.DataFrame,
     codigo: str,
     *,
     text_col: str = "frase",
     max_frases: int = 200,
+    actor_col: str = "experienciador",
+    fuente_col: Optional[str] = None,
+    posicion_relativa: bool = False,
 ) -> go.Figure:
-    """Scatter plot de emociones detectadas a lo largo de un discurso."""
+    """Scatter plot de emociones detectadas a lo largo de un discurso.
+
+    `actor_col`/`fuente_col` eligen qué columnas mostrar en el tooltip (p. ej. el
+    experienciador/fuente canónicos, o los crudos del LLM). `posicion_relativa`
+    normaliza el eje X a porcentaje del discurso.
+    """
     if "codigo" in df.columns:
         df_sel = df[df["codigo"] == codigo].copy()
     else:
@@ -151,6 +217,7 @@ def curva_emocional(
     if "posicion" not in df_sel.columns:
         return _empty_figure("Sin columna de posición (frase_idx)")
     df_sel = df_sel.dropna(subset=["posicion"]).sort_values("posicion").head(max_frases)
+    df_sel = _apply_relative_pos(df_sel, posicion_relativa)
 
     if df_sel.empty:
         return _empty_figure("Sin frases con posición válida")
@@ -164,21 +231,10 @@ def curva_emocional(
     for emo in emociones:
         df_emo = df_sel[df_sel["tipo_emocion"] == emo]
         color = emo_color(emo)
-        textos = df_emo[text_col] if text_col in df_emo.columns else pd.Series([""] * len(df_emo))
-        actores = (
-            df_emo["experienciador"]
-            if "experienciador" in df_emo.columns
-            else pd.Series(["?"] * len(df_emo))
+        hover_text = _curva_hover(
+            df_emo, emo, text_col=text_col, actor_col=actor_col,
+            fuente_col=fuente_col, relativa=posicion_relativa,
         )
-        modos = (
-            df_emo["modo_existencia"]
-            if "modo_existencia" in df_emo.columns
-            else pd.Series(["?"] * len(df_emo))
-        )
-        hover_text = [
-            f"<b>{emo}</b><br>Pos: {int(p)}<br>Actor: {a}<br>Modo: {m}<br><i>{str(t)[:120]}…</i>"
-            for p, a, m, t in zip(df_emo["posicion"], actores, modos, textos)
-        ]
         fig.add_trace(go.Scatter(
             x=df_emo["posicion"], y=[emo] * len(df_emo),
             mode="markers", name=emo,
@@ -189,9 +245,10 @@ def curva_emocional(
             hovertext=hover_text, hoverinfo="text",
         ))
 
+    xtitle = "Posición relativa (%)" if posicion_relativa else "Posición en el discurso"
     fig.update_layout(**_base_layout(
         title=dict(text=f"Trayectoria emocional · {codigo}", font=dict(color=ACCENT, size=13)),
-        xaxis_title="Posición en el discurso",
+        xaxis_title=xtitle,
         yaxis_title="Emoción",
         height=max(300, len(emociones) * 50 + 100),
     ))
@@ -204,8 +261,16 @@ def curva_emocional_comparada(
     *,
     text_col: str = "frase",
     max_frases: int = 200,
+    actor_col: str = "experienciador",
+    fuente_col: Optional[str] = None,
+    posicion_relativa: bool = False,
 ) -> go.Figure:
-    """Curva emocional comparada: un panel por discurso, eje X compartido."""
+    """Curva emocional comparada: un panel por discurso, eje X compartido.
+
+    En comparación, cada panel puede recibir un sub-DataFrame ya filtrado de forma
+    independiente (el llamador concatena los recortes por discurso). `actor_col`/
+    `fuente_col` y `posicion_relativa` se comportan igual que en `curva_emocional`.
+    """
     if not codigos:
         return _empty_figure("Sin discursos")
     if "codigo" not in df.columns:
@@ -214,8 +279,8 @@ def curva_emocional_comparada(
     n = len(codigos)
     fig = make_subplots(
         rows=n, cols=1, shared_xaxes=True,
-        subplot_titles=[f"· {c}" for c in codigos],
-        vertical_spacing=0.08,
+        subplot_titles=[f"· {_short_codigo(c)}" for c in codigos],
+        vertical_spacing=0.10,
     )
 
     df_all = df[df["codigo"].isin(codigos)].copy()
@@ -229,6 +294,7 @@ def curva_emocional_comparada(
     for row_idx, codigo in enumerate(codigos, start=1):
         df_sel = df_all[df_all["codigo"] == codigo]
         df_sel = df_sel.dropna(subset=["posicion"]).sort_values("posicion").head(max_frases)
+        df_sel = _apply_relative_pos(df_sel, posicion_relativa)
         if df_sel.empty:
             continue
 
@@ -237,16 +303,11 @@ def curva_emocional_comparada(
             if df_emo.empty:
                 continue
             color = emo_color(emo)
-            textos = df_emo[text_col] if text_col in df_emo.columns else pd.Series([""] * len(df_emo))
-            actores = (
-                df_emo["experienciador"]
-                if "experienciador" in df_emo.columns
-                else pd.Series(["?"] * len(df_emo))
+            hover = _curva_hover(
+                df_emo, emo, text_col=text_col, actor_col=actor_col,
+                fuente_col=fuente_col, relativa=posicion_relativa,
+                prefix=f"<br>{_short_codigo(codigo)}",
             )
-            hover = [
-                f"<b>{emo}</b><br>{codigo}<br>Pos: {int(p)}<br>Actor: {a}<br><i>{str(t)[:100]}…</i>"
-                for p, a, t in zip(df_emo["posicion"], actores, textos)
-            ]
             show_in_legend = emo not in seen_emos
             seen_emos.add(emo)
             fig.add_trace(
@@ -271,7 +332,7 @@ def curva_emocional_comparada(
             text=f"Curva emocional comparada · {len(codigos)} discursos",
             font=dict(color=ACCENT, size=13),
         ),
-        height=max(280, 220 * n + 60),
+        height=max(280, 240 * n + 60),
         margin=dict(l=10, r=10, t=60, b=10),
         legend=dict(
             bgcolor=SURFACE, bordercolor=BORDER, borderwidth=1,
@@ -279,8 +340,12 @@ def curva_emocional_comparada(
         ),
         hoverlabel=dict(bgcolor=SURFACE, bordercolor=BORDER, font=dict(family=FONT, size=11)),
     )
-    fig.update_xaxes(gridcolor=BORDER, zerolinecolor=BORDER, title_text="Posición")
+    xtitle = "Posición relativa (%)" if posicion_relativa else "Posición"
+    fig.update_xaxes(gridcolor=BORDER, zerolinecolor=BORDER, title_text=xtitle)
     fig.update_yaxes(gridcolor=BORDER, zerolinecolor=BORDER)
+    # Los títulos de subplot (códigos comprimidos) van más chicos para no saturar.
+    for ann in fig.layout.annotations:
+        ann.font = dict(size=10, color=TEXT_DIM, family=FONT)
     return fig
 
 
@@ -329,19 +394,22 @@ def heatmap_actor_emocion(
     top_actores: int = 12,
     top_emociones: int = 10,
     normalize: bool = True,
+    actor_col: str = "experienciador",
 ) -> go.Figure:
-    """Co-ocurrencia experienciador × tipo_emocion."""
-    if "experienciador" not in df.columns or "tipo_emocion" not in df.columns:
-        return _empty_figure("Faltan columnas 'experienciador' y/o 'tipo_emocion'")
+    """Co-ocurrencia actor × tipo_emocion. `actor_col` elige la columna de actor
+    (p. ej. el experienciador canónico o el crudo del LLM)."""
+    if actor_col not in df.columns or "tipo_emocion" not in df.columns:
+        return _empty_figure(f"Faltan columnas '{actor_col}' y/o 'tipo_emocion'")
 
-    top_act = df["experienciador"].value_counts().head(top_actores).index.tolist()
+    df = df[df[actor_col].astype(str).str.strip().replace("—", "") != ""]
+    top_act = df[actor_col].value_counts().head(top_actores).index.tolist()
     top_emo = df["tipo_emocion"].value_counts().head(top_emociones).index.tolist()
     if not top_act or not top_emo:
         return _empty_figure("Sin datos suficientes")
 
-    df_f = df[df["experienciador"].isin(top_act) & df["tipo_emocion"].isin(top_emo)]
+    df_f = df[df[actor_col].isin(top_act) & df["tipo_emocion"].isin(top_emo)]
     pivot = (
-        df_f.groupby(["experienciador", "tipo_emocion"])
+        df_f.groupby([actor_col, "tipo_emocion"])
         .size().unstack(fill_value=0)
         .reindex(index=top_act, columns=top_emo, fill_value=0)
     )
@@ -403,30 +471,35 @@ def perfil_comparado(
         pivot = pivot.div(pivot.sum(axis=1).replace(0, 1), axis=0)
 
     fig = go.Figure()
+    labels = [_short_codigo(c) for c in pivot.index]
+    full = list(pivot.index)
     for emocion in pivot.columns:
         color = emo_color(emocion)
         vals = pivot[emocion].tolist()
         fmt = [f"{v:.1%}" if normalize else str(int(v)) for v in vals]
         fig.add_trace(go.Bar(
-            name=emocion, x=pivot.index.tolist(), y=vals,
+            name=emocion, x=labels, y=vals,
             marker_color=color, marker_line=dict(color=BORDER, width=0.5),
             text=fmt, textposition="inside",
             textfont=dict(size=9, color="#ffffff"),
-            hovertemplate=f"<b>{emocion}</b><br>%{{x}}<br>%{{text}}<extra></extra>",
+            customdata=full,
+            hovertemplate=f"<b>{emocion}</b><br>%{{customdata}}<br>%{{text}}<extra></extra>",
         ))
 
     fig.update_layout(**_base_layout(
         title=dict(text="Perfil emocional comparado", font=dict(color=ACCENT, size=13)),
         barmode="stack",
-        xaxis=dict(tickangle=-20, gridcolor=BORDER),
+        xaxis=dict(tickangle=-20, gridcolor=BORDER, automargin=True,
+                   tickfont=dict(size=10)),
         yaxis=dict(
             gridcolor=BORDER,
             tickformat=".0%" if normalize else "",
             title="proporción" if normalize else "frecuencia",
         ),
-        height=420,
+        height=560,
+        bargap=0.35,
         legend=dict(
-            orientation="h", yanchor="bottom", y=-0.35,
+            orientation="h", yanchor="bottom", y=-0.28,
             xanchor="center", x=0.5,
             font=dict(size=10), bgcolor=SURFACE, bordercolor=BORDER,
         ),
@@ -512,7 +585,7 @@ def trayectoria_comparada(
             title="Emoción dominante", gridcolor=BORDER,
             categoryorder="array", categoryarray=sorted(all_emociones),
         ),
-        height=400,
+        height=560,
     ))
     return fig
 
@@ -576,7 +649,7 @@ def radar_discurso(
         paper_bgcolor=BG, font=dict(family=FONT, color=TEXT_DIM),
         title=dict(text="Radar emocional", font=dict(color=ACCENT, size=13)),
         legend=dict(bgcolor=SURFACE, bordercolor=BORDER, borderwidth=1),
-        height=460, margin=dict(l=40, r=40, t=60, b=40),
+        height=620, margin=dict(l=60, r=60, t=70, b=50),
         hoverlabel=dict(bgcolor=SURFACE, bordercolor=BORDER),
     )
     return fig
@@ -591,8 +664,9 @@ def scatter_foria_intensidad(
     codigo: Optional[str] = None,
     *,
     top_actores: int = 8,
+    actor_col: str = "experienciador",
 ) -> go.Figure:
-    """Scatter foria × intensidad, color por experienciador."""
+    """Scatter foria × intensidad, color por actor (`actor_col`)."""
     cols_req = {"foria", "intensidad", "tipo_emocion"}
     if not cols_req.issubset(df.columns):
         return _empty_figure(f"Faltan columnas: {cols_req - set(df.columns)}")
@@ -601,20 +675,30 @@ def scatter_foria_intensidad(
     if df_f.empty:
         return _empty_figure("Sin datos")
 
-    foria_map = {"eufórico": 1, "ambifórico": 0, "afórico": 0, "disfórico": -1, "indeterminado": None}
-    df_f["foria_num"] = df_f["foria"].map(foria_map)
+    # Mapas insensibles a acentos y tolerantes a los distintos vocabularios de la
+    # ontología (foria sin acentos; intensidad de 3 niveles baja/neutra/alta, o el
+    # esquema previo de 5). Sin esto, un desajuste de acentos dropea todas las filas.
+    foria_map = {
+        "euforico": 1, "ambiforico": 0, "aforico": 0,
+        "disforico": -1, "indeterminado": None,
+    }
+    df_f["foria_num"] = df_f["foria"].map(lambda v: foria_map.get(_fold(v)))
     df_f = df_f.dropna(subset=["foria_num"])
 
-    intens_map = {"muy baja": 1, "baja": 2, "media": 3, "alta": 4, "muy alta": 5}
-    df_f["intens_num"] = df_f["intensidad"].map(intens_map)
+    intens_map = {
+        "muy baja": 1, "baja": 2, "neutra_ambivalente": 3, "neutra ambivalente": 3,
+        "media": 3, "neutra": 3, "alta": 4, "muy alta": 5,
+    }
+    df_f["intens_num"] = df_f["intensidad"].map(lambda v: intens_map.get(_fold(v)))
     df_f = df_f.dropna(subset=["intens_num"])
 
     if df_f.empty:
         return _empty_figure("Sin datos de foria/intensidad válidos")
 
-    if "experienciador" in df_f.columns:
-        top_act = df_f["experienciador"].value_counts().head(top_actores).index.tolist()
-        df_f = df_f[df_f["experienciador"].isin(top_act)]
+    if actor_col in df_f.columns:
+        df_f = df_f[df_f[actor_col].astype(str).str.strip().replace("—", "") != ""]
+        top_act = df_f[actor_col].value_counts().head(top_actores).index.tolist()
+        df_f = df_f[df_f[actor_col].isin(top_act)]
 
     act_colors = [
         ACCENT, ACCENT2, "#6ec89a", "#c86e6e", "#9e7cc8",
@@ -623,7 +707,7 @@ def scatter_foria_intensidad(
 
     fig = go.Figure()
     actores = (
-        df_f["experienciador"].unique() if "experienciador" in df_f.columns else ["(todos)"]
+        df_f[actor_col].unique() if actor_col in df_f.columns else ["(todos)"]
     )
 
     import numpy as np
@@ -631,8 +715,8 @@ def scatter_foria_intensidad(
 
     for i, actor in enumerate(actores):
         df_act = (
-            df_f[df_f["experienciador"] == actor]
-            if "experienciador" in df_f.columns else df_f
+            df_f[df_f[actor_col] == actor]
+            if actor_col in df_f.columns else df_f
         )
         color = act_colors[i % len(act_colors)]
         jitter_x = df_act["foria_num"].values + (rng.random(len(df_act)) - 0.5) * 0.15
@@ -664,10 +748,11 @@ def scatter_foria_intensidad(
         ),
         yaxis=dict(
             title="Intensidad", range=[0.5, 5.5],
-            tickvals=[1, 2, 3, 4, 5], ticktext=INTENSIDAD_ORDER,
+            tickvals=[1, 2, 3, 4, 5],
+            ticktext=["muy baja", "baja", "neutra/media", "alta", "muy alta"],
             gridcolor=BORDER,
         ),
-        height=420,
+        height=440,
     ))
     return fig
 
@@ -697,6 +782,9 @@ def timeline_corpus(
             continue
         fecha_dt = df_disc["fecha_dt"].iloc[0]
         titulo = str(df_disc.get("discurso__titulo", pd.Series([codigo])).iloc[0])[:50]
+        enunciador = (
+            str(df_disc["enunciador"].iloc[0]) if "enunciador" in df_disc.columns else ""
+        )
         if emocion:
             total = len(df_disc)
             n_emo = (df_disc["tipo_emocion"] == emocion).sum()
@@ -710,7 +798,8 @@ def timeline_corpus(
             prop = counts.iloc[0] / counts.sum()
         puntos.append({
             "fecha": fecha_dt, "codigo": codigo,
-            "titulo": titulo, "emocion": label, "prop": prop,
+            "titulo": titulo, "enunciador": enunciador,
+            "emocion": label, "prop": prop,
         })
 
     if not puntos:
@@ -725,8 +814,13 @@ def timeline_corpus(
             mode="lines+markers",
             line=dict(color=color, width=2),
             marker=dict(color=color, size=8, line=dict(color=BORDER, width=1)),
+            customdata=df_plot[["codigo", "enunciador"]].values,
+            hovertemplate=(
+                "<b>%{text}</b><br>%{customdata[0]}<br>"
+                "Enunciador: %{customdata[1]}<br>%{x|%Y-%m-%d}<br>"
+                "Proporción: %{y:.1%}<extra></extra>"
+            ),
             text=df_plot["titulo"],
-            hovertemplate="<b>%{text}</b><br>%{x|%Y-%m-%d}<br>Proporción: %{y:.1%}<extra></extra>",
             name=emocion,
         ))
         titulo_fig = f"Evolución de '{emocion}' en el corpus"
@@ -742,8 +836,10 @@ def timeline_corpus(
                     line=dict(color=BORDER, width=1),
                 ),
                 text=df_emo["titulo"],
+                customdata=df_emo[["codigo", "enunciador"]].values,
                 hovertemplate=(
-                    "<b>%{text}</b><br>%{x|%Y-%m-%d}<br>"
+                    "<b>%{text}</b><br>%{customdata[0]}<br>"
+                    "Enunciador: %{customdata[1]}<br>%{x|%Y-%m-%d}<br>"
                     f"{emo}: %{{y:.1%}}<extra></extra>"
                 ),
             ))
@@ -766,11 +862,19 @@ def filtrar_por_canonicos(
     """Filtra un DataFrame de emociones por referentes canónicos.
 
     Pensado para los semas: el llamador obtiene el conjunto de canónicos que
-    tienen un sema dado y filtra las emociones cuyo experienciador canónico
-    pertenece a ese conjunto. Si la columna no existe o el conjunto está vacío,
-    devuelve el DataFrame sin cambios.
+    tienen un sema dado y filtra las emociones cuyo experienciador (o fuente)
+    canónico pertenece a ese conjunto. Soporta columnas escalares
+    (`experienciador_canonico`) y de lista (`experienciador_canonicos`): en el
+    segundo caso, conserva la fila si la intersección con `canonicos` no es vacía.
+    Si la columna no existe o el conjunto está vacío, devuelve el DF sin cambios.
     """
     canonicos = set(canonicos)
     if df.empty or not canonicos or col not in df.columns:
         return df
+    sample = df[col].dropna()
+    if not sample.empty and isinstance(sample.iloc[0], (list, tuple, set)):
+        mask = df[col].apply(
+            lambda v: bool(canonicos & set(v)) if isinstance(v, (list, tuple, set)) else False
+        )
+        return df[mask]
     return df[df[col].isin(canonicos)]

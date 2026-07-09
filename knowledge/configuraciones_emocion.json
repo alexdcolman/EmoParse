@@ -1,53 +1,53 @@
 {
-  "version": "v1",
+  "version": "v2",
   "configuraciones": {
     "sostenido_en_sustantivos": {
       "id": 1,
-      "definicion": "La emoción es portada principalmente por sustantivos que designan estados afectivos (ej. ira, dolor, esperanza, sorpresa), los cuales funcionan como núcleo semántico del sintagma emocional.",
-      "heuristica_deteccion": "Identificar sustantivos con valor emocional que operen como núcleo nominal del sintagma. Pueden aparecer con determinantes, modificadores o complementos, y también en estructuras predicativas o transitivas donde el sustantivo concentra la carga emocional.",
-      "ejemplos": ["la indignación de los presentes", "un profundo dolor", "la sorpresa colectiva ante el hecho"]
+      "definicion": "La emoción es portada principalmente por sustantivos pertenecientes a la familia léxica de una emoción (ira, dolor, esperanza, sorpresa), que funcionan como núcleo semántico del sintagma emocional.",
+      "heuristica_deteccion": "Identificar sustantivos con valor emocional que operen como núcleo nominal del sintagma (con determinantes, modificadores o complementos, o en estructuras predicativas/transitivas) y determinar por contexto el actor afectado.",
+      "ejemplos": ["la indignación de los presentes", "un profundo dolor", "su tristeza era evidente"]
     },
     "sostenido_en_adjetivos": {
       "id": 2,
-      "definicion": "La emoción se expresa mediante adjetivos evaluativos o afectivos que califican entidades, actores o situaciones, pudiendo aparecer en sintagmas nominales o construcciones copulativas.",
-      "heuristica_deteccion": "Detectar adjetivos con carga afectiva o evaluativa que atribuyan cualidades emocionales a un sustantivo o que funcionen como predicativo en estructuras con verbos copulativos.",
-      "ejemplos": ["una situación inquietante", "los testigos estaban nerviosos", "el ambiente era angustiante"]
+      "definicion": "La emoción se expresa mediante adjetivos pertenecientes a la familia léxica de una emoción, que califican entidades, actores o situaciones en sintagmas nominales o construcciones copulativas.",
+      "heuristica_deteccion": "Detectar adjetivos con carga afectiva que atribuyan cualidades emocionales a un sustantivo o funcionen como predicativo con verbos copulativos, y asociarlos correctamente al actor que experimenta la emoción.",
+      "ejemplos": ["una situación inquietante", "los testigos estaban nerviosos", "estaba ansioso ante la noticia"]
     },
     "ordenado_alrededor_de_verbos_psicologicos": {
       "id": 3,
-      "definicion": "La emoción se estructura alrededor de verbos psicológicos que expresan estados o procesos afectivos, donde la fuente y el experienciador pueden variar según la construcción sintáctica.",
-      "heuristica_deteccion": "Identificar verbos que designan procesos emocionales o cognitivos con carga afectiva (enojar, preocupar, sorprender, temer), observando su transitividad, reflexividad o estructura pasiva.",
-      "ejemplos": ["el informe preocupó a los analistas", "los manifestantes se enojaron", "la noticia sorprendió al equipo"]
+      "definicion": "La emoción se estructura alrededor de verbos psicológicos que designan procesos o estados afectivos (temer, alegrarse, lamentar), donde la fuente y el experienciador pueden variar según la construcción sintáctica.",
+      "heuristica_deteccion": "Identificar verbos psicológicos observando su transitividad, reflexividad o estructura pasiva, e inferir la emoción a partir de la conjugación y el sujeto del verbo.",
+      "ejemplos": ["el informe preocupó a los analistas", "los manifestantes se enojaron", "lamentó la pérdida de su amigo"]
     },
     "cualificacion_por_indicadores_cognitivos": {
       "id": 4,
       "definicion": "La emoción se infiere a partir de procesos cognitivos o epistémicos (atención, duda, certeza, evaluación) que activan estados afectivos asociados sin nombrarlos explícitamente.",
-      "heuristica_deteccion": "Buscar expresiones de procesos mentales, evaluativos o epistémicos que impliquen cambios en la atención, la certeza o la valoración, así como resultados cognitivos que sugieran resolución o tensión afectiva.",
-      "ejemplos": ["tendió a concentrar la atención en el problema", "pudo despejar sus dudas", "consideró improbable la hipótesis"]
+      "heuristica_deteccion": "Buscar juicios, evaluaciones o procesos mentales que impliquen cambios en la atención, la certeza o la valoración, y que activen marcos cognitivos asociados a un estado afectivo, aunque la emoción no se mencione directamente.",
+      "ejemplos": ["tendió a concentrar la atención en el problema", "no podía soportar la injusticia", "consideró improbable la hipótesis"]
     },
     "cualificacion_por_indicadores_comportamiento": {
       "id": 5,
       "definicion": "La emoción se sostiene en comportamientos, gestos, acciones o actitudes que funcionan como manifestaciones externas típicas de un estado afectivo inferible.",
-      "heuristica_deteccion": "Identificar verbos de acción o descripciones conductuales que representen reacciones físicas, discursivas o situacionales asociables convencionalmente a estados emocionales.",
-      "ejemplos": ["levantó la voz en señal de protesta", "evitó el contacto visual", "advirtió con tono alarmado la situación"]
+      "heuristica_deteccion": "Identificar verbos de acción o descripciones conductuales (gestos, posturas, actitudes) que representen reacciones físicas o discursivas convencionalmente asociables a estados emocionales.",
+      "ejemplos": ["levantó la voz en señal de protesta", "evitó el contacto visual", "se tapó la cara y comenzó a llorar"]
     },
     "cualificacion_por_indicadores_axiologicos": {
       "id": 6,
       "definicion": "La emoción se construye a partir de estructuras valorativas que organizan el discurso en términos de deseabilidad, legitimidad o rechazo, activando disposiciones afectivas implícitas.",
-      "heuristica_deteccion": "Detectar juicios de valor explícitos o implícitos, oposiciones axiológicas, recursos argumentativos o polifónicos que organicen el discurso en términos de valores y contravalores.",
-      "ejemplos": ["una medida injusta y arbitraria", "la defensa de los derechos laborales", "la condena unánime del accionar represivo"]
+      "heuristica_deteccion": "Detectar juicios de valor explícitos o implícitos y oposiciones axiológicas (lo deseable/indeseable, legítimo/ilegítimo) que organicen el discurso en términos de valores y contravalores.",
+      "ejemplos": ["una medida injusta y arbitraria", "rechazaron la propuesta injusta", "la condena unánime del accionar represivo"]
     },
     "cualificacion_por_componentes_descriptivo_narrativos": {
       "id": 7,
       "definicion": "La emoción se infiere a partir de la escenificación de situaciones, eventos o narrativas que activan convenciones socioculturales asociadas a determinados estados afectivos.",
-      "heuristica_deteccion": "Analizar descripciones o secuencias narrativas que representen escenarios de amenaza, conflicto, tensión o alivio, donde la emoción emerge de la situación representada más que de marcas léxicas explícitas.",
-      "ejemplos": ["los agentes irrumpieron durante la madrugada en el edificio", "se escuchaban rumores de detenciones inminentes", "la ciudad permanecía bajo vigilancia constante"]
+      "heuristica_deteccion": "Analizar descripciones o secuencias narrativas de escenarios de amenaza, conflicto, tensión o alivio, donde la emoción emerge de la situación representada más que de marcas léxicas explícitas.",
+      "ejemplos": ["los agentes irrumpieron durante la madrugada en el edificio", "el incendio devoró todo el vecindario mientras ellos huían despavoridamente"]
     },
     "transposicion_situacion_reconocimiento_potencial": {
       "id": 8,
       "definicion": "La emoción se sostiene en la proyección del discurso como situación de reconocimiento afectivo potencial, donde el enunciatario reconstruye la emoción a partir de su propia lectura e incorporación enunciativa.",
-      "heuristica_deteccion": "Identificar construcciones impersonales, axiológicas o situacionales que activan un campo interpretativo donde el lector proyecta una respuesta emocional al reconocer la situación descrita.",
-      "ejemplos": ["es necesario trabajar con documentos sensibles", "la situación exige cautela", "resulta evidente la gravedad del contexto"]
+      "heuristica_deteccion": "Identificar construcciones impersonales, axiológicas o situacionales que activan un campo interpretativo donde el lector proyecta una respuesta emocional al reconocer la situación descrita, sin que ninguna marca léxica o conductual la determine con claridad.",
+      "ejemplos": ["la situación exige cautela", "resulta evidente la gravedad del contexto"]
     }
   }
 }

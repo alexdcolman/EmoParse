@@ -130,6 +130,7 @@ class LlamaCppBackend(LLMBackend):
         seed: int | None = None,
         stop: list[str] | None = None,
         reset_before: bool = False,
+        max_items: int | None = None,
     ) -> LLMResponse:
         # Reset opcional del KV-cache antes de resolver parámetros y
         # construir prompts.
@@ -152,8 +153,11 @@ class LlamaCppBackend(LLMBackend):
             messages.append({"role": "system", "content": sys_content})
         messages.append({"role": "user", "content": user})
 
-        # Resolver gramática (si hay schema).
-        grammar = self._get_grammar(schema) if schema is not None else None
+        # Resolver gramática (si hay schema). `max_items` acota el array
+        # top-level de los schemas de batch al tamaño real del batch.
+        grammar = (
+            self._get_grammar(schema, max_items) if schema is not None else None
+        )
 
         kwargs: dict[str, Any] = {
             "messages": messages,
@@ -241,16 +245,24 @@ class LlamaCppBackend(LLMBackend):
 
     # ── Cache de gramáticas compiladas ───────────────────────────────────────
 
-    def _get_grammar(self, schema: type[BaseModel]) -> LlamaGrammar:
-        """Devuelve (o compila) la gramática GBNF para `schema`."""
+    def _get_grammar(
+        self,
+        schema: type[BaseModel],
+        max_items: int | None = None,
+    ) -> LlamaGrammar:
+        """Devuelve (o compila) la gramática GBNF para `schema`.
+
+        `max_items` (tamaño del batch) forma parte de la clave de caché: cada
+        tamaño produce una gramática con el array top-level acotado a ese número.
+        """
         from llama_cpp import LlamaGrammar
 
-        key = f"{schema.__module__}.{schema.__qualname__}"
+        key = f"{schema.__module__}.{schema.__qualname__}|n={max_items}"
         cached = self._grammar_cache.get(key)
         if cached is not None:
             return cached
         try:
-            gbnf = schema_to_gbnf(schema)
+            gbnf = schema_to_gbnf(schema, max_items=max_items)
         except GrammarError as e:
             raise SchemaViolationError(
                 f"Schema {schema.__name__} no se puede traducir a GBNF: {e}"

@@ -67,6 +67,14 @@ class RunsRepository:
 
     # ── Migraciones additive ─────────────────────────────────────────────────
 
+    def ensure_migrations(self) -> None:
+        """Aplica las migraciones aditivas sobre una DB existente (idempotente).
+
+        Útil para comandos post-hoc que operan sobre un run ya creado (p. ej.
+        `emoparse modalidad`) y necesitan columnas nuevas sin re-bootstrapear.
+        """
+        self._apply_additive_migrations()
+
     def _apply_additive_migrations(self) -> None:
         """Agrega columnas nuevas a tablas preexistentes.
 
@@ -100,6 +108,21 @@ class RunsRepository:
             type_def="TEXT",
         )
         self._add_column_if_missing(
+            table="mencion_canonico",
+            column="modalidad",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="mencion_canonico",
+            column="naturaleza",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="mencion_canonico",
+            column="modalidad_origin",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
             table="emociones",
             column="tipo_emocion_canonico",
             type_def="TEXT",
@@ -112,6 +135,11 @@ class RunsRepository:
         self._add_column_if_missing(
             table="emociones",
             column="experienciador_canonico",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="emociones",
+            column="fuente_canonico",
             type_def="TEXT",
         )
         self._add_column_if_missing(
@@ -132,6 +160,11 @@ class RunsRepository:
         self._add_column_if_missing(
             table="emociones",
             column="actantes_error",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="judgments",
+            column="sugerencias",
             type_def="TEXT",
         )
 

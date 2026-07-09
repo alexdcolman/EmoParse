@@ -36,6 +36,10 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
         "duracion_justificacion",
         "tipo_atribucion",
         "tipo_atribucion_justificacion",
+        "temporalidad",
+        "temporalidad_justificacion",
+        "aspecto",
+        "aspecto_justificacion",
     )
     BATCH_SIZE = 5
 
@@ -121,4 +125,8 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
             "duracion_justificacion": c.duracion_justificacion,
             "tipo_atribucion": c.tipo_atribucion,
             "tipo_atribucion_justificacion": c.tipo_atribucion_justificacion,
+            "temporalidad": c.temporalidad,
+            "temporalidad_justificacion": c.temporalidad_justificacion,
+            "aspecto": c.aspecto,
+            "aspecto_justificacion": c.aspecto_justificacion,
         }

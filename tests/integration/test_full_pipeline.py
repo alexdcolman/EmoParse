@@ -159,7 +159,7 @@ def runner(tmp_path: Path):
     all_stages = (
         "summarizer", "metadata", "enunciation", "actors",
         "emotions", "emotions_pass2",
-        "explode_emociones", "normalize_emotions",
+        "explode_emotions", "normalize_emotions",
         "characterizer", "actants", "judge",
     )
 

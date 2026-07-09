@@ -17,6 +17,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 from emoparse.pipeline.deixis import is_first_person_deictic
@@ -27,6 +28,15 @@ from emoparse.core.text import canonical_slug
 _DESCONOCIDO = frozenset({
     "", "no identificado", "no_identificado", "no identificada",
     "no se identifica", "no_se_identifica", "ninguno", "ninguna", "?",
+})
+
+#: Separadores de coordinación: comas y conjunciones (y/e/o/u) como palabra.
+_CONJ_RE = re.compile(r"\s*(?:,|\by\b|\be\b|\bo\b|\bu\b)\s*", re.IGNORECASE)
+#: Detecta si hay al menos una conjunción coordinante (señal de enumeración).
+_HAS_CONJ_RE = re.compile(r"\b(?:y|e|o|u)\b", re.IGNORECASE)
+#: Segmentos triviales (solo artículo/determinante) que no son entidad.
+_ARTICULOS = frozenset({
+    "el", "la", "los", "las", "un", "una", "unos", "unas", "lo", "su", "sus",
 })
 
 
@@ -40,7 +50,33 @@ def _es_desconocido(s: str) -> bool:
     return s.lower() in _DESCONOCIDO
 
 
-def _acumular(
+def _split_coordinacion(text: str) -> list[str]:
+    """Parte una marca/inferencia coordinada en sus entidades singulares.
+
+    Conservador: SOLO parte si hay una conjunción coordinante (y/e/o/u); así no
+    corta comas apositivas ("Milei, el presidente"). Descarta segmentos triviales
+    (solo artículo) y deduplica. Si no hay enumeración clara, devuelve [text].
+
+    Ej.: "los socialistas y el estatismo" → ["los socialistas", "el estatismo"].
+    Ej.: "la academia, los organismos internacionales, la política y la teoría
+    económica" → los 4 sintagmas. Ej.: "paz y prosperidad" → ["paz", "prosperidad"].
+    """
+    t = _norm(text)
+    if not t or not _HAS_CONJ_RE.search(t):
+        return [t] if t else []
+    parts = [p.strip() for p in _CONJ_RE.split(t) if p and p.strip()]
+    parts = [p for p in parts if len(p) >= 3 and p.lower() not in _ARTICULOS]
+    seen: set[str] = set()
+    out: list[str] = []
+    for p in parts:
+        k = p.lower()
+        if k not in seen:
+            seen.add(k)
+            out.append(p)
+    return out if len(out) >= 2 else [t]
+
+
+def _acumular_single(
     acc: dict[tuple[int, str], dict[str, Any]],
     *,
     unit_idx: int,
@@ -48,12 +84,7 @@ def _acumular(
     funcion: str,
     inferencia: str,
 ) -> None:
-    """Acumula una marca deduplicada por (unit_idx, marca).
-
-    Una marca repetida (misma unidad) colapsa en una sola mención; sus
-    funciones se acumulan. La inferencia (y el canónico propuesto) la fija la
-    primera aparición con referente conocido.
-    """
+    """Acumula UNA marca (ya singular) deduplicada por (unit_idx, marca)."""
     marca = _norm(marca)
     if not marca:
         return
@@ -76,6 +107,41 @@ def _acumular(
             entry["llm_inferencia"] = inferencia
             entry["canonical_proposed"] = canonical_slug(inferencia)
     entry["funciones"].add(funcion)
+
+
+def _acumular(
+    acc: dict[tuple[int, str], dict[str, Any]],
+    *,
+    unit_idx: int,
+    marca: str,
+    funcion: str,
+    inferencia: str,
+) -> None:
+    """Acumula una marca; si es una coordinación, la parte en entidades singulares.
+
+    Fix determinístico de casos compuestos que el modelo no separó ("los
+    socialistas y el estatismo" → dos menciones). Alinea la inferencia con la
+    marca si tienen la misma cantidad de partes; si no, deriva el canónico de
+    cada sub-marca. La emoción conserva su `fuente_marca`/`experienciador_marca`
+    compuesta original: el resolver por contención la mapea a los sub-referentes.
+    """
+    marca = _norm(marca)
+    if not marca:
+        return
+    m_parts = _split_coordinacion(marca)
+    if len(m_parts) <= 1:
+        _acumular_single(
+            acc, unit_idx=unit_idx, marca=marca, funcion=funcion,
+            inferencia=inferencia,
+        )
+        return
+    i_parts = _split_coordinacion(_norm(inferencia))
+    aligned = i_parts if len(i_parts) == len(m_parts) else None
+    for idx, mp in enumerate(m_parts):
+        _acumular_single(
+            acc, unit_idx=unit_idx, marca=mp, funcion=funcion,
+            inferencia=aligned[idx] if aligned else mp,
+        )
 
 
 def acumular_actores(
@@ -432,6 +498,46 @@ class MencionesRepository:
                 (now, mencion_id, canonical_id),
             )
 
+    def repoint_deixis_in_discurso(
+        self,
+        codigo: str,
+        deixis_tipo: str,
+        new_canonical: str,
+        old_canonical: str | None = None,
+    ) -> int:
+        """Repunta vínculos deícticos de un tipo dentro de un discurso.
+
+        Si `old_canonical` se indica, mueve solo esos vínculos (renombre). Si no,
+        mueve TODOS los vínculos de ese tipo del discurso al referente concreto
+        (caso del referente único: enunciador, o auditorio/colectivo único).
+        Resuelve colisiones. Devuelve cuántos movió.
+        """
+        new = canonical_slug(new_canonical)
+        if not new:
+            return 0
+        old = canonical_slug(old_canonical) if old_canonical else None
+        if old is not None and (old == new or not old):
+            return 0
+        if old is not None:
+            src, src_params = "AND canonical_id = ?", [old]
+        else:
+            src, src_params = "AND canonical_id != ?", [new]
+        with self._db.transaction() as cur:
+            cur.execute(
+                f"DELETE FROM mencion_canonico WHERE deixis_tipo = ? {src} "
+                "AND mencion_id IN (SELECT id FROM menciones WHERE codigo = ?) "
+                "AND mencion_id IN ("
+                "  SELECT mencion_id FROM mencion_canonico WHERE canonical_id = ?)",
+                [deixis_tipo, *src_params, codigo, new],
+            )
+            cur.execute(
+                f"UPDATE mencion_canonico SET canonical_id = ? "
+                f"WHERE deixis_tipo = ? {src} "
+                "AND mencion_id IN (SELECT id FROM menciones WHERE codigo = ?)",
+                [new, deixis_tipo, *src_params, codigo],
+            )
+            return cur.rowcount
+
     def propose_kb_equivalences(
         self,
         codigo: str,
@@ -491,6 +597,74 @@ class MencionesRepository:
                 "WHERE mencion_id = ? AND canonical_id = ?",
                 (status, datetime.now(timezone.utc), mencion_id, canonical_id),
             )
+
+    def bulk_set_status(
+        self, pairs: list[tuple[int, str]], status: str
+    ) -> int:
+        """Acepta/rechaza en lote una lista de vínculos (mencion_id, canonical_id)."""
+        from datetime import datetime, timezone
+        if not pairs:
+            return 0
+        now = datetime.now(timezone.utc)
+        with self._db.transaction() as cur:
+            cur.executemany(
+                "UPDATE mencion_canonico SET status = ?, reviewed_at = ? "
+                "WHERE mencion_id = ? AND canonical_id = ?",
+                [(status, now, mid, cid) for mid, cid in pairs],
+            )
+        return len(pairs)
+
+    # ── Modalidad referencial (stage `modalidad`) ────────────────────────────
+
+    def list_links_for_modalidad(self, codigo: str) -> list[dict[str, Any]]:
+        """Vínculos no rechazados de un discurso a clasificar por modalidad.
+
+        Devuelve, por vínculo: mencion_id, canonical_id, marca, frase (contexto).
+        """
+        with self._db.transaction() as cur:
+            rows = cur.execute(
+                "SELECT mc.mencion_id AS mencion_id, mc.canonical_id AS canonical_id, "
+                "       m.marca AS marca, f.frase AS frase "
+                "FROM mencion_canonico mc "
+                "JOIN menciones m ON m.id = mc.mencion_id "
+                "LEFT JOIN frases f ON f.codigo = m.codigo AND f.unit_idx = m.unit_idx "
+                "WHERE m.codigo = ? AND mc.status != 'rejected' "
+                "  AND mc.modalidad IS NULL "
+                "ORDER BY m.unit_idx, mc.mencion_id",
+                (codigo,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def set_modalidad(
+        self,
+        mencion_id: int,
+        canonical_id: str,
+        modalidad: str | None,
+        naturaleza: str | None,
+        origin: str,
+    ) -> None:
+        """Fija modalidad/naturaleza de un vínculo marca↔canónico.
+
+        `origin` indica la procedencia de la clasificación: 'nlp'|'llm'|'human'.
+        No pisa una clasificación humana con una automática.
+        """
+        with self._db.transaction() as cur:
+            if origin != "human":
+                # No sobrescribir lo revisado a mano.
+                cur.execute(
+                    "UPDATE mencion_canonico SET modalidad = ?, naturaleza = ?, "
+                    "    modalidad_origin = ? "
+                    "WHERE mencion_id = ? AND canonical_id = ? "
+                    "  AND (modalidad_origin IS NULL OR modalidad_origin != 'human')",
+                    (modalidad, naturaleza, origin, mencion_id, canonical_id),
+                )
+            else:
+                cur.execute(
+                    "UPDATE mencion_canonico SET modalidad = ?, naturaleza = ?, "
+                    "    modalidad_origin = 'human' "
+                    "WHERE mencion_id = ? AND canonical_id = ?",
+                    (modalidad, naturaleza, mencion_id, canonical_id),
+                )
 
     def add_human_link(self, mencion_id: int, canonical_id: str) -> None:
         """Agrega (o acepta) un vínculo creado por el analista."""
@@ -617,6 +791,18 @@ class MencionesRepository:
             "SELECT DISTINCT canonical_id FROM canonico_semas"
         ).fetchall()
         return {r["canonical_id"] for r in rows}
+
+    def reset_semas(self) -> int:
+        """Borra TODOS los semas de la DB (propuestos y editados a mano).
+
+        Uso: forzar un reproceso completo del stage `semas` (p. ej. tras un
+        cambio de vocabulario), sin distinguir origen. No hay vuelta atrás:
+        las decisiones humanas persistidas también se pierden. Devuelve la
+        cantidad de filas eliminadas.
+        """
+        with self._db.transaction() as cur:
+            cur.execute("DELETE FROM canonico_semas")
+            return cur.rowcount
 
     def accepted_referentes(self) -> list[dict[str, Any]]:
         """Referentes con ≥1 vínculo ACEPTADO, con clase inferida y display.

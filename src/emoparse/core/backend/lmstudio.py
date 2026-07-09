@@ -111,6 +111,7 @@ class LMStudioBackend(LLMBackend):
         seed: int | None = None,
         stop: list[str] | None = None,
         reset_before: bool = False,
+        max_items: int | None = None,
     ) -> LLMResponse:
         # reset_before es no-op: cada request HTTP es stateless; se mantiene en
         # la firma por compatibilidad.
@@ -143,7 +144,9 @@ class LMStudioBackend(LLMBackend):
 
         # Salida estructurada vía JSON Schema (modo estándar OpenAI).
         if schema is not None:
-            kwargs["response_format"] = self._make_response_format(schema)
+            kwargs["response_format"] = self._make_response_format(
+                schema, max_items=max_items
+            )
 
         # Inferencia.
         t_start = time.perf_counter()
@@ -218,15 +221,25 @@ class LMStudioBackend(LLMBackend):
     # ── Helpers ──────────────────────────────────────────────────────────────
 
     @staticmethod
-    def _make_response_format(schema: type[BaseModel]) -> dict[str, Any]:
+    def _make_response_format(
+        schema: type[BaseModel],
+        *,
+        max_items: int | None = None,
+    ) -> dict[str, Any]:
         """Construye response_format para API OpenAI/LM Studio.
-         
-        Usa json_schema y strict:true.
+
+        Usa json_schema y strict:true. Si `max_items` viene y el top-level es un
+        array (schema de batch), lo acota a EXACTAMENTE `max_items` elementos
+        para evitar que el modelo repita ítems indefinidamente.
         """
 
         json_schema = schema.model_json_schema()
         # Se agrega additionalProperties:false requerido por OpenAI strict mode.
         _add_strict_flags(json_schema)
+        if max_items is not None and json_schema.get("type") == "array":
+            n = max(1, int(max_items))
+            json_schema["minItems"] = n
+            json_schema["maxItems"] = n
 
         return {
             "type": "json_schema",

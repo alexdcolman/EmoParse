@@ -26,7 +26,7 @@ def render(db_path: Path) -> None:
     """
     st.markdown("### Comparación entre discursos")
 
-    df_em = data_layer.get_emociones(db_path)
+    df_em = data_layer.get_emociones_enriched(db_path)
     if df_em.empty or "codigo" not in df_em.columns:
         st.info("No hay emociones cargadas para este run.")
         return

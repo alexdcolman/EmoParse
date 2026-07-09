@@ -127,13 +127,13 @@ models:
       path: ${EMOPARSE_MODELS_DIR:-models}/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf
       context_length: 8192
       n_gpu_layers: -1
-      temperature: 0.7        # non-thinking preset (coherente con no_think: true)
+      temperature: 0.3        # non-thinking preset (coherente con no_think: true)
       top_p: 0.8              # non-thinking preset
       top_k: 20
       min_p: 0.0
       no_think: true
-      presence_penalty: 0.0   # lo dejamos en 0: no toca reproducibilidad ni sesga el JSON
-      max_tokens: 6144        # subido de 4096; con n_ctx=8192 deja ~2048 para el prompt
+      presence_penalty: 0.0   # se deja en 0
+      max_tokens: 3072        
       seed: 42
 
 pipeline:
@@ -145,10 +145,11 @@ pipeline:
     emotions:               gemma4-31b
     emotions_pass2:         qwen3.6-35b-a3b
     deixis:                 gemma4-31b
+    modalidad:              gemma4-31b
     semas:                  gemma4-31b
     characterizer:          gemma4-31b
     actants:                gemma4-31b
-    judge:                  gemma4-31b
+    judge:                  qwen3.6-35b-a3b
   cache_enabled: true
   max_retries: 3
   retry_delays_seconds: [2, 8, 15]
@@ -161,10 +162,10 @@ paths:
   inputs_dir:    ${EMOPARSE_INPUTS_DIR:-data}
 
 versions:
-  knowledge: v7
-  prompt:    v19
-  ontology:  v8
-  schema:    v14
+  knowledge: v9
+  prompt:    v34
+  ontology:  v17
+  schema:    v26
 
 logging:
   level: INFO

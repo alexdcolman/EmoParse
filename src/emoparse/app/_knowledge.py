@@ -42,3 +42,56 @@ def semas_by_dimension() -> dict[str, list[str]]:
         if isinstance(info, dict):
             out[dim] = [str(v) for v in (info.get("valores") or [])]
     return out
+
+
+def semas_jerarquia() -> dict[str, Any]:
+    """Estructura declarada de las dimensiones (base / por_clase / opcionales)."""
+    jer = load_semas_vocab().get("jerarquia")
+    return jer if isinstance(jer, dict) else {}
+
+
+def semas_estructura(clase: str | None = None) -> list[tuple[str, list[str]]]:
+    """Dimensiones aplicables a `clase`, en orden jerárquico, con sus valores.
+
+    Combina las dimensiones base, las específicas de la clase actancial y las
+    generales. Excluye el valor `no_aplica` (marca de dimensión inaplicable).
+    Sin jerarquía declarada, devuelve todas las dimensiones en orden de
+    declaración.
+    """
+    by_dim = semas_by_dimension()
+
+    def _vals(dim: str) -> list[str]:
+        return [v for v in by_dim.get(dim, []) if v != "no_aplica"]
+
+    jer = semas_jerarquia()
+    if not jer:
+        return [(d, _vals(d)) for d in by_dim]
+
+    orden = list(jer.get("base") or [])
+    if clase:
+        orden += list((jer.get("por_clase") or {}).get(clase) or [])
+    orden += list(jer.get("opcionales") or [])
+
+    out: list[tuple[str, list[str]]] = []
+    seen: set[str] = set()
+    for dim in orden:
+        if dim in by_dim and dim not in seen:
+            seen.add(dim)
+            out.append((dim, _vals(dim)))
+    return out
+
+
+def colectivo_clases() -> list[str]:
+    """Clases de colectivo de identificación (unión sobre tipos de discurso)."""
+    path = _knowledge_dir() / "colectivos.json"
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    out: set[str] = set()
+    if isinstance(data, dict):
+        for tipo, clases in data.items():
+            if tipo == "version" or not isinstance(clases, dict):
+                continue
+            out.update(str(c) for c in clases)
+    return sorted(out)

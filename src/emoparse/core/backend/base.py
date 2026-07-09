@@ -102,6 +102,7 @@ class LLMBackend(ABC):
         seed: int | None = None,
         stop: list[str] | None = None,
         reset_before: bool = False,
+        max_items: int | None = None,
     ) -> LLMResponse:
         """Genera respuesta del LLM.
 
@@ -114,6 +115,10 @@ class LLMBackend(ABC):
             seed: Semilla del sampler.
             stop: Strings de corte.
             reset_before: Si True, llama a reset_state() antes de inferencia.
+            max_items: Si el schema es una lista de batch (RootModel[list[...]]),
+                acota la salida a EXACTAMENTE `max_items` elementos. Se usa para
+                pasar el tamaño real del batch y evitar que el modelo repita
+                ítems al infinito. Ignorado si el top-level del schema no es lista.
 
         Returns:
             LLMResponse con parsed o raw.
