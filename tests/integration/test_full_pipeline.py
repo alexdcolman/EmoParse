@@ -115,15 +115,33 @@ class _SchemaDrivenBackend(LLMBackend):
         schema: type[BaseModel] | None = None,
         max_tokens: int | None = None,
         temperature: float | None = None,
-        seed: int | None = None,
+        seed: int |None = None,
         stop: list[str] | None = None,
         reset_before: bool = False,
+        max_items: int | None = None,
     ) -> LLMResponse:
-        self.calls.append({"schema": getattr(schema, "__name__", None)})
+        self.calls.append(
+            {
+                "schema": getattr(schema, "__name__", None),
+                "max_items": max_items,
+            }
+        )
+
         if schema is None:
             parsed: Any = None
+        elif max_items is not None and issubclass(schema, RootModel):
+            inner = schema.model_fields["root"].annotation
+            origin = get_origin(inner)
+            if origin in (list, typing.List):
+                (item_type,) = get_args(inner)
+                parsed = schema(
+                    root=[_value_for(item_type) for _ in range(max_items)]
+                )
+            else:
+                parsed = _build_valid(schema)
         else:
             parsed = _build_valid(schema)
+
         return LLMResponse(
             parsed=parsed,
             raw="(fake)",
