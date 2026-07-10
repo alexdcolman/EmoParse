@@ -24,6 +24,10 @@ _VALID_FULL: dict = {
     "duracion_justificacion": "La emoción se sostiene a lo largo del párrafo.",
     "tipo_atribucion": "auto_atribucion",
     "tipo_atribucion_justificacion": "El enunciador se atribuye la emoción.",
+    "temporalidad": "contemporanea",
+    "temporalidad_justificacion": "La emoción se sitúa en el presente de la enunciación.",
+    "aspecto": "imperfectivo",
+    "aspecto_justificacion": "La emoción se presenta en curso.",
 }
 
 

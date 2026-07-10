@@ -63,6 +63,7 @@ class _MockBackend(LLMBackend):
         *,
         schema: type[T] | None = None,
         max_tokens: int | None = None,
+        max_items: int | None = None,
         temperature: float | None = None,
         seed: int | None = None,
         stop: list[str] | None = None,

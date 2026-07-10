@@ -25,6 +25,7 @@ from emoparse.core.schemas import (
     ListaActantesBatchSchema,
     MediadorSchema,
     OperadorModificacionSchema,
+    PolaridadSchema,
     VerificadorNormativoSchema,
     VerificadorObservacionalSchema,
 )
@@ -45,6 +46,7 @@ class _FakeBackend(LLMBackend):
         *,
         schema: type[T] | None = None,
         max_tokens: int | None = None,
+        max_items: int | None = None,
         temperature: float | None = None,
         seed: int | None = None,
         stop: list[str] | None = None,
@@ -89,6 +91,10 @@ def _full_actantes_response(unit_idx: int = 0) -> ActantesBatchItemSchema:
                 presente=True, descripcion="apelación",
                 funcion="activacion_emocional",
                 justificacion="Se busca generar la emoción.",
+            ),
+            polaridad=PolaridadSchema(
+                negada=False, tipo="afirmada",
+                justificacion="La emoción se predica positivamente.",
             ),
         ),
     )
@@ -215,9 +221,9 @@ class TestUserPrompt:
 
 class TestOutputMapping:
 
-    def test_output_columns_declara_los_17_campos(self) -> None:
-        # 4 del mediador, 5 de cada verificador (incluye evaluacion), 4 del op_mod = 18.
-        # Verificamos contra la lista explícita.
+    def test_output_columns_declara_los_21_campos(self) -> None:
+        # 4 del mediador, 5 de cada verificador (incluye evaluacion), 4 del
+        # op_mod, 3 de polaridad = 21. Verificamos contra la lista explícita.
         cols = set(ActantsAgent.OUTPUT_COLUMNS)
         expected = {
             "mediador_presente", "mediador_descripcion",
@@ -236,6 +242,9 @@ class TestOutputMapping:
             "operador_modificacion_descripcion",
             "operador_modificacion_funcion",
             "operador_modificacion_justificacion",
+            "polaridad_negada",
+            "polaridad_tipo",
+            "polaridad_justificacion",
         }
         assert cols == expected
 

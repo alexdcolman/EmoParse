@@ -17,6 +17,7 @@ from emoparse.core.schemas import (
     ListaActantesBatchSchema,
     MediadorSchema,
     OperadorModificacionSchema,
+    PolaridadSchema,
     VerificadorNormativoSchema,
     VerificadorObservacionalSchema,
 )
@@ -214,6 +215,10 @@ def _full_actantes(**overrides):
             funcion="activacion_emocional",
             justificacion="Se busca generar indignación.",
         ),
+        polaridad=PolaridadSchema(
+            negada=False, tipo="afirmada",
+            justificacion="La emoción se predica positivamente.",
+        ),
     )
     return base
 
@@ -240,6 +245,9 @@ class TestActantesEmocionSchema:
             ),
             operador_modificacion=OperadorModificacionSchema(
                 presente=False, funcion="ausente", justificacion="x",
+            ),
+            polaridad=PolaridadSchema(
+                negada=False, tipo="afirmada", justificacion="x",
             ),
         )
         assert a.mediador.presente is False
@@ -277,6 +285,9 @@ class TestActantesEmocionSchema:
                 ),
                 operador_modificacion=OperadorModificacionSchema(
                     presente=False, funcion="ausente", justificacion="x",
+                ),
+                polaridad=PolaridadSchema(
+                    negada=False, tipo="afirmada", justificacion="x",
                 ),
                 campo_extra="nope",
             )

@@ -1,7 +1,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
 #  tests.unit.test_emotions_agent
 #
-#  Específicos: que la ontología y heurísticas estén en el system,
+#  Específicos: que la ontología y configuraciones estén en el system,
 #  que los actores previos se inyecten correctamente en el user,
 #  que el output sea JSON list parseable.
 # ══════════════════════════════════════════════════════════════════════════════
@@ -38,6 +38,7 @@ class _FakeBackend(LLMBackend):
         *,
         schema: type[T] | None = None,
         max_tokens: int | None = None,
+        max_items: int | None = None,
         temperature: float | None = None,
         seed: int | None = None,
         stop: list[str] | None = None,
@@ -67,7 +68,13 @@ def _resp(items: list[EmocionesBatchItemSchema]) -> ListaEmocionesBatchSchema:
 
 class TestSystemPrompt:
 
-    def test_includes_ontology_and_heuristics(self) -> None:
+    def test_includes_ontology_and_configuraciones(self) -> None:
+        """`heuristicas` está deprecado: el template emotions_system.jinja2
+        ya no lo referencia en absoluto (ver docstring de
+        `emoparse.core.prompts.emotions.render_system`). Las heurísticas de
+        inferencia quedaron fusionadas dentro de `configuraciones`, que es
+        lo que realmente termina en el system prompt.
+        """
         backend = _FakeBackend([
             _resp([EmocionesBatchItemSchema(unit_idx=0, emociones=[])]),
         ])
@@ -75,6 +82,7 @@ class TestSystemPrompt:
             backend,
             ontologia="ONTOLOGIA_MARK",
             heuristicas="HEURISTICAS_MARK",
+            configuraciones="CONFIGURACIONES_MARK",
             titulo="T", tipo_discurso="td", enunciador="E",
         )
         df = pd.DataFrame([{"codigo": "A", "frase": "x"}])
@@ -82,7 +90,10 @@ class TestSystemPrompt:
 
         system = backend.calls[0]["system"]
         assert "ONTOLOGIA_MARK" in system
-        assert "HEURISTICAS_MARK" in system
+        assert "CONFIGURACIONES_MARK" in system
+        # El parámetro se acepta solo por compatibilidad con callers
+        # existentes, pero el template ya no lo inyecta en ningún lado.
+        assert "HEURISTICAS_MARK" not in system
 
 
 class TestUserPrompt:

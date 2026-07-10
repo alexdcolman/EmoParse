@@ -31,8 +31,10 @@ from emoparse.core.backend.base import LLMBackend, LLMResponse, TokenUsage
 from emoparse.core.schemas import (
     ActorSchema,
     ActoresBatchItemSchema,
+    AuditorioSchema,
     CaracterizacionBatchItemSchema,
     CaracterizacionEmocionSchema,
+    ColectivoIdentificacionSchema,
     EmocionesBatchItemSchema,
     EmocionSchema,
     EnunciacionSchema,
@@ -78,6 +80,7 @@ class _MockBackend(LLMBackend):
         *,
         schema: type[T] | None = None,
         max_tokens: int | None = None,
+        max_items: int | None = None,
         temperature: float | None = None,
         seed: int | None = None,
         stop: list[str] | None = None,
@@ -130,6 +133,17 @@ class _MockBackend(LLMBackend):
                         justificacion="j",
                     )
                 ],
+                # `auditorio` y `colectivos` son requeridos en EnunciacionSchema
+                # (sin default); sin ellos Pydantic tira ValidationError acá
+                # mismo y la stage lo atrapa como error por ítem, dando 0 ok.
+                auditorio=[
+                    AuditorioSchema(actor="los presentes", justificacion="j"),
+                ],
+                colectivos=[
+                    ColectivoIdentificacionSchema(
+                        clase="institucional", nombre="Gobierno", justificacion="j",
+                    ),
+                ],
             )
         if schema is ListaActoresBatchSchema:
             return ListaActoresBatchSchema(root=[
@@ -151,10 +165,14 @@ class _MockBackend(LLMBackend):
             return ListaSemasBatchSchema(root=[
                 SemasBatchItemSchema(
                     unit_idx=i,
-                    semas=[
-                        "sema_1",
-                        "sema_2",
-                    ],
+                    clase="actor",
+                    rol_enunciativo="nombrado",
+                    naturaleza_actor="humano",
+                    individuacion="individual",
+                    temporalidad="contemporaneidad",
+                    naturaleza_circunstante="no_aplica",
+                    naturaleza_cualidad="no_aplica",
+                    opcionales=[],
                 )
                 for i in range(5)
             ])
@@ -168,6 +186,8 @@ class _MockBackend(LLMBackend):
                         intensidad="alta",             intensidad_justificacion="j",
                         duracion="instantanea",        duracion_justificacion="j",
                         tipo_atribucion="auto_atribucion", tipo_atribucion_justificacion="j",
+                        temporalidad="contemporanea",  temporalidad_justificacion="j",
+                        aspecto="no_marcado",           aspecto_justificacion="j",
                     ),
                 ) for i in range(5)
             ])

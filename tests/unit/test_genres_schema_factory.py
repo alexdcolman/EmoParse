@@ -99,6 +99,8 @@ class TestEnunciacionDynamic:
                     "justificacion": "los menciona como adversarios",
                 },
             ],
+            "auditorio": [],
+            "colectivos": [],
         }
         instance = Model.model_validate(payload)
         assert len(instance.enunciatarios) == 2
@@ -137,6 +139,8 @@ class TestEnunciacionDynamic:
                     "justificacion": "usa 'familia'",
                 },
             ],
+            "auditorio": [],
+            "colectivos": [],
         }
         instance = Model.model_validate(payload)
         assert instance.enunciatarios[0].tipo == "seguidor"

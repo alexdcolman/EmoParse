@@ -37,6 +37,7 @@ class _FakeBackend(LLMBackend):
         *,
         schema: type[T] | None = None,
         max_tokens: int | None = None,
+        max_items: int | None = None,
         temperature: float | None = None,
         seed: int | None = None,
         stop: list[str] | None = None,
@@ -70,6 +71,10 @@ def _make_caracterizacion(**overrides: str) -> CaracterizacionEmocionSchema:
         "duracion_justificacion": "sin marcas de persistencia",
         "tipo_atribucion": "auto_atribucion",
         "tipo_atribucion_justificacion": "el hablante se atribuye la emoción en primera persona",
+        "temporalidad": "contemporanea",
+        "temporalidad_justificacion": "situada en el presente de la enunciación",
+        "aspecto": "perfectivo",
+        "aspecto_justificacion": "se presenta como un evento completo",
     }
     base.update(overrides)
     return CaracterizacionEmocionSchema(**base)  # type: ignore[arg-type]

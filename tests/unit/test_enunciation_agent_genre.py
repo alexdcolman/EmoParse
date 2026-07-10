@@ -79,6 +79,8 @@ class _FakeBackend(LLMBackend):
             "enunciatarios": [
                 {"actor": "A", "tipo": rol, "justificacion": "Z"},
             ],
+            "auditorio": [],
+            "colectivos": [],
         })
         return LLMResponse(
             parsed=payload,

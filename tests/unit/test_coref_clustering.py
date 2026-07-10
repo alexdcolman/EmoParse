@@ -40,25 +40,46 @@ class TestExactMatch:
 
 class TestTokenSubsetMatch:
 
-    def test_groups_milei_with_javier_milei(self) -> None:
-        """'Milei' y 'Javier Milei' comparten 'milei' → mismo cluster."""
+    def test_does_not_group_lone_surname_with_full_name(self) -> None:
+        """'Milei' (1 token) y 'Javier Milei' (2 tokens) NO se agrupan.
+
+        `_MIN_SUBSET_TOKENS = 2`: el conjunto de tokens contenido debe tener
+        al menos 2 tokens significativos para aceptar la fusión por
+        subconjunto. Un apellido suelto (1 token) es demasiado ambiguo
+        para fusionarse automáticamente, tal como documenta el docstring
+        de `cluster_mentions_within_discurso` ("Subconjuntos de un solo
+        token... no agrupa").
+        """
         actors_by_frase = _make(
             (0, [{"actor": "Javier Milei"}]),
             (1, [{"actor": "Milei"}]),
         )
         clusters = cluster_mentions_within_discurso(actors_by_frase)
-        assert len(clusters) == 1
-        assert clusters[0] == {(0, 0), (1, 0)}
+        assert len(clusters) == 2
 
-    def test_groups_three_variants_transitively(self) -> None:
-        """Milei ↔ Javier Milei ↔ Javier Gerardo Milei se agrupan."""
+    def test_groups_full_forms_but_not_lone_surname(self) -> None:
+        """De Milei / Javier Milei / Javier Gerardo Milei, las dos formas
+        con 2+ tokens se agrupan entre sí; el apellido suelto queda aparte."""
         actors_by_frase = _make(
             (0, [{"actor": "Milei"}]),
             (1, [{"actor": "Javier Milei"}]),
             (2, [{"actor": "Javier Gerardo Milei"}]),
         )
         clusters = cluster_mentions_within_discurso(actors_by_frase)
+        assert len(clusters) == 2
+        assert {(0, 0)} in clusters
+        assert {(1, 0), (2, 0)} in clusters
+
+    def test_groups_subset_with_at_least_two_shared_tokens(self) -> None:
+        """'presidente de la nación' y 'presidente de la nación argentina'
+        comparten un subconjunto de 2 tokens significativos → se agrupan."""
+        actors_by_frase = _make(
+            (0, [{"actor": "presidente de la nación"}]),
+            (1, [{"actor": "presidente de la nación argentina"}]),
+        )
+        clusters = cluster_mentions_within_discurso(actors_by_frase)
         assert len(clusters) == 1
+        assert clusters[0] == {(0, 0), (1, 0)}
 
 
 class TestConservativeDoesNotGroup:

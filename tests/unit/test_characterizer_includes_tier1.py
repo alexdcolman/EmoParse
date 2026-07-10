@@ -36,6 +36,7 @@ class _FakeBackend(LLMBackend):
         *,
         schema: type[T] | None = None,
         max_tokens: int | None = None,
+        max_items: int | None = None,
         temperature: float | None = None,
         seed: int | None = None,
         stop: list[str] | None = None,
@@ -68,6 +69,10 @@ def _make_carac(**overrides) -> CaracterizacionEmocionSchema:
         "duracion_justificacion": "jus dur",
         "tipo_atribucion": "auto_atribucion",
         "tipo_atribucion_justificacion": "jus atr",
+        "temporalidad": "contemporanea",
+        "temporalidad_justificacion": "jus temp",
+        "aspecto": "imperfectivo",
+        "aspecto_justificacion": "jus asp",
     }
     base.update(overrides)
     return CaracterizacionEmocionSchema(**base)

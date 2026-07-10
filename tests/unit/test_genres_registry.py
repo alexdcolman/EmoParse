@@ -119,9 +119,10 @@ class TestBuiltinDiscursoPresidencial:
         assert g.models == {}
         assert g.batch_size == {
             "actors": 1,
-            "normalize_actors": 5,
             "emotions": 1,
             "emotions_pass2": 1,
+            "deixis": 5,
+            "semas": 2,
             "characterizer": 1,
             "actants": 1,
             "judge": 1,

@@ -109,6 +109,8 @@ def politico_response() -> EnunciacionSchema:
                 justificacion="Promete cambios para convencer a los dudosos.",
             ),
         ],
+        auditorio=[],
+        colectivos=[],
     )
 
 
