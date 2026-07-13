@@ -73,6 +73,15 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
         help="Solo discursos con fecha <= esta.",
     )
     p.add_argument(
+        "--max-after-filter",
+        action="store_true",
+        help="Si se usa junto con --from/--to, --max cuenta discursos ya "
+             "filtrados por fecha (no el listado crudo del adapter). Por "
+             "defecto --max se pasa tal cual al adapter, que puede cortar "
+             "el listado antes de que se aplique el filtro de fechas, "
+             "dando menos resultados de los esperados.",
+    )
+    p.add_argument(
         "--mode",
         choices=("auto", "http", "selenium"),
         default="auto",
@@ -104,6 +113,22 @@ def run(args: argparse.Namespace) -> int:
         f"[scrape] source={args.source} output={args.output} "
         f"max={args.max} from={args.from_date} to={args.to_date} mode={args.mode}"
     )
+
+    # Si hay rango de fechas y se pidió --max-after-filter, --max debe
+    # contar discursos ya filtrados (los que realmente se van a extraer),
+    # no el listado crudo de URLs. Para eso no le pasamos el tope al
+    # adapter (que podría cortar el listado antes de aplicar el filtro
+    # de fechas) y dejamos que el loop de abajo corte usando n_extracted,
+    # que solo cuenta lo que pasó _date_in_range.
+    has_date_range = args.from_date is not None or args.to_date is not None
+    if has_date_range and args.max_after_filter:
+        max_items_for_listing = None
+        logger.debug(
+            "[scrape] --max-after-filter activo: no se limita el listado "
+            "crudo, --max se aplica sobre discursos ya filtrados por fecha."
+        )
+    else:
+        max_items_for_listing = args.max
 
     # Filtros aplicados post-fetch; la fuente puede no exponer fechas en el listado.
     def _date_in_range(record_fecha: str) -> bool:
@@ -142,7 +167,7 @@ def run(args: argparse.Namespace) -> int:
     try:
         with adapter:
             for url in adapter.list_discursos(
-                max_items=args.max,
+                max_items=max_items_for_listing,
                 from_date=args.from_date,
                 to_date=args.to_date,
             ):
