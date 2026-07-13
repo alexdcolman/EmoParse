@@ -38,6 +38,7 @@ EmoParse no hace análisis de sentimientos, sino que reconstruye el **simulacro 
 > (7) emociones sostenidas en formateos descriptivo-narrativos (“los policías irrumpieron a la madrugada en el edificio” → sorpresa, temor u otras según contexto narrativo), y
 > (8) emociones sostenidas en la transposición de una situación de reconocimiento potencial que induce una emoción al enunciatario (“resulta evidente la gravedad del contexto” → si imaginamos una situación donde alguien le dice esto a otras personas, podemos interpretar que intenta inducir preocupación).
 > De esta clasificación, realizada por el LLM, se deriva determinísticamente el modo de semiotización de la emoción, que puede ser “dicha”, si hay términos de emoción: casos (1), (2) y (3); “mostrada”, si es una emoción expresada sin ser dicha: casos (4), (5) y (6); o “sostenida”, si es una emoción que no es dicha ni expresada, pero igualmente puede inferirse de la construcción o escenificación de una determinada situación.
+
 > ² El marco combina la semiótica greimasiana y tensiva (Greimas, Fontanille, Zilberberg), la propuesta de Verón y el análisis de las emociones de Plantin y Micheli, entre otros. Técnicamente, el análisis lo realizan modelos de lenguaje (LLM) **locales**, por lo que nada de tu corpus sale de tu computadora.
 
 ## Antes de empezar: cómo conviene trabajar
@@ -67,7 +68,7 @@ Abrí `config.yaml` con cualquier editor de texto y ajustá la ruta del modelo (
 
 > ³ GGUF es un formato de modelos comprimidos ("cuantizados") que corren en una computadora personal vía `llama.cpp`. La generación usa "gramáticas GBNF". Esto significa que el modelo está *obligado* a responder en el formato estructurado que el sistema espera, y no puede divagar ni inventar campos.
 
-![config.yaml](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/.screenshots/1.png)
+![config.yaml](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/1.png)
 
 ## Paso 1 — Conseguir un corpus
 
@@ -80,7 +81,7 @@ emoparse scrape --source casarosada --max 5 --out data/discursos.csv
 
 **Opción B: tu propio corpus.** Un archivo CSV con dos columnas obligatorias — `codigo` (un identificador único por discurso) y `contenido` (el texto completo) — y opcionales como `titulo`, `fecha`, `lugar`. Podés armarlo en Excel o Google Sheets y guardar como CSV.
 
-![ejemplo de archivo CSV](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/.screenshots/2.png)
+![ejemplo de archivo CSV](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/2.png)
 
 ## Paso 2 — Correr el análisis
 
@@ -112,6 +113,7 @@ emoparse status --db runs/<nombre_de_tu_run>.sqlite
 ```
 
 > ⁴ Cada etapa es un modelo de IA con un prompt especializado y un esquema de salida estricto (Pydantic + GBNF). Todo se guarda en una base SQLite por corrida, con un cache que evita repetir trabajo: si volvés a correr una etapa que ya se ejecutó con la misma configuración, el sistema reusa la respuesta guardada en vez de volver a consultar el modelo.
+
 > ⁵ Para discurso político, usamos las categorías de Verón (1983): prodestinatario (el propio); paradestinatario (el indeciso a persuadir); contradestinatario (el adversario). La etapa `enunciation` identifica además el auditorio (el destinatario directo del discurso) y los colectivos con los que el enunciador se identifica ("los argentinos", un movimiento político, etc.); esto es la base sobre la que trabaja después la resolución de deixis.
 
 ## Paso 3 — Explorar los resultados
@@ -124,41 +126,41 @@ Se abre el dashboard en tu navegador, con una tab por cada clase de exploración
 
 - **📈 Curva emocional** — la trayectoria emocional del discurso: en qué partes se concentran ciertas emociones, filtrable según quiénes las experimentan, qué rasgos semánticos comparten esos experienciadores (por ejemplo, "+ víctima" o "+ victimario") — para eso hay que correr la etapa `semas` — y qué fuentes las originan. Por ejemplo, los discursos políticos suelen tener *arquitecturas* fóricas reconocibles: diagnóstico disfórico → resolución eufórica, etc.
 
-  ![Curva emocional](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/.screenshots/3.png)
+  ![Curva emocional](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/3.png)
 
 - **👥 Por actor** — el mapa de calor actor × emoción: ¿a quién se le suele atribuir el miedo? ¿quién es fuente de indignación? Acá se ve la *distribución pasional del trabajo político*: el adversario como fuente de disforia, el colectivo propio como experienciador de esperanza, etc. Al lado hay un scatter que cruza foria e intensidad por actor.
 
-  ![Heatmap actor x emoción](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/.screenshots/4.png)
+  ![Heatmap actor x emoción](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/4.png)
 
 - **🔎 Búsqueda** y **📋 Tabla** — exploración fina: todas las frases donde aparece determinada emoción, actor, palabra o frase, con su análisis completo. La tabla exporta a CSV.
 
-  ![Búsqueda](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/.screenshots/5.png)
+  ![Búsqueda](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/5.png)
 
 - **🔗 Co-ocurrencia** — qué emociones tienden a aparecer juntas en la misma frase. Una matriz de asociación y un ranking de pares: por ejemplo, puede aparecer que el desprecio y la indignación coexisten con frecuencia, lo que empieza a describir una gramática afectiva propia del corpus. Al seleccionar un par, el dashboard muestra las frases donde ambas emociones coexisten, con su análisis completo: siempre se puede bajar del patrón agregado a la frase concreta que lo sostiene.
 
-  ![Matriz de co-ocurrencias](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/.screenshots/6.png)
+  ![Matriz de co-ocurrencias](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/6.png)
 
 - **🎭 Simulacros** — la reconstrucción analítica de cada emoción con sus funciones actanciales principales y —si corriste actants— secundarias: experienciador, emoción, fuente, mediador, verificadores, operador de modificación.
 
-  ![Simulacros](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/.screenshots/7.png)
+  ![Simulacros](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/7.png)
 
 - **🧭 Deixis** — revisión, paginada, de las sugerencias de la etapa `deixis`: a qué referente concreto remite cada "yo", cada "nosotros", cada "ustedes" (también pronombres posesivos y verbos conjugados). Aceptás o rechazás cada propuesta, o asignás otro referente del discurso.
 
 - **↔ Comparar discursos** — perfil emocional, radar, trayectoria temporal y timeline de varios discursos: por ejemplo, dos momentos de una presidencia, dos oradores, antes y después de una crisis, dos situaciones de enunciación distintas.
 
-  ![Comparación de perfiles](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/.screenshots/8.png)
-  ![Radar](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/.screenshots/9.png)
-  ![Timeline](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/.screenshots/10.png)
+  ![Comparación de perfiles](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/8.png)
+  ![Radar](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/9.png)
+  ![Timeline](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/10.png)
 
 - **📝 Revisión** — acá hay una parte importante del corazón metodológico: el análisis del modelo es una *primera lectura sistemática*, no un veredicto. Esta tab deja revisar frase por frase, corregir experienciadores, fuentes o tipos, aceptar o rechazar las sugerencias del "juez" (un segundo modelo que audita al primero, si corriste esa etapa), y consolidar las decisiones. El criterio del analista siempre tiene la última palabra: cada corrección queda registrada aparte, sin borrar la lectura original del modelo.
 
-  ![Tarjeta de dos emociones en tab Revisión](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/.screenshots/11.png)
+  ![Tarjeta de dos emociones en tab Revisión](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/11.png)
 
 - **🔁 Estado del run** — el progreso de cada etapa, y algunas herramientas de triage: actores nuevos que aparecieron, experienciadores para consolidar, y un editor de la base de actores conocidos.
 
 - **🧩 Referentes** — todas las marcas del corpus agrupadas por el referente al que remiten, con herramientas para fusionar, corregir o descartar vínculos. Le dedicamos la sección siguiente porque es, en la práctica, donde más tiempo de trabajo humano se invierte.
 
-  ![Sugerencias de agrupación en tab Referentes](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/.screenshots/12.png)
+  ![Sugerencias de agrupación en tab Referentes](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/12.png)
 
 ## La unificación de referentes: por qué esto es trabajo artesanal
 
@@ -169,6 +171,7 @@ El sistema arma una primera versión de esta unificación de forma automática, 
 Ahí es donde entra el trabajo de revisión, en la tab **Referentes**. El dashboard te ofrece sugerencias de fusión (comparando qué tan parecidos son los nombres, y opcionalmente qué tan cercanos son en significado)⁷, pero la fusión final la hacés vos: elegís qué casos son en verdad la misma entidad y cuáles conviene mantener separados. Es trabajo artesanal porque no hay, por el momento, atajo que lo reemplace del todo, y cuanto más grande es el corpus, más tiempo lleva. Lo bueno es que no se pierde entre corridas: podés promover los referentes ya revisados a una base persistente, así que la próxima vez que analices un corpus parecido, buena parte de ese trabajo ya está hecho.
 
 > ⁶ Técnicamente, esto vive en la etapa `explode_emotions` y combina cuatro criterios: correferencia léxica conservadora, la inferencia dominante que hizo el propio LLM al detectar el actor, la resolución de deixis de primera persona hacia el enunciador, y coincidencia contra una base de referentes ya conocidos. Los nombres canónicos se arman descartando artículos.
+
 > ⁷ La herramienta de fusiones sugeridas compara solo referentes que comparten alguna palabra significativa (para no tener que comparar todos contra todos), mide similitud léxica, y opcionalmente similitud semántica vía *embeddings* (para captar sinónimos que no comparten palabras). El resultado son grupos candidatos que vos revisás y fusionás a mano, o descartás.
 
 ## Paso 4 — Profundizar (opcional)

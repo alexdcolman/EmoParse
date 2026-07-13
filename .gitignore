@@ -226,6 +226,5 @@ models/
 
 # Local developer-only data
 runs/
-data/
 exports/
 knowledge/actors_kb.json.bak*
