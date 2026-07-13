@@ -2033,3 +2033,216 @@ def get_enunciation_full(db_path: Path, codigo: str) -> dict[str, Any] | None:
         "auditorio": _as_json_list(payload.get("auditorio")),
         "colectivos": _as_json_list(payload.get("colectivos_identificacion")),
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Corpus de posts (género tuit): lectores para las tabs de tecnodiscurso
+# ══════════════════════════════════════════════════════════════════════════════
+
+def has_posts(db_path: Path) -> bool:
+    """True si el run contiene un corpus de posts (habilita las tabs tuit)."""
+    with _ro_connect(db_path) as conn:
+        row = conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='posts'"
+        ).fetchone()
+        if row is None:
+            return False
+        n = conn.execute("SELECT COUNT(*) FROM posts").fetchone()[0]
+        return int(n) > 0
+
+
+def get_posts(db_path: Path) -> pd.DataFrame:
+    """Posts del corpus con métricas desplegadas (metricas__likes, ...)."""
+    with _ro_connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM posts ORDER BY fecha, post_id"
+        ).fetchall()
+    if not rows:
+        return pd.DataFrame()
+    records = []
+    for row in rows:
+        rec = {k: row[k] for k in row.keys() if k not in ("metricas", "raw")}
+        rec.update(_unpack_json_dict(row["metricas"], prefix="metricas__"))
+        records.append(rec)
+    return pd.DataFrame(records)
+
+
+def get_hilos(db_path: Path, min_posts: int = 2) -> pd.DataFrame:
+    """Hilos del corpus (conversaciones con al menos `min_posts` posts)."""
+    with _ro_connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM hilos WHERE n_posts >= ? "
+            "ORDER BY n_posts DESC, conversacion_id",
+            (min_posts,),
+        ).fetchall()
+    df = pd.DataFrame([dict(r) for r in rows])
+    if not df.empty:
+        df["participantes"] = df["participantes"].map(_parse_json)
+    return df
+
+
+def get_posts_de_hilo(db_path: Path, conversacion_id: str) -> pd.DataFrame:
+    """Posts de una conversación en orden cronológico, con su foria dominante."""
+    with _ro_connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM posts WHERE conversacion_id = ? "
+            "ORDER BY fecha, post_id",
+            (conversacion_id,),
+        ).fetchall()
+        forias = _foria_dominante_map(conn)
+    if not rows:
+        return pd.DataFrame()
+    records = []
+    for row in rows:
+        rec = {k: row[k] for k in row.keys() if k not in ("metricas", "raw")}
+        rec["foria_dominante"] = forias.get(str(row["post_id"]))
+        rec["reframing"] = _parse_json(row["reframing_payload"])
+        records.append(rec)
+    return pd.DataFrame(records)
+
+
+def _foria_dominante_map(conn: sqlite3.Connection) -> dict[str, str]:
+    """Foria dominante por post desde la caracterización de sus emociones."""
+    try:
+        rows = conn.execute(
+            "SELECT codigo, caracterizacion_payload FROM emociones "
+            "WHERE caracterizacion_payload IS NOT NULL"
+        ).fetchall()
+    except sqlite3.OperationalError:
+        return {}
+    conteo: dict[str, dict[str, int]] = {}
+    for row in rows:
+        payload = _parse_json(row["caracterizacion_payload"])
+        if not isinstance(payload, dict):
+            continue
+        foria = str(payload.get("foria") or "indeterminado")
+        codigo = str(row["codigo"])
+        conteo.setdefault(codigo, {})
+        conteo[codigo][foria] = conteo[codigo].get(foria, 0) + 1
+    return {
+        codigo: max(forias, key=forias.get)  # type: ignore[arg-type]
+        for codigo, forias in conteo.items()
+    }
+
+
+def get_tecno_resumen(db_path: Path) -> pd.DataFrame:
+    """Conteo de tecno-entidades por tipo y valor normalizado."""
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT tipo, valor_norm, COUNT(*) AS n, "
+                "COUNT(DISTINCT codigo) AS n_posts "
+                "FROM tecno_entidades GROUP BY tipo, valor_norm "
+                "ORDER BY tipo, n DESC"
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return pd.DataFrame()
+    return pd.DataFrame([dict(r) for r in rows])
+
+
+def get_emojis_con_afecto(db_path: Path) -> pd.DataFrame:
+    """Usos de emoji con su afecto resuelto (léxico o LLM)."""
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT codigo, unit_idx, valor, extra FROM tecno_entidades "
+                "WHERE tipo = 'emoji'"
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return pd.DataFrame()
+    records = []
+    for row in rows:
+        extra = _parse_json(row["extra"]) or {}
+        afecto = extra.get("afecto") if isinstance(extra, dict) else None
+        records.append({
+            "codigo": row["codigo"],
+            "emoji": row["valor"],
+            "candidato": (afecto or {}).get("candidato"),
+            "foria": (afecto or {}).get("foria"),
+            "origin": (afecto or {}).get("origin"),
+        })
+    return pd.DataFrame(records)
+
+
+def get_hashtags_analizados(db_path: Path) -> pd.DataFrame:
+    """Hashtags con caracterización semiótica (y los pendientes, con n_usos)."""
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT valor_norm, n_usos, funcion, acoplamiento, "
+                "foria_entorno, justificacion, analisis_error "
+                "FROM hashtags ORDER BY n_usos DESC"
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return pd.DataFrame()
+    return pd.DataFrame([dict(r) for r in rows])
+
+
+def get_posts_con_hashtag(db_path: Path, valor_norm: str) -> pd.DataFrame:
+    """Posts que usan un hashtag (drill-down de la tab Hashtags)."""
+    with _ro_connect(db_path) as conn:
+        rows = conn.execute(
+            "SELECT DISTINCT p.post_id, p.autor_handle, p.texto, p.fecha "
+            "FROM tecno_entidades t JOIN posts p ON p.post_id = t.codigo "
+            "WHERE t.tipo = 'hashtag' AND t.valor_norm = ? "
+            "ORDER BY p.fecha",
+            (valor_norm,),
+        ).fetchall()
+    return pd.DataFrame([dict(r) for r in rows])
+
+
+def get_red_metricas(db_path: Path, grafo: str) -> pd.DataFrame:
+    """Métricas por nodo de un grafo persistido por `emoparse network`."""
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT * FROM red_metricas WHERE grafo = ? "
+                "ORDER BY pagerank DESC",
+                (grafo,),
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return pd.DataFrame()
+    return pd.DataFrame([dict(r) for r in rows])
+
+
+def get_red_aristas(db_path: Path, grafo: str) -> pd.DataFrame:
+    """Aristas de un grafo persistido."""
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT origen, destino, SUM(peso) AS peso FROM aristas "
+                "WHERE grafo = ? GROUP BY origen, destino",
+                (grafo,),
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return pd.DataFrame()
+    return pd.DataFrame([dict(r) for r in rows])
+
+
+def list_red_grafos(db_path: Path) -> list[str]:
+    """Grafos con aristas persistidas (vacío si `emoparse network` no corrió)."""
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT DISTINCT grafo FROM aristas ORDER BY grafo"
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return []
+    return [str(r["grafo"]) for r in rows]
+
+
+def get_media_of_post(db_path: Path, post_id: str) -> list[dict[str, Any]]:
+    """Adjuntos de un post con su descripción generada parseada."""
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT * FROM media WHERE post_id = ? ORDER BY id", (post_id,)
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return []
+    out = []
+    for r in rows:
+        d = dict(r)
+        d["descripcion_payload"] = _parse_json(d.get("descripcion_payload"))
+        out.append(d)
+    return out

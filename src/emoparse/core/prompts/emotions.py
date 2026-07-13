@@ -20,6 +20,7 @@ def render_system(
     alcance: str = "",
     heuristicas: str = "",
     resumen: str = "",
+    template: str = "emotions_system",
 ) -> str:
     """Renderiza el system prompt de EmotionsAgent.
 
@@ -42,9 +43,13 @@ def render_system(
             para evitar la duplicación de las 8 categorías en el prompt.
             Se mantiene el parámetro solo por compatibilidad con callers
             existentes; cualquier valor pasado acá se ignora.
+        template: Nombre del template Jinja2 del system prompt. Los géneros
+            pueden sustituirlo vía `Genre.prompt_overrides` (p. ej.
+            'emotions_system_tuit'). El template alternativo debe aceptar
+            las mismas variables que el default.
     """
     return render(
-        "emotions_system",
+        template,
         ontologia=ontologia,
         configuraciones=configuraciones,
         titulo=titulo,

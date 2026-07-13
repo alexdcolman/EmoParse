@@ -15,8 +15,8 @@ from pathlib import Path
 import pytest
 
 from emoparse.cli.commands import scrape_cmd
-from emoparse.scraping import SOURCES
-from emoparse.scraping.base import DiscursoRecord, SourceAdapter
+from emoparse.acquisition import SOURCES
+from emoparse.acquisition.base import DiscursoRecord, SourceAdapter
 
 
 class _FakeAdapter(SourceAdapter):

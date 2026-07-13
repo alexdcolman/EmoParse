@@ -24,7 +24,7 @@ def render(runs_dir: Path) -> Path | None:
             🧭 EmoParse
         </div>
         <div style='font-family:"DM Mono",monospace; font-size:0.7rem; color:#5a5d6e; margin-top:0.1rem;'>
-            v0.5.2 · análisis discursivo
+            v0.6.0 · análisis discursivo
         </div>
     </div>
     <hr style='border-color:#252730; margin: 0 0 1rem;'>

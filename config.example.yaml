@@ -16,7 +16,11 @@
 #  referencia desde `pipeline.stages` para asignar modelos a etapas.
 #
 #  Backends soportados:
-#  - llama_cpp: GGUFs locales, llama-cpp-python.
+#  - llama_cpp: GGUFs locales, llama-cpp-python (in-process).
+#  - llama_server: llama.cpp en modo servidor HTTP. Habilita continuous
+#    batching (varias requests en paralelo), reuso de KV-cache por prefijo,
+#    speculative decoding (--model-draft) y modelos multimodales (--mmproj).
+#    Usar `base_url` en lugar de `path`; el server se lanza aparte.
 #  - lmstudio: API OpenAI-compatible expuesta por LM Studio. En este caso, en
 #    lugar de `path`, usar `base_url`.
 # ──────────────────────────────────────────────────────────────────────────────
@@ -55,6 +59,20 @@ models:
   #   temperature: 0.0
   #   max_tokens: 2048
 
+  # Ejemplo con llama-server (descomentar si usás). Lanzar el server antes:
+  #   llama-server -m models/qwen3-14b-q4_k_m.gguf -ngl 99 -c 16384 \
+  #       --parallel 4 --cont-batching --cache-reuse 256 --port 8080
+  # Con --parallel N en el server, subí `pipeline.parallel` a N para
+  # procesar N discursos en simultáneo. Para visión (vision_describe),
+  # lanzar con un modelo multimodal y su proyector: --mmproj <mmproj.gguf>.
+  # mi-modelo-server:
+  #   backend: llama_server
+  #   base_url: http://127.0.0.1:8080
+  #   temperature: 0.0
+  #   max_tokens: 2048
+  #   seed: 42
+  #   timeout: 120
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 #  pipeline
@@ -70,10 +88,16 @@ models:
 #
 #    Opcionales (se declaran acá para asignarles modelo, pero solo
 #    se ejecutan si se piden con `--stages` en la CLI):
-#      emotions_pass2, deixis, modalidad, semas, actants, judge.
+#      emotions_pass2, deixis, modalidad, semas, actants, judge,
+#      reframing, hashtag_semiotics, vision_describe.
 #
-#  Las etapas `explode_emotions` y `normalize_emotions` son internas
-#  (sin LLM) y no requieren modelo asignado.
+#    Género tuit (discurso nativo digital): el género habilita solo
+#    `technoparse` y `emoji_affect` automáticamente. `technoparse`,
+#    `explode_emotions` y `normalize_emotions` son internas (sin LLM) y no
+#    requieren modelo. `emoji_affect` es híbrida: sin modelo asignado
+#    resuelve solo por léxico (los emojis ambiguos quedan sin desambiguar).
+#    `vision_describe` requiere un modelo multimodal (llama_server con
+#    --mmproj).
 # ──────────────────────────────────────────────────────────────────────────────
 
 pipeline:
@@ -115,9 +139,31 @@ pipeline:
     # Un segundo modelo evalúa la coherencia de las caracterizaciones.
     judge:           qwen3-14b
 
+    # ── Etapas del género tuit (opcionales) ───────────────────────────
+    # Clasifica la operación de citas/reposts con comentario (adhesión,
+    # ironía, denuncia...). Opt-in vía --stages.
+    # reframing:         qwen3-14b
+
+    # Caracterización semiótica de hashtags a nivel corpus. Opt-in.
+    # hashtag_semiotics: qwen3-14b
+
+    # Desambiguación en contexto de emojis ambiguos. Si se omite, la
+    # etapa corre igual en modo léxico-only.
+    # emoji_affect:      qwen3-14b
+
+    # Descripción de imágenes adjuntas (requiere backend multimodal:
+    # llama_server con --mmproj). Opt-in vía --stages.
+    # vision_describe:   mi-modelo-server
+
   # Si false, los backends no se envuelven con CachedBackend. Útil
   # solo para benchmarks; en producción dejar siempre true.
   cache_enabled: true
+
+  # Discursos procesados en simultáneo dentro de cada etapa por-frase.
+  # Solo tiene efecto con backends servidor (llama_server lanzado con
+  # --parallel N --cont-batching, o lmstudio); con llama_cpp in-process
+  # se fuerza a 1. Regla práctica: igualar al --parallel del server.
+  parallel: 1
 
   max_retries: 3
   retry_delays_seconds: [2, 8, 15]

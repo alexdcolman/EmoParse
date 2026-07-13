@@ -64,7 +64,22 @@ class CachedBackend(LLMBackend):
         stop: list[str] | None = None,
         reset_before: bool = False,
         max_items: int | None = None,
+        images: list[str] | None = None,
     ) -> LLMResponse:
+        # Las llamadas con imágenes bypassean el cache: la clave actual no
+        # incorpora el contenido visual y un hit sería incorrecto. Extender
+        # make_cache_key con un hash de las imágenes habilitaría cachearlas.
+        if images:
+            logger.debug(
+                f"[CachedBackend:{self.alias}] BYPASS (llamada con imágenes)"
+            )
+            return self._backend.generate(
+                system=system, user=user, schema=schema,
+                max_tokens=max_tokens, temperature=temperature, seed=seed,
+                stop=stop, reset_before=reset_before, max_items=max_items,
+                images=images,
+            )
+
         # Construir clave; si seed no se pasa, se usa None.
         schema_qualname = (
             f"{schema.__module__}.{schema.__qualname__}" if schema else None

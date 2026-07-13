@@ -6,8 +6,8 @@ from __future__ import annotations
 
 import pytest
 
-from emoparse.scraping import SOURCES, get_source
-from emoparse.scraping.sources.casarosada import CasaRosadaAdapter
+from emoparse.acquisition import SOURCES, get_source
+from emoparse.acquisition.sources.casarosada import CasaRosadaAdapter
 
 
 def test_casarosada_registrado() -> None:

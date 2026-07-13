@@ -23,6 +23,7 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+import pandas as pd
 from loguru import logger
 
 from emoparse.config import ConfigError, load_config
@@ -32,12 +33,18 @@ from emoparse.genres import (
     get_genre,
 )
 from emoparse.inputs import InputError, load_discursos
+from emoparse.inputs.posts_loader import (
+    PostsBundle,
+    load_posts,
+    posts_to_discursos,
+)
 from emoparse.knowledge import KnowledgeLoader
 from emoparse.pipeline import (
     STAGE_ORDER,
     DEFAULT_ENABLED_STAGES,
     PipelineRunner,
 )
+from emoparse.pipeline.thread_builder import build_threads
 
 
 def handle(args: argparse.Namespace) -> int:
@@ -49,7 +56,7 @@ def handle(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        df_input = load_discursos(args.input)
+        df_input, posts_bundle = _load_input(args.input)
     except InputError as e:
         logger.error(f"Input inválido: {e}")
         return 1
@@ -88,6 +95,19 @@ def handle(args: argparse.Namespace) -> int:
             f"(genre.summarizer=False)."
         )
 
+    if genre.technoparse and not args.stages:
+        # Solo sobre los defaults: un --stages explícito se respeta tal cual.
+        # emoji_affect degrada a léxico-only si no tiene modelo asignado.
+        agregar = tuple(
+            s for s in ("technoparse", "emoji_affect") if s not in enabled
+        )
+        if agregar:
+            enabled = (*agregar, *enabled)
+            logger.info(
+                f"[run] Género '{genre.genre_id}' habilita "
+                f"{', '.join(agregar)} (genre.technoparse=True)."
+            )
+
     emotion_scope = _collect_emotion_scope(args)
     if emotion_scope is not None:
         logger.info(
@@ -114,6 +134,8 @@ def handle(args: argparse.Namespace) -> int:
         emotion_scope=emotion_scope,
     ) as runner:
         runner.ingest(df_input)
+        if posts_bundle is not None:
+            runner.ingest_posts(posts_bundle)
         report = runner.run()
 
     print()
@@ -131,6 +153,32 @@ def handle(args: argparse.Namespace) -> int:
             print(f"    {stage_name:<25s} (saltada)")
 
     return 0
+
+
+def _load_input(
+    input_arg: str,
+) -> tuple[pd.DataFrame, PostsBundle | None]:
+    """Carga el input según su extensión.
+
+    - `.csv` / `.json`: corpus de discursos clásico → (df_discursos, None).
+    - `.jsonl`: corpus de posts → reconstruye el árbol conversacional y
+      deriva el DF de discursos que consume el pipeline (un post analizable
+      por discurso; los reposts puros quedan solo en el bundle).
+    """
+    if Path(input_arg).suffix.lower() != ".jsonl":
+        return load_discursos(input_arg), None
+
+    bundle = load_posts(input_arg)
+    df_posts, df_hilos = build_threads(bundle.posts)
+    bundle = PostsBundle(posts=df_posts, autores=bundle.autores, hilos=df_hilos)
+    df_input = posts_to_discursos(df_posts)
+    n_hilos = int((df_hilos["n_posts"] > 1).sum()) if not df_hilos.empty else 0
+    logger.info(
+        f"[run] Corpus de posts: {len(df_posts)} posts → "
+        f"{len(df_input)} analizables, {len(df_hilos)} conversaciones "
+        f"({n_hilos} hilos con más de un post)."
+    )
+    return df_input, bundle
 
 
 def _collect_emotion_scope(args: argparse.Namespace) -> tuple[str, ...] | None:

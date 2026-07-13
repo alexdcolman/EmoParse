@@ -1,0 +1,420 @@
+{
+  "version": "v1",
+  "descripcion": "Léxico afectivo de emojis: prior curado emoji → candidatos de tipo de emoción y foria. Es un insumo heurístico para las etapas que desambiguan tecnografismos afectivos, NO una clasificación automática: los candidatos deben confirmarse en contexto y mapearse a la ontología de emociones vigente (emociones_ontologia.json). `ambiguo: true` marca emojis cuya foria depende fuertemente del contexto (ironía, burla).",
+  "campos": {
+    "candidatos": "tipos de emoción candidatos, del más al menos frecuente",
+    "foria": "euforico | disforico | null (si depende del contexto)",
+    "ambiguo": "true si el uso irónico/ambivalente es frecuente"
+  },
+  "emojis": {
+    "😀": {
+      "candidatos": [
+        "alegría"
+      ],
+      "foria": "euforico",
+      "ambiguo": false
+    },
+    "😂": {
+      "candidatos": [
+        "alegría",
+        "burla"
+      ],
+      "foria": null,
+      "ambiguo": true,
+      "nota": "risa genuina o burla disfórica según blanco"
+    },
+    "🤣": {
+      "candidatos": [
+        "alegría",
+        "burla"
+      ],
+      "foria": null,
+      "ambiguo": true
+    },
+    "😊": {
+      "candidatos": [
+        "alegría",
+        "ternura"
+      ],
+      "foria": "euforico",
+      "ambiguo": false
+    },
+    "🙂": {
+      "candidatos": [
+        "alegría",
+        "ironía"
+      ],
+      "foria": null,
+      "ambiguo": true,
+      "nota": "sonrisa neutra o pasivo-agresiva muy frecuente"
+    },
+    "🙃": {
+      "candidatos": [
+        "ironía",
+        "resignación"
+      ],
+      "foria": null,
+      "ambiguo": true
+    },
+    "😍": {
+      "candidatos": [
+        "amor",
+        "admiración"
+      ],
+      "foria": "euforico",
+      "ambiguo": false
+    },
+    "🥰": {
+      "candidatos": [
+        "amor",
+        "ternura"
+      ],
+      "foria": "euforico",
+      "ambiguo": false
+    },
+    "😭": {
+      "candidatos": [
+        "tristeza",
+        "emoción_intensa"
+      ],
+      "foria": null,
+      "ambiguo": true,
+      "nota": "llanto de pena o de risa/conmoción positiva"
+    },
+    "😢": {
+      "candidatos": [
+        "tristeza"
+      ],
+      "foria": "disforico",
+      "ambiguo": false
+    },
+    "🥹": {
+      "candidatos": [
+        "conmoción",
+        "gratitud",
+        "ternura"
+      ],
+      "foria": "euforico",
+      "ambiguo": false
+    },
+    "😡": {
+      "candidatos": [
+        "ira",
+        "indignación"
+      ],
+      "foria": "disforico",
+      "ambiguo": false
+    },
+    "🤬": {
+      "candidatos": [
+        "ira"
+      ],
+      "foria": "disforico",
+      "ambiguo": false
+    },
+    "😤": {
+      "candidatos": [
+        "indignación",
+        "frustración",
+        "determinación"
+      ],
+      "foria": null,
+      "ambiguo": true
+    },
+    "😱": {
+      "candidatos": [
+        "miedo",
+        "sorpresa"
+      ],
+      "foria": "disforico",
+      "ambiguo": false
+    },
+    "😨": {
+      "candidatos": [
+        "miedo"
+      ],
+      "foria": "disforico",
+      "ambiguo": false
+    },
+    "😰": {
+      "candidatos": [
+        "ansiedad",
+        "miedo"
+      ],
+      "foria": "disforico",
+      "ambiguo": false
+    },
+    "😔": {
+      "candidatos": [
+        "tristeza",
+        "decepción"
+      ],
+      "foria": "disforico",
+      "ambiguo": false
+    },
+    "😞": {
+      "candidatos": [
+        "decepción",
+        "tristeza"
+      ],
+      "foria": "disforico",
+      "ambiguo": false
+    },
+    "😩": {
+      "candidatos": [
+        "frustración",
+        "agotamiento"
+      ],
+      "foria": "disforico",
+      "ambiguo": true
+    },
+    "😫": {
+      "candidatos": [
+        "frustración",
+        "agotamiento"
+      ],
+      "foria": "disforico",
+      "ambiguo": true
+    },
+    "🤢": {
+      "candidatos": [
+        "asco"
+      ],
+      "foria": "disforico",
+      "ambiguo": false
+    },
+    "🤮": {
+      "candidatos": [
+        "asco",
+        "desprecio"
+      ],
+      "foria": "disforico",
+      "ambiguo": false
+    },
+    "😒": {
+      "candidatos": [
+        "desprecio",
+        "fastidio"
+      ],
+      "foria": "disforico",
+      "ambiguo": false
+    },
+    "🙄": {
+      "candidatos": [
+        "fastidio",
+        "desprecio",
+        "ironía"
+      ],
+      "foria": "disforico",
+      "ambiguo": true
+    },
+    "😳": {
+      "candidatos": [
+        "vergüenza",
+        "sorpresa"
+      ],
+      "foria": null,
+      "ambiguo": true
+    },
+    "😅": {
+      "candidatos": [
+        "alivio",
+        "vergüenza",
+        "nerviosismo"
+      ],
+      "foria": null,
+      "ambiguo": true
+    },
+    "😬": {
+      "candidatos": [
+        "incomodidad",
+        "vergüenza_ajena"
+      ],
+      "foria": "disforico",
+      "ambiguo": true
+    },
+    "🤡": {
+      "candidatos": [
+        "burla",
+        "desprecio"
+      ],
+      "foria": "disforico",
+      "ambiguo": false,
+      "nota": "casi siempre descalificación irónica del blanco"
+    },
+    "💀": {
+      "candidatos": [
+        "burla",
+        "alegría"
+      ],
+      "foria": null,
+      "ambiguo": true,
+      "nota": "'me muero (de risa)' o descalificación"
+    },
+    "😉": {
+      "candidatos": [
+        "complicidad",
+        "ironía"
+      ],
+      "foria": null,
+      "ambiguo": true
+    },
+    "😮": {
+      "candidatos": [
+        "sorpresa"
+      ],
+      "foria": null,
+      "ambiguo": true
+    },
+    "😲": {
+      "candidatos": [
+        "sorpresa",
+        "asombro"
+      ],
+      "foria": null,
+      "ambiguo": true
+    },
+    "🤯": {
+      "candidatos": [
+        "asombro",
+        "sorpresa"
+      ],
+      "foria": null,
+      "ambiguo": true
+    },
+    "😴": {
+      "candidatos": [
+        "aburrimiento"
+      ],
+      "foria": "disforico",
+      "ambiguo": true
+    },
+    "🥱": {
+      "candidatos": [
+        "aburrimiento",
+        "desprecio"
+      ],
+      "foria": "disforico",
+      "ambiguo": true
+    },
+    "❤️": {
+      "candidatos": [
+        "amor",
+        "apoyo"
+      ],
+      "foria": "euforico",
+      "ambiguo": false
+    },
+    "💔": {
+      "candidatos": [
+        "dolor",
+        "tristeza"
+      ],
+      "foria": "disforico",
+      "ambiguo": false
+    },
+    "🔥": {
+      "candidatos": [
+        "entusiasmo",
+        "admiración"
+      ],
+      "foria": "euforico",
+      "ambiguo": true
+    },
+    "👏": {
+      "candidatos": [
+        "admiración",
+        "aprobación",
+        "ironía"
+      ],
+      "foria": null,
+      "ambiguo": true,
+      "nota": "aplauso genuino o sarcástico"
+    },
+    "🙏": {
+      "candidatos": [
+        "gratitud",
+        "súplica",
+        "esperanza"
+      ],
+      "foria": null,
+      "ambiguo": true
+    },
+    "💪": {
+      "candidatos": [
+        "determinación",
+        "orgullo",
+        "apoyo"
+      ],
+      "foria": "euforico",
+      "ambiguo": false
+    },
+    "✊": {
+      "candidatos": [
+        "determinación",
+        "solidaridad"
+      ],
+      "foria": "euforico",
+      "ambiguo": false
+    },
+    "✨": {
+      "candidatos": [
+        "entusiasmo",
+        "ternura",
+        "ironía"
+      ],
+      "foria": null,
+      "ambiguo": true
+    },
+    "🎉": {
+      "candidatos": [
+        "celebración",
+        "alegría"
+      ],
+      "foria": "euforico",
+      "ambiguo": false
+    },
+    "😎": {
+      "candidatos": [
+        "orgullo",
+        "satisfacción"
+      ],
+      "foria": "euforico",
+      "ambiguo": true
+    },
+    "🤔": {
+      "candidatos": [
+        "duda",
+        "sospecha"
+      ],
+      "foria": null,
+      "ambiguo": true
+    },
+    "😏": {
+      "candidatos": [
+        "complicidad",
+        "ironía",
+        "satisfacción"
+      ],
+      "foria": null,
+      "ambiguo": true
+    },
+    "🥺": {
+      "candidatos": [
+        "súplica",
+        "ternura",
+        "conmoción"
+      ],
+      "foria": null,
+      "ambiguo": true
+    },
+    "😇": {
+      "candidatos": [
+        "inocencia_fingida",
+        "ironía"
+      ],
+      "foria": null,
+      "ambiguo": true
+    }
+  }
+}

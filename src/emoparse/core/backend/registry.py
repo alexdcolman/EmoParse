@@ -85,9 +85,12 @@ def build_backend(alias: str, model_config: dict[str, Any]) -> LLMBackend:
     if backend_key == "lmstudio":
         from emoparse.core.backend.lmstudio import LMStudioBackend
         return LMStudioBackend(alias=alias, model_config=model_config)
+    if backend_key == "llama_server":
+        from emoparse.core.backend.llama_server import LlamaServerBackend
+        return LlamaServerBackend(alias=alias, model_config=model_config)
     raise BackendConfigError(
         f"Backend '{backend_key}' no reconocido para alias '{alias}'. "
-        f"Opciones: llama_cpp, lmstudio"
+        f"Opciones: llama_cpp, llama_server, lmstudio"
     )
 
 

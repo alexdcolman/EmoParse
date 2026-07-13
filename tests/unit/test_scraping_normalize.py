@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import pytest
 
-from emoparse.scraping import normalize
+from emoparse.acquisition import normalize
 
 
 # ── clean_whitespace ─────────────────────────────────────────────────────

@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from emoparse.scraping.base import DiscursoRecord
-from emoparse.scraping.persist import CsvAppender
+from emoparse.acquisition.base import DiscursoRecord
+from emoparse.acquisition.persist import CsvAppender
 
 
 def _record(codigo: str, url: str, **extras: object) -> DiscursoRecord:

@@ -1,12 +1,25 @@
 # ══════════════════════════════════════════════════════════════════════════════
 #  emoparse.scraping
 #
-#  Scraping con arquitectura source-adapter.
+#  Alias de compatibilidad: el paquete fue renombrado a `emoparse.acquisition`.
 # ══════════════════════════════════════════════════════════════════════════════
 
-from emoparse.scraping.base import DiscursoRecord, SourceAdapter
-from emoparse.scraping.persist import CsvAppender
-from emoparse.scraping.sources import SOURCES, get_source
+import warnings
+
+from emoparse.acquisition import (
+    SOURCES,
+    CsvAppender,
+    DiscursoRecord,
+    SourceAdapter,
+    get_source,
+)
+
+warnings.warn(
+    "emoparse.scraping está deprecado y será removido en una versión futura; "
+    "usá emoparse.acquisition.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 __all__ = [
     "DiscursoRecord",

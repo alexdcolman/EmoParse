@@ -9,6 +9,10 @@
 
 from __future__ import annotations
 
+from dotenv import load_dotenv
+
+load_dotenv()
+
 import argparse
 import sys
 from pathlib import Path
@@ -17,6 +21,9 @@ from typing import Callable
 from loguru import logger
 
 from emoparse.cli.commands import (
+    acquire_cmd,
+    eval_cmd,
+    network_cmd,
     app_cmd,
     inspect_cmd,
     judge_cmd,
@@ -430,6 +437,15 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Timeout HTTP por request en segundos. Default: 20.",
     )
     p_scrape.set_defaults(handler=scrape_cmd.run)
+
+    # ── acquire ──────────────────────────────────────────────────────────────
+    acquire_cmd.add_subparser(sub)
+
+    # ── network ──────────────────────────────────────────────────────────────
+    network_cmd.add_subparser(sub)
+
+    # ── eval ─────────────────────────────────────────────────────────────────
+    eval_cmd.add_subparser(sub)
 
     # ── app ──────────────────────────────────────────────────────────────────
     app_cmd.register(sub)

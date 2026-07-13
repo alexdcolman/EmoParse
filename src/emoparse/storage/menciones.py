@@ -225,24 +225,45 @@ class MencionesRepository:
     ) -> dict[str, int]:
         """Reconstruye las menciones de un discurso desde los payloads.
 
-        Idempotente: borra las menciones del código (la FK cascada limpia
+        Idempotente: borra las menciones LLM del código (la FK cascada limpia
         `mencion_funcion` y `mencion_canonico`) y reinserta. Cada mención
         siembra sus funciones y un canónico propuesto desde la inferencia.
+
+        Las marcas sembradas por la stage determinista (origin='technoparse',
+        p. ej. @handles con vínculo aceptado) se preservan: si el LLM deriva
+        la misma marca en la misma unidad, se reutiliza la fila existente y
+        solo se agregan sus funciones y su canónico propuesto.
         """
         derivadas = derivar_menciones(actores_by_unit, emociones_by_unit)
 
         counts = {"menciones": 0, "funciones": 0, "canonicos": 0}
         with self._db.transaction() as cur:
-            cur.execute("DELETE FROM menciones WHERE codigo = ?", (codigo,))
+            cur.execute(
+                "DELETE FROM menciones "
+                "WHERE codigo = ? AND origin != 'technoparse'",
+                (codigo,),
+            )
+            preservadas = {
+                (row["unit_idx"], row["marca"]): row["id"]
+                for row in cur.execute(
+                    "SELECT id, unit_idx, marca FROM menciones "
+                    "WHERE codigo = ?",
+                    (codigo,),
+                ).fetchall()
+            }
             for m in derivadas:
-                cur.execute(
-                    "INSERT INTO menciones "
-                    "(codigo, unit_idx, marca, llm_inferencia, origin) "
-                    "VALUES (?, ?, ?, ?, 'llm')",
-                    (codigo, m["unit_idx"], m["marca"], m["llm_inferencia"]),
-                )
-                mencion_id = cur.lastrowid
-                counts["menciones"] += 1
+                key = (m["unit_idx"], m["marca"])
+                if key in preservadas:
+                    mencion_id = preservadas[key]
+                else:
+                    cur.execute(
+                        "INSERT INTO menciones "
+                        "(codigo, unit_idx, marca, llm_inferencia, origin) "
+                        "VALUES (?, ?, ?, ?, 'llm')",
+                        (codigo, m["unit_idx"], m["marca"], m["llm_inferencia"]),
+                    )
+                    mencion_id = cur.lastrowid
+                    counts["menciones"] += 1
                 for funcion in sorted(m["funciones"]):
                     cur.execute(
                         "INSERT OR IGNORE INTO mencion_funcion "
@@ -259,6 +280,78 @@ class MencionesRepository:
                         (mencion_id, canonical),
                     )
                     counts["canonicos"] += 1
+        return counts
+
+    def seed_technoparse(
+        self,
+        codigo: str,
+        seeds: list[dict[str, Any]],
+        naturaleza_by_handle: dict[str, str] | None = None,
+    ) -> dict[str, int]:
+        """Siembra menciones tecnodiscursivas (@handles) con vínculo aceptado.
+
+        Cada seed: {unit_idx, marca, handle}. El @handle es el caso de
+        designación más determinista que existe: identifica una cuenta
+        concreta sin inferencia, así que el vínculo marca→canónico entra
+        directamente como 'accepted' con modalidad 'designacion' (la
+        revisión humana puede igualmente rechazarlo o repuntarlo).
+
+        Idempotente: borra las menciones technoparse del código y reinserta.
+        No pisa vínculos de una marca homónima creada por el LLM: si la
+        marca ya existe (UNIQUE codigo/unit/marca), se reutiliza su fila y
+        solo se agrega/promueve el vínculo canónico.
+        """
+        naturaleza_by_handle = naturaleza_by_handle or {}
+        counts = {"menciones": 0, "canonicos": 0}
+        with self._db.transaction() as cur:
+            cur.execute(
+                "DELETE FROM menciones "
+                "WHERE codigo = ? AND origin = 'technoparse'",
+                (codigo,),
+            )
+            for s in seeds:
+                handle = _norm(s["handle"]).lstrip("@")
+                canonical = canonical_slug(handle) or handle.lower()
+                if not canonical:
+                    continue
+                cur.execute(
+                    "SELECT id FROM menciones "
+                    "WHERE codigo = ? AND unit_idx = ? AND marca = ?",
+                    (codigo, s["unit_idx"], s["marca"]),
+                )
+                row = cur.fetchone()
+                if row is not None:
+                    mencion_id = row["id"]
+                else:
+                    cur.execute(
+                        "INSERT INTO menciones "
+                        "(codigo, unit_idx, marca, llm_inferencia, origin) "
+                        "VALUES (?, ?, ?, ?, 'technoparse')",
+                        (codigo, s["unit_idx"], s["marca"], handle),
+                    )
+                    mencion_id = cur.lastrowid
+                    counts["menciones"] += 1
+                cur.execute(
+                    "INSERT INTO mencion_canonico "
+                    "(mencion_id, canonical_id, status, origin, modalidad, "
+                    " naturaleza, modalidad_origin) "
+                    "VALUES (?, ?, 'accepted', 'technoparse', 'designacion', "
+                    "        ?, 'nlp') "
+                    "ON CONFLICT(mencion_id, canonical_id) DO UPDATE SET "
+                    "    status = CASE WHEN mencion_canonico.status = 'proposed' "
+                    "                  THEN 'accepted' "
+                    "                  ELSE mencion_canonico.status END, "
+                    "    modalidad = COALESCE(mencion_canonico.modalidad, "
+                    "                         'designacion'), "
+                    "    modalidad_origin = COALESCE("
+                    "        mencion_canonico.modalidad_origin, 'nlp')",
+                    (
+                        mencion_id,
+                        canonical,
+                        naturaleza_by_handle.get(handle.lower()),
+                    ),
+                )
+                counts["canonicos"] += 1
         return counts
 
     def propose_coref_equivalences(self, codigo: str) -> int:

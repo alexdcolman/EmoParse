@@ -1037,3 +1037,188 @@ class ModalidadSchema(StrictBase):
         description="Una entrada por vínculo marca→referente del lote. "
                     "Devolvé una clasificación para cada uno.",
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Reframing (redocumentación: citas y reposts con comentario)
+# ══════════════════════════════════════════════════════════════════════════════
+
+OperacionReframing = Literal[
+    "adhesion",
+    "ironia_distancia",
+    "denuncia",
+    "neutra_informativa",
+    "ambigua",
+]
+
+EmocionesCitadasReframing = Literal["asumidas", "semiotizadas", "ninguna"]
+
+
+class ReframingSchema(StrictBase):
+    """Clasificación de la operación de recontextualización de un post citado."""
+    operacion: OperacionReframing = Field(  # type: ignore[valid-type]
+        description="Operación dominante del post citador sobre el citado: "
+                    "adhesion (suscribe y amplifica), ironia_distancia "
+                    "(retoma con distancia burlona o sarcástica), denuncia "
+                    "(exhibe lo citado para condenarlo), neutra_informativa "
+                    "(difunde sin toma de posición discernible), ambigua "
+                    "(la posición no es determinable).",
+    )
+    emociones_citadas: EmocionesCitadasReframing = Field(  # type: ignore[valid-type]
+        description="Estatuto de las emociones expresadas en el texto CITADO "
+                    "respecto del autor CITADOR: asumidas (el citador las "
+                    "hace propias, las experimenta), semiotizadas (las "
+                    "exhibe o comenta sin experimentarlas), ninguna (el "
+                    "texto citado no porta emociones o no fue capturado).",
+    )
+    justificacion: str = Field(
+        description="Justificación breve citando marcas concretas del post "
+                    "citador (léxico, emojis, tecnografismos, contraste "
+                    "entre comentario y cita).",
+    )
+
+
+class ReframingBatchItemSchema(StrictBase):
+    """Un ítem del batch de reframing."""
+    unit_idx: int = Field(
+        description="Índice 0-based de la unidad en el batch.",
+    )
+    reframing: ReframingSchema = Field(
+        description="Clasificación de la operación de recontextualización.",
+    )
+
+
+class ListaReframingsBatchSchema(
+    RootModel[Annotated[list[ReframingBatchItemSchema], Field(min_length=1)]]
+):
+    """Batch response de reframing."""
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Semiótica de hashtags (nivel corpus)
+# ══════════════════════════════════════════════════════════════════════════════
+
+FuncionHashtag = Literal[
+    "topico",
+    "afiliacion_consigna",
+    "evaluativo",
+    "ironico",
+    "campania",
+    "mixto",
+]
+
+
+class HashtagSemioticsSchema(StrictBase):
+    """Caracterización semiótica de un hashtag a partir de una muestra de usos."""
+    funcion: FuncionHashtag = Field(  # type: ignore[valid-type]
+        description="Función dominante en la muestra: topico (indexa un tema "
+                    "sin evaluarlo), afiliacion_consigna (comunión alrededor "
+                    "de una causa o colectivo), evaluativo (porta una "
+                    "valoración), ironico (uso predominantemente irónico), "
+                    "campania (etiqueta de campaña organizada), mixto "
+                    "(varias funciones sin dominante clara).",
+    )
+    acoplamiento: str = Field(
+        description="Acoplamiento actitud-tema: qué evaluación o afecto "
+                    "acopla el hashtag a qué objeto de discurso, en una "
+                    "frase breve (ej. 'indignación acoplada al aumento de "
+                    "tarifas'). 'sin acoplamiento discernible' si no lo hay.",
+    )
+    foria_entorno: Foria = Field(  # type: ignore[valid-type]
+        description="Tonalidad fórica dominante de los posts que usan el "
+                    "hashtag en la muestra.",
+    )
+    justificacion: str = Field(
+        description="Justificación breve citando usos concretos de la muestra.",
+    )
+
+
+class HashtagBatchItemSchema(StrictBase):
+    """Un ítem del batch de hashtags."""
+    unit_idx: int = Field(
+        description="Índice 0-based del hashtag en el batch.",
+    )
+    analisis: HashtagSemioticsSchema = Field(
+        description="Caracterización semiótica del hashtag.",
+    )
+
+
+class ListaHashtagsBatchSchema(
+    RootModel[Annotated[list[HashtagBatchItemSchema], Field(min_length=1)]]
+):
+    """Batch response de semiótica de hashtags."""
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Afecto de emojis (desambiguación en contexto)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class EmojiAfectoSchema(StrictBase):
+    """Contribución afectiva de un emoji en su contexto de uso."""
+    candidato: str = Field(
+        description="Tipo de emoción que el emoji aporta en ESTE contexto "
+                    "(nombre concreto, ej. burla, alegría, indignación), o "
+                    "'sin_afecto' si en este uso no porta emoción (función "
+                    "meramente ilustrativa o decorativa).",
+    )
+    foria: Foria = Field(  # type: ignore[valid-type]
+        description="Tonalidad fórica del emoji en este contexto de uso.",
+    )
+    justificacion: str = Field(
+        description="Justificación en una frase: qué elemento del contexto "
+                    "desambigua el valor del emoji.",
+    )
+
+
+class EmojiAfectoBatchItemSchema(StrictBase):
+    """Un ítem del batch de afecto de emojis."""
+    unit_idx: int = Field(
+        description="Índice 0-based del uso en el batch.",
+    )
+    afecto: EmojiAfectoSchema = Field(
+        description="Contribución afectiva del emoji en su contexto.",
+    )
+
+
+class ListaEmojiAfectoBatchSchema(
+    RootModel[Annotated[list[EmojiAfectoBatchItemSchema], Field(min_length=1)]]
+):
+    """Batch response de afecto de emojis."""
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Descripción multimodal de media adjunta (vision_describe)
+# ══════════════════════════════════════════════════════════════════════════════
+
+TipoImagen = Literal[
+    "foto",
+    "captura_de_pantalla",
+    "meme",
+    "afiche_flyer",
+    "grafico_datos",
+    "ilustracion",
+    "otro",
+]
+
+
+class VisionSchema(StrictBase):
+    """Descripción analítica de una imagen adjunta a un post."""
+    descripcion: str = Field(
+        description="Descripción densa y objetiva de la imagen: qué muestra, "
+                    "quiénes aparecen (sin identificar personas por nombre "
+                    "salvo texto visible), composición, registro visual.",
+    )
+    texto_en_imagen: str = Field(
+        description="Transcripción LITERAL de todo texto legible en la "
+                    "imagen (sobreimpresos, carteles, capturas). Cadena "
+                    "vacía si no hay texto.",
+    )
+    tipo_imagen: TipoImagen = Field(  # type: ignore[valid-type]
+        description="Tipo dominante de la imagen.",
+    )
+    elementos_tecnograficos: str = Field(
+        description="Elementos tecnográficos visuales si los hay: plantilla "
+                    "de meme reconocible, sobreimpresos expresivos, capturas "
+                    "de otros posts (indicando de qué), emojis dibujados. "
+                    "Cadena vacía si no hay.",
+    )

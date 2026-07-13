@@ -15,6 +15,8 @@ def get_genre() -> Genre:
         genre_id="discurso_presidencial",
         display_name="Discurso presidencial",
         unit="frase",
+        context_unit="discurso",
+        technoparse=False,
         enunciation_roles=(
             "prodestinatario",
             "paradestinatario",
@@ -22,7 +24,7 @@ def get_genre() -> Genre:
         ),
         models={},
         batch_size={
-            "actors": 1,            
+            "actors": 1,
             "emotions": 1,
             "emotions_pass2": 1,
             "deixis": 5,

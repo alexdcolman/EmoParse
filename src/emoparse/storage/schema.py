@@ -306,7 +306,7 @@ CREATE TABLE IF NOT EXISTS menciones (
     -- Referente inferido por el LLM en origen (auditoría; el vínculo efectivo
     -- vive en mencion_canonico).
     llm_inferencia  TEXT,
-    origin          TEXT NOT NULL DEFAULT 'llm',   -- 'llm'|'human'
+    origin          TEXT NOT NULL DEFAULT 'llm',   -- 'llm'|'human'|'technoparse'
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (codigo, unit_idx, marca),
     FOREIGN KEY (codigo) REFERENCES discursos(codigo) ON DELETE CASCADE
@@ -355,7 +355,7 @@ CREATE TABLE IF NOT EXISTS mencion_canonico (
     status          TEXT NOT NULL DEFAULT 'proposed',  -- 'proposed'|'accepted'|'rejected'
     -- Procedencia del vínculo: el deíctico entra como sugerencia ('deixis'),
     -- no como resolución automática.
-    origin          TEXT NOT NULL DEFAULT 'llm',        -- 'llm'|'deixis'|'deixis_llm'|'auto'|'coref'|'human'
+    origin          TEXT NOT NULL DEFAULT 'llm',        -- 'llm'|'deixis'|'deixis_llm'|'auto'|'coref'|'human'|'technoparse'
     -- Categoría esquemática cuando el vínculo proviene de la resolución de
     -- deixis: 'enunciador'|'auditorio'|'colectivo_identificacion'. NULL si no
     -- es un vínculo deíctico. El canonical_id sigue siendo el referente concreto.
@@ -419,6 +419,240 @@ CREATE INDEX IF NOT EXISTS idx_canonico_semas_sema
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  Corpus de posts (géneros de discurso nativo digital: tuit y afines)
+#
+#  Un post es un documento corto con estructura conversacional (hilos de
+#  respuestas), operaciones de circulación (repost, cita) y métricas. Cada
+#  post analizable tiene además su fila espejo en `discursos` (codigo =
+#  post_id), que es lo que consume el pipeline; estas tablas conservan la
+#  materialidad técnica que `discursos` no modela. Los reposts puros (sin
+#  texto propio) viven solo acá: registran circulación, no enunciación propia.
+# ══════════════════════════════════════════════════════════════════════════════
+
+CREATE_POSTS = """
+CREATE TABLE IF NOT EXISTS posts (
+    post_id             TEXT PRIMARY KEY,
+    plataforma          TEXT NOT NULL,     -- 'bluesky'|'x'|'mastodon'|...
+    autor_handle        TEXT NOT NULL,
+    -- Texto propio del post. Vacío en reposts puros.
+    texto               TEXT NOT NULL,
+    fecha               TEXT,              -- ISO-8601
+    lang                TEXT,
+    tipo                TEXT NOT NULL DEFAULT 'original',  -- 'original'|'reply'|'quote'|'repost'
+    -- Estructura conversacional y de circulación (ids de otros posts,
+    -- presentes o no en el corpus).
+    conversacion_id     TEXT,
+    en_respuesta_a      TEXT,
+    cita_a              TEXT,
+    reposteo_a          TEXT,
+    -- Repost sin texto propio: no se analiza como enunciado del reposteador.
+    es_repost_puro      INTEGER NOT NULL DEFAULT 0,
+    -- Reply cuyo padre no fue capturado en el corpus (normal en scrapeos).
+    huerfano            INTEGER NOT NULL DEFAULT 0,
+    -- Profundidad en el árbol conversacional (0 = raíz). NULL = no calculable.
+    profundidad         INTEGER,
+    url                 TEXT,
+    metricas            TEXT,              -- JSON: likes, reposts, replies, ...
+    raw                 TEXT,              -- JSON crudo de la fuente (auditoría)
+    -- Clasificación de la operación de redocumentación (stage reframing),
+    -- solo para posts que citan o repostean con comentario. JSON.
+    reframing_payload   TEXT,
+    reframing_version   TEXT,
+    reframing_error     TEXT,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+""".strip()
+
+
+CREATE_POSTS_CONVERSACION_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_posts_conversacion
+    ON posts(conversacion_id)
+""".strip()
+
+
+CREATE_POSTS_AUTOR_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_posts_autor
+    ON posts(autor_handle)
+""".strip()
+
+
+CREATE_AUTORES = """
+CREATE TABLE IF NOT EXISTS autores (
+    plataforma          TEXT NOT NULL,
+    handle              TEXT NOT NULL,
+    display_name        TEXT,
+    bio                 TEXT,
+    verificado          INTEGER,
+    -- Snapshot al momento de la captura.
+    seguidores          INTEGER,
+    siguiendo           INTEGER,
+    url                 TEXT,
+    extras              TEXT,              -- JSON
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (plataforma, handle)
+)
+""".strip()
+
+
+CREATE_HILOS = """
+CREATE TABLE IF NOT EXISTS hilos (
+    conversacion_id     TEXT PRIMARY KEY,
+    -- post_id de la raíz. Puede no estar en `posts` si no fue capturada.
+    post_raiz           TEXT NOT NULL,
+    n_posts             INTEGER NOT NULL DEFAULT 1,
+    profundidad_max     INTEGER NOT NULL DEFAULT 0,
+    participantes       TEXT,              -- JSON: lista de handles
+    fecha_inicio        TEXT,
+    fecha_fin           TEXT,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+""".strip()
+
+
+CREATE_MEDIA = """
+CREATE TABLE IF NOT EXISTS media (
+    id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+    post_id             TEXT NOT NULL,
+    tipo                TEXT NOT NULL,     -- 'imagen'|'video'|'gif'|'otro'
+    url                 TEXT,
+    path_local          TEXT,              -- si se descargó (opt-in)
+    alt_text            TEXT,
+    -- Descripción generada por el análisis multimodal (opt-in). JSON.
+    descripcion_payload TEXT,
+    descripcion_version TEXT,
+    descripcion_error   TEXT,
+    ocr_text            TEXT,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (post_id) REFERENCES posts(post_id) ON DELETE CASCADE
+)
+""".strip()
+
+
+CREATE_MEDIA_POST_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_media_post
+    ON media(post_id)
+""".strip()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Tabla `tecno_entidades`: tecnolingüísticos por unidad.
+#
+#  Salida de la stage determinista `technoparse`: hashtags, menciones (@),
+#  URLs, emojis y tecnografismos (mayúsculas sostenidas, alargamientos,
+#  puntuación expresiva, risas), con sus offsets sobre el texto de la unidad.
+#  El texto nunca se altera: se anota.
+# ══════════════════════════════════════════════════════════════════════════════
+
+CREATE_TECNO_ENTIDADES = """
+CREATE TABLE IF NOT EXISTS tecno_entidades (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    codigo          TEXT NOT NULL,
+    unit_idx        INTEGER NOT NULL,
+    tipo            TEXT NOT NULL,     -- 'hashtag'|'mencion'|'url'|'emoji'|'tecnografismo'
+    -- Valor tal como aparece en el texto (con # / @ / repeticiones).
+    valor           TEXT NOT NULL,
+    -- Valor normalizado: hashtag/handle sin prefijo y en minúsculas, emoji
+    -- en shortcode, URL reducida a dominio, tecnografismo colapsado.
+    valor_norm      TEXT NOT NULL,
+    -- Offsets [inicio, fin) sobre el texto de la unidad.
+    inicio          INTEGER NOT NULL,
+    fin             INTEGER NOT NULL,
+    -- Atributos específicos del tipo, JSON: p. ej. la función sintáctica del
+    -- hashtag ('integrada'|'pospuesta'), la posición de la mención
+    -- ('vocativo_inicial'|'integrada'), el subtipo de tecnografismo.
+    extra           TEXT,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (codigo, unit_idx, tipo, inicio),
+    FOREIGN KEY (codigo) REFERENCES discursos(codigo) ON DELETE CASCADE
+)
+""".strip()
+
+
+CREATE_TECNO_ENTIDADES_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_tecno_codigo_unit
+    ON tecno_entidades(codigo, unit_idx)
+""".strip()
+
+
+CREATE_TECNO_ENTIDADES_TIPO_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_tecno_tipo_valor
+    ON tecno_entidades(tipo, valor_norm)
+""".strip()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Tabla `hashtags`: caracterización semiótica a nivel corpus.
+#
+#  Salida de la stage `hashtag_semiotics`: función dominante, acoplamiento
+#  actitud-tema y foria del entorno, por hashtag frecuente.
+# ══════════════════════════════════════════════════════════════════════════════
+
+CREATE_HASHTAGS = """
+CREATE TABLE IF NOT EXISTS hashtags (
+    valor_norm          TEXT PRIMARY KEY,
+    n_usos              INTEGER NOT NULL DEFAULT 0,
+    -- 'topico'|'afiliacion_consigna'|'evaluativo'|'ironico'|'campania'|'mixto'
+    funcion             TEXT,
+    acoplamiento        TEXT,
+    foria_entorno       TEXT,
+    justificacion       TEXT,
+    analisis_payload    TEXT,              -- JSON completo del agente
+    analisis_version    TEXT,
+    analisis_error      TEXT,
+    created_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+""".strip()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Tablas de red: aristas de interacción y métricas por nodo.
+#
+#  Construidas post-hoc por `emoparse network` (sin LLM) desde `posts` y
+#  `tecno_entidades`. Grafos: 'reply', 'mention', 'rt', 'qt', 'hashtag_co'.
+# ══════════════════════════════════════════════════════════════════════════════
+
+CREATE_ARISTAS = """
+CREATE TABLE IF NOT EXISTS aristas (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    grafo           TEXT NOT NULL,
+    origen          TEXT NOT NULL,
+    destino         TEXT NOT NULL,
+    -- Post que materializa la interacción (NULL en grafos agregados).
+    post_id         TEXT,
+    peso            REAL NOT NULL DEFAULT 1.0,
+    fecha           TEXT,
+    created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+)
+""".strip()
+
+
+CREATE_ARISTAS_GRAFO_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_aristas_grafo
+    ON aristas(grafo, origen, destino)
+""".strip()
+
+
+CREATE_RED_METRICAS = """
+CREATE TABLE IF NOT EXISTS red_metricas (
+    grafo               TEXT NOT NULL,
+    nodo                TEXT NOT NULL,
+    grado_in            INTEGER,
+    grado_out           INTEGER,
+    grado_total         INTEGER,
+    pagerank            REAL,
+    intermediacion      REAL,
+    comunidad           INTEGER,
+    updated_at          TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (grafo, nodo)
+)
+""".strip()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  Lista canónica de DDLs en orden de creación
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -447,4 +681,18 @@ ALL_TABLES_DDL: list[str] = [
     CREATE_CANONICO_SEMAS,
     CREATE_CANONICO_SEMAS_CANONICAL_INDEX,
     CREATE_CANONICO_SEMAS_SEMA_INDEX,
+    CREATE_POSTS,
+    CREATE_POSTS_CONVERSACION_INDEX,
+    CREATE_POSTS_AUTOR_INDEX,
+    CREATE_AUTORES,
+    CREATE_HILOS,
+    CREATE_MEDIA,
+    CREATE_MEDIA_POST_INDEX,
+    CREATE_TECNO_ENTIDADES,
+    CREATE_TECNO_ENTIDADES_INDEX,
+    CREATE_TECNO_ENTIDADES_TIPO_INDEX,
+    CREATE_HASHTAGS,
+    CREATE_ARISTAS,
+    CREATE_ARISTAS_GRAFO_INDEX,
+    CREATE_RED_METRICAS,
 ]

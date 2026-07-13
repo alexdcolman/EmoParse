@@ -125,6 +125,20 @@ class StageDAG:
 
 EMOPARSE_DAG = StageDAG(
     [
+        # Determinista, sin LLM: primera del pipeline en géneros de discurso
+        # nativo digital (genre.technoparse=True). Sin dependientes duros:
+        # anota tecnolingüísticos que las stages LLM consumen si están.
+        StageNode("technoparse", deps=()),
+        # Reframing clasifica citas/reposts desde `posts`: no depende de
+        # otras stages, pero corre temprano para estar disponible como
+        # contexto de las stages LLM posteriores.
+        StageNode("reframing", deps=()),
+        # Ambas consumen `tecno_entidades`.
+        StageNode("emoji_affect", deps=("technoparse",)),
+        StageNode("hashtag_semiotics", deps=("technoparse",)),
+        # Multimodal: describe media adjunta; corre temprano para servir de
+        # contexto a las stages de emociones. Requiere backend con --mmproj.
+        StageNode("vision_describe", deps=()),
         StageNode("summarizer", deps=()),
         StageNode("metadata", deps=("summarizer",)),
         StageNode("enunciation", deps=("metadata",)),

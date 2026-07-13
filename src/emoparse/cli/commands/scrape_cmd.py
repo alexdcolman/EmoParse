@@ -24,7 +24,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from emoparse.scraping import CsvAppender, get_source, SOURCES
+from emoparse.acquisition import SOURCES, CsvAppender, get_source
 
 
 def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:

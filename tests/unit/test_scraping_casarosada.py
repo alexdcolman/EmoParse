@@ -10,7 +10,7 @@ from datetime import date
 
 import pytest
 
-from emoparse.scraping.sources.casarosada import CasaRosadaAdapter
+from emoparse.acquisition.sources.casarosada import CasaRosadaAdapter
 
 
 # ══════════════════════════════════════════════════════════════════════════════

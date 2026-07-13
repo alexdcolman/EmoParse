@@ -1,5 +1,5 @@
 {
-  "version": "v1",
+  "version": "v2",
   "emociones": {
     "ira": {
       "aliases": [
@@ -818,6 +818,529 @@
           "potencial"
         ]
       }
+    },
+    "desprecio": {
+      "aliases": [
+        "desden",
+        "desdén",
+        "menosprecio",
+        "desprecio_moral"
+      ],
+      "foria": {
+        "esperado": [
+          "disforico"
+        ],
+        "tolerado": [
+          "ambiforico"
+        ]
+      },
+      "intensidad": {
+        "esperado": [
+          "media",
+          "alta"
+        ],
+        "tolerado": [
+          "neutra_ambivalente"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "cognoscitiva"
+        ],
+        "tolerado": [
+          "mixta"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "realizada",
+          "actual"
+        ],
+        "tolerado": [
+          "potencial"
+        ]
+      }
+    },
+    "admiración": {
+      "aliases": [
+        "admiracion",
+        "fascinación",
+        "fascinacion",
+        "deslumbramiento",
+        "reconocimiento_admirativo"
+      ],
+      "foria": {
+        "esperado": [
+          "euforico"
+        ],
+        "tolerado": [
+          "ambiforico"
+        ]
+      },
+      "intensidad": {
+        "esperado": [
+          "media",
+          "alta"
+        ],
+        "tolerado": [
+          "neutra_ambivalente"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "cognoscitiva",
+          "mixta"
+        ],
+        "tolerado": [
+          "corporal"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "realizada",
+          "actual"
+        ],
+        "tolerado": [
+          "potencial",
+          "virtual"
+        ]
+      }
+    },
+    "gratitud": {
+      "aliases": [
+        "agradecimiento",
+        "reconocimiento_agradecido"
+      ],
+      "foria": {
+        "esperado": [
+          "euforico"
+        ],
+        "tolerado": [
+          "ambiforico"
+        ]
+      },
+      "intensidad": {
+        "esperado": [
+          "media"
+        ],
+        "tolerado": [
+          "baja",
+          "alta"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "cognoscitiva",
+          "mixta"
+        ],
+        "tolerado": [
+          "corporal"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "realizada",
+          "actual"
+        ],
+        "tolerado": [
+          "potencial"
+        ]
+      }
+    },
+    "alivio": {
+      "aliases": [
+        "desahogo",
+        "descompresión",
+        "descompresion"
+      ],
+      "foria": {
+        "esperado": [
+          "euforico"
+        ],
+        "tolerado": [
+          "ambiforico"
+        ]
+      },
+      "intensidad": {
+        "esperado": [
+          "media"
+        ],
+        "tolerado": [
+          "baja",
+          "alta"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "mixta"
+        ],
+        "tolerado": [
+          "corporal",
+          "cognoscitiva"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "realizada",
+          "actual"
+        ],
+        "tolerado": [
+          "potencial"
+        ]
+      }
+    },
+    "desconfianza": {
+      "aliases": [
+        "sospecha",
+        "recelo",
+        "escepticismo_afectivo"
+      ],
+      "foria": {
+        "esperado": [
+          "disforico"
+        ],
+        "tolerado": [
+          "ambiforico"
+        ]
+      },
+      "intensidad": {
+        "esperado": [
+          "media"
+        ],
+        "tolerado": [
+          "baja",
+          "alta"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "cognoscitiva"
+        ],
+        "tolerado": [
+          "mixta"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "realizada",
+          "actual",
+          "potencial"
+        ],
+        "tolerado": [
+          "virtual"
+        ]
+      }
+    },
+    "resignación": {
+      "aliases": [
+        "resignacion",
+        "derrotismo",
+        "desgano",
+        "desánimo",
+        "desanimo"
+      ],
+      "foria": {
+        "esperado": [
+          "disforico"
+        ],
+        "tolerado": [
+          "aforico",
+          "ambiforico"
+        ]
+      },
+      "intensidad": {
+        "esperado": [
+          "baja",
+          "media"
+        ],
+        "tolerado": [
+          "neutra_ambivalente"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "mixta"
+        ],
+        "tolerado": [
+          "cognoscitiva",
+          "corporal"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "realizada",
+          "actual"
+        ],
+        "tolerado": [
+          "virtual"
+        ]
+      }
+    },
+    "envidia": {
+      "aliases": [
+        "celos_sociales",
+        "resentimiento_envidioso"
+      ],
+      "foria": {
+        "esperado": [
+          "disforico"
+        ],
+        "tolerado": [
+          "ambiforico"
+        ]
+      },
+      "intensidad": {
+        "esperado": [
+          "media",
+          "alta"
+        ],
+        "tolerado": [
+          "baja"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "mixta"
+        ],
+        "tolerado": [
+          "cognoscitiva"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "realizada",
+          "actual"
+        ],
+        "tolerado": [
+          "potencial",
+          "inducida_proyectada"
+        ]
+      }
+    },
+    "odio": {
+      "aliases": [
+        "aborrecimiento",
+        "hostilidad_intensa",
+        "inquina"
+      ],
+      "foria": {
+        "esperado": [
+          "disforico"
+        ],
+        "tolerado": []
+      },
+      "intensidad": {
+        "esperado": [
+          "alta"
+        ],
+        "tolerado": [
+          "media"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "mixta"
+        ],
+        "tolerado": [
+          "cognoscitiva",
+          "corporal"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "realizada",
+          "actual"
+        ],
+        "tolerado": [
+          "potencial",
+          "inducida_proyectada"
+        ]
+      }
+    },
+    "burla": {
+      "aliases": [
+        "mofa",
+        "sorna",
+        "escarnio",
+        "ridiculización",
+        "ridiculizacion",
+        "cargada"
+      ],
+      "foria": {
+        "esperado": [
+          "disforico"
+        ],
+        "tolerado": [
+          "ambiforico"
+        ]
+      },
+      "intensidad": {
+        "esperado": [
+          "media",
+          "alta"
+        ],
+        "tolerado": [
+          "baja"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "cognoscitiva",
+          "mixta"
+        ],
+        "tolerado": [
+          "corporal"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "realizada",
+          "actual"
+        ],
+        "tolerado": [
+          "inducida_proyectada"
+        ]
+      },
+      "generos": [
+        "tuit"
+      ]
+    },
+    "hartazgo": {
+      "aliases": [
+        "hastío",
+        "hastio",
+        "fastidio",
+        "cansancio_moral",
+        "saturación",
+        "saturacion"
+      ],
+      "foria": {
+        "esperado": [
+          "disforico"
+        ],
+        "tolerado": [
+          "ambiforico"
+        ]
+      },
+      "intensidad": {
+        "esperado": [
+          "media",
+          "alta"
+        ],
+        "tolerado": [
+          "baja"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "mixta"
+        ],
+        "tolerado": [
+          "cognoscitiva",
+          "corporal"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "realizada",
+          "actual"
+        ],
+        "tolerado": [
+          "potencial"
+        ]
+      },
+      "generos": [
+        "tuit"
+      ]
+    },
+    "vergüenza_ajena": {
+      "aliases": [
+        "verguenza_ajena",
+        "cringe",
+        "bochorno_ajeno",
+        "pena_ajena"
+      ],
+      "foria": {
+        "esperado": [
+          "disforico"
+        ],
+        "tolerado": [
+          "ambiforico"
+        ]
+      },
+      "intensidad": {
+        "esperado": [
+          "media"
+        ],
+        "tolerado": [
+          "baja",
+          "alta"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "mixta"
+        ],
+        "tolerado": [
+          "corporal",
+          "cognoscitiva"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "realizada",
+          "actual"
+        ],
+        "tolerado": []
+      },
+      "generos": [
+        "tuit"
+      ]
+    },
+    "diversión": {
+      "aliases": [
+        "diversion",
+        "gracia",
+        "risa_compartida",
+        "chiste_celebrado"
+      ],
+      "foria": {
+        "esperado": [
+          "euforico"
+        ],
+        "tolerado": [
+          "ambiforico"
+        ]
+      },
+      "intensidad": {
+        "esperado": [
+          "media"
+        ],
+        "tolerado": [
+          "baja",
+          "alta"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "mixta"
+        ],
+        "tolerado": [
+          "corporal",
+          "cognoscitiva"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "realizada",
+          "actual"
+        ],
+        "tolerado": []
+      },
+      "generos": [
+        "tuit"
+      ]
     }
-  }
+  },
+  "notas_v2": "v2 agrega emociones del discurso político en redes (burla, hartazgo, vergüenza_ajena, diversión — restringidas al género tuit vía el campo `generos`) y emociones compartidas de uso frecuente (desprecio, admiración, gratitud, alivio, desconfianza, resignación, envidia, odio). La base es compartida: una entrada SIN campo `generos` está disponible en todos los géneros; con `generos: [\"tuit\"]` solo se ofrece en los prompts de esos géneros (emoparse.knowledge.genre_filter aplica el filtro al formatear la ontología). La normalización de aliases opera siempre sobre la base completa: si un discurso presidencial expresa burla, se normaliza igual, aunque el prompt no la ofrezca como candidata."
 }

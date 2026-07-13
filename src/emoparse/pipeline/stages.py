@@ -7,8 +7,10 @@
 from __future__ import annotations
 
 import json
+import threading
 from abc import ABC, abstractmethod
-from typing import Any, Literal
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from typing import Any, Callable, Literal
 
 import pandas as pd
 import pandera.pandas as pa
@@ -20,7 +22,13 @@ from emoparse.agents.deixis import DeixisAgent
 from emoparse.agents.modalidad import ModalidadAgent
 from emoparse.core.text import canonical_slug
 from emoparse.pipeline.deixis import is_deictic, resolve_deictic_to_enunciador
+from emoparse.pipeline.emoji_lexicon import resolve_emoji_afecto
 from emoparse.pipeline.modalidad_nlp import ModalidadNLP
+from emoparse.pipeline.technoparse import (
+    TecnoEntidad,
+    menciones_handles,
+    parse_texto,
+)
 from emoparse.pipeline.contracts import (
     DiscursoInputContract,
     EmocionExplodedContract,
@@ -47,8 +55,11 @@ from emoparse.storage.discursos import DiscursosRepository
 from emoparse.storage.emociones import EmocionesRepository
 from emoparse.storage.frases import FrasesRepository
 from emoparse.storage.judgments import JudgmentsRepository
+from emoparse.storage.hashtags import HashtagsRepository
 from emoparse.storage.menciones import MencionesRepository
 from emoparse.storage.metrics import StageMetricsAccumulator
+from emoparse.storage.posts import PostsRepository
+from emoparse.storage.tecno import TecnoRepository
 
 
 class Stage(ABC):
@@ -235,9 +246,21 @@ class EnunciationStage(_DiscursoStage):
 # ══════════════════════════════════════════════════════════════════════════════
 
 class _FraseStage(Stage):
-    """Base para etapas que procesan frases."""
+    """Base para etapas que procesan frases.
+
+    `parallel` > 1 procesa varios discursos en simultáneo (un agente por
+    discurso, como siempre). Pensado para backends servidor (llama-server,
+    LM Studio) con continuous batching: la inferencia va en paralelo y la
+    persistencia se serializa bajo lock. Con el backend in-process de
+    llama.cpp debe quedar en 1 (un solo modelo en memoria, llamadas
+    bloqueantes); el runner lo fuerza.
+    """
 
     STAGE_KEY: str  # "actores" | "emociones"
+
+    #: Discursos procesados en simultáneo. Lo asigna el runner según
+    #: `pipeline.parallel` y el tipo de backend de la stage; 1 = secuencial.
+    parallel: int = 1
 
     def __init__(
         self,
@@ -255,6 +278,7 @@ class _FraseStage(Stage):
         self._version = agent_version
         self._retry_config = retry_config
         self._genre = genre
+        self._persist_lock = threading.Lock()
 
     def run_pending(self) -> int:
         """Procesa frases pendientes agrupadas por discurso."""
@@ -269,33 +293,54 @@ class _FraseStage(Stage):
 
         logger.info(
             f"[Stage:{self.NAME}] Procesando {len(by_codigo)} discurso(s) "
-            f"con {sum(len(v) for v in by_codigo.values())} frases pendientes."
+            f"con {sum(len(v) for v in by_codigo.values())} frases pendientes"
+            + (f" (parallel={self.parallel})." if self.parallel > 1 else ".")
         )
 
         total_ok = 0
-        for codigo, pending_idxs in by_codigo.items():
-            input_data = self._d_repo.get_input(codigo) or {}
+        if self.parallel <= 1:
+            for codigo, pending_idxs in by_codigo.items():
+                total_ok += self._process_codigo(codigo, pending_idxs)
+        else:
+            with ThreadPoolExecutor(max_workers=self.parallel) as pool:
+                futures = {
+                    pool.submit(self._process_codigo, codigo, idxs): codigo
+                    for codigo, idxs in by_codigo.items()
+                }
+                for future in as_completed(futures):
+                    total_ok += future.result()
 
-            agent = self._build_agent(input_data, codigo)
+        logger.info(f"[Stage:{self.NAME}] Completado: {total_ok} frases ok.")
+        return total_ok
 
-            df_in = self._build_input_df(codigo, pending_idxs)
-            if df_in.empty:
-                continue
-            self._validate(self._input_contract(), df_in, "entrada")
+    def _process_codigo(self, codigo: str, pending_idxs: list[int]) -> int:
+        """Procesa un discurso completo. Thread-safe: la inferencia corre
+        fuera del lock; persistencia y métricas, adentro."""
+        input_data = self._d_repo.get_input(codigo) or {}
 
-            try:
-                df_out = agent.run(df_in)
-            except Exception as e:
-                logger.error(
-                    f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}"
-                )
+        agent = self._build_agent(input_data, codigo)
+
+        df_in = self._build_input_df(codigo, pending_idxs)
+        if df_in.empty:
+            return 0
+        self._validate(self._input_contract(), df_in, "entrada")
+
+        try:
+            df_out = agent.run(df_in)
+        except Exception as e:
+            logger.error(
+                f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}"
+            )
+            with self._persist_lock:
                 for idx in pending_idxs:
                     self._f_repo.set_error(
                         codigo, idx, self.STAGE_KEY, str(e)  # type: ignore[arg-type]
                     )
                     self.metrics.record_item_failed()
-                continue
+            return 0
 
+        ok = 0
+        with self._persist_lock:
             for _, row in df_out.iterrows():
                 idx = int(row["unit_idx"])
                 payload_raw = self._extract_payload(row)
@@ -311,11 +356,9 @@ class _FraseStage(Stage):
                     payload_raw,
                     version=self._version,
                 )
-                total_ok += 1
+                ok += 1
                 self.metrics.record_item_ok()
-
-        logger.info(f"[Stage:{self.NAME}] Completado: {total_ok} frases ok.")
-        return total_ok
+        return ok
 
     def _build_input_df(
         self,
@@ -452,12 +495,22 @@ class EmotionsStage(_FraseStage):
         agent_version: str | None = None,
         retry_config: RetryConfig | None = None,
         genre: Genre | None = None,
+        hilo_context_provider: Callable[[str], str | None] | None = None,
+        tecno_context_provider: Callable[[str, int], str | None] | None = None,
+        media_context_provider: Callable[[str], str | None] | None = None,
     ) -> None:
         super().__init__(backend, discursos_repo, frases_repo, agent_version, retry_config, genre)
         self._ontologia = ontologia
         self._heuristicas = heuristicas
         self._configuraciones = configuraciones
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else None
+        # Providers opcionales de contexto para discurso nativo digital:
+        # hilo (cadena de posts padre + cita), tecno (tecnolingüísticos
+        # extraídos) y media (descripciones de vision_describe).
+        # Deterministas; se inyectan como columnas del DF.
+        self._hilo_ctx = hilo_context_provider
+        self._tecno_ctx = tecno_context_provider
+        self._media_ctx = media_context_provider
 
     def _build_agent(
         self, input_data: dict[str, Any], codigo: str
@@ -487,7 +540,9 @@ class EmotionsStage(_FraseStage):
         codigo: str,
         unit_idxs: list[int],
     ) -> pd.DataFrame:
-        """Construye DataFrame con frases y actores serializados."""
+        """Construye DataFrame con frases, actores y contexto opcional."""
+        contexto_hilo = self._hilo_ctx(codigo) if self._hilo_ctx else None
+        media_desc = self._media_ctx(codigo) if self._media_ctx else None
         rows: list[dict[str, Any]] = []
         for idx in unit_idxs:
             frase = self._f_repo.get_frase(codigo, idx)
@@ -499,12 +554,21 @@ class EmotionsStage(_FraseStage):
                 if actores is not None
                 else None
             )
-            rows.append({
+            row: dict[str, Any] = {
                 "codigo": codigo,
                 "unit_idx": idx,
                 "frase": frase,
                 "actores": actores_str,
-            })
+            }
+            if contexto_hilo:
+                row["contexto_hilo"] = contexto_hilo
+            if self._tecno_ctx is not None:
+                tecno = self._tecno_ctx(codigo, idx)
+                if tecno:
+                    row["tecno"] = tecno
+            if media_desc:
+                row["media_desc"] = media_desc
+            rows.append(row)
         return pd.DataFrame(rows)
 
     def _extract_payload(self, row: pd.Series) -> Any:
@@ -622,6 +686,488 @@ class ExplodeEmotionsStage(Stage):
         if isinstance(pass2, list):
             return pass2
         return self._f_repo.get_payload(codigo, frase_idx, "emociones")
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Etapa de parsing tecnodiscursivo (determinista, sin LLM)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class TechnoparseStage(Stage):
+    """Extrae los tecnolingüísticos de cada unidad y los persiste.
+
+    Determinista y sin LLM: hashtags (con función sintáctica), menciones
+    (@handles, con posición), URLs, emojis y tecnografismos van a
+    `tecno_entidades` con sus offsets; el texto de la unidad no se altera.
+    Cada @handle siembra además una marca en `menciones` con vínculo
+    canónico aceptado (designación determinista), de modo que la base de
+    referentes arranca poblada antes de cualquier inferencia.
+    """
+
+    NAME = "technoparse"
+
+    def __init__(
+        self,
+        discursos_repo: DiscursosRepository,
+        frases_repo: FrasesRepository,
+        tecno_repo: TecnoRepository,
+        menciones_repo: MencionesRepository | None = None,
+        naturaleza_by_handle: dict[str, str] | None = None,
+    ) -> None:
+        super().__init__()
+        self._d_repo = discursos_repo
+        self._f_repo = frases_repo
+        self._t_repo = tecno_repo
+        self._m_repo = menciones_repo
+        self._naturaleza = naturaleza_by_handle or {}
+
+    def run_pending(self) -> int:
+        """Procesa todas las unidades del corpus (recomputación idempotente)."""
+        codigos = self._d_repo.list_codigos()
+        total = 0
+        for codigo in codigos:
+            total += self._parse_codigo(codigo)
+        if total > 0:
+            logger.info(
+                f"[Stage:{self.NAME}] Extraídas {total} entidades "
+                f"tecnodiscursivas en {len(codigos)} discursos."
+            )
+        return total
+
+    def _parse_codigo(self, codigo: str) -> int:
+        """Extrae y persiste las entidades de un discurso."""
+        frases = self._f_repo.list_frases_of_discurso(codigo)
+        rows: list[dict[str, Any]] = []
+        seeds: list[dict[str, Any]] = []
+        for unit_idx, texto in frases:
+            entidades = parse_texto(str(texto or ""))
+            rows.extend(_entidad_row(unit_idx, e) for e in entidades)
+            for m in menciones_handles(entidades):
+                seeds.append({
+                    "unit_idx": unit_idx,
+                    "marca": m.valor,
+                    "handle": m.valor_norm,
+                })
+        self._t_repo.replace_for_codigo(codigo, rows)
+        if self._m_repo is not None and seeds:
+            self._m_repo.seed_technoparse(codigo, seeds, self._naturaleza)
+        self.metrics.record_item_ok()
+        return len(rows)
+
+
+def _entidad_row(unit_idx: int, entidad: TecnoEntidad) -> dict[str, Any]:
+    """Convierte una TecnoEntidad a fila persistible."""
+    return {
+        "unit_idx": unit_idx,
+        "tipo": entidad.tipo,
+        "valor": entidad.valor,
+        "valor_norm": entidad.valor_norm,
+        "inicio": entidad.inicio,
+        "fin": entidad.fin,
+        "extra": entidad.extra,
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Etapa de reframing (redocumentación: citas y reposts con comentario)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class ReframingStage(Stage):
+    """Clasifica la operación de recontextualización de posts que citan.
+
+    Opera a nivel post (no frase): junta cada citador con su citado (si fue
+    capturado) y procesa todo el corpus en batches de un solo agente, dado
+    que el par citador/citado es autocontenido. Persiste en `posts`.
+    """
+
+    NAME = "reframing"
+
+    def __init__(
+        self,
+        backend: LLMBackend,
+        posts_repo: PostsRepository,
+        heuristicas: str | None = None,
+        agent_version: str | None = None,
+        retry_config: RetryConfig | None = None,
+        genre: Genre | None = None,
+    ) -> None:
+        super().__init__()
+        self._backend = backend
+        self._p_repo = posts_repo
+        self._heuristicas = heuristicas
+        self._version = agent_version
+        self._retry_config = retry_config
+        self._genre = genre
+
+    def run_pending(self) -> int:
+        """Procesa los posts citadores pendientes."""
+        from emoparse.agents.reframing import ReframingAgent
+
+        pendientes = self._p_repo.list_pending_reframing()
+        if not pendientes:
+            logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
+            return 0
+
+        rows: list[dict[str, Any]] = []
+        for post in pendientes:
+            citado_id = post.get("cita_a") or post.get("reposteo_a")
+            citado = (
+                self._p_repo.get_post(str(citado_id)) if citado_id else None
+            )
+            rows.append({
+                "codigo": str(post["post_id"]),
+                "unit_idx": 0,
+                "texto": str(post.get("texto") or ""),
+                "autor": str(post.get("autor_handle") or "?"),
+                "operatoria": "cita" if post.get("cita_a") else "repost_comentado",
+                "texto_citado": (
+                    str(citado.get("texto")) if citado else "(no capturado)"
+                ),
+                "autor_citado": (
+                    str(citado.get("autor_handle")) if citado else "?"
+                ),
+            })
+
+        logger.info(
+            f"[Stage:{self.NAME}] Procesando {len(rows)} post(s) citadores."
+        )
+        agent = ReframingAgent(
+            self._backend,
+            heuristicas=self._heuristicas,
+            retry_config=self._retry_config,
+            genre=self._genre,
+        )
+        df_in = pd.DataFrame(rows)
+        try:
+            df_out = agent.run(df_in)
+        except Exception as e:
+            logger.error(f"[Stage:{self.NAME}] Error inesperado: {e}")
+            for r in rows:
+                self._p_repo.set_reframing_error(r["codigo"], str(e))
+                self.metrics.record_item_failed()
+            return 0
+
+        total_ok = 0
+        for _, row in df_out.iterrows():
+            post_id = str(row["codigo"])
+            raw = row.get("reframing")
+            payload = _parse_json_cell(raw)
+            if payload is None:
+                self._p_repo.set_reframing_error(
+                    post_id, "Backend error (ver logs del agente)"
+                )
+                self.metrics.record_item_failed()
+                continue
+            self._p_repo.set_reframing(post_id, payload, version=self._version)
+            total_ok += 1
+            self.metrics.record_item_ok()
+
+        logger.info(f"[Stage:{self.NAME}] Completado: {total_ok} post(s) ok.")
+        return total_ok
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Etapa de afecto de emojis (híbrida: léxico primero, LLM para ambiguos)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class EmojiAffectStage(Stage):
+    """Resuelve la contribución afectiva de los emojis del corpus.
+
+    Híbrida al estilo de `modalidad`: el léxico de emojis resuelve sin LLM
+    los usos inequívocos; los ambiguos (o no cubiertos) van al agente en
+    batch, si hay backend configurado. Sin backend, degrada a léxico-only.
+    El resultado se registra en `tecno_entidades.extra['afecto']`.
+    """
+
+    NAME = "emoji_affect"
+
+    def __init__(
+        self,
+        tecno_repo: TecnoRepository,
+        emoji_lexicon: dict[str, Any] | None = None,
+        backend: LLMBackend | None = None,
+        heuristicas: str | None = None,
+        agent_version: str | None = None,
+        retry_config: RetryConfig | None = None,
+        genre: Genre | None = None,
+    ) -> None:
+        super().__init__()
+        self._t_repo = tecno_repo
+        self._lexicon = (emoji_lexicon or {}).get("emojis", {})
+        self._backend = backend
+        self._heuristicas = heuristicas
+        self._version = agent_version
+        self._retry_config = retry_config
+        self._genre = genre
+
+    def run_pending(self) -> int:
+        """Resuelve los usos de emoji pendientes (léxico y, si hay, LLM)."""
+        pendientes = self._t_repo.list_emojis_sin_afecto()
+        if not pendientes:
+            logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
+            return 0
+
+        resueltos = 0
+        ambiguos: list[dict[str, Any]] = []
+        for uso in pendientes:
+            afecto = resolve_emoji_afecto(self._lexicon, str(uso["valor"]))
+            if afecto is not None:
+                self._t_repo.set_afecto(int(uso["id"]), afecto)
+                resueltos += 1
+                self.metrics.record_item_ok()
+            else:
+                ambiguos.append(uso)
+
+        logger.info(
+            f"[Stage:{self.NAME}] Léxico: {resueltos} resueltos, "
+            f"{len(ambiguos)} ambiguos."
+        )
+        if not ambiguos:
+            return resueltos
+        if self._backend is None:
+            logger.info(
+                f"[Stage:{self.NAME}] Sin backend configurado: los ambiguos "
+                "quedan sin resolver (léxico-only)."
+            )
+            return resueltos
+
+        resueltos += self._resolver_con_llm(ambiguos)
+        return resueltos
+
+    def _resolver_con_llm(self, usos: list[dict[str, Any]]) -> int:
+        """Desambigua en contexto con el agente batch."""
+        from emoparse.agents.emoji_affect import EmojiAffectAgent
+
+        rows = []
+        for uso in usos:
+            prior = self._lexicon.get(str(uso["valor"]))
+            prior_str = ""
+            if isinstance(prior, dict):
+                cands = "/".join(prior.get("candidatos", []))
+                prior_str = f"candidatos: {cands}; foria: {prior.get('foria')}"
+            rows.append({
+                "codigo": str(uso["codigo"]),
+                "unit_idx": int(uso["unit_idx"]),
+                "entidad_id": int(uso["id"]),
+                "emoji": str(uso["valor"]),
+                "frase": str(uso.get("frase") or ""),
+                "prior": prior_str,
+            })
+        agent = EmojiAffectAgent(
+            self._backend,
+            heuristicas=self._heuristicas,
+            retry_config=self._retry_config,
+            genre=self._genre,
+        )
+        try:
+            df_out = agent.run(pd.DataFrame(rows))
+        except Exception as e:
+            logger.error(f"[Stage:{self.NAME}] Error inesperado: {e}")
+            for _ in rows:
+                self.metrics.record_item_failed()
+            return 0
+
+        ok = 0
+        for _, row in df_out.iterrows():
+            payload = _parse_json_cell(row.get("afecto"))
+            if payload is None:
+                self.metrics.record_item_failed()
+                continue
+            payload["origin"] = "llm"
+            payload["version"] = self._version
+            self._t_repo.set_afecto(int(row["entidad_id"]), payload)
+            ok += 1
+            self.metrics.record_item_ok()
+        logger.info(f"[Stage:{self.NAME}] LLM: {ok} resueltos.")
+        return ok
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Etapa de semiótica de hashtags (nivel corpus)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class HashtagSemioticsStage(Stage):
+    """Caracteriza los hashtags frecuentes del corpus con muestras de uso."""
+
+    NAME = "hashtag_semiotics"
+
+    def __init__(
+        self,
+        backend: LLMBackend,
+        tecno_repo: TecnoRepository,
+        hashtags_repo: HashtagsRepository,
+        min_usos: int = 3,
+        sample_size: int = 8,
+        heuristicas: str | None = None,
+        agent_version: str | None = None,
+        retry_config: RetryConfig | None = None,
+        genre: Genre | None = None,
+    ) -> None:
+        super().__init__()
+        self._backend = backend
+        self._t_repo = tecno_repo
+        self._h_repo = hashtags_repo
+        self._min_usos = min_usos
+        self._sample_size = sample_size
+        self._heuristicas = heuristicas
+        self._version = agent_version
+        self._retry_config = retry_config
+        self._genre = genre
+
+    def run_pending(self) -> int:
+        """Sincroniza conteos y analiza los hashtags pendientes."""
+        from emoparse.agents.hashtag_semiotics import HashtagSemioticsAgent
+
+        counts = self._t_repo.top_valores("hashtag", limit=10_000)
+        if counts:
+            self._h_repo.sync_counts(counts)
+        pendientes = self._h_repo.list_pending_analisis(self._min_usos)
+        if not pendientes:
+            logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
+            return 0
+
+        rows = []
+        for h in pendientes:
+            muestras = self._t_repo.sample_usos_hashtag(
+                str(h["valor_norm"]), limit=self._sample_size
+            )
+            rows.append({
+                "codigo": str(h["valor_norm"]),
+                "unit_idx": 0,
+                "hashtag": str(h["valor_norm"]),
+                "n_usos": int(h["n_usos"]),
+                "muestras": "\n".join(f"- {m}" for m in muestras),
+            })
+
+        logger.info(
+            f"[Stage:{self.NAME}] Procesando {len(rows)} hashtag(s) "
+            f"(umbral: {self._min_usos} usos)."
+        )
+        agent = HashtagSemioticsAgent(
+            self._backend,
+            heuristicas=self._heuristicas,
+            retry_config=self._retry_config,
+            genre=self._genre,
+        )
+        try:
+            df_out = agent.run(pd.DataFrame(rows))
+        except Exception as e:
+            logger.error(f"[Stage:{self.NAME}] Error inesperado: {e}")
+            for r in rows:
+                self._h_repo.set_analisis_error(r["hashtag"], str(e))
+                self.metrics.record_item_failed()
+            return 0
+
+        total_ok = 0
+        for _, row in df_out.iterrows():
+            valor_norm = str(row["hashtag"])
+            payload = _parse_json_cell(row.get("analisis"))
+            if payload is None:
+                self._h_repo.set_analisis_error(
+                    valor_norm, "Backend error (ver logs del agente)"
+                )
+                self.metrics.record_item_failed()
+                continue
+            self._h_repo.set_analisis(valor_norm, payload, version=self._version)
+            total_ok += 1
+            self.metrics.record_item_ok()
+
+        logger.info(f"[Stage:{self.NAME}] Completado: {total_ok} hashtag(s) ok.")
+        return total_ok
+
+
+def _parse_json_cell(raw: Any) -> dict[str, Any] | None:
+    """Parsea una celda JSON de salida de agente (None si falta o es ilegible)."""
+    if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+        return None
+    if isinstance(raw, dict):
+        return raw
+    try:
+        parsed = json.loads(str(raw))
+    except (json.JSONDecodeError, TypeError):
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Etapa de descripción multimodal (vision_describe)
+# ══════════════════════════════════════════════════════════════════════════════
+
+class VisionDescribeStage(Stage):
+    """Describe las imágenes adjuntas a posts con un modelo de visión.
+
+    Llama al backend directamente (una imagen por request; los VLM no
+    baten bien imágenes en batch) con schema estricto `VisionSchema`.
+    Requiere un backend multimodal: llama_server lanzado con --mmproj.
+    La descripción se persiste en `media` y alimenta como contexto a las
+    stages de análisis emocional (el post se analiza como enunciado
+    compuesto texto+imagen).
+    """
+
+    NAME = "vision_describe"
+
+    def __init__(
+        self,
+        backend: LLMBackend,
+        posts_repo: PostsRepository,
+        agent_version: str | None = None,
+        genre: Genre | None = None,
+    ) -> None:
+        super().__init__()
+        self._backend = backend
+        self._p_repo = posts_repo
+        self._version = agent_version
+        self._genre = genre
+
+    def run_pending(self) -> int:
+        """Describe los adjuntos pendientes."""
+        from emoparse.core.prompts import vision_describe as prompts
+        from emoparse.core.schemas import VisionSchema
+
+        pendientes = self._p_repo.list_media_pending_descripcion()
+        if not pendientes:
+            logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
+            return 0
+        logger.info(
+            f"[Stage:{self.NAME}] Describiendo {len(pendientes)} imagen(es)."
+        )
+
+        system = prompts.render_system()
+        total_ok = 0
+        for media in pendientes:
+            media_id = int(media["id"])
+            imagen = media.get("path_local") or media.get("url")
+            user = prompts.render_user(
+                texto_post=str(media.get("post_texto") or ""),
+                alt_text=media.get("alt_text") or None,
+            )
+            try:
+                response = self._backend.generate(
+                    system=system,
+                    user=user,
+                    schema=VisionSchema,
+                    images=[str(imagen)],
+                )
+            except Exception as e:
+                logger.error(
+                    f"[Stage:{self.NAME}] media {media_id}: {e}"
+                )
+                self._p_repo.set_media_descripcion_error(media_id, str(e))
+                self.metrics.record_item_failed()
+                continue
+            if response.parsed is None:
+                self._p_repo.set_media_descripcion_error(
+                    media_id, "Respuesta sin payload parseado"
+                )
+                self.metrics.record_item_failed()
+                continue
+            self._p_repo.set_media_descripcion(
+                media_id, response.parsed.model_dump(), version=self._version
+            )
+            total_ok += 1
+            self.metrics.record_item_ok()
+
+        logger.info(f"[Stage:{self.NAME}] Completado: {total_ok} imagen(es) ok.")
+        return total_ok
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1726,6 +2272,8 @@ class JudgeStage(Stage):
         agent_version: str | None = None,
         retry_config: RetryConfig | None = None,
         genre: Genre | None = None,
+        hilo_context_provider: Callable[[str], str | None] | None = None,
+        reframing_provider: Callable[[str], str | None] | None = None,
     ) -> None:
         super().__init__()
         self._backend = backend
@@ -1738,6 +2286,12 @@ class JudgeStage(Stage):
         self._version = agent_version
         self._retry_config = retry_config
         self._genre = genre
+        # Para discurso nativo digital: la ventana previa del juez es la
+        # conversación (posts padre + cita), donde viven el retome, el
+        # discurso ajeno y la ironía que el juez detecta; el reframing (si
+        # corrió) explicita la operación de recontextualización.
+        self._hilo_ctx = hilo_context_provider
+        self._reframing = reframing_provider
  
     def run_pending(self) -> int:
         """Procesa emociones caracterizadas y guarda veredictos."""
@@ -1842,6 +2396,14 @@ class JudgeStage(Stage):
  
             frase_text = self._f_repo.get_frase(codigo, frase_idx) or ""
             prev_ctx, post_ctx = self._frase_window(codigo, frase_idx)
+            if self._hilo_ctx is not None:
+                hilo = self._hilo_ctx(codigo)
+                partes = [p for p in (hilo, prev_ctx) if p]
+                if self._reframing is not None:
+                    reframing_ctx = self._reframing(codigo)
+                    if reframing_ctx:
+                        partes.append(reframing_ctx)
+                prev_ctx = "\n".join(partes)
             actantes = _parse_json_safe(emo.get("actantes_payload"))
             rows.append({
                 **emo,

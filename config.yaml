@@ -136,6 +136,21 @@ models:
       max_tokens: 3072        
       seed: 42
 
+  # Ejemplo de backend llama_server (para pipeline.parallel > 1, draft
+  # models y multimodal). Lanzar aparte:
+  #   llama-server -m models/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf -ngl 99 \
+  #       -c 16384 --parallel 4 --cont-batching --cache-reuse 256 --port 8080
+  # qwen3.6-35b-a3b-server:
+  #   backend: llama_server
+  #   base_url: http://127.0.0.1:8080
+  #   temperature: 0.3
+  #   top_p: 0.8
+  #   top_k: 20
+  #   no_think: true
+  #   max_tokens: 3072
+  #   seed: 42
+  #   timeout: 120
+
 pipeline:
   stages:
     summarizer:             qwen3-30b-moe
@@ -150,7 +165,14 @@ pipeline:
     characterizer:          gemma4-31b
     actants:                gemma4-31b
     judge:                  qwen3.6-35b-a3b
+    # ── Género tuit (opt-in vía --stages; ver config.example.yaml) ──
+    reframing:              qwen3.6-35b-a3b
+    hashtag_semiotics:      gemma4-31b
+    emoji_affect:           qwen3.6-35b-a3b
+    # vision_describe:      <alias multimodal via llama_server --mmproj>
   cache_enabled: true
+  # Subir junto con --parallel N del llama-server (in-process se fuerza a 1).
+  parallel: 1
   max_retries: 3
   retry_delays_seconds: [2, 8, 15]
   timeout_seconds: 90
@@ -164,7 +186,7 @@ paths:
 versions:
   knowledge: v9
   prompt:    v34
-  ontology:  v17
+  ontology:  v18
   schema:    v26
 
 logging:

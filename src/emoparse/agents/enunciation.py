@@ -65,7 +65,9 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
                 discurso. Si None, no se piden colectivos.
             retry_config: Política de reintentos ante errores transitorios.
             genre: Configuración opcional de género discursivo. Si se
-                provee, restringe los roles enunciativos válidos del schema.
+                provee, restringe los roles enunciativos válidos del schema
+                y puede sustituir el template del system prompt vía
+                `prompt_overrides`.
         """
         self._diccionario_str = json.dumps(
             diccionario_tipos, ensure_ascii=False, indent=2
@@ -86,10 +88,14 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
     # ── Hooks de BaseAgent ───────────────────────────────────────────────────
 
     def _build_system(self) -> str:
+        template = "enunciation_system"
+        if self._genre is not None:
+            template = self._genre.prompt_overrides.get("enunciation", template)
         return prompts.render_system(
             diccionario=self._diccionario_str,
             heuristicas=self._heuristicas,
             colectivos=self._colectivos_str or None,
+            template=template,
         )
 
     def _build_user(self, row: pd.Series) -> str:

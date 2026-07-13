@@ -7,10 +7,10 @@ from __future__ import annotations
 
 __all__ = ["__version__", "VERSION", "VERSION_INFO"]
 
-__version__ = "0.5.2"
+__version__ = "0.6.0"
 
 VERSION = __version__
 
 #: Tupla parseada para comparaciones programáticas.
 #: (major, minor, patch, [pre-release], [build]).
-VERSION_INFO = (0, 5, 2)
+VERSION_INFO = (0, 6, 0)

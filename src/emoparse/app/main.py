@@ -29,6 +29,7 @@ from emoparse.app.components import (
     tab_simulacros,
     tab_tabla,
 )
+from emoparse.app import data
 from emoparse.app.styles import CSS
 
 
@@ -93,7 +94,7 @@ def main() -> None:
     )
     st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
 
-    tab_curva_, tab_act, tab_tab, tab_comp, tab_busq, tab_corr, tab_sim, tab_enun, tab_dx, tab_ref, tab_rev, tab_est = st.tabs([
+    labels = [
         "📈 Curva emocional",
         "👥 Por actor",
         "📋 Tabla",
@@ -106,7 +107,15 @@ def main() -> None:
         "🏷 Referentes",
         "📝 Revisión",
         "🔁 Estado del run",
-    ])
+    ]
+    # Las tabs de tecnodiscurso solo aparecen si el run trae corpus de posts.
+    corpus_posts = data.has_posts(db_path)
+    if corpus_posts:
+        labels += ["🧵 Hilos", "🕸 Red", "#️⃣ Hashtags", "✳ Tecno"]
+
+    tabs = st.tabs(labels)
+    (tab_curva_, tab_act, tab_tab, tab_comp, tab_busq, tab_corr, tab_sim,
+     tab_enun, tab_dx, tab_ref, tab_rev, tab_est) = tabs[:12]
 
     with tab_curva_:
         tab_curva.render(db_path)
@@ -132,6 +141,23 @@ def main() -> None:
         tab_revision.render(db_path)
     with tab_est:
         tab_estado.render(db_path)
+
+    if corpus_posts:
+        from emoparse.app.components import (
+            tab_hashtags,
+            tab_hilos,
+            tab_red,
+            tab_tecno,
+        )
+        tab_hil, tab_red_, tab_hash, tab_tec = tabs[12:16]
+        with tab_hil:
+            tab_hilos.render(db_path)
+        with tab_red_:
+            tab_red.render(db_path)
+        with tab_hash:
+            tab_hashtags.render(db_path)
+        with tab_tec:
+            tab_tecno.render(db_path)
 
 
 if __name__ == "__main__":

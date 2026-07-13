@@ -24,6 +24,38 @@ class DiscursoInputContract(DataFrameModel):
         coerce = False
 
 
+class PostInputContract(DataFrameModel):
+    """DF de posts post-ingest (corpus de discurso nativo digital)."""
+
+    post_id: Series[str] = pa.Field(nullable=False)
+    plataforma: Series[str] = pa.Field(nullable=False)
+    autor_handle: Series[str] = pa.Field(nullable=False)
+    texto: Series[str] = pa.Field(nullable=False)  # '' solo en reposts puros
+    tipo: Series[str] = pa.Field(
+        nullable=False, isin=["original", "reply", "quote", "repost"]
+    )
+    es_repost_puro: Series[int] = pa.Field(nullable=False, isin=[0, 1])
+
+    class Config:
+        name = "PostInputContract"
+        strict = False  # Permite columnas adicionales (fecha, metricas, etc.).
+        coerce = False
+
+
+class HiloContract(DataFrameModel):
+    """DF de hilos agregados por el thread builder."""
+
+    conversacion_id: Series[str] = pa.Field(nullable=False)
+    post_raiz: Series[str] = pa.Field(nullable=False)
+    n_posts: Series[int] = pa.Field(nullable=False, ge=1)
+    profundidad_max: Series[int] = pa.Field(nullable=False, ge=0)
+
+    class Config:
+        name = "HiloContract"
+        strict = False
+        coerce = False
+
+
 class FraseInputContract(DataFrameModel):
     """DF de frases sin anotación previa."""
 

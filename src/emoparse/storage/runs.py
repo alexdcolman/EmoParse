@@ -71,8 +71,13 @@ class RunsRepository:
         """Aplica las migraciones aditivas sobre una DB existente (idempotente).
 
         Útil para comandos post-hoc que operan sobre un run ya creado (p. ej.
-        `emoparse modalidad`) y necesitan columnas nuevas sin re-bootstrapear.
+        `emoparse modalidad`) y necesitan columnas o tablas nuevas sin
+        re-bootstrapear. Todo el DDL es `CREATE TABLE IF NOT EXISTS`, por lo
+        que crear las tablas faltantes también es idempotente.
         """
+        with self._db.transaction() as cur:
+            for ddl in ALL_TABLES_DDL:
+                cur.execute(ddl)
         self._apply_additive_migrations()
 
     def _apply_additive_migrations(self) -> None:
@@ -165,6 +170,21 @@ class RunsRepository:
         self._add_column_if_missing(
             table="judgments",
             column="sugerencias",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="posts",
+            column="reframing_payload",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="posts",
+            column="reframing_version",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="posts",
+            column="reframing_error",
             type_def="TEXT",
         )
 

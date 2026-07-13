@@ -92,7 +92,7 @@ agents = [
     "langgraph>=1.1,<2",
 ]
 
-# ── Scraping HTTP-only ───────────────────────────────────────────────────────
+# ── Adquisición HTTP-only ────────────────────────────────────────────────────
 scraping = [
     "requests>=2.31,<3",
     "beautifulsoup4>=4.12",
@@ -103,6 +103,26 @@ scraping = [
 scraping_selenium = [
     "selenium>=4.41,<5",
     "webdriver-manager>=4,<5",
+]
+
+# ── Adquisición de posts: Bluesky (AT Protocol) ──────────────────────────────
+bluesky = [
+    "atproto>=0.0.55,<1",
+]
+
+# ── Parsing tecnodiscursivo (emojis con secuencias ZWJ) ──────────────────────
+techno = [
+    "emoji>=2.12,<3",
+]
+
+# ── Capa analítica sobre la SQLite del run ───────────────────────────────────
+analytics = [
+    "duckdb>=1.0,<2",
+]
+
+# ── Análisis de redes ────────────────────────────────────────────────────────
+network = [
+    "networkx>=3.0,<4",
 ]
 
 # ── Visualización / data extra ───────────────────────────────────────────────
@@ -128,7 +148,7 @@ dev = [
 
 # ── Instalación completa ─────────────────────────────────────────────────────
 all = [
-    "emoparse[llamacpp,lmstudio,ui,nlp,agents,scraping,scraping_selenium,data,utils,dev]",
+    "emoparse[llamacpp,lmstudio,ui,nlp,agents,scraping,scraping_selenium,bluesky,techno,analytics,network,data,utils,dev]",
 ]
 
 [project.scripts]
@@ -139,10 +159,10 @@ emoparse = "emoparse.cli:main"
 # `emoparse.genres`. Cada entry-point apunta a una factory `() -> Genre`.
 # Los géneros listados acá son los que vienen con el propio paquete:
 #   - discurso_presidencial: built-in canónico (default si no se pasa --genre).
-#   - tuit: ejemplo en `genres_examples/`, documenta el patrón de plugin.
+#   - tuit: built-in para posts de redes sociales (discurso nativo digital).
 [project.entry-points."emoparse.genres"]
 discurso_presidencial = "emoparse.genres.discurso_presidencial:get_genre"
-tuit = "emoparse.genres_examples.tuit:get_genre"
+tuit = "emoparse.genres.tuit:get_genre"
 
 [project.urls]
 Repository = "https://github.com/alexdcolman/emoparse"
@@ -188,6 +208,8 @@ markers = [
 
 filterwarnings = [
     "error",
+    # Alias de compatibilidad propio: no debe romper suites que aún lo importen.
+    "ignore:emoparse.scraping está deprecado:DeprecationWarning",
     "ignore::DeprecationWarning:pydantic.*",
     "ignore::PendingDeprecationWarning",
 ]

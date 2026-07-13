@@ -55,6 +55,7 @@ def handle(args: argparse.Namespace) -> int:
         ("p99_ms", 9),
         ("prompt_tok", 11),
         ("compl_tok", 10),
+        ("tok/s", 8),
         ("hits", 6),
         ("misses", 7),
     ]
@@ -72,6 +73,7 @@ def handle(args: argparse.Namespace) -> int:
             (_fmt_ms(r["p99_latency_ms"]), 9, "right"),
             (str(r["total_prompt_tokens"]), 11, "right"),
             (str(r["total_completion_tokens"]), 10, "right"),
+            (_fmt_tok_s(r["total_completion_tokens"], r["total_latency_ms"]), 8, "right"),
             (str(r["cache_hits"]), 6, "right"),
             (str(r["cache_misses"]), 7, "right"),
         ]
@@ -85,6 +87,18 @@ def handle(args: argparse.Namespace) -> int:
 
     print()
     return 0
+
+
+def _fmt_tok_s(tokens: int | None, total_ms: float | None) -> str:
+    """Throughput de decode (tokens de completion por segundo). '-' si no aplica.
+
+    Es la métrica sensible a las optimizaciones de backend (speculative
+    decoding, KV cuantizado); el prefill se lee comparando prompt_tok
+    contra total_ms entre corridas.
+    """
+    if not tokens or not total_ms or total_ms <= 0:
+        return "-"
+    return f"{tokens / (total_ms / 1000.0):.1f}"
 
 
 def _fmt_ms(v: float | None) -> str:

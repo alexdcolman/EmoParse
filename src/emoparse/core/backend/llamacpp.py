@@ -131,7 +131,14 @@ class LlamaCppBackend(LLMBackend):
         stop: list[str] | None = None,
         reset_before: bool = False,
         max_items: int | None = None,
+        images: list[str] | None = None,
     ) -> LLMResponse:
+        if images:
+            raise BackendError(
+                f"El backend in-process '{self.alias}' no soporta imágenes. "
+                "Usá un modelo multimodal vía backend llama_server "
+                "(llama-server --mmproj ...)."
+            )
         # Reset opcional del KV-cache antes de resolver parámetros y
         # construir prompts.
         if reset_before:

@@ -35,7 +35,9 @@ def load_discursos(path: Path | str) -> pd.DataFrame:
         df = _load_json(p)
     else:
         raise InputError(
-            f"Extensión no soportada: '{ext}'. Use .csv o .json."
+            f"Extensión no soportada: '{ext}'. Use .csv o .json. "
+            "Los corpus de posts en .jsonl se cargan con "
+            "emoparse.inputs.posts_loader."
         )
 
     _validate_columns(df, p)

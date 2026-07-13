@@ -16,6 +16,7 @@ from emoparse.pipeline.stages import (
     ModalidadStage,
     Stage,
     SummarizerStage,
+    TechnoparseStage,
 )
 
 #: API pública del pipeline.
@@ -39,4 +40,5 @@ __all__ = [
     "ModalidadStage",
     "CharacterizerStage",
     "JudgeStage",
+    "TechnoparseStage",
 ]

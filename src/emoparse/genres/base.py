@@ -14,18 +14,33 @@ from pydantic import BaseModel, ConfigDict, Field
 #: Unidad de chunking que el género quiere consumir.
 ChunkUnit = Literal["frase", "parrafo", "documento"]
 
+#: Unidad de contexto enunciativo para los agentes que desambiguan con
+#: contexto (emotions, emotions_pass2, judge).
+#: 'ninguno'  → cada unidad se analiza aislada.
+#: 'discurso' → el contexto es el propio documento (frases previas, resumen).
+#: 'hilo'     → el contexto es la conversación a la que pertenece el documento
+#:              (cadena de posts padre, post raíz). Requiere que el corpus
+#:              traiga estructura conversacional (tabla `posts`/`hilos`).
+ContextUnit = Literal["ninguno", "discurso", "hilo"]
+
 
 #: Stages canónicas del pipeline.
 StageName = Literal[
     "summarizer",
     "metadata",
     "enunciation",
+    "technoparse",
     "actors",
     "emotions",
     "emotions_pass2",
     "explode_emotions",
+    "deixis",
+    "modalidad",
+    "normalize_emotions",
     "characterizer",
+    "actants",
     "judge",
+    "semas",
 ]
 
 
@@ -50,6 +65,26 @@ class Genre(BaseModel):
                     "'frase' usa split_into_sentences."
                     "'parrafo' parte por dobles newlines."
                     "'documento' no chunkea — cada discurso es una sola unidad.",
+    )
+
+    # ── Unidad de contexto enunciativo ───────────────────────────────────────
+    context_unit: ContextUnit = Field(
+        default="discurso",
+        description="De dónde toman contexto los agentes que desambiguan "
+                    "con material circundante. 'discurso' es el "
+                    "comportamiento clásico (frases previas + resumen). "
+                    "'hilo' usa la conversación (posts padre) cuando el "
+                    "corpus la trae. 'ninguno' analiza cada unidad aislada.",
+    )
+
+    # ── Parsing tecnodiscursivo ──────────────────────────────────────────────
+    technoparse: bool = Field(
+        default=False,
+        description="Si True, la stage determinista `technoparse` extrae "
+                    "los tecnolingüísticos de cada unidad (hashtags, "
+                    "menciones, URLs, emojis, tecnografismos) antes de "
+                    "cualquier agente LLM. Pensado para discurso nativo "
+                    "digital (tuits, posts).",
     )
 
     # ── Roles enunciativos válidos ───────────────────────────────────────────

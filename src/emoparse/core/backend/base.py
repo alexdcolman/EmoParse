@@ -103,6 +103,7 @@ class LLMBackend(ABC):
         stop: list[str] | None = None,
         reset_before: bool = False,
         max_items: int | None = None,
+        images: list[str] | None = None,
     ) -> LLMResponse:
         """Genera respuesta del LLM.
 
@@ -119,6 +120,9 @@ class LLMBackend(ABC):
                 acota la salida a EXACTAMENTE `max_items` elementos. Se usa para
                 pasar el tamaño real del batch y evitar que el modelo repita
                 ítems al infinito. Ignorado si el top-level del schema no es lista.
+            images: Referencias de imágenes (URL http(s) o path local) a
+                adjuntar al mensaje de usuario. Solo backends multimodales
+                (llama_server con --mmproj); los demás lanzan BackendError.
 
         Returns:
             LLMResponse con parsed o raw.

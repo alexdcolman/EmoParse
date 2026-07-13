@@ -13,6 +13,12 @@
 #  columna actores. El output agrega la columna emociones, con una
 #  lista estructurada de emociones detectadas.
 #
+#  Las filas pueden traer además dos columnas opcionales de contexto,
+#  pensadas para discurso nativo digital: `contexto_hilo` (la cadena de
+#  posts a los que la unidad responde) y `tecno` (los tecnolingüísticos de
+#  la unidad ya extraídos). Si están presentes y no vacías, se inyectan en
+#  el bloque de la unidad como material de desambiguación.
+#
 #  Este módulo también incluye utilidades determinísticas para construir
 #  resúmenes de contexto emocional (emotion_rolling) utilizados por el
 #  segundo pase de análisis (EmotionsAgentPass2).
@@ -123,7 +129,8 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
                  Si es None o vacío, se analizan emociones de cualquier experienciador.
             retry_config: Política de reintentos ante errores transitorios.
             genre: Configuración opcional de género discursivo. Puede
-                ajustar parámetros como BATCH_SIZE.
+                ajustar parámetros como BATCH_SIZE y sustituir el template
+                del system prompt vía `prompt_overrides`.
         """
         self._ontologia = ontologia
         self._heuristicas = heuristicas
@@ -145,6 +152,9 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
     # ── Hooks de BaseBatchAgent ──────────────────────────────────────────────
 
     def _build_system(self) -> str:
+        template = "emotions_system"
+        if self._genre is not None:
+            template = self._genre.prompt_overrides.get("emotions", template)
         return prompts.render_system(
             ontologia=self._ontologia,
             heuristicas=self._heuristicas,
@@ -156,6 +166,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
             auditorio=self._auditorio,
             resumen=self._resumen,
             alcance=self._alcance_text(),
+            template=template,
         )
 
     def _build_user(self, batch: pd.DataFrame) -> str:
@@ -164,12 +175,28 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
             codigo = str(row.get("codigo", ""))
             frase = str(row.get("frase", row.get("contenido", "")))
             actores_str = self._format_actores(row.get("actores"))
+            contexto_hilo = _opt_str(row.get("contexto_hilo"))
+            tecno = _opt_str(row.get("tecno"))
+            media_desc = _opt_str(row.get("media_desc"))
 
-            bloques.append(
-                f"UNIDAD [{i}] (codigo={codigo}):\n"
-                f"FRASE: {frase}\n"
-                f"ACTORES IDENTIFICADOS: {actores_str}"
-            )
+            partes = [f"UNIDAD [{i}] (codigo={codigo}):"]
+            if contexto_hilo:
+                partes.append(
+                    "CONTEXTO DEL HILO (posts a los que responde; solo para "
+                    "desambiguar, NO fuente de emociones):\n"
+                    f"{contexto_hilo}"
+                )
+            partes.append(f"FRASE: {frase}")
+            partes.append(f"ACTORES IDENTIFICADOS: {actores_str}")
+            if tecno:
+                partes.append(f"TECNOLINGÜÍSTICOS DE LA UNIDAD: {tecno}")
+            if media_desc:
+                partes.append(
+                    "MEDIA ADJUNTA (descripción generada; el post es un "
+                    f"enunciado compuesto texto+imagen):\n{media_desc}"
+                )
+
+            bloques.append("\n".join(partes))
 
         unidades_block = "\n\n".join(bloques)
         return prompts.render_user(unidades_block=unidades_block)
@@ -225,6 +252,13 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
                 tipo = a.get("tipo", "?")
                 formatted.append(f"{nombre} ({tipo})")
         return "; ".join(formatted) if formatted else "(ninguno)"
+
+
+def _opt_str(value: Any) -> str:
+    """String de una celda opcional: None/NaN → ''."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    return str(value).strip()
 
 
 # ══════════════════════════════════════════════════════════════════════════════

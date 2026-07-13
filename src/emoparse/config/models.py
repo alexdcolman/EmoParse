@@ -20,7 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 #: Backends válidos. Centralizado para generar error claro si se usa
 #: "ollama" en el YAML (no soportado).
-BackendName = Literal["llama_cpp", "lmstudio"]
+BackendName = Literal["llama_cpp", "llama_server", "lmstudio"]
 
 
 class ModelConfig(BaseModel):
@@ -33,8 +33,10 @@ class ModelConfig(BaseModel):
     model_config = ConfigDict(extra="allow")
 
     backend: BackendName = Field(
-        description="Tipo de backend: llama_cpp para GGUFs locales, "
-                    "lmstudio para API OpenAI-compatible.",
+        description="Tipo de backend: llama_cpp para GGUFs locales "
+                    "in-process, llama_server para llama.cpp en modo server "
+                    "(continuous batching, cache de prefijo, draft models, "
+                    "multimodal), lmstudio para API OpenAI-compatible.",
     )
     temperature: float = Field(
         default=0.0,
@@ -78,6 +80,15 @@ class PipelineConfig(BaseModel):
     cache_enabled: bool = Field(
         default=True,
         description="Si False, el CachedBackend no envuelve los backends raw.",
+    )
+    parallel: int = Field(
+        default=1,
+        ge=1,
+        description="Discursos procesados en simultáneo dentro de cada stage "
+                    "por-frase. Solo tiene efecto con backends servidor "
+                    "(llama_server con --parallel N --cont-batching, "
+                    "lmstudio); con llama_cpp in-process el runner lo "
+                    "fuerza a 1.",
     )
     max_retries: int = Field(default=3, ge=0)
     retry_delays_seconds: list[int] = Field(
