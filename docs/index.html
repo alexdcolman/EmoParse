@@ -900,7 +900,7 @@ body.at-home main > footer { display: block; }
     <a href="#home" style="text-decoration:none;color:inherit;">
       <div class="logo">Emo<span class="accent">Parse</span></div>
     </a>
-    <div class="tag">Docs · v0.4.0</div>
+    <div class="tag">Docs · v0.5.2</div>
   </div>
 
   <nav>
@@ -940,6 +940,8 @@ body.at-home main > footer { display: block; }
         <li><a href="#cli-retry" class="depth-2">retry</a></li>
         <li><a href="#cli-validate" class="depth-2">validate</a></li>
         <li><a href="#cli-judge" class="depth-2">judge</a></li>
+        <li><a href="#cli-modalidad" class="depth-2">modalidad</a></li>
+        <li><a href="#cli-semas" class="depth-2">semas</a></li>
         <li><a href="#cli-metrics" class="depth-2">metrics</a></li>
         <li><a href="#cli-stats" class="depth-2">stats</a></li>
         <li><a href="#cli-export" class="depth-2">export</a></li>
@@ -986,7 +988,7 @@ body.at-home main > footer { display: block; }
 
 <!-- HOME / PORTADA ───────────────────────────────────────────── -->
 <header class="hero" id="home" data-title="Inicio">
-  <div class="hero-eyebrow">Documentación oficial · v0.4.0 · Beta</div>
+  <div class="hero-eyebrow">Documentación oficial · v0.5.2 · Beta</div>
   <h1>Emo<span class="em">Parse</span></h1>
   <p class="hero-lede">
     Un sistema reproducible de <em>análisis de emociones</em> en discursos,
@@ -1509,6 +1511,16 @@ emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
   --run-id presidencial_q1_2024 \
   --stages emotions_pass2
 
+<span class="c-comment"># deixis: resuelve las marcas deícticas (yo/nosotros/veamos…) a referentes concretos</span>
+emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
+  --run-id presidencial_q1_2024 \
+  --stages deixis
+
+<span class="c-comment"># modalidad: clasifica la modalidad referencial de cada vínculo (NLP + LLM)</span>
+emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
+  --run-id presidencial_q1_2024 \
+  --stages modalidad
+
 <span class="c-comment"># actants: análisis actancial de cada emoción (mediador, verificadores, operador)</span>
 emoparse run --config config.yaml --input data/discursos_q1_2024.csv \
   --run-id presidencial_q1_2024 \
@@ -1680,40 +1692,43 @@ streamlit run src/emoparse/app/__main__.py
   <p>
     Un discurso atraviesa una secuencia de etapas. Las primeras operan
     sobre el discurso completo; las siguientes, sobre cada frase; las
-    últimas, sobre cada emoción individual. Algunas etapas están activas
-    por defecto y otras son opcionales: se activan solo si el
-    investigador las pide explícitamente.
+    últimas, sobre cada emoción individual y sobre las marcas y
+    referentes que la sostienen. Algunas etapas están activas por
+    defecto y otras son opcionales: se activan solo si el investigador
+    las pide explícitamente.
   </p>
 
   <div class="diagram">
     <!--
       Layout de tres bandas horizontales (discurso / frase / emoción).
       Cada banda tiene sus nodos alineados de izquierda a derecha.
-      Los opcionales (stroke-dasharray) se ramifican hacia abajo del nodo
-      que los habilita, en la misma columna.
+      Los opcionales (stroke-dasharray) se ramifican del nodo que los
+      habilita.
 
       Coordenadas clave:
-        Banda DISCURSO  y_center=60   (nodos y=41, h=38)
-        Banda FRASE     y_center=175  (nodos y=156, h=38)
-        Banda EMOCIÓN   y_center=310  (nodos y=291 / 351, h=38)
+        Banda DISCURSO  y=41  (h=36)
+        Banda FRASE     y=130 / y=188 (h=36)
+        Banda EMOCIÓN   y=289 / y=349 / y=409 (h=36)
 
       Nodos:
-        summarizer        x=110  w=120  cx=170
-        metadata          x=260  w=110  cx=315
-        enunciation       x=400  w=125  cx=462
+        summarizer        x=95   w=120  cx=155
+        metadata          x=240  w=110  cx=295
+        enunciation       x=375  w=125  cx=437
 
-        actors            x=110  w=100  cx=160
-        emotions          x=110  w=100  cx=160  (segunda fila de frase)
-        emotions_pass2    x=240  w=150  cx=315  [opt, bajo emotions]
+        actors            x=95   w=100  cx=145
+        emotions          x=95   w=100  cx=145  (segunda fila de frase)
+        emotions_pass2    x=220  w=150  cx=295  [opt, junto a emotions]
 
-        explode_emotions  x=110  w=160  cx=190
-        normalize_emoc.   x=300  w=165  cx=382
-        semas             x=470  w=120  cx=530  (rama desde explode)
-        characterizer     x=110  w=135  cx=177  (segunda fila emoción)
-        actants           x=275  w=110  cx=330  [opt]
-        judge             x=415  w=90   cx=460  [opt]
+        explode_emotions  x=95   w=155  cx=172
+        normalize_emoc.   x=280  w=165  cx=362
+        semas             x=478  w=112  cx=534  (rama desde explode)
+        characterizer     x=95   w=135  cx=162  (segunda fila emoción)
+        actants           x=255  w=105  cx=307  [opt]
+        judge             x=385  w=90   cx=430  [opt]
+        deixis            x=95   w=95   cx=142  [opt, rama marca↔referente]
+        modalidad         x=215  w=110  cx=270  [opt]
     -->
-    <svg viewBox="0 0 700 490" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagrama del pipeline">
+    <svg viewBox="0 0 700 475" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Diagrama del pipeline">
       <defs>
         <style>
           .st  { fill: #faf6ec; stroke: #1a1814; stroke-width: 1.3; }
@@ -1734,8 +1749,8 @@ streamlit run src/emoparse/app/__main__.py
 
       <!-- ── etiquetas de banda ── -->
       <text x="14" y="75"  class="tier" writing-mode="tb" transform="rotate(-90,14,75)">discurso</text>
-      <text x="14" y="210" class="tier" writing-mode="tb" transform="rotate(-90,14,210)">frase</text>
-      <text x="14" y="400" class="tier" writing-mode="tb" transform="rotate(-90,14,400)">emoción</text>
+      <text x="14" y="205" class="tier" writing-mode="tb" transform="rotate(-90,14,205)">frase</text>
+      <text x="14" y="375" class="tier" writing-mode="tb" transform="rotate(-90,14,375)">emoción</text>
 
       <!-- ══ BANDA DISCURSO ══ -->
       <!-- summarizer -->
@@ -1776,23 +1791,23 @@ streamlit run src/emoparse/app/__main__.py
       <!-- emotions → explode_emotions (baja a banda emoción) -->
       <path d="M 145,224 Q 145,258 190,258 L 190,289" class="ar" marker-end="url(#arr)"/>
 
-      <!-- ══ BANDA EMOCIÓN (fila 1: explode + normalize) ══ -->
+      <!-- ══ BANDA EMOCIÓN (fila 1: explode + normalize + semas) ══ -->
       <!-- explode_emotions -->
-      <rect x="95"  y="289" width="165" height="36" rx="3" class="st"/>
-      <text x="177" y="307" class="stx">explode_emotions</text>
+      <rect x="95"  y="289" width="155" height="36" rx="3" class="st"/>
+      <text x="172" y="307" class="stx">explode_emotions</text>
       <!-- normalize_emotions -->
-      <rect x="285" y="289" width="165" height="36" rx="3" class="st"/>
-      <text x="367" y="307" class="stx">normalize_emotions</text>
+      <rect x="280" y="289" width="165" height="36" rx="3" class="st"/>
+      <text x="362" y="307" class="stx">normalize_emotions</text>
       <!-- semas -->
-      <rect x="470" y="289" width="120" height="36" rx="3" class="st"/>
-      <text x="530" y="307" class="stx">semas</text>
+      <rect x="478" y="289" width="112" height="36" rx="3" class="st"/>
+      <text x="534" y="307" class="stx">semas</text>
 
       <!-- explode → normalize_emotions -->
-      <line x1="260" y1="307" x2="283" y2="307" class="ar" marker-end="url(#arr)"/>
-      <!-- explode → semas (rama desde explode) -->
-      <path d="M 200,289 Q 200,273 230,273 L 500,273 Q 530,273 530,289" class="ar" marker-end="url(#arr)"/>
+      <line x1="250" y1="307" x2="278" y2="307" class="ar" marker-end="url(#arr)"/>
+      <!-- explode → semas (rama de referentes por el canal superior) -->
+      <path d="M 197,289 Q 197,272 227,272 L 505,272 Q 534,272 534,289" class="ar" marker-end="url(#arr)"/>
       <!-- normalize_emotions → characterizer (baja fila 2) -->
-      <path d="M 367,325 Q 367,344 177,344 L 177,349" class="ar" marker-end="url(#arr)"/>
+      <path d="M 362,325 Q 362,344 162,344 L 162,349" class="ar" marker-end="url(#arr)"/>
 
       <!-- BANDA EMOCIÓN (fila 2: characterizer + actants [opt] + judge [opt]) -->
       <!-- characterizer -->
@@ -1809,6 +1824,19 @@ streamlit run src/emoparse/app/__main__.py
       <line x1="230" y1="367" x2="253" y2="367" class="ar" marker-end="url(#arr)"/>
       <!-- actants → judge -->
       <line x1="360" y1="367" x2="383" y2="367" class="ar" marker-end="url(#arr)"/>
+
+      <!-- BANDA EMOCIÓN (fila 3: refinamiento marca↔referente, opcional) -->
+      <!-- deixis [opt] -->
+      <rect x="95"  y="409" width="95" height="36" rx="3" class="sto"/>
+      <text x="142" y="427" class="stx">deixis</text>
+      <!-- modalidad [opt] -->
+      <rect x="215" y="409" width="110" height="36" rx="3" class="sto"/>
+      <text x="270" y="427" class="stx">modalidad</text>
+
+      <!-- explode → deixis (rama de referentes por el canal izquierdo) -->
+      <path d="M 118,325 Q 80,330 80,360 L 80,420 Q 80,427 95,427" class="ar" marker-end="url(#arr)"/>
+      <!-- deixis → modalidad -->
+      <line x1="190" y1="427" x2="213" y2="427" class="ar" marker-end="url(#arr)"/>
 
     </svg>
     <div style="display:flex;align-items:center;gap:1.5rem;justify-content:center;margin-top:0.9rem;flex-wrap:wrap;">
@@ -1847,7 +1875,7 @@ streamlit run src/emoparse/app/__main__.py
         <tr>
           <td><code>enunciation</code></td>
           <td>discurso</td>
-          <td>Identifica quién habla (enunciador) y a quién se dirige (enunciatarios), con sus roles.</td>
+          <td>Identifica quién habla (enunciador), a quién se dirige (enunciatarios, con sus roles), el <strong>auditorio</strong> (el destinatario directo) y los <strong>colectivos de identificación</strong> con los que el enunciador se alinea.</td>
           <td>activa</td>
         </tr>
         <tr>
@@ -1859,13 +1887,13 @@ streamlit run src/emoparse/app/__main__.py
         <tr>
           <td><code>emotions</code></td>
           <td>frase</td>
-          <td>Primera lectura de emociones por frase, usando la ontología emocional, las heurísticas y los actores ya detectados.</td>
+          <td>Primera lectura de emociones por frase, usando la ontología emocional, las heurísticas y los actores ya detectados. Se apoya en el contexto del discurso (enunciador, enunciatarios, auditorio y resumen global) para desambiguar quién siente cada emoción y qué la desencadena.</td>
           <td>activa</td>
         </tr>
         <tr>
           <td><code>emotions_pass2</code></td>
           <td>frase</td>
-          <td>Segunda lectura de las mismas frases, usando el <em>texto</em> de las frases previas del discurso como contexto para desambiguar. Cada emoción exige evidencia citable en la frase actual. Refina la primera lectura.</td>
+          <td>Segunda lectura de las mismas frases, usando el <em>texto</em> de las frases previas del discurso como contexto para desambiguar —no una lista de emociones para arrastrar—. Cada emoción exige evidencia citable en la frase actual. Refina la primera lectura.</td>
           <td>opcional</td>
         </tr>
         <tr>
@@ -1873,6 +1901,18 @@ streamlit run src/emoparse/app/__main__.py
           <td>emoción</td>
           <td>Etapa sin modelo: separa la lista de emociones de cada frase en filas individuales, una por emoción. Además reconstruye la base de marcas discursivas (actores, experienciadores, fuentes) y siembra los vínculos marca↔referente canónico automáticamente: correferencia léxica (coref), la inferencia por marca del LLM, deixis de 1ª persona y match contra <code>referentes_kb</code>.</td>
           <td>activa</td>
+        </tr>
+        <tr>
+          <td><code>deixis</code></td>
+          <td>mención</td>
+          <td>Resuelve las marcas deícticas de 1ª y 2ª persona ("yo", "nosotros", "veamos"…) a los referentes <em>concretos</em> del discurso —enunciador, auditorio, colectivos de identificación—, con asignación múltiple. Corre después de <code>explode_emotions</code> y sus sugerencias se aceptan en la tab <strong>Deixis</strong>.</td>
+          <td>opcional</td>
+        </tr>
+        <tr>
+          <td><code>modalidad</code></td>
+          <td>vínculo marca→referente</td>
+          <td>Clasifica cómo cada marca refiere a su referente: por <strong>modalidad referencial</strong> (designación / referencia gramatical / identificación inferencial) y por <strong>naturaleza</strong> del referente (persona, colectivo, institución, objeto/proceso, otro). Método híbrido: un pre-pass NLP (spaCy) resuelve los casos claros y el LLM interviene solo en los ambiguos.</td>
+          <td>opcional</td>
         </tr>
         <tr>
           <td><code>normalize_emotions</code></td>
@@ -1883,19 +1923,19 @@ streamlit run src/emoparse/app/__main__.py
         <tr>
           <td><code>characterizer</code></td>
           <td>emoción</td>
-          <td>Caracteriza cada emoción en detalle: orientación afectiva, dominancia, intensidad, fuente, duración y modo en que se atribuye a quien la siente.</td>
+          <td>Caracteriza cada emoción en detalle: orientación afectiva, dominancia, intensidad, fuente, duración, modo en que se atribuye a quien la siente, temporalidad histórica y aspecto gramatical.</td>
           <td>activa</td>
         </tr>
         <tr>
           <td><code>actants</code></td>
           <td>emoción</td>
-          <td>Analiza la configuración relacional de cada emoción: qué la vehiculiza, cómo se evalúa y cómo el discurso opera sobre ella (ver más abajo).</td>
+          <td>Analiza la configuración relacional de cada emoción: qué la vehiculiza (mediador), cómo se evalúa (verificadores), y cómo el discurso opera sobre ella (operador de modificación y polaridad, afirmación / negación). Ver más abajo.</td>
           <td>opcional</td>
         </tr>
         <tr>
           <td><code>judge</code></td>
           <td>emoción</td>
-          <td>Un segundo modelo evalúa la coherencia de las caracterizaciones y emite un veredicto con nivel de confianza.</td>
+          <td>Un segundo modelo revisa cada emoción con contexto del discurso y una ventana de frases. Corrobora la caracterización y, ante errores sustantivos, propone correcciones por elemento (experienciador, tipo, fuente, modo, temporalidad, actantes). Devuelve un veredicto con nivel de confianza.</td>
           <td>opcional</td>
         </tr>
         <tr>
@@ -1986,6 +2026,55 @@ streamlit run src/emoparse/app/__main__.py
       es individual + víctima).
     </p>
   </div>
+  <h3 id="deixis">Deixis: los "yo" y los "nosotros"</h3>
+  <p>
+    Las marcas deícticas ("yo", "nosotros", "veamos"…) no nombran a nadie: su
+    referente depende de quién habla y ante quién. La etapa opcional
+    <code>deixis</code> las resuelve. A partir del enunciador, el auditorio y los
+    colectivos de identificación que detectó <code>enunciation</code>, asigna
+    cada marca deíctica a uno o varios referentes <strong>concretos</strong> —el
+    canónico deja de ser el tipo ("enunciador") y pasa a ser el referente
+    (<code>javier_milei</code>, <code>argentinos</code>…)—. Sus sugerencias se
+    revisan en la tab <strong>Deixis</strong>: aceptar una inscribe la marca en
+    el referente concreto y sobreescribe el canónico automático.
+  </p>
+
+  <h3 id="modalidad">Modalidad referencial</h3>
+  <p>
+    Una misma marca puede ligarse a su referente de maneras muy distintas.
+    Puede <strong>designarlo</strong> con un sustantivo o un nombre propio
+    ("Javier Milei", "el presidente"), <strong>referirlo gramaticalmente</strong>
+    por deixis o morfología sin nombrarlo ("yo", "nosotros", "he defendido"), o
+    <strong>identificarlo inferencialmente</strong> por la actitud o los valores
+    que expresa ("ellos son la casta corrupta" identifica al enunciador como
+    quien sostiene esa posición, aunque no lo nombre). Colapsar estos modos en un
+    único aceptar/rechazar es problemático: rechazar una marca valorativa para
+    "limpiar" designaciones haría perder al experienciador de la emoción.
+  </p>
+  <p>
+    La etapa opcional <code>modalidad</code> agrega un <strong>eje ortogonal</strong>
+    al vínculo (no cambia el aceptar/rechazar): clasifica cada vínculo por
+    modalidad referencial (<code>designacion</code> / <code>referencia_gramatical</code>
+    / <code>identificacion_inferencial</code>) y por naturaleza del referente
+    (persona / colectivo / institución / objeto o proceso / otro). La
+    clasificación es <em>por vínculo</em>, no por marca, porque un mismo
+    sintagma puede designar a un referente e identificar inferencialmente a otro
+    ("la casta corrupta" designa a la casta pero identifica a quien la denuncia).
+    El método es híbrido: un pre-pass con <strong>spaCy</strong> resuelve barato
+    los casos claros (pronombres y verbos → referencia gramatical; nombres
+    propios → designación) y el LLM interviene solo en los ambiguos. Si no hay
+    modelo de spaCy instalado, el pre-pass se omite; si no hay backend LLM, la
+    etapa corre <em>NLP-only</em>. Nunca pisa una clasificación editada a mano.
+  </p>
+  <p>
+    En la práctica esto permite <strong>aceptar</strong> un vínculo valorativo
+    (sin perder el experienciador) y, a la vez, <strong>filtrar por
+    <code>designacion</code></strong> para estudios de designación o
+    recategorización. En la tab <strong>Referentes</strong> cada marca muestra su
+    modalidad y naturaleza (con marca de procedencia nlp / llm / ✎), la lista de
+    referentes puede filtrarse por modalidad, y cada vínculo se corrige a mano.
+  </p>
+
   <p>
     En la revisión, cuando una emoción tiene un canónico aceptado para su
     experienciador o su fuente, ese canónico es el que <strong>vale</strong>: se
@@ -2277,12 +2366,18 @@ streamlit run src/emoparse/app/__main__.py
 
   <h3>Capa 3 bis — LLM-as-judge (opcional)</h3>
   <p>
-    El stage opt-in <code>judge</code> usa otro LLM para evaluar la coherencia
-    global de cada caracterización. Devuelve un veredicto
-    (<code>coherente: bool</code>, <code>issues: str</code>,
-    <code>confianza: alta/media/baja</code>) que se persiste en la tabla
-    <code>judgments</code>. Complementa los domain validators con una lectura
-    más holística.
+    El stage opt-in <code>judge</code> usa otro LLM como corrector: recibe el
+    contexto del discurso y la emoción con su experienciador y fuente
+    <strong>efectivos</strong> (los canónicos revisados, no la inferencia
+    cruda), y solo ante errores sustantivos —atribución equivocada por retome,
+    ironía, inversión de polaridad— propone correcciones por elemento. Su
+    alcance está acotado a los elementos de mayor valor y menor ambigüedad
+    (experienciador, tipo, fuente, modo, temporalidad, actantes); no revisa las
+    dimensiones finas del <code>characterizer</code>. Devuelve
+    <code>coherente: bool</code>, <code>sugerencias</code>, <code>issues: str</code>
+    y <code>confianza: alta/media/baja</code>, que se persisten en
+    <code>judgments</code>; las sugerencias se aceptan o rechazan en la tab
+    <strong>Revisión</strong>.
   </p>
 </section>
 
@@ -2353,7 +2448,9 @@ streamlit run src/emoparse/app/__main__.py
             Una operación dirigida a actuar sobre la emoción de alguien:
             argumentar a favor o en contra de ella, anticipar un estado
             emocional deseable, buscar activarla deliberadamente, o
-            bloquearla y deslegitimarla.
+            bloquearla y deslegitimarla. Se registra además su
+            <strong>polaridad</strong> (afirmación / negación), que distingue
+            si la operación empuja hacia la emoción o la niega.
           </td>
         </tr>
       </tbody>
@@ -2449,6 +2546,8 @@ streamlit run src/emoparse/app/__main__.py
     <span class="pill"><code>retry</code></span>
     <span class="pill"><code>validate</code></span>
     <span class="pill"><code>judge</code></span>
+    <span class="pill"><code>modalidad</code></span>
+    <span class="pill"><code>semas</code></span>
     <span class="pill"><code>metrics</code></span>
     <span class="pill"><code>stats</code></span>
     <span class="pill"><code>export</code></span>
@@ -2617,6 +2716,31 @@ emoparse retry \
   [<span class="c-flag">--incoherent</span>]   <span class="c-comment"># lista solo veredictos incoherente=true</span>
   [<span class="c-flag">--coherent</span>]     <span class="c-comment"># lista solo veredictos coherente=true</span></code></pre>
 
+<!-- ───── modalidad ───────────────────────────────────────────────── -->
+<h3 id="cli-modalidad"><code>emoparse modalidad</code></h3>
+<p>Clasifica la <a href="#modalidad">modalidad referencial</a> de los vínculos marca→referente de una DB existente usando <strong>solo el pre-pass NLP</strong> (spaCy), sin LLM. Es idempotente: solo clasifica lo que aún no tiene modalidad y no pisa lo editado a mano. La variante con LLM para los casos ambiguos se corre con <code>emoparse run --stages …,modalidad</code>.</p>
+
+<pre data-lang="bash"><code>emoparse modalidad \
+  <span class="c-flag">--db</span> runs/mi_run.sqlite \
+  [<span class="c-flag">--nlp-model</span> es_core_news_md]   <span class="c-comment"># modelo spaCy ES (default: es_core_news_md)</span></code></pre>
+
+<p>
+  Requiere el extra <code>nlp</code> y un modelo en español instalado
+  (<code>pip install -e ".[nlp]"</code> y
+  <code>python -m spacy download es_core_news_md</code>).
+</p>
+
+<!-- ───── semas ───────────────────────────────────────────────────── -->
+<h3 id="cli-semas"><code>emoparse semas</code></h3>
+<p>Mantenimiento de los semas de referentes canónicos de una DB existente. Sin flags no hace nada (evita borrados accidentales). Con <code>--reset</code> borra <strong>todos</strong> los semas persistidos —propuestos y editados a mano—, útil tras un cambio del vocabulario curado para reprocesar desde cero.</p>
+
+<pre data-lang="bash"><code>emoparse semas <span class="c-flag">--db</span> runs/mi_run.sqlite <span class="c-flag">--reset</span></code></pre>
+
+<p>
+  Después del reset, <code>emoparse run --db runs/mi_run.sqlite --stages …,semas</code>
+  reasigna los semas con el vocabulario vigente.
+</p>
+
 <!-- ───── metrics ─────────────────────────────────────────────────── -->
 <h3 id="cli-metrics"><code>emoparse metrics</code></h3>
 <p>Métricas persistidas por stage: items OK/failed, latencias (p50, p99), tokens, cache hits.</p>
@@ -2698,8 +2822,8 @@ python -m emoparse.app</code></pre>
 
   <p>
     El sidebar lista todos los runs disponibles bajo <code>runs/</code> con
-    badges de estado (running / completed / failed). Elegís el run y aparecen
-    seis tabs:
+    badges de estado (running / completed / failed). Elegís el run y se abren
+    las tabs de análisis y revisión:
   </p>
 
   <div class="cards">
@@ -2714,6 +2838,10 @@ python -m emoparse.app</code></pre>
     <div class="card">
       <h4>📋 Tabla</h4>
       <p>Exploración tabular con filtros dinámicos a tres niveles (discurso, frase, emoción). Exporta a CSV.</p>
+    </div>
+    <div class="card">
+      <h4>🧭 Deixis</h4>
+      <p>Revisión paginada de las sugerencias del stage <code>deixis</code>. Se acepta o rechaza cada referente concreto propuesto para una marca deíctica ("yo", "nosotros"…), o se agrega otro del discurso; aceptar sobreescribe el canónico automático.</p>
     </div>
     <div class="card">
       <h4>↔ Comparar discursos</h4>
@@ -2749,7 +2877,11 @@ python -m emoparse.app</code></pre>
       La tab <strong>Referentes</strong> muestra todas las marcas (actores,
       experienciadores, fuentes) agrupadas por referente canónico, buscables y
       con la frase completa al pasar el cursor. Desde ahí se aceptan, rechazan,
-      quitan o reasignan los vínculos marca↔referente. El botón
+      quitan o reasignan los vínculos marca↔referente; cada uno muestra su
+      <strong>modalidad</strong> y naturaleza (si se corrió <code>modalidad</code>),
+      la lista se filtra por modalidad, y las acciones masivas aceptan o rechazan
+      en lote todo lo que matchee un filtro combinado (estado, modalidad, función,
+      referente). El botón
       <em>"Promover referentes aceptados → KB"</em> materializa los canónicos
       aceptados en <code>referentes_kb.json</code> con <strong>backup</strong> y
       escritura atómica, sin pisar los campos editados a mano
@@ -3483,7 +3615,7 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
         <tr>
           <td><code>menciones</code> · <code>mencion_funcion</code> · <code>mencion_canonico</code></td>
           <td>marcas discursivas</td>
-          <td>Base relacional de marcas: cada marca en su lugar (codigo, unit_idx), sus funciones (actor / experienciador / fuente, una marca puede tener varias) y sus vínculos muchos-a-muchos con referentes canónicos, con estado (proposed / accepted / rejected) y origen (llm / coref / deixis / auto / human).</td>
+          <td>Base relacional de marcas: cada marca en su lugar (codigo, unit_idx), sus funciones (actor / experienciador / fuente, una marca puede tener varias) y sus vínculos muchos-a-muchos con referentes canónicos, con estado (proposed / accepted / rejected) y origen (llm / coref / deixis / deixis_llm / auto / human). Cuando corren las etapas opcionales, el vínculo guarda además el tipo deíctico (<code>deixis_tipo</code>) y su clasificación de modalidad referencial (<code>modalidad</code>, <code>naturaleza</code>, <code>modalidad_origin</code>).</td>
         </tr>
         <tr>
           <td><code>canonico_semas</code></td>
@@ -3503,7 +3635,7 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
         <tr>
           <td><code>judgments</code></td>
           <td>1 row × emoción juzgada</td>
-          <td>Veredictos del JudgeStage (coherente, issues, confianza).</td>
+          <td>Veredictos del JudgeStage (coherente, issues, confianza, sugerencias por elemento).</td>
         </tr>
         <tr>
           <td><code>run_metrics</code></td>
@@ -3657,7 +3789,7 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
 
 <footer>
   <div>
-    <span class="mark">EmoParse</span> · Análisis de emociones en discursos · documentación v0.4.0
+    <span class="mark">EmoParse</span> · Análisis de emociones en discursos · documentación v0.5.2
   </div>
 </footer>
 
