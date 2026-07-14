@@ -68,7 +68,7 @@ Abrí `config.yaml` con cualquier editor de texto y ajustá la ruta del modelo (
 
 > ³ GGUF es un formato de modelos comprimidos ("cuantizados") que corren en una computadora personal vía `llama.cpp`. La generación usa "gramáticas GBNF". Esto significa que el modelo está *obligado* a responder en el formato estructurado que el sistema espera, y no puede divagar ni inventar campos.
 
-![config.yaml](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/1.png)
+![config.yaml](screenshots/1.png)
 
 ## Paso 1 — Conseguir un corpus
 
@@ -81,7 +81,7 @@ emoparse scrape --source casarosada --max 5 --out data/discursos.csv
 
 **Opción B: tu propio corpus.** Un archivo CSV con dos columnas obligatorias — `codigo` (un identificador único por discurso) y `contenido` (el texto completo) — y opcionales como `titulo`, `fecha`, `lugar`. Podés armarlo en Excel o Google Sheets y guardar como CSV.
 
-![ejemplo de archivo CSV](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/2.png)
+![ejemplo de archivo CSV](screenshots/2.png)
 
 ## Paso 2 — Correr el análisis
 
@@ -126,41 +126,41 @@ Se abre el dashboard en tu navegador, con una tab por cada clase de exploración
 
 - **📈 Curva emocional** — la trayectoria emocional del discurso: en qué partes se concentran ciertas emociones, filtrable según quiénes las experimentan, qué rasgos semánticos comparten esos experienciadores (por ejemplo, "+ víctima" o "+ victimario") — para eso hay que correr la etapa `semas` — y qué fuentes las originan. Por ejemplo, los discursos políticos suelen tener *arquitecturas* fóricas reconocibles: diagnóstico disfórico → resolución eufórica, etc.
 
-  ![Curva emocional](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/3.png)
+  ![Curva emocional](screenshots/3.png)
 
 - **👥 Por actor** — el mapa de calor actor × emoción: ¿a quién se le suele atribuir el miedo? ¿quién es fuente de indignación? Acá se ve la *distribución pasional del trabajo político*: el adversario como fuente de disforia, el colectivo propio como experienciador de esperanza, etc. Al lado hay un scatter que cruza foria e intensidad por actor.
 
-  ![Heatmap actor x emoción](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/4.png)
+  ![Heatmap actor x emoción](screenshots/4.png)
 
 - **🔎 Búsqueda** y **📋 Tabla** — exploración fina: todas las frases donde aparece determinada emoción, actor, palabra o frase, con su análisis completo. La tabla exporta a CSV.
 
-  ![Búsqueda](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/5.png)
+  ![Búsqueda](screenshots/5.png)
 
 - **🔗 Co-ocurrencia** — qué emociones tienden a aparecer juntas en la misma frase. Una matriz de asociación y un ranking de pares: por ejemplo, puede aparecer que el desprecio y la indignación coexisten con frecuencia, lo que empieza a describir una gramática afectiva propia del corpus. Al seleccionar un par, el dashboard muestra las frases donde ambas emociones coexisten, con su análisis completo: siempre se puede bajar del patrón agregado a la frase concreta que lo sostiene.
 
-  ![Matriz de co-ocurrencias](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/6.png)
+  ![Matriz de co-ocurrencias](screenshots/6.png)
 
 - **🎭 Simulacros** — la reconstrucción analítica de cada emoción con sus funciones actanciales principales y —si corriste actants— secundarias: experienciador, emoción, fuente, mediador, verificadores, operador de modificación.
 
-  ![Simulacros](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/7.png)
+  ![Simulacros](screenshots/7.png)
 
 - **🧭 Deixis** — revisión, paginada, de las sugerencias de la etapa `deixis`: a qué referente concreto remite cada "yo", cada "nosotros", cada "ustedes" (también pronombres posesivos y verbos conjugados). Aceptás o rechazás cada propuesta, o asignás otro referente del discurso.
 
 - **↔ Comparar discursos** — perfil emocional, radar, trayectoria temporal y timeline de varios discursos: por ejemplo, dos momentos de una presidencia, dos oradores, antes y después de una crisis, dos situaciones de enunciación distintas.
 
-  ![Comparación de perfiles](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/8.png)
-  ![Radar](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/9.png)
-  ![Timeline](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/10.png)
+  ![Comparación de perfiles](screenshots/8.png)
+  ![Radar](screenshots/9.png)
+  ![Timeline](screenshots/10.png)
 
 - **📝 Revisión** — acá hay una parte importante del corazón metodológico: el análisis del modelo es una *primera lectura sistemática*, no un veredicto. Esta tab deja revisar frase por frase, corregir experienciadores, fuentes o tipos, aceptar o rechazar las sugerencias del "juez" (un segundo modelo que audita al primero, si corriste esa etapa), y consolidar las decisiones. El criterio del analista siempre tiene la última palabra: cada corrección queda registrada aparte, sin borrar la lectura original del modelo.
 
-  ![Tarjeta de dos emociones en tab Revisión](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/11.png)
+  ![Tarjeta de dos emociones en tab Revisión](screenshots/11.png)
 
 - **🔁 Estado del run** — el progreso de cada etapa, y algunas herramientas de triage: actores nuevos que aparecieron, experienciadores para consolidar, y un editor de la base de actores conocidos.
 
 - **🧩 Referentes** — todas las marcas del corpus agrupadas por el referente al que remiten, con herramientas para fusionar, corregir o descartar vínculos. Le dedicamos la sección siguiente porque es, en la práctica, donde más tiempo de trabajo humano se invierte.
 
-  ![Sugerencias de agrupación en tab Referentes](https://github.com/alexdcolman/EmoParse/tree/main/tutorial/screenshots/12.png)
+  ![Sugerencias de agrupación en tab Referentes](screenshots/12.png)
 
 ## La unificación de referentes: por qué esto es trabajo artesanal
 
