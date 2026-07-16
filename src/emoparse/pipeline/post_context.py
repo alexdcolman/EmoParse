@@ -3,8 +3,9 @@
 #
 #  Contexto conversacional y tecnodiscursivo para agentes sobre posts.
 #
-#  Dos providers deterministas que las stages LLM inyectan como columnas
-#  opcionales del DataFrame de entrada (`contexto_hilo`, `tecno`):
+#  Providers deterministas que las stages LLM inyectan como columnas
+#  opcionales del DataFrame de entrada (`contexto_hilo`, `tecno`,
+#  `media_desc`, `emotion_rolling`):
 #
 #  - Contexto de hilo: la cadena de posts a los que la unidad responde
 #    (padres, del más lejano al inmediato) y, si cita, el post citado.
@@ -12,12 +13,15 @@
 #  - Contexto tecno: los tecnolingüísticos ya extraídos por technoparse,
 #    en formato compacto, con el prior afectivo de los emojis cuando el
 #    léxico o la etapa emoji_affect lo resolvieron.
+#  - Emociones del hilo: las emociones que el pase 1 ya detectó en los
+#    posts padre, como contexto del pase 2 en géneros conversacionales.
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
 
 from typing import Any, Callable
 
+from emoparse.storage.frases import FrasesRepository
 from emoparse.storage.posts import PostsRepository
 from emoparse.storage.tecno import TecnoRepository
 
@@ -78,6 +82,59 @@ def make_hilo_context_provider(
         if len(texto) > max_chars:
             # Recortar desde el principio: los padres inmediatos y la cita
             # (al final) son lo más relevante para desambiguar.
+            texto = "(...)\n" + texto[-max_chars:]
+        return texto
+
+    return provider
+
+
+def make_hilo_emotion_context_provider(
+    posts_repo: PostsRepository,
+    frases_repo: FrasesRepository,
+    max_parents: int = _MAX_PARENTS,
+    max_chars: int = _MAX_CHARS,
+) -> Callable[[str], str | None]:
+    """Provider codigo → emociones detectadas en los posts padre (o None).
+
+    Contexto del pase 2 para géneros con `context_unit == "hilo"`: con una
+    frase por discurso, el rolling intra-discurso es vacío; la referencia
+    útil son las emociones que el pase 1 ya detectó en la cadena de posts a
+    los que la unidad responde. Lee el payload `emociones` (pase 1) de cada
+    padre: es determinista respecto del orden en que el propio pase 2
+    procesa los posts.
+    """
+
+    def provider(codigo: str) -> str | None:
+        post = posts_repo.get_post(codigo)
+        if post is None:
+            return None
+
+        # Cadena de padres, del inmediato hacia arriba; solo entran los que
+        # tienen emociones del pase 1 (sin emociones no hay contexto útil).
+        cadena: list[str] = []
+        actual = post
+        vistos = {str(post["post_id"])}
+        saltos = 0
+        while saltos < max_parents:
+            parent_id = actual.get("en_respuesta_a")
+            if not parent_id:
+                break
+            padre = posts_repo.get_post(str(parent_id))
+            if padre is None or str(padre["post_id"]) in vistos:
+                break
+            vistos.add(str(padre["post_id"]))
+            saltos += 1
+            linea = _format_post_emociones(padre, frases_repo)
+            if linea:
+                cadena.append(linea)
+            actual = padre
+
+        if not cadena:
+            return None
+        # Del más lejano al inmediato, como el contexto de hilo textual.
+        cadena.reverse()
+        texto = "\n".join(cadena)
+        if len(texto) > max_chars:
             texto = "(...)\n" + texto[-max_chars:]
         return texto
 
@@ -194,6 +251,33 @@ def _format_post(post: dict[str, Any]) -> str:
     if len(texto) > 280:
         texto = texto[:280] + "…"
     return f"@{post.get('autor_handle', '?')}: {texto}"
+
+
+def _format_post_emociones(
+    post: dict[str, Any],
+    frases_repo: FrasesRepository,
+) -> str | None:
+    """Una línea con las emociones del pase 1 de un post, o None si no hay.
+
+    Mismo formato por emoción que el historial rolling del pase 2
+    ('exp siente tipo (modo)'), con el autor del post padre como etiqueta.
+    """
+    codigo = str(post["post_id"])
+    partes: list[str] = []
+    for unit_idx, _frase in frases_repo.list_frases_of_discurso(codigo):
+        payload = frases_repo.get_payload(codigo, unit_idx, "emociones")
+        if not isinstance(payload, list):
+            continue
+        for emo in payload:
+            if not isinstance(emo, dict):
+                continue
+            exp = emo.get("experienciador", "?")
+            tipo = emo.get("tipo_emocion", "?")
+            modo = emo.get("modo_existencia", "?")
+            partes.append(f"{exp} siente {tipo} ({modo})")
+    if not partes:
+        return None
+    return f"[post padre @{post.get('autor_handle', '?')}] " + "; ".join(partes)
 
 
 def _format_entidad(e: dict[str, Any], lexicon: dict[str, Any]) -> str:

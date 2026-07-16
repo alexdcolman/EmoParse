@@ -20,6 +20,7 @@ from emoparse.acquisition.base_posts import PostSourceAdapter, PostSourceError
 #: source_id → (módulo, clase, extra de pip para el mensaje de error).
 _POST_SOURCES: dict[str, tuple[str, str, str | None]] = {
     "bluesky": ("emoparse.acquisition.sources.bluesky", "BlueskyAdapter", "bluesky"),
+    "mastodon": ("emoparse.acquisition.sources.mastodon", "MastodonAdapter", None),
     "x_api": ("emoparse.acquisition.sources.x_api", "XApiAdapter", None),
     "jsonl": ("emoparse.acquisition.sources.jsonl_import", "JsonlImportAdapter", None),
     "csv": ("emoparse.acquisition.sources.dataset_import", "CsvImportAdapter", None),

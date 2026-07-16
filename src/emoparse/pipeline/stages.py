@@ -1776,6 +1776,7 @@ class EmotionsPass2Stage(Stage):
         agent_version: str | None = None,
         retry_config: RetryConfig | None = None,
         genre: Genre | None = None,
+        hilo_emotion_context_provider: Callable[[str], str | None] | None = None,
     ) -> None:
         super().__init__()
         self._backend = backend
@@ -1790,6 +1791,11 @@ class EmotionsPass2Stage(Stage):
         self._version = agent_version
         self._retry_config = retry_config
         self._genre = genre
+        # Provider opcional para géneros conversacionales (context_unit
+        # 'hilo'): emociones que el pase 1 detectó en los posts padre,
+        # inyectadas en `emotion_rolling` (con una frase por discurso, el
+        # rolling intra-discurso es vacío).
+        self._hilo_emotion_ctx = hilo_emotion_context_provider
 
     def run_pending(self) -> int:
         """Procesa frases pendientes con rolling/full summary."""
@@ -1921,8 +1927,39 @@ class EmotionsPass2Stage(Stage):
 
         df = pd.DataFrame(rows)
         if self._context_mode == "full":
-            return compute_emotion_full_summary(df)
-        return compute_emotion_rolling_summary(df, window=self._rolling_window)
+            df = compute_emotion_full_summary(df)
+        else:
+            df = compute_emotion_rolling_summary(df, window=self._rolling_window)
+        return self._merge_hilo_emotion_context(codigo, df)
+
+    def _merge_hilo_emotion_context(
+        self, codigo: str, df: pd.DataFrame
+    ) -> pd.DataFrame:
+        """Antepone al rolling las emociones detectadas en los posts padre.
+
+        Solo actúa si hay provider de hilo configurado y el post tiene
+        padres con emociones del pase 1. Cuando el rolling intra-discurso es
+        el placeholder vacío (caso típico del género tuit: una frase por
+        discurso), lo reemplaza; si trae contenido, lo conserva a
+        continuación del contexto del hilo.
+        """
+        if self._hilo_emotion_ctx is None or df.empty:
+            return df
+        ctx = self._hilo_emotion_ctx(codigo)
+        if not ctx:
+            return df
+
+        def _merge(valor: Any) -> str:
+            s = "" if valor is None or (
+                isinstance(valor, float) and pd.isna(valor)
+            ) else str(valor).strip()
+            if not s or s.startswith("(sin emociones previas"):
+                return ctx
+            return f"{ctx}\n{s}"
+
+        df = df.copy()
+        df["emotion_rolling"] = df["emotion_rolling"].map(_merge)
+        return df
 
 
 # ══════════════════════════════════════════════════════════════════════════════

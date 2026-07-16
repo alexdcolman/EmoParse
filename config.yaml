@@ -1,3 +1,38 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  EmoParse — config de run
+#
+#  Este archivo trae DOS perfiles de ejecución:
+#
+#   • IN-PROCESS (default): backend llama_cpp, un request a la vez. No requiere
+#     levantar nada aparte. `pipeline.parallel` se fuerza a 1.
+#
+#   • SERVER (opt-in, para throughput): backend llama_server con continuous
+#     batching. Levantás el server aparte (comando abajo), apuntás las stages
+#     pesadas a los alias `*-server` y subís `pipeline.parallel`. La GPU deja
+#     de quedar ociosa entre requests → 2-4× de throughput agregado en las
+#     stages que procesan cientos de ítems.
+#
+#  Cómo activar el modo SERVER (MoE qwen3.6-35b-a3b, el mejor candidato):
+#
+#     llama-server -m models/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf -ngl 99 \
+#         -c 16384 --parallel 4 --cont-batching --cache-reuse 256 -fa \
+#         --cache-type-k q8_0 --cache-type-v q8_0 \
+#         --host 127.0.0.1 --port 8080
+#
+#   1. Dejá el server corriendo en otra terminal.
+#   2. En `pipeline.stages`, cambiá las stages que quieras a `*-server`
+#      (abajo están comentadas las candidatas).
+#   3. Subí `pipeline.parallel` (p. ej. 4) al mismo N del --parallel del server.
+#
+#  Notas de VRAM (3090, 24 GB):
+#   - --parallel N parte el contexto en N slots (16384/4 = 4096 c/u). Con KV en
+#     q8_0 (arriba) el MoE entra cómodo con --parallel 4.
+#   - El gemma4-31b DENSO con --parallel es ajustado en 24 GB: si lo pasás a
+#     server, empezá con --parallel 2 y KV q8_0, o dejalo in-process.
+#   - --cache-reuse es clave para vos: tus system prompts (ontologías +
+#     heurísticas) son enormes y fijos; se procesan una vez por slot.
+# ══════════════════════════════════════════════════════════════════════════════
+
 models:
   phi4-mini: # default para metadata (stage más rápido, no requiere razonamiento complejo)
     backend: llama_cpp
@@ -14,9 +49,6 @@ models:
     context_length: 8192
     n_gpu_layers: -1
     temperature: 0.2  # bajado de 0.6 por errores con batch_size=1
-#    top_k: 40
-#    top_p: 0.95
-#    min_p: 0.0
     presence_penalty: 0.0
     max_tokens: 4096
     seed: 42
@@ -27,10 +59,6 @@ models:
     context_length: 8192
     n_gpu_layers: -1
     temperature: 0.6
-#    top_k: 20
-#    top_p: 0.95
-#    min_p: 0.0
-#    presence_penalty: 1.5  # reduce repeticiones en modo no-thinking
     max_tokens: 2048
     seed: 42
 
@@ -40,8 +68,6 @@ models:
     context_length: 8192
     n_gpu_layers: -1
     temperature: 0.3  # Mistral recomienda explícitamente temperature baja
-#    top_k: -1          # sin restricción de top_k (Mistral no lo requiere)
-#    top_p: 1.0
     max_tokens: 4096
     seed: 42
 
@@ -51,9 +77,6 @@ models:
     context_length: 8192
     n_gpu_layers: -1
     temperature: 1.0  # Google recomienda temp=1.0 para toda la familia Gemma 3/4
-#    top_k: 64
-#    top_p: 0.95
-#    min_p: 0.0
     max_tokens: 4096
     seed: 42
     flash_attn: true
@@ -64,9 +87,6 @@ models:
     context_length: 8192
     n_gpu_layers: -1
     temperature: 0.2  # bajado; es razonador: usá /no_think o vigilá thinking vs GBNF
-#    top_k: 20
-#    top_p: 0.8
-#    min_p: 0.0
     no_think: true   # Qwen3 razonador bajo GBNF: saltea el thinking
     presence_penalty: 0.0
     max_tokens: 4096
@@ -78,9 +98,6 @@ models:
     context_length: 4096 # Bajado porque está al límite de VRAM.
     n_gpu_layers: -1
     temperature: 1.0  # Google recomienda temp=1.0 para Gemma 4
-#    top_k: 64
-#    top_p: 0.95
-#    min_p: 0.0
     max_tokens: 2048
     seed: 42
     flash_attn: true    # Gemma iSWA con V heterogéneo entre capas
@@ -91,7 +108,6 @@ models:
     context_length: 8192
     n_gpu_layers: -1
     temperature: 1.0  # OpenAI recomienda temp=1.0, top_p=1.0
-#    top_p: 1.0
     max_tokens: 4096
     seed: 42
 
@@ -101,9 +117,6 @@ models:
     context_length: 8192
     n_gpu_layers: -1
     temperature: 0.6  # thinking mode; para no-thinking bajar a 0.7/top_p=0.8
-#    top_k: 20
-#    top_p: 0.95
-#    min_p: 0.0
     presence_penalty: 0.0
     max_tokens: 4096
     seed: 42
@@ -114,9 +127,6 @@ models:
     context_length: 8192
     n_gpu_layers: -1
     temperature: 0.6  # thinking mode; ajustar a 0.7 si se usa no-thinking
-#    top_k: 20
-#    top_p: 0.95
-#    min_p: 0.0
     no_think: true
     presence_penalty: 0.0
     max_tokens: 4096
@@ -133,23 +143,35 @@ models:
       min_p: 0.0
       no_think: true
       presence_penalty: 0.0   # se deja en 0
-      max_tokens: 3072        
+      max_tokens: 3072
       seed: 42
 
-  # Ejemplo de backend llama_server (para pipeline.parallel > 1, draft
-  # models y multimodal). Lanzar aparte:
-  #   llama-server -m models/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf -ngl 99 \
-  #       -c 16384 --parallel 4 --cont-batching --cache-reuse 256 --port 8080
-  # qwen3.6-35b-a3b-server:
+  # ── Alias SERVER del MoE (mismo modelo, continuous batching) ────────────────
+  #  Requiere el llama-server levantado (ver comando en el header).
+  #  Mismos parámetros de sampling que el in-process para paridad de salida.
+  qwen3.6-35b-a3b-server:
+    backend: llama_server
+    base_url: http://127.0.0.1:8080
+    temperature: 0.3
+    top_p: 0.8
+    top_k: 20
+    min_p: 0.0
+    no_think: true
+    presence_penalty: 0.0
+    max_tokens: 3072
+    seed: 42
+    timeout: 180   # subido: bajo carga concurrente cada request puede tardar más
+
+  # ── (Opcional/avanzado) Alias SERVER de gemma4-31b ──────────────────────────
+  #  VRAM ajustada en 24 GB con --parallel: levantá el server con --parallel 2
+  #  y --cache-type-k/v q8_0, o dejá gemma in-process.
+  # gemma4-31b-server:
   #   backend: llama_server
-  #   base_url: http://127.0.0.1:8080
-  #   temperature: 0.3
-  #   top_p: 0.8
-  #   top_k: 20
-  #   no_think: true
-  #   max_tokens: 3072
+  #   base_url: http://127.0.0.1:8081   # otro puerto → otro server
+  #   temperature: 1.0
+  #   max_tokens: 2048
   #   seed: 42
-  #   timeout: 120
+  #   timeout: 180
 
 pipeline:
   stages:
@@ -170,9 +192,22 @@ pipeline:
     hashtag_semiotics:      gemma4-31b
     emoji_affect:           qwen3.6-35b-a3b
     # vision_describe:      <alias multimodal via llama_server --mmproj>
+
+    # ── MODO SERVER: para activar continuous batching, apuntá al alias -server
+    #    las stages que corren sobre el MoE. Descomentá estas y comentá las de
+    #    arriba equivalentes (subí también pipeline.parallel):
+    # emotions_pass2:       qwen3.6-35b-a3b-server
+    # judge:                qwen3.6-35b-a3b-server
+    # reframing:            qwen3.6-35b-a3b-server
+    # emoji_affect:         qwen3.6-35b-a3b-server
+
   cache_enabled: true
-  # Subir junto con --parallel N del llama-server (in-process se fuerza a 1).
+
+  # In-process se fuerza a 1. Con el/los alias -server activos, subí esto al
+  # mismo N del --parallel del server (p. ej. 4). Solo tiene efecto en las
+  # stages cuyo alias es un backend server.
   parallel: 1
+
   max_retries: 3
   retry_delays_seconds: [2, 8, 15]
   timeout_seconds: 90
@@ -186,7 +221,7 @@ paths:
 versions:
   knowledge: v9
   prompt:    v34
-  ontology:  v18
+  ontology:  v19
   schema:    v26
 
 logging:

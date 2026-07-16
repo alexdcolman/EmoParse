@@ -41,7 +41,7 @@ source .venv/bin/activate   # Linux/macOS
 pip install -e ".[llamacpp,ui,scraping]"
 ```
 
-Los extras disponibles son `llamacpp`, `lmstudio`, `ui`, `nlp`, `scraping`, `scraping_selenium`, `bluesky` (adquisición de posts vía AT Protocol), `techno` (parsing de emojis con secuencias ZWJ), `network` (análisis de redes), `analytics` (DuckDB sobre la SQLite del run), `agents`, `data`, `utils`, `dev` y `all`. Ver el detalle en la documentación.
+Los extras disponibles son `llamacpp`, `lmstudio`, `ui`, `nlp`, `scraping`, `scraping_selenium`, `bluesky` (adquisición de posts vía AT Protocol; Mastodon no requiere extra), `techno` (parsing de emojis con secuencias ZWJ), `network` (análisis de redes), `analytics` (DuckDB sobre la SQLite del run), `agents`, `data`, `utils`, `dev` y `all`. Ver el detalle en la documentación.
 
 La etapa `modalidad` usa spaCy (extra `nlp`) y un modelo en español; instalalo una vez con:
 
@@ -89,7 +89,7 @@ emoparse scrape --source casarosada \
 emoparse app         Abre la aplicación de Streamlit para revisión y visualización
 emoparse run         Ejecuta el pipeline completo
 emoparse scrape      Scrapea discursos desde una source registrada
-emoparse acquire     Adquiere posts (Bluesky, dumps JSONL/CSV) a un corpus incremental
+emoparse acquire     Adquiere posts (Bluesky, Mastodon, dumps JSONL/CSV) a un corpus incremental
 emoparse network     Construye y analiza las redes de interacción de un run de posts
 emoparse eval        Evaluación de validez: golden sets, acuerdo inter-anotador, controles
 emoparse status      Resumen pending/failed/completed por stage
@@ -136,7 +136,7 @@ El dashboard incluye además tabs de **Búsqueda** (por texto o por selección d
 El género `tuit` adapta el marco a posts de redes sociales, donde el texto es un **tecnodiscurso**: los hashtags, menciones, emojis, alargamientos y mayúsculas no son ruido a limpiar sino materia enunciativa a analizar.
 
 ```bash
-# 1. Adquirir un corpus (Bluesky; también importa dumps JSONL o CSV ajenos)
+# 1. Adquirir un corpus (Bluesky o Mastodon; también importa dumps JSONL o CSV ajenos)
 emoparse acquire --source bluesky --query "#tarifazo" --lang es \
     --max 500 --out data/tarifazo.jsonl
 

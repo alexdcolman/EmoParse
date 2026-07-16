@@ -13,6 +13,7 @@ Adquisición de corpus con arquitectura source-adapter. Dos familias:
 | id | Qué es | Credenciales |
 |---|---|---|
 | `bluesky` | API de Bluesky (AT Protocol) | `BLUESKY_HANDLE` + `BLUESKY_APP_PASSWORD` (App Password; nunca la contraseña principal) |
+| `mastodon` | API pública de una instancia de Mastodon | — para hashtags, hilos y feeds públicos; `MASTODON_ACCESS_TOKEN` (token de app de solo lectura) para la búsqueda de texto libre en instancias que la restringen. Instancia vía `MASTODON_INSTANCE` (default `mastodon.social`) |
 | `x_api` | API oficial de X, v2 | `X_BEARER_TOKEN` (requiere tier de lectura pago; `/search/all` solo en tiers superiores) |
 | `jsonl` | Importa dumps JSONL (normalizados o formato API v2) | — |
 | `csv` | Importa datasets tabulares publicados | — |
@@ -26,12 +27,19 @@ emoparse acquire --source bluesky --query "#tarifazo" --lang es \
 emoparse acquire --source bluesky --thread "at://did:plc:.../app.bsky.feed.post/xyz" \
     --out data/hilo.jsonl
 
+MASTODON_INSTANCE=mastodon.social emoparse acquire --source mastodon \
+    --query "#tarifazo" --lang es --max 500 --out data/tarifazo_masto.jsonl
+
 emoparse acquire --source csv --input dataset_ajeno.csv \
     --mapping mapping.json --query "" --out data/corpus.jsonl
 ```
 
 El JSONL resultante se analiza con
 `emoparse run --genre tuit --input data/corpus.jsonl`.
+
+En `mastodon`, los handles de cuentas locales de la instancia se califican
+como `usuario@dominio`, para que no colisionen entre instancias en un corpus
+mixto (las cuentas remotas ya vienen calificadas por la API).
 
 ## Formato JSONL normalizado
 

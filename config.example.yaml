@@ -110,7 +110,7 @@ pipeline:
     characterizer:   qwen3-14b
 
     # ── Etapas opcionales ─────────────────────────────────────────────
-    # Declararlas acá deja el modelo asignado, pero NO se ejecutan por
+    # Declararlas acá deja el modelo asignado, pero no se ejecutan por
     # default. Para correrlas, pasarlas en `--stages` al invocar
     # `emoparse run` (junto con sus dependencias).
 
@@ -122,7 +122,7 @@ pipeline:
     # identificación). Requiere `enunciation` corrido previamente.
     deixis:          qwen3-14b
 
-    # Clasificación de la MODALIDAD REFERENCIAL de cada vínculo marca→referente
+    # Clasificación de la modalidad referencial de cada vínculo marca→referente
     # (designacion / referencia_gramatical / identificacion_inferencial) y la
     # naturaleza del referente. Pre-pass NLP (spaCy) + LLM solo para los casos
     # ambiguos. Requiere `explode_emotions` (y idealmente `deixis`) previos.
@@ -199,7 +199,7 @@ paths:
 #    knowledge — Subir cuando cambian datos base que afectan a todo el
 #                pipeline de forma transversal. Es el menos frecuente.
 #
-#    prompt    — Subir cuando cambia CÓMO se le pide algo al modelo:
+#    prompt    — Subir cuando cambia cómo se le pide algo al modelo:
 #                  · plantillas de prompt de cualquier agente, o
 #                  · archivos de heurísticas por agente.
 #
@@ -208,7 +208,7 @@ paths:
 #                configuraciones emocionales, base de actores conocidos,
 #                o cualquier otro JSON de datos del proyecto.
 #
-#    schema    — Subir cuando cambia la ESTRUCTURA de salida que se le
+#    schema    — Subir cuando cambia la estructura de salida que se le
 #                exige al modelo: los esquemas de datos (por ejemplo, al
 #                agregar o quitar campos de una etapa).
 #

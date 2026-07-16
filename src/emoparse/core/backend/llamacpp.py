@@ -48,59 +48,76 @@ class LlamaCppBackend(LLMBackend):
     """
 
     def __init__(
-        self,
-        alias: str,
-        model_config: dict[str, Any],
-        *,
-        verbose: bool = False,
-    ) -> None:
-        try:
-            from llama_cpp import Llama
-        except ImportError as e:
-            raise BackendConfigError(
-                "llama-cpp-python no está instalado. "
-                "Instalar con: CMAKE_ARGS='-DGGML_CUDA=on' pip install llama-cpp-python"
-            ) from e
+            self,
+            alias: str,
+            model_config: dict[str, Any],
+            *,
+            verbose: bool = False,
+        ) -> None:
+            try:
+                from llama_cpp import Llama, llama_supports_gpu_offload
+            except ImportError as e:
+                raise BackendConfigError(
+                    "llama-cpp-python no está instalado. "
+                    "Instalar con: CMAKE_ARGS='-DGGML_CUDA=on' pip install llama-cpp-python"
+                ) from e
 
-        self.alias = alias
-        self._cfg = dict(model_config)  # copia del config
+            self.alias = alias
+            self._cfg = dict(model_config)  # copia del config
 
-        path = self._cfg.get("path")
-        if not path:
-            raise BackendConfigError(f"Modelo '{alias}' sin 'path' en config")
+            path = self._cfg.get("path")
+            if not path:
+                raise BackendConfigError(f"Modelo '{alias}' sin 'path' en config")
 
-        # Defaults del modelo (overridable por llamada).
-        self._default_max_tokens = self._cfg.get("max_tokens", _DEFAULT_MAX_TOKENS)
-        self._default_temperature = self._cfg.get("temperature", _DEFAULT_TEMPERATURE)
-        self._default_seed = self._cfg.get("seed", _DEFAULT_SEED)
+            # Guard anti-fallback silencioso a CPU: si el config pide GPU
+            # (n_gpu_layers != 0) pero el build de llama-cpp-python es CPU-only,
+            # fallar con un mensaje claro. El modo CPU intencional se pide con
+            # n_gpu_layers: 0.
+            n_gpu_layers = self._cfg.get("n_gpu_layers", -1)
+            if n_gpu_layers != 0 and not llama_supports_gpu_offload():
+                raise BackendConfigError(
+                    f"Modelo '{alias}' pide GPU (n_gpu_layers={n_gpu_layers}) pero el "
+                    "build instalado de llama-cpp-python es CPU-only "
+                    "(llama_supports_gpu_offload()=False).\n"
+                    "  • Para GPU: reinstalá con CUDA, p. ej.\n"
+                    "      CMAKE_ARGS='-DGGML_CUDA=on' pip install -e '.[llamacpp]' "
+                    "--no-binary llama-cpp-python\n"
+                    f"  • Para correr en CPU a propósito: poné 'n_gpu_layers: 0' en "
+                    f"el config del modelo '{alias}'."
+                )
 
-        # Parámetros de sampling avanzados.
-        self._top_p = self._cfg.get("top_p", 1.0)
-        self._top_k = self._cfg.get("top_k", 40)
-        self._min_p = self._cfg.get("min_p", 0.0)
-        self._repeat_penalty = self._cfg.get("repeat_penalty", 1.0)        
-        self._no_think = bool(self._cfg.get("no_think", False))
+            # Defaults del modelo (overridable por llamada).
+            self._default_max_tokens = self._cfg.get("max_tokens", _DEFAULT_MAX_TOKENS)
+            self._default_temperature = self._cfg.get("temperature", _DEFAULT_TEMPERATURE)
+            self._default_seed = self._cfg.get("seed", _DEFAULT_SEED)
 
-        # Cache de gramáticas compiladas; se limpia al descargar backend.
-        self._grammar_cache: dict[str, LlamaGrammar] = {}
+            # Parámetros de sampling avanzados.
+            self._top_p = self._cfg.get("top_p", 1.0)
+            self._top_k = self._cfg.get("top_k", 40)
+            self._min_p = self._cfg.get("min_p", 0.0)
+            self._repeat_penalty = self._cfg.get("repeat_penalty", 1.0)
+            self._no_think = bool(self._cfg.get("no_think", False))
 
-        logger.info(f"[LlamaCpp:{alias}] Cargando modelo: {path}")
+            # Cache de gramáticas compiladas; se limpia al descargar backend.
+            self._grammar_cache: dict[str, LlamaGrammar] = {}
 
-        # Seed en constructor para determinismo; reproducible entre runs.
-        self._llm: Llama = Llama(
-            model_path=path,
-            n_gpu_layers=self._cfg.get("n_gpu_layers", -1),
-            n_ctx=self._cfg.get("context_length", 8192),
-            n_batch=self._cfg.get("n_batch", 512),
-            n_threads=self._cfg.get("n_threads", None),
-            n_keep=self._cfg.get("n_keep", 0),
-            seed=self._default_seed,
-            flash_attn=self._cfg.get("flash_attn", False),
-            verbose=verbose,
-        )
-        logger.info(
-            f"[LlamaCpp:{alias}] Modelo cargado | n_ctx={self._cfg.get('context_length', 8192)}"
-        )
+            logger.info(f"[LlamaCpp:{alias}] Cargando modelo: {path}")
+
+            # Seed en constructor para determinismo; reproducible entre runs.
+            self._llm: Llama = Llama(
+                model_path=path,
+                n_gpu_layers=n_gpu_layers,
+                n_ctx=self._cfg.get("context_length", 8192),
+                n_batch=self._cfg.get("n_batch", 512),
+                n_threads=self._cfg.get("n_threads", None),
+                n_keep=self._cfg.get("n_keep", 0),
+                seed=self._default_seed,
+                flash_attn=self._cfg.get("flash_attn", False),
+                verbose=verbose,
+            )
+            logger.info(
+                f"[LlamaCpp:{alias}] Modelo cargado | n_ctx={self._cfg.get('context_length', 8192)}"
+            )
 
     # ── Health check ─────────────────────────────────────────────────────────
 

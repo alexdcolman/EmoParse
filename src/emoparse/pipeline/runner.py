@@ -629,7 +629,9 @@ class PipelineRunner:
 
         if name == "emotions":
             backend = self._get_backend(name)
-            ontologia = self._knowledge.load_ontology(self._ontology_filename)
+            ontologia = self._knowledge.load_ontology(
+                self._ontology_filename, genre_id=self._genre.genre_id
+            )
             heuristicas = self._knowledge.load_heuristics(
                 self._emotions_heuristics_filename
             )
@@ -669,13 +671,23 @@ class PipelineRunner:
 
         if name == "emotions_pass2":
             backend = self._get_backend(name)
-            ontologia = self._knowledge.load_ontology(self._ontology_filename)
+            ontologia = self._knowledge.load_ontology(
+                self._ontology_filename, genre_id=self._genre.genre_id
+            )
             heuristicas = self._knowledge.load_heuristics(
                 self._emotions_pass2_heuristics_filename
             )
             configuraciones = self._knowledge.load_emotion_configurations(
                 self._configurations_filename
             )
+            hilo_emotion_provider = None
+            if self._genre.context_unit == "hilo":
+                from emoparse.pipeline.post_context import (
+                    make_hilo_emotion_context_provider,
+                )
+                hilo_emotion_provider = make_hilo_emotion_context_provider(
+                    self._p_repo, self._f_repo
+                )
             return EmotionsPass2Stage(
                 backend, self._d_repo, self._f_repo,
                 ontologia=ontologia,
@@ -685,6 +697,7 @@ class PipelineRunner:
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
+                hilo_emotion_context_provider=hilo_emotion_provider,
             )
 
         if name == "explode_emotions":
@@ -773,7 +786,9 @@ class PipelineRunner:
                 heuristicas=self._knowledge.load_heuristics(
                     self._judge_heuristics_filename
                 ) if self._judge_heuristics_filename else None,
-                ontologia=self._knowledge.load_ontology(self._ontology_filename),
+                ontologia=self._knowledge.load_ontology(
+                    self._ontology_filename, genre_id=self._genre.genre_id
+                ),
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,

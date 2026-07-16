@@ -12,6 +12,8 @@ from typing import Any
 
 from loguru import logger
 
+from emoparse.knowledge.genre_filter import filtrar_ontologia_por_genero
+
 
 class KnowledgeError(ValueError):
     """Error al cargar archivos de knowledge."""
@@ -22,23 +24,47 @@ class KnowledgeLoader:
 
     def __init__(self, knowledge_dir: Path | str) -> None:
         self._dir = Path(knowledge_dir).expanduser().resolve()
-        self._cache: dict[Path, str] = {}
+        # Claves: Path para cargas sin variantes; (Path, genre_id) para
+        # ontologías filtradas por género.
+        self._cache: dict[Path | tuple[Path, str | None], str] = {}
 
     # ── API pública ──────────────────────────────────────────────────────────
 
-    def load_ontology(self, filename: str) -> str:
-        """Carga una ontología semiótica JSON y la formatea como string."""
+    def load_ontology(self, filename: str, genre_id: str | None = None) -> str:
+        """Carga una ontología semiótica JSON y la formatea como string.
+
+        Args:
+            filename: Nombre del archivo JSON dentro de knowledge_dir.
+            genre_id: Género discursivo activo (p. ej. 'tuit',
+                'discurso_presidencial'). Si se pasa, las definiciones se
+                filtran con `filtrar_ontologia_por_genero` antes de
+                formatear: las entradas con campo `generos` solo se ofrecen
+                en los géneros que declaran. None conserva la base completa
+                (comportamiento previo, y el requerido por la normalización
+                de aliases).
+        """
         path = self._resolve(filename)
-        cached = self._cache.get(path)
+        cache_key = (path, genre_id)
+        cached = self._cache.get(cache_key)
         if cached is not None:
             return cached
 
         data = self._read_json(path)
         defs = self._extract_definitions(data, path)
+        if genre_id is not None:
+            # El filtro opera sobre `{"emociones": {...}}`; se envuelven las
+            # definiciones ya extraídas para cubrir también archivos cuyo
+            # mapping de entradas es el nivel superior del JSON.
+            defs = filtrar_ontologia_por_genero(
+                {"emociones": defs}, genre_id
+            )["emociones"]
         formatted = self._format_definitions(defs)
 
-        self._cache[path] = formatted
-        logger.debug(f"[Knowledge] Cargada ontología: {path.name} ({len(defs)} entradas)")
+        self._cache[cache_key] = formatted
+        logger.debug(
+            f"[Knowledge] Cargada ontología: {path.name} "
+            f"({len(defs)} entradas, genero={genre_id or 'todos'})"
+        )
         return formatted
 
     def load_diccionario_tipos(self, filename: str) -> dict[str, Any]:

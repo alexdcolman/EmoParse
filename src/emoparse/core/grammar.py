@@ -10,6 +10,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
+import string
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  Reglas primitivas reutilizables
 # ══════════════════════════════════════════════════════════════════════════════
@@ -31,6 +33,11 @@ string ::= "\"" (
 integer ::= ("-"? ([0-9] | [1-9] [0-9]*))
 number ::= ("-"? ([0-9] | [1-9] [0-9]*)) ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
 """.strip()
+
+#: Caracteres válidos en un nombre de regla GBNF. llama.cpp NO admite '_'.
+_ALLOWED_RULE_CHARS = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
+)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -433,16 +440,18 @@ class _GrammarBuilder:
         if title:
             base = _sanitize_rule_name(title)
         else:
-            # Path tipo "#/properties/name" → "properties_name".
-            base = _sanitize_rule_name(path.replace("#/", "").replace("/", "_") or prefix)
-            base = f"{prefix}_{base}"
+            # Path tipo "#/properties/name" → "properties-name".
+            base = _sanitize_rule_name(
+                path.replace("#/", "").replace("/", "-") or prefix
+            )
+            base = f"{prefix}-{base}"
 
-        # Garantiza unicidad si ya existe.
+        # Garantiza unicidad si ya existe (sufijo con '-', no '_').
         if base in self._rules:
             i = 2
-            while f"{base}_{i}" in self._rules:
+            while f"{base}-{i}" in self._rules:
                 i += 1
-            base = f"{base}_{i}"
+            base = f"{base}-{i}"
         return base
 
     @staticmethod
@@ -462,14 +471,9 @@ class _GrammarBuilder:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _sanitize_rule_name(name: str) -> str:
-    """Convierte nombre arbitrario en identificador GBNF válido."""
-    out: list[str] = []
-    for ch in name:
-        if ch.isalnum() or ch in "_-":
-            out.append(ch)
-        else:
-            out.append("_")
-    sanitized = "".join(out).lstrip("_")
+    """Convierte un nombre arbitrario en un identificador de regla GBNF válido."""
+    out = [ch if ch in _ALLOWED_RULE_CHARS else "-" for ch in name]
+    sanitized = "".join(out).lstrip("-")
     return sanitized or "rule"
 
 

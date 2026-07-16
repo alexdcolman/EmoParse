@@ -343,64 +343,49 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
     # ── Helper: validación de cobertura del batch response ───────────────────
 
     def _apply_batch_items(
-        self,
-        items: list[BaseModel],
-        unit_idx_to_row: dict[int, pd.Series],
-        row_outputs: dict[int, dict[str, Any]],
-        batch_size: int,
-    ) -> None:
-        """Aplica los items del response batch sobre `row_outputs`.
+            self,
+            items: list[BaseModel],
+            unit_idx_to_row: dict[int, pd.Series],
+            row_outputs: dict[int, dict[str, Any]],
+            batch_size: int,
+        ) -> None:
+            """Aplica los items del batch response sobre `row_outputs`.
 
-        Los `unit_idx` fuera de rango se descartan, los duplicados generan
-        warning y los faltantes permanecen con None.
-        """
-        seen: set[int] = set()
-        for item in items:
-            # Sanity: el schema debería garantizar que item tiene unit_idx,
-            # pero si una subclase usa un schema raro, es preferible un error
-            # claro en lugar de AttributeError.
-            unit_idx = getattr(item, "unit_idx", None)
-            if not isinstance(unit_idx, int):
-                logger.warning(
-                    f"[{self.NAME}] Item del batch sin unit_idx int "
-                    f"(item={item!r}). Descartado."
+            - unit_idx == {0..N-1} → biyección correcta: asignar por unit_idx
+                (equivale a posición si vino en orden).
+            - unit_idx == {1..N}   → off-by-one (el modelo 1-indexó): asignar por
+                posición (el contenido está en orden; solo corrió la etiqueta).
+            - cualquier otra cosa   → batch no confiable: no se adivina. Las filas
+                quedan en None → re-pending → las reintenta `emoparse retry`.
+            """
+            idxs = [getattr(it, "unit_idx", None) for it in items]
+            all_int = len(idxs) == batch_size and all(isinstance(x, int) for x in idxs)
+            perfect = all_int and sorted(idxs) == list(range(batch_size))
+            off_by_one = all_int and sorted(idxs) == list(range(1, batch_size + 1))
+
+            if perfect:
+                for item in items:
+                    j = item.unit_idx  # type: ignore[attr-defined]
+                    row_outputs[j].update(
+                        self._map_item_to_columns(item, unit_idx_to_row[j])
+                    )
+                return
+
+            if off_by_one:
+                logger.debug(
+                    f"[{self.NAME}] unit_idx 1-indexado ({idxs}); asigno por posición."
                 )
-                continue
+                for i, item in enumerate(items):
+                    row_outputs[i].update(
+                        self._map_item_to_columns(item, unit_idx_to_row[i])
+                    )
+                return
 
-            if unit_idx < 0 or unit_idx >= batch_size:
-                logger.warning(
-                    f"[{self.NAME}] unit_idx={unit_idx} fuera de rango "
-                    f"[0, {batch_size}). Descartado."
-                )
-                continue
-
-            if unit_idx in seen:
-                logger.warning(
-                    f"[{self.NAME}] unit_idx={unit_idx} duplicado en el "
-                    "batch response. Sobreescribiendo (último gana)."
-                )
-            seen.add(unit_idx)
-
-            row = unit_idx_to_row[unit_idx]
-            row_outputs[unit_idx].update(self._map_item_to_columns(item, row))
-
-        missing = set(range(batch_size)) - seen
-        if missing:
-            # Diagnóstico: qué devolvió realmente el modelo (dejar si se prueban GGUFs nuevos).
+            # No confiable (duplicados / huecos / fuera de rango / cantidad rara).
             logger.error(
-                "[{}] batch sin match completo | n_items={} | unit_idx recibidos={} | batch_size={}",
+                "[{}] batch RECHAZADO: unit_idx no confiable | recibidos={} | "
+                "batch_size={}. Filas quedan en None para reintento.",
                 self.NAME,
-                len(items),
-                [getattr(it, "unit_idx", None) for it in items],
+                idxs,
                 batch_size,
             )
-            if len(missing) == batch_size:
-                logger.warning(
-                    f"[{self.NAME}] Batch response NO cubrió ningún "
-                    f"unit_idx esperado. Toda la batch queda en None."
-                )
-            else:
-                logger.info(
-                    f"[{self.NAME}] Batch response no cubrió "
-                    f"{sorted(missing)}; esas filas quedan en None."
-                )
