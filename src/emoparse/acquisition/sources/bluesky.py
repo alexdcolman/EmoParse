@@ -32,6 +32,7 @@ class BlueskyAdapter(PostSourceAdapter):
 
     source_id = "bluesky"
     supports_author_profile = True
+    supports_follows = True
 
     def __init__(
         self,
@@ -144,6 +145,34 @@ class BlueskyAdapter(PostSourceAdapter):
                 if record is None:
                     continue
                 yield record
+                n += 1
+                if max_items is not None and n >= max_items:
+                    return
+            cursor = getattr(resp, "cursor", None)
+            if not cursor:
+                return
+
+    def fetch_follows(
+        self, handle: str, max_items: int | None = None
+    ) -> Iterator[str]:
+        """Itera los handles que sigue una cuenta (app.bsky.graph.getFollows)."""
+        n = 0
+        cursor: str | None = None
+        while True:
+            params: dict[str, Any] = {
+                "actor": handle.lstrip("@"), "limit": _PAGE_SIZE,
+            }
+            if cursor:
+                params["cursor"] = cursor
+            resp = self._client.app.bsky.graph.get_follows(params=params)
+            seguidos = getattr(resp, "follows", None) or []
+            if not seguidos:
+                return
+            for perfil in seguidos:
+                seguido = _str_or_none(getattr(perfil, "handle", None))
+                if seguido is None:
+                    continue
+                yield seguido
                 n += 1
                 if max_items is not None and n >= max_items:
                     return

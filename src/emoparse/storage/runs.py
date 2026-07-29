@@ -144,7 +144,17 @@ class RunsRepository:
         )
         self._add_column_if_missing(
             table="emociones",
+            column="experienciador_canonico_origin",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="emociones",
             column="fuente_canonico",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="emociones",
+            column="fuente_canonico_origin",
             type_def="TEXT",
         )
         self._add_column_if_missing(

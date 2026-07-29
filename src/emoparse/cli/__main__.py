@@ -25,6 +25,7 @@ from emoparse.cli.commands import (
     eval_cmd,
     network_cmd,
     app_cmd,
+    follows_cmd,
     inspect_cmd,
     judge_cmd,
     metrics_cmd,
@@ -137,6 +138,34 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Acota la detección de emociones (ambos pases) a las de otros actores "
             "(distintos del enunciador y los enunciatarios)."
+        ),
+    )
+    p_run.add_argument(
+        "--embed",
+        action="store_true",
+        help=(
+            "Inyecta como contexto la información adjunta de cada post "
+            "(título/descripción/sitio de links del campo embed, alt de "
+            "imágenes) en emotions, emotions_pass2, enunciation y metadata. "
+            "Las descripciones de vision_describe ya se inyectan solas si "
+            "esa stage corrió antes."
+        ),
+    )
+    p_run.add_argument(
+        "--overwrite-db",
+        action="store_true",
+        help=(
+            "Si la DB del run ya existe, la elimina y empieza de cero sin "
+            "preguntar. Sin esta flag (ni --resume), una DB existente "
+            "dispara una pregunta interactiva (o un error si no hay TTY)."
+        ),
+    )
+    p_run.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "Si la DB del run ya existe, reanuda sin preguntar (el "
+            "comportamiento clásico de re-correr el mismo run-id)."
         ),
     )
     p_run.set_defaults(handler=run_cmd.handle)
@@ -443,6 +472,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # ── network ──────────────────────────────────────────────────────────────
     network_cmd.add_subparser(sub)
+
+    # ── follows ──────────────────────────────────────────────────────────────
+    follows_cmd.add_subparser(sub)
 
     # ── eval ─────────────────────────────────────────────────────────────────
     eval_cmd.add_subparser(sub)

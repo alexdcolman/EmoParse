@@ -12,6 +12,11 @@ from datetime import datetime, timezone
 from typing import Any
 
 from emoparse.storage.db import Database
+from emoparse.storage.referencia import (
+    marca_canonicos_index,
+    resolver_canonico,
+    resolver_canonicos,
+)
 
 
 class EmocionesRepository:
@@ -70,19 +75,31 @@ class EmocionesRepository:
         self,
         rows: Iterable[dict[str, Any]],
     ) -> None:
-        """Bulk insert/update de emociones."""
+        """Bulk insert/update de emociones.
+
+        Los canónicos por emoción (`experienciador_canonico`,
+        `fuente_canonico`) que trae el explode son de procedencia automática:
+        fijan el referente de las filas desdobladas cuya marca compartida no
+        los distinguiría. Se escriben con `*_origin = 'auto'` y solo cuando la
+        fila no tiene ya una atribución `'human'` (commit de revisión), que
+        nunca se pisa. Un re-run del explode reafirma el 'auto' y respeta el
+        'human'.
+        """
         now = datetime.now(timezone.utc)
-        params = [
-            (
+        params = []
+        for r in rows:
+            exp_canon = r.get("experienciador_canonico")
+            fte_canon = r.get("fuente_canonico")
+            params.append((
                 r["codigo"], r["frase_idx"], r["emocion_idx"],
                 r["experienciador"], r["experienciador_marca"],
                 r["tipo_emocion"], r["fuente_marca"],
                 r["fuente_inferencia"], r["modo_existencia"],
                 r.get("tipo_configuracion"),
+                exp_canon, exp_canon,   # valor + guard del CASE de origin
+                fte_canon, fte_canon,
                 now,
-            )
-            for r in rows
-        ]
+            ))
         with self._db.transaction() as cur:
             cur.executemany(
                 """
@@ -90,9 +107,15 @@ class EmocionesRepository:
                     codigo, frase_idx, emocion_idx,
                     experienciador, experienciador_marca, tipo_emocion, fuente_marca,
                     fuente_inferencia, modo_existencia,
-                    tipo_configuracion
+                    tipo_configuracion,
+                    experienciador_canonico, experienciador_canonico_origin,
+                    fuente_canonico, fuente_canonico_origin
                 )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                    ?, CASE WHEN ? IS NOT NULL THEN 'auto' END,
+                    ?, CASE WHEN ? IS NOT NULL THEN 'auto' END
+                )
                 ON CONFLICT(codigo, frase_idx, emocion_idx) DO UPDATE SET
                     experienciador          = excluded.experienciador,
                     experienciador_marca    = excluded.experienciador_marca,
@@ -101,6 +124,24 @@ class EmocionesRepository:
                     fuente_inferencia       = excluded.fuente_inferencia,
                     modo_existencia         = excluded.modo_existencia,
                     tipo_configuracion      = excluded.tipo_configuracion,
+                    -- El desdoblamiento automático no pisa una atribución
+                    -- humana; sí refresca (o limpia) la automática.
+                    experienciador_canonico = CASE
+                        WHEN experienciador_canonico_origin = 'human'
+                        THEN experienciador_canonico
+                        ELSE excluded.experienciador_canonico END,
+                    experienciador_canonico_origin = CASE
+                        WHEN experienciador_canonico_origin = 'human'
+                        THEN 'human'
+                        ELSE excluded.experienciador_canonico_origin END,
+                    fuente_canonico = CASE
+                        WHEN fuente_canonico_origin = 'human'
+                        THEN fuente_canonico
+                        ELSE excluded.fuente_canonico END,
+                    fuente_canonico_origin = CASE
+                        WHEN fuente_canonico_origin = 'human'
+                        THEN 'human'
+                        ELSE excluded.fuente_canonico_origin END,
                     updated_at              = ?
                 """,
                 params,
@@ -450,6 +491,30 @@ class EmocionesRepository:
             codigo, frase_idx, emocion_idx, canonical,
         )
 
+    def set_modo_existencia_at(
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+        modo: str,
+    ) -> bool:
+        """Fija el modo de existencia de UNA emoción. Devuelve True si cambió.
+
+        El modo no lo consume ningún stage LLM (es una categoría del simulacro),
+        así que no dispara recálculo downstream."""
+        modo = str(modo or "").strip()
+        if not modo:
+            return False
+        with self._db.transaction() as cur:
+            cur.execute(
+                "UPDATE emociones SET modo_existencia = ?, updated_at = ? "
+                "WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ? "
+                "  AND modo_existencia != ?",
+                (modo, datetime.now(timezone.utc),
+                 codigo, frase_idx, emocion_idx, modo),
+            )
+            return cur.rowcount > 0
+
     def _set_canonico_at(
         self,
         column: str,
@@ -458,7 +523,13 @@ class EmocionesRepository:
         emocion_idx: int,
         canonical: str | None,
     ) -> bool:
-        """Setea una columna canónica por emoción; True si cambió."""
+        """Setea una columna canónica por emoción; True si cambió.
+
+        Marca la procedencia como 'human': es la revisión del analista, que
+        el desdoblamiento automático nunca debe pisar. Limpiar el valor
+        (canonical vacío) también limpia la procedencia, devolviendo la
+        emoción a la resolución por marca.
+        """
         row = self._db.execute(
             f"SELECT {column} AS val FROM emociones "
             "WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
@@ -469,13 +540,207 @@ class EmocionesRepository:
         new = canonical if (canonical or "").strip() else None
         if (row["val"] or None) == new:
             return False
+        origin = "human" if new is not None else None
         with self._db.transaction() as cur:
             cur.execute(
-                f"UPDATE emociones SET {column} = ?, updated_at = ? "
+                f"UPDATE emociones SET {column} = ?, {column}_origin = ?, "
+                "updated_at = ? "
                 "WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
-                (new, datetime.now(timezone.utc), codigo, frase_idx, emocion_idx),
+                (new, origin, datetime.now(timezone.utc),
+                 codigo, frase_idx, emocion_idx),
             )
         return True
+
+    # ── Desdoblamiento por experienciador / fuente (revisión) ────────────────
+
+    #: Columnas downstream que las emociones nuevas dejan en NULL (re-pending).
+    _DOWNSTREAM_COLS = (
+        "caracterizacion_payload", "caracterizacion_version",
+        "caracterizacion_error",
+        "actantes_payload", "actantes_version", "actantes_error",
+    )
+
+    def split_por_experienciadores(
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+        canonicals: list[str],
+        modos: list[str] | None = None,
+    ) -> dict[str, Any]:
+        """Desdobla una emoción en una por experienciador canónico.
+
+        El primer canónico queda en la emoción original; por cada canónico
+        adicional se crea una emoción nueva (copia con el siguiente
+        `emocion_idx` de la frase) con su propio `experienciador_canonico` y,
+        si se pasa `modos`, su propio modo de existencia. Idempotente: no
+        duplica una emoción que ya exista en la frase con el mismo tipo y el
+        mismo canónico. Devuelve {'changed': bool, 'nuevos': [emocion_idx]};
+        `changed` indica si la emoción original cambió (el caller debe
+        invalidar su downstream)."""
+        return self._split_at(
+            codigo, frase_idx, emocion_idx, canonicals, modos,
+        )
+
+    def _split_at(
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+        canonicals: list[str],
+        modos: list[str] | None,
+    ) -> dict[str, Any]:
+        """Implementación del desdoblamiento por experienciador canónico.
+
+        Solo el experienciador desdobla: la fuente de una emoción puede
+        combinar entidades y se atribuye entera con `set_fuente_canonico_at`."""
+        column = "experienciador_canonico"
+        cids = [str(c).strip() for c in canonicals if str(c).strip()]
+        src = self.get_emocion(codigo, frase_idx, emocion_idx)
+        if not cids or src is None:
+            return {"changed": False, "nuevos": []}
+        modos = [str(m).strip() for m in (modos or [])]
+
+        changed = self._set_canonico_at(
+            column, codigo, frase_idx, emocion_idx, cids[0]
+        )
+        if modos and modos[0] and modos[0] != (src.get("modo_existencia") or ""):
+            with self._db.transaction() as cur:
+                cur.execute(
+                    "UPDATE emociones SET modo_existencia = ?, updated_at = ? "
+                    "WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
+                    (modos[0], datetime.now(timezone.utc),
+                     codigo, frase_idx, emocion_idx),
+                )
+            changed = True
+
+        rows = self._db.execute(
+            f"SELECT emocion_idx, tipo_emocion, {column} AS canon "
+            "FROM emociones WHERE codigo = ? AND frase_idx = ?",
+            (codigo, frase_idx),
+        ).fetchall()
+        existentes = {
+            (str(r["tipo_emocion"] or ""), str(r["canon"] or ""))
+            for r in rows
+        }
+        next_idx = max(int(r["emocion_idx"]) for r in rows) + 1
+
+        nuevos: list[int] = []
+        for i, cid in enumerate(cids[1:], start=1):
+            if (str(src.get("tipo_emocion") or ""), cid) in existentes:
+                continue
+            rec = dict(src)
+            rec.pop("id", None)
+            rec["emocion_idx"] = next_idx
+            rec[column] = cid
+            # Es una edición del analista: fija la procedencia para que el
+            # desdoblamiento automático del explode no la pise en un re-run.
+            rec[f"{column}_origin"] = "human"
+            if i < len(modos) and modos[i]:
+                rec["modo_existencia"] = modos[i]
+            for c in self._DOWNSTREAM_COLS:
+                if c in rec:
+                    rec[c] = None
+            rec["updated_at"] = datetime.now(timezone.utc)
+            cols = list(rec.keys())
+            placeholders = ", ".join("?" * len(cols))
+            with self._db.transaction() as cur:
+                cur.execute(
+                    f"INSERT INTO emociones ({', '.join(cols)}) "
+                    f"VALUES ({placeholders})",
+                    tuple(rec[c] for c in cols),
+                )
+            existentes.add((str(src.get("tipo_emocion") or ""), cid))
+            nuevos.append(next_idx)
+            next_idx += 1
+        return {"changed": changed, "nuevos": nuevos}
+
+    def delete_emocion(
+        self, codigo: str, frase_idx: int, emocion_idx: int
+    ) -> bool:
+        """Elimina una emoción y lo que cuelga de ella. True si existía.
+
+        Arrastra el juicio y los hallazgos de validación de esa emoción. No
+        renumera el resto: `emocion_idx` identifica al simulacro dentro de la
+        frase y renumerar orfanaría las referencias del overlay de revisión.
+        """
+        with self._db.transaction() as cur:
+            for tabla in ("judgments", "validation_issues"):
+                if self._db.table_exists(tabla):
+                    cur.execute(
+                        f"DELETE FROM {tabla} WHERE codigo = ? "
+                        "AND frase_idx = ? AND emocion_idx = ?",
+                        (codigo, frase_idx, emocion_idx),
+                    )
+            cur.execute(
+                "DELETE FROM emociones "
+                "WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
+                (codigo, frase_idx, emocion_idx),
+            )
+            return cur.rowcount > 0
+
+    def colapsar_duplicados(self, codigo: str, frase_idx: int) -> list[int]:
+        """Funde los simulacros indistinguibles de una frase. Devuelve los idx caídos.
+
+        Dos emociones de la misma frase con el mismo experienciador, la misma
+        emoción y el mismo modo de existencia son un solo simulacro: no hay
+        nada que las distinga. Sobrevive la de menor `emocion_idx`, que se
+        queda con la unión de las fuentes; las demás se eliminan.
+
+        Se invoca después de las operaciones que pueden producir la colisión
+        (desdoblar por deixis, limpiar una atribución rechazada), no como
+        barrido sobre lo que infirió el modelo.
+        """
+        rows = self._db.execute(
+            "SELECT * FROM emociones WHERE codigo = ? AND frase_idx = ? "
+            "ORDER BY emocion_idx",
+            (codigo, frase_idx),
+        ).fetchall()
+        if len(rows) < 2:
+            return []
+        index_exp = marca_canonicos_index(self._db, "experienciador", codigo)
+        index_fte = marca_canonicos_index(self._db, "fuente", codigo)
+        marcas_exp = index_exp.get((codigo, frase_idx))
+        marcas_fte = index_fte.get((codigo, frase_idx))
+
+        grupos: dict[tuple[str, str, str], list[dict[str, Any]]] = {}
+        for row in rows:
+            e = dict(row)
+            clave = (
+                resolver_canonico(
+                    marcas_exp, e.get("experienciador_marca"),
+                    override=e.get("experienciador_canonico"),
+                    inferencia=e.get("experienciador"),
+                ),
+                str(e.get("tipo_emocion_canonico") or e.get("tipo_emocion") or ""),
+                str(e.get("modo_existencia") or ""),
+            )
+            grupos.setdefault(clave, []).append(e)
+
+        caidos: list[int] = []
+        for miembros in grupos.values():
+            if len(miembros) < 2:
+                continue
+            superviviente, *resto = miembros
+            fuentes: list[str] = []
+            for e in miembros:
+                for cid in resolver_canonicos(
+                    marcas_fte, e.get("fuente_marca"),
+                    override=e.get("fuente_canonico"),
+                    inferencia=e.get("fuente_inferencia"),
+                ):
+                    if cid not in fuentes:
+                        fuentes.append(cid)
+            if fuentes:
+                self.set_fuente_canonico_at(
+                    codigo, frase_idx, int(superviviente["emocion_idx"]),
+                    "; ".join(fuentes),
+                )
+            for e in resto:
+                idx = int(e["emocion_idx"])
+                if self.delete_emocion(codigo, frase_idx, idx):
+                    caidos.append(idx)
+        return caidos
 
     def invalidate_downstream(
         self,
@@ -511,79 +776,62 @@ class EmocionesRepository:
         codigo: str,
         funcion: str,
         marca_field: str,
-    ) -> dict[tuple[int, int], list[str]]:
-        """(frase_idx, emocion_idx) → [canonical_id] resueltos desde las marcas y
-        los vínculos mención↔referente de una `funcion`
-        ('experienciador'/'fuente').
+    ) -> dict[tuple[int, int], str]:
+        """(frase_idx, emocion_idx) → el canónico del rol, uno por emoción.
 
-        Es la MISMA resolución que usa el dashboard (Referentes/Simulacros): por
-        eso refleja las ediciones hechas en la tab Referentes. Devuelve {} si no
-        hay base de menciones todavía."""
-        if marca_field not in self._MARCA_FIELDS:
-            raise ValueError(f"marca_field inválido: {marca_field}")
-        tables = {
-            r["name"]
-            for r in self._db.execute(
-                "SELECT name FROM sqlite_master WHERE type='table'"
-            ).fetchall()
-        }
-        if not {"menciones", "mencion_funcion", "mencion_canonico"} <= tables:
-            return {}
-        rank = {"accepted": 0, "proposed": 1}
-        origin_rank = {"deixis_llm": 0, "human": 1, "auto": 2, "coref": 3, "llm": 4}
-        per: dict[int, dict[str, dict[str, tuple[int, int]]]] = {}
-        for r in self._db.execute(
-            "SELECT m.unit_idx AS u, m.marca AS marca, mc.canonical_id AS cid, "
-            "mc.status AS status, mc.origin AS origin "
-            "FROM menciones m "
-            "JOIN mencion_funcion mf ON mf.mencion_id = m.id AND mf.funcion = ? "
-            "JOIN mencion_canonico mc ON mc.mencion_id = m.id "
-            "WHERE mc.status != 'rejected' AND m.codigo = ?",
-            (funcion, codigo),
-        ).fetchall():
-            cid = r["cid"]
-            mm = (r["marca"] or "").strip().lower()
-            if not cid or not mm:
-                continue
-            score = (rank.get(r["status"], 9), origin_rank.get(r["origin"], 9))
-            d = per.setdefault(int(r["u"]), {}).setdefault(mm, {})
-            if cid not in d or score < d[cid]:
-                d[cid] = score
-        if not per:
-            return {}
-        out: dict[tuple[int, int], list[str]] = {}
-        for r in self._db.execute(
-            f"SELECT frase_idx, emocion_idx, {marca_field} AS marca "
-            "FROM emociones WHERE codigo = ?",
-            (codigo,),
-        ).fetchall():
-            marca_map = per.get(int(r["frase_idx"]))
-            if not marca_map:
-                continue
-            cids = _match_canonicos_emo(
-                marca_map, str(r["marca"] or "").strip().lower()
-            )
-            if cids:
-                out[(int(r["frase_idx"]), int(r["emocion_idx"]))] = cids
+        Para el experienciador, que nunca es más de uno. Resuelve con
+        `storage.referencia`, el mismo resolutor que usan el dashboard y el
+        export: por eso refleja las ediciones de la tab Referentes y las
+        stages downstream ven el referente que muestra la revisión.
+        """
+        out: dict[tuple[int, int], str] = {}
+        for key, (marca_map, marca) in self._marcas_por_emocion(
+            codigo, funcion, marca_field
+        ).items():
+            canonical = resolver_canonico(marca_map, marca)
+            if canonical:
+                out[key] = canonical
         return out
 
+    def resolve_canonicos_map(
+        self,
+        codigo: str,
+        funcion: str,
+        marca_field: str,
+    ) -> dict[tuple[int, int], list[str]]:
+        """(frase_idx, emocion_idx) → los canónicos del rol.
 
-def _match_canonicos_emo(
-    marca_map: dict[str, dict[str, tuple[int, int]]] | None, fm: str
-) -> list[str]:
-    """Resuelve la marca `fm` (normalizada) contra las menciones de la frase.
+        Para la fuente, que puede combinar entidades en una sola emoción."""
+        out: dict[tuple[int, int], list[str]] = {}
+        for key, (marca_map, marca) in self._marcas_por_emocion(
+            codigo, funcion, marca_field
+        ).items():
+            canonicos = resolver_canonicos(marca_map, marca)
+            if canonicos:
+                out[key] = canonicos
+        return out
 
-    Match exacto; si no, por contención en ambos sentidos. Dedup por
-    canonical_id, ordenado por preferencia (aceptado/deixis primero)."""
-    if not marca_map or not fm:
-        return []
-    if fm in marca_map:
-        matched = {fm: marca_map[fm]}
-    else:
-        matched = {mm: c for mm, c in marca_map.items() if mm in fm or fm in mm}
-    scored: dict[str, tuple[int, int]] = {}
-    for cids in matched.values():
-        for cid, sc in cids.items():
-            if cid not in scored or sc < scored[cid]:
-                scored[cid] = sc
-    return [cid for cid, _ in sorted(scored.items(), key=lambda kv: (kv[1], kv[0]))]
+    def _marcas_por_emocion(
+        self,
+        codigo: str,
+        funcion: str,
+        marca_field: str,
+    ) -> dict[tuple[int, int], tuple[Any, str]]:
+        """(frase_idx, emocion_idx) → (marcas de la unidad, marca del rol).
+
+        Devuelve {} si el run todavía no tiene base de menciones."""
+        if marca_field not in self._MARCA_FIELDS:
+            raise ValueError(f"marca_field inválido: {marca_field}")
+        index = marca_canonicos_index(self._db, funcion, codigo)
+        if not index:
+            return {}
+        return {
+            (int(r["frase_idx"]), int(r["emocion_idx"])): (
+                index.get((codigo, int(r["frase_idx"]))), r["marca"]
+            )
+            for r in self._db.execute(
+                f"SELECT frase_idx, emocion_idx, {marca_field} AS marca "
+                "FROM emociones WHERE codigo = ?",
+                (codigo,),
+            ).fetchall()
+        }

@@ -38,11 +38,10 @@ def render_system(
             si no se conoce.
         alcance: Frase que restringe los experienciadores a analizar. Vacío
             para analizar emociones de cualquier actor.
-        heuristicas: Deprecado. El template ya no lo usa: las heurísticas
-            de inferencia quedaron fusionadas dentro de `configuraciones`
-            para evitar la duplicación de las 8 categorías en el prompt.
-            Se mantiene el parámetro solo por compatibilidad con callers
-            existentes; cualquier valor pasado acá se ignora.
+        heuristicas: Reglas de inferencia emocional, ya compuestas por el
+            runner (base común más los agregados del género y del pase).
+            El template las inyecta como bloque propio; si es cadena vacía,
+            la sección se omite.
         template: Nombre del template Jinja2 del system prompt. Los géneros
             pueden sustituirlo vía `Genre.prompt_overrides` (p. ej.
             'emotions_system_tuit'). El template alternativo debe aceptar
@@ -52,6 +51,7 @@ def render_system(
         template,
         ontologia=ontologia,
         configuraciones=configuraciones,
+        heuristicas=heuristicas,
         titulo=titulo,
         tipo_discurso=tipo_discurso,
         enunciador=enunciador,

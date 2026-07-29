@@ -1,13 +1,16 @@
 # ══════════════════════════════════════════════════════════════════════════════
 #  emoparse.agents.hashtag_semiotics
 #
-#  Caracterización semiótica de hashtags a nivel corpus.
+#  Análisis semiótico de hashtags por uso.
 #
-#  Opera sobre el hashtag como unidad (no sobre el post): cada fila trae un
-#  hashtag frecuente y una muestra de sus usos en el corpus, y el agente
-#  caracteriza su función dominante (tópico, afiliación-consigna, evaluativo,
-#  irónico, campaña), el acoplamiento actitud-tema que realiza y la foria
-#  dominante de su entorno. El output agrega la columna `analisis` (JSON).
+#  Un hashtag no funciona siempre igual: su función varía post a post. El
+#  agente opera sobre los usos de UN hashtag por corrida: cada fila del batch
+#  es un post donde el hashtag aparece, y el agente caracteriza su función,
+#  acoplamiento y foria en ese post concreto. Las funciones ya identificadas
+#  para el hashtag entran como contexto creciente (vía la stage), con
+#  posibilidad de proponer etiquetas nuevas. La caracterización a nivel
+#  corpus (tabla `hashtags`) se deriva por agregación de los usos, sin un
+#  segundo pase LLM. El output agrega la columna `analisis` (JSON).
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -21,21 +24,21 @@ from emoparse.agents.base import BaseBatchAgent
 from emoparse.core.backend.base import LLMBackend
 from emoparse.core.prompts import hashtag_semiotics as prompts
 from emoparse.core.schemas import (
-    HashtagBatchItemSchema,
-    ListaHashtagsBatchSchema,
+    HashtagUsoBatchItemSchema,
+    ListaHashtagUsosBatchSchema,
 )
 
 if TYPE_CHECKING:
     from emoparse.genres.base import Genre
 
 
-class HashtagSemioticsAgent(BaseBatchAgent[ListaHashtagsBatchSchema]):
-    """Caracteriza hashtags frecuentes a partir de muestras de uso."""
+class HashtagSemioticsAgent(BaseBatchAgent[ListaHashtagUsosBatchSchema]):
+    """Caracteriza el funcionamiento de un hashtag en cada uno de sus usos."""
 
     NAME = "hashtag_semiotics"
-    SCHEMA = ListaHashtagsBatchSchema
+    SCHEMA = ListaHashtagUsosBatchSchema
     OUTPUT_COLUMNS = ("analisis",)
-    BATCH_SIZE = 4
+    BATCH_SIZE = 6
 
     def __init__(
         self,
@@ -67,19 +70,26 @@ class HashtagSemioticsAgent(BaseBatchAgent[ListaHashtagsBatchSchema]):
         return prompts.render_system(heuristicas=self._heuristicas)
 
     def _build_user(self, batch: pd.DataFrame) -> str:
+        # El batch trae usos de UN solo hashtag: cabecera y contexto de
+        # funciones previas se toman de la primera fila.
+        head = batch.iloc[0]
         bloques: list[str] = []
         for i, (_, row) in enumerate(batch.iterrows()):
             bloques.append(
                 f"UNIDAD [{i}]:\n"
-                f"HASHTAG: #{row.get('hashtag', '')} "
-                f"({row.get('n_usos', '?')} usos en el corpus)\n"
-                f"MUESTRA DE USOS:\n{row.get('muestras', '')}"
+                f"POST: {row.get('uso_texto', '')}"
             )
-        return prompts.render_user(unidades_block="\n\n".join(bloques))
+        funciones = str(head.get("funciones_previas", "") or "").strip()
+        return prompts.render_user(
+            hashtag=str(head.get("hashtag", "")),
+            n_usos=int(head.get("n_usos", 0) or 0),
+            unidades_block="\n\n".join(bloques),
+            funciones_previas=funciones or None,
+        )
 
     def _map_item_to_columns(
         self,
-        item: HashtagBatchItemSchema,
+        item: HashtagUsoBatchItemSchema,
         row: pd.Series,
     ) -> dict[str, Any]:
         return {

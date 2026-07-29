@@ -900,7 +900,7 @@ body.at-home main > footer { display: block; }
     <a href="#home" style="text-decoration:none;color:inherit;">
       <div class="logo">Emo<span class="accent">Parse</span></div>
     </a>
-    <div class="tag">Docs · v0.5.2</div>
+    <div class="tag">Docs · v0.6.1</div>
   </div>
 
   <nav>
@@ -925,6 +925,7 @@ body.at-home main > footer { display: block; }
         <li><a href="#backends">Backends LLM</a></li>
         <li><a href="#cache">Cache y versionado</a></li>
         <li><a href="#generos">Géneros</a></li>
+        <li><a href="#genero-tuit" class="depth-2">Discurso nativo digital (tuit)</a></li>
         <li><a href="#validacion">Validación</a></li>
       </ul>
     </div>
@@ -988,7 +989,7 @@ body.at-home main > footer { display: block; }
 
 <!-- HOME / PORTADA ───────────────────────────────────────────── -->
 <header class="hero" id="home" data-title="Inicio">
-  <div class="hero-eyebrow">Documentación oficial · v0.5.2 · Beta</div>
+  <div class="hero-eyebrow">Documentación oficial · v0.6.1 · Beta</div>
   <h1>Emo<span class="em">Parse</span></h1>
   <p class="hero-lede">
     Un sistema reproducible de <em>análisis de emociones</em> en discursos,
@@ -1030,6 +1031,7 @@ body.at-home main > footer { display: block; }
           <li><a href="#backends">Backends LLM</a></li>
           <li><a href="#cache">Cache y versionado</a></li>
           <li><a href="#generos">Géneros</a></li>
+          <li><a href="#genero-tuit" class="depth-2">Discurso nativo digital (tuit)</a></li>
           <li><a href="#validacion">Validación</a></li>
         </ul>
       </div>
@@ -1893,7 +1895,7 @@ streamlit run src/emoparse/app/__main__.py
         <tr>
           <td><code>emotions_pass2</code></td>
           <td>frase</td>
-          <td>Segunda lectura de las mismas frases, usando el <em>texto</em> de las frases previas del discurso como contexto para desambiguar —no una lista de emociones para arrastrar—. Cada emoción exige evidencia citable en la frase actual. Refina la primera lectura.</td>
+          <td>Segunda lectura de las mismas frases, usando el <em>texto</em> de las frases previas del discurso como contexto para desambiguar —no una lista de emociones para arrastrar—. En géneros con contexto de hilo (ver <a href="#genero-tuit">tuit</a>), el contexto previo son las emociones ya detectadas en los posts padre. Cada emoción exige evidencia citable en la frase actual. Refina la primera lectura.</td>
           <td>opcional</td>
         </tr>
         <tr>
@@ -2287,7 +2289,7 @@ streamlit run src/emoparse/app/__main__.py
     </div>
     <div class="card">
       <h4>tuit</h4>
-      <p>Unit <code>documento</code>; roles <code>seguidor</code>, <code>oponente</code>, <code>audiencia_general</code>. Sin summarizer. Batch sizes más grandes (10).</p>
+      <p>Unit <code>documento</code>, con contexto conversacional por hilo (<code>context_unit: hilo</code>) y parsing tecnodiscursivo (<code>technoparse: true</code>). Roles: <code>prodestinatario</code>, <code>paradestinatario</code>, <code>contradestinatario</code> (Verón) + <code>destinatario_mencionado</code> (interpelación técnica vía @) + <code>audiencia_ambiente</code> (el público del archivo buscable). Sin summarizer. Overrides de prompt propios.</p>
     </div>
   </div>
 
@@ -2301,8 +2303,271 @@ streamlit run src/emoparse/app/__main__.py
   </p>
 
   <p>
-    Para crear un género nuevo, ver <a href="#extend-genre">Agregar un género</a>.
+    Los géneros pueden además sustituir el system prompt de un agente vía
+    <code>prompt_overrides</code>, y desde la ontología v2 cada emoción puede
+    restringirse por género con el campo <code>generos</code> (sin campo =
+    todos los géneros).
   </p>
+
+  <p>
+    Para crear un género nuevo, ver <a href="#extend-genre">Agregar un género</a>.
+    Para el género <code>tuit</code> en detalle —adquisición, stages propias,
+    contexto conversacional y ontología— ver
+    <a href="#genero-tuit">Discurso nativo digital (género tuit)</a>.
+  </p>
+</section>
+
+<!-- ═══════ GÉNERO TUIT ═══════════════════════════════════════════════════ -->
+<section id="genero-tuit">
+  <h2>Discurso nativo digital (género tuit)<a class="anchor" href="#genero-tuit">#</a></h2>
+  <p class="section-intro">
+    El género <code>tuit</code> adapta el marco al post de red social entendido
+    como <strong>tecnodiscurso</strong>: un enunciado compuesto cuyos
+    tecnolingüísticos (hashtags, @menciones, URLs, emojis, tecnografismos) e
+    imágenes son materia enunciativa, no ruido. El principio rector de todo el
+    subsistema es <em>no borrar sino anotar</em>: el texto nunca se altera;
+    cada elemento se extrae con offsets y atributos a la tabla
+    <code>tecno_entidades</code>.
+  </p>
+
+  <div class="diagram">
+    <svg viewBox="0 0 700 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Cómo el género tuit reconfigura el pipeline">
+      <defs>
+        <style>
+          .gt-st  { fill: #faf6ec; stroke: #1a1814; stroke-width: 1.3; }
+          .gt-sto { fill: #faf6ec; stroke: #b8331f; stroke-width: 1.3; stroke-dasharray: 5 3; }
+          .gt-stx { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 500; fill: #1a1814; text-anchor: middle; dominant-baseline: middle; }
+          .gt-tier{ font-family: 'Inter', sans-serif; font-size: 8.5px; font-weight: 700; fill: #6b6358; letter-spacing: 0.1em; text-transform: uppercase; }
+          .gt-ar  { stroke: #6b6358; stroke-width: 1.3; fill: none; }
+        </style>
+        <marker id="gtarr" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto">
+          <path d="M0,0 L6,3.5 L0,7 Z" fill="#6b6358"/>
+        </marker>
+      </defs>
+
+      <text x="40" y="12" class="gt-tier">ingesta</text>
+      <text x="40" y="92" class="gt-tier">discurso/frase</text>
+      <text x="40" y="252" class="gt-tier">opcionales</text>
+
+      <!-- fila 1: ingesta + stages técnicas activas por defecto -->
+      <rect x="40" y="20" width="110" height="34" rx="3" class="gt-st"/>
+      <text x="95" y="37" class="gt-stx">acquire/run</text>
+      <rect x="185" y="20" width="130" height="34" rx="3" class="gt-st"/>
+      <text x="250" y="37" class="gt-stx">technoparse</text>
+      <rect x="350" y="20" width="130" height="34" rx="3" class="gt-st"/>
+      <text x="415" y="37" class="gt-stx">emoji_affect</text>
+
+      <line x1="150" y1="37" x2="183" y2="37" class="gt-ar" marker-end="url(#gtarr)"/>
+      <line x1="315" y1="37" x2="348" y2="37" class="gt-ar" marker-end="url(#gtarr)"/>
+
+      <!-- fila 2: enunciation/actors/emotions con overrides del género -->
+      <path d="M 415,54 Q 415,80 155,80 L 155,100" class="gt-ar" marker-end="url(#gtarr)"/>
+      <rect x="40" y="100" width="150" height="34" rx="3" class="gt-st"/>
+      <text x="115" y="117" class="gt-stx">enunciation (tuit)</text>
+      <rect x="220" y="100" width="100" height="34" rx="3" class="gt-st"/>
+      <text x="270" y="117" class="gt-stx">actors</text>
+      <rect x="350" y="100" width="150" height="34" rx="3" class="gt-st"/>
+      <text x="425" y="117" class="gt-stx">emotions (+hilo)</text>
+
+      <line x1="190" y1="117" x2="218" y2="117" class="gt-ar" marker-end="url(#gtarr)"/>
+      <line x1="320" y1="117" x2="348" y2="117" class="gt-ar" marker-end="url(#gtarr)"/>
+
+      <!-- fila 3: pase 2 con hilo + resto del pipeline común -->
+      <path d="M 425,134 Q 425,160 125,160 L 125,180" class="gt-ar" marker-end="url(#gtarr)"/>
+      <rect x="40" y="180" width="170" height="34" rx="3" class="gt-sto"/>
+      <text x="125" y="197" class="gt-stx">emotions_pass2 [opt]</text>
+      <rect x="250" y="180" width="200" height="34" rx="3" class="gt-st"/>
+      <text x="350" y="197" class="gt-stx">…resto del pipeline común</text>
+
+      <line x1="210" y1="197" x2="248" y2="197" class="gt-ar" marker-end="url(#gtarr)"/>
+
+      <!-- fila 4: opcionales propias del género, a nivel corpus/post -->
+      <path d="M 250,54 Q 250,240 105,240 L 105,260" class="gt-ar" marker-end="url(#gtarr)"/>
+      <rect x="40" y="260" width="130" height="34" rx="3" class="gt-sto"/>
+      <text x="105" y="277" class="gt-stx">reframing [opt]</text>
+      <rect x="200" y="260" width="180" height="34" rx="3" class="gt-sto"/>
+      <text x="290" y="277" class="gt-stx">hashtag_semiotics [opt]</text>
+      <rect x="410" y="260" width="180" height="34" rx="3" class="gt-sto"/>
+      <text x="500" y="277" class="gt-stx">vision_describe [opt, VLM]</text>
+    </svg>
+    <div style="display:flex;align-items:center;gap:1.5rem;justify-content:center;margin-top:0.9rem;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:0.5rem;">
+        <svg width="28" height="16" style="flex-shrink:0"><rect x="1" y="1" width="26" height="14" rx="2" fill="#faf6ec" stroke="#1a1814" stroke-width="1.2"/></svg>
+        <span style="font-family:'Inter',sans-serif;font-size:0.78rem;color:#3d3830;">activa por defecto en el género</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.5rem;">
+        <svg width="28" height="16" style="flex-shrink:0"><rect x="1" y="1" width="26" height="14" rx="2" fill="#faf6ec" stroke="#b8331f" stroke-width="1.2" stroke-dasharray="4 3"/></svg>
+        <span style="font-family:'Inter',sans-serif;font-size:0.78rem;color:#3d3830;">opcional</span>
+      </div>
+    </div>
+    <div class="diagram-caption">El género <code>tuit</code> inserta stages propias antes y en paralelo al backbone común, y sustituye los prompts de <code>enunciation</code>/<code>emotions</code> por versiones tecnodiscursivas.</div>
+  </div>
+
+  <h3>Adquisición (<code>emoparse acquire</code>)</h3>
+  <p>
+    Arquitectura source-adapter para posts (<code>PostSourceAdapter</code> →
+    JSONL normalizado, append incremental con dedupe por id, interrumpible y
+    reanudable):
+  </p>
+
+<pre data-lang="bash"><code>emoparse acquire --source bluesky --query <span class="c-str">"#tarifazo"</span> --lang es --max 500 \
+    --out data/tarifazo.jsonl [--with-media] [--with-author-profile] [--pseudonymize]</code></pre>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Source</th><th>Qué es</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>bluesky</code></td><td>AT Protocol; credenciales <code>BLUESKY_HANDLE</code> + <code>BLUESKY_APP_PASSWORD</code>.</td></tr>
+        <tr><td><code>mastodon</code></td><td>API pública de la instancia elegida con <code>MASTODON_INSTANCE</code>; timelines de hashtag, hilos y feeds no requieren auth, la búsqueda de texto libre suele exigir <code>MASTODON_ACCESS_TOKEN</code>.</td></tr>
+        <tr><td><code>x_api</code></td><td>API v2 oficial de X, requiere tier pago.</td></tr>
+        <tr><td><code>jsonl</code></td><td>Importa dumps normalizados o formato API v2.</td></tr>
+        <tr><td><code>csv</code></td><td>Datasets ya publicados, con <code>--mapping</code> para columnas no estándar.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    <code>--with-media</code> descarga las imágenes adjuntas (content-addressed,
+    solo imágenes, tope 8 MB). <code>--with-author-profile</code> completa
+    <code>autor_bio</code>/<code>autor_seguidores</code>/<code>autor_siguiendo</code>/<code>autor_verificado</code>
+    con una llamada extra por autor (cache en memoria); solo disponible en las
+    fuentes que la soportan (hoy, <code>bluesky</code> y <code>mastodon</code>)
+    y se ignora con un warning en el resto. <code>--pseudonymize</code>
+    reemplaza handles por alias estables derivados de una sal local (preserva
+    hilos y redes; borra bio/display/url/raw, incluido lo que haya sumado
+    <code>--with-author-profile</code>).
+  </p>
+
+  <p>
+    El JSONL entra al pipeline con <code>emoparse run --genre tuit --input corpus.jsonl</code>:
+    la ingesta puebla <code>posts</code>/<code>autores</code>/<code>media</code>,
+    reconstruye los hilos (<code>conversacion_id</code>, <code>profundidad</code>,
+    huérfanos) y promueve cada post analizable a <code>discursos</code> — los
+    <strong>reposts puros</strong> registran circulación pero no generan
+    discurso propio: no gastan LLM.
+  </p>
+
+  <h3>Stages del género</h3>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Stage</th><th>LLM</th><th>Qué hace</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>technoparse</code></td>
+          <td>no</td>
+          <td>Extrae hashtags (función sintáctica integrada/pospuesta), @menciones (posición vocativa/integrada), URLs (→dominio), emojis (→shortcode) y tecnografismos (mayúsculas, alargamientos, risas, puntuación expresiva) con offsets. Cada @handle <strong>siembra un referente canónico con vínculo aceptado</strong> (designación determinista) antes de cualquier inferencia.</td>
+        </tr>
+        <tr>
+          <td><code>reframing</code></td>
+          <td>sí</td>
+          <td>Clasifica la operación de citas y reposts con comentario: <code>adhesion</code> / <code>ironia_distancia</code> / <code>denuncia</code> / <code>neutra_informativa</code> / <code>ambigua</code>, más el estatuto de las emociones citadas (<code>asumidas</code> / <code>semiotizadas</code> / <code>ninguna</code>). Evita atribuirle a quien denuncia la euforia que exhibe.</td>
+        </tr>
+        <tr>
+          <td><code>emoji_affect</code></td>
+          <td>híbrida</td>
+          <td>El léxico curado <code>knowledge/emoji_afecto.json</code> resuelve los emojis inequívocos sin LLM; los ambiguos (😂 ¿risa o burla?) van al agente con el texto como contexto. Sin modelo asignado, degrada a léxico-only.</td>
+        </tr>
+        <tr>
+          <td><code>hashtag_semiotics</code></td>
+          <td>sí</td>
+          <td>Caracteriza los hashtags frecuentes a nivel corpus con muestras de uso: función (<code>topico</code> / <code>afiliacion_consigna</code> / <code>evaluativo</code> / <code>ironico</code> / <code>campania</code> / <code>mixto</code>), acoplamiento actitud-tema y foria del entorno.</td>
+        </tr>
+        <tr>
+          <td><code>vision_describe</code></td>
+          <td>sí (VLM)</td>
+          <td>Describe cada imagen adjunta (descripción densa, transcripción del texto visible, tipo y elementos tecnográficos como plantillas de meme o capturas). Requiere backend multimodal (<code>llama_server</code> con <code>--mmproj</code>).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    El género habilita automáticamente <code>technoparse</code> y
+    <code>emoji_affect</code> sobre los defaults del pipeline;
+    <code>reframing</code>, <code>hashtag_semiotics</code> y
+    <code>vision_describe</code> son opt-in vía <code>--stages</code>
+    (requieren modelo asignado en <code>pipeline.stages</code>).
+  </p>
+
+  <h3>Contexto conversacional y multimodal</h3>
+  <p>
+    Las stages LLM de análisis reciben columnas opcionales de contexto que
+    providers deterministas inyectan:
+  </p>
+  <ul>
+    <li><code>contexto_hilo</code> — la cadena de posts padre (hasta 5) y el post citado, para desambiguar sin convertirse en fuente de emociones.</li>
+    <li><code>tecno</code> — los tecnolingüísticos de la unidad con el prior afectivo de sus emojis.</li>
+    <li><code>media_desc</code> — las descripciones de <code>vision_describe</code>: el post se analiza como enunciado compuesto texto+imagen.</li>
+    <li><code>emotion_rolling</code> (pase 2) — en géneros con contexto de hilo, las emociones que el pase 1 detectó en los posts padre reemplazan al rolling intra-discurso, con la misma condición: desambiguan, no son evidencia.</li>
+  </ul>
+  <p>
+    El <code>judge</code> recibe el mismo contexto de hilo como ventana previa,
+    más la operación de <code>reframing</code> clasificada: retomas, ironía y
+    discurso ajeno son exactamente lo que su criterio de corrección vigila.
+  </p>
+
+  <h3>Prompts y ontología por género</h3>
+  <p>
+    Los templates <code>emotions_system_tuit</code> y
+    <code>enunciation_system_tuit</code> (activados vía
+    <code>Genre.prompt_overrides</code>) instruyen: tecnografismos como marcas
+    válidas de <code>fuente_marca</code>/<code>experienciador_marca</code> (un
+    emoji puede ser la única marca de una emoción), ironía frecuente
+    (atribuir la emoción comunicada, no la literal), discurso referido (las
+    emociones del texto citado pertenecen a su enunciador), y los cinco roles
+    enunciativos del género. La ontología v2 agrega emociones del discurso
+    político en redes —<code>burla</code>, <code>hartazgo</code>,
+    <code>vergüenza_ajena</code>, <code>diversión</code>— restringidas por
+    género (campo <code>generos</code>) sobre una base compartida que suma
+    además <code>desprecio</code>, <code>admiración</code>,
+    <code>gratitud</code>, <code>alivio</code>, <code>desconfianza</code>,
+    <code>resignación</code>, <code>envidia</code> y <code>odio</code>.
+  </p>
+
+  <h3>Redes de interacción (<code>emoparse network</code>)</h3>
+  <p>Post-hoc y sin LLM (extra <code>network</code>):</p>
+
+<pre data-lang="bash"><code>emoparse network --db runs/tarifazo01.sqlite --graphs reply,mention,rt,qt,hashtag_co \
+    --export-dir exports/red</code></pre>
+
+  <p>
+    Construye los grafos desde <code>posts</code> y <code>tecno_entidades</code>,
+    calcula métricas por nodo (PageRank, grados, intermediación acotada a redes
+    ≤2000 nodos) y comunidades (Louvain, seed fija → reproducible), persiste en
+    <code>aristas</code>/<code>red_metricas</code>, y reporta el
+    <strong>acoplamiento emocional</strong>: matriz de transición fórica
+    padre→respuesta en los hilos (¿la disforia escala, contagia, o se responde
+    con ironía eufórica?) y perfiles emocionales por comunidad.
+    <code>--export-dir</code> produce GEXF + CSVs listos para Gephi.
+  </p>
+
+  <h3>En el dashboard</h3>
+  <p>
+    Cuando el run contiene posts, aparecen cuatro tabs adicionales:
+  </p>
+  <div class="cards">
+    <div class="card">
+      <h4>🧵 Hilos</h4>
+      <p>Árbol conversacional indentado con foria por post, operación de reframing y descripciones de media.</p>
+    </div>
+    <div class="card">
+      <h4>🕸 Red</h4>
+      <p>Grafo interactivo coloreado por comunidad, con tabla ordenada por PageRank.</p>
+    </div>
+    <div class="card">
+      <h4>#️⃣ Hashtags</h4>
+      <p>Ranking coloreado por foria del entorno, con caracterización y drill-down a los posts que lo usan.</p>
+    </div>
+    <div class="card">
+      <h4>✳ Tecno</h4>
+      <p>Distribución de tecnolingüísticos y afecto de emojis, con su origen (léxico o LLM).</p>
+    </div>
+  </div>
 </section>
 
 <!-- ═══════ VALIDACIÓN ═══════════════════════════════════════════════════ -->
@@ -3789,7 +4054,7 @@ T = TypeVar(<span class="c-str">"T"</span>, bound=BaseModel)
 
 <footer>
   <div>
-    <span class="mark">EmoParse</span> · Análisis de emociones en discursos · documentación v0.5.2
+    <span class="mark">EmoParse</span> · Análisis de emociones en discursos · documentación v0.6.1
   </div>
 </footer>
 

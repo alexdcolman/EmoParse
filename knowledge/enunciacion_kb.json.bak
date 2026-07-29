@@ -1,0 +1,36 @@
+{
+  "version": "1",
+  "enunciadores": {
+    "javier_milei": {
+      "display_name": "Javier Milei",
+      "enunciatarios": [
+        {
+          "actor": "los principales líderes del mundo occidental",
+          "tipo": "contradestinatario"
+        },
+        {
+          "actor": "los asistentes al Foro de Davos / líderes globales",
+          "tipo": "paradestinatario"
+        },
+        {
+          "actor": "la base electoral y simpatizantes de su modelo económico",
+          "tipo": "prodestinatario"
+        }
+      ],
+      "colectivos": [
+        {
+          "nombre": "los argentinos",
+          "clase": "institucional"
+        },
+        {
+          "nombre": "defensores del modelo de la libertad / capitalismo de libre empresa",
+          "clase": "ideológico"
+        },
+        {
+          "nombre": "los libertarios",
+          "clase": "partidario"
+        }
+      ]
+    }
+  }
+}

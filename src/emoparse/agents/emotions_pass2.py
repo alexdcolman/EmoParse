@@ -16,8 +16,13 @@ from typing import TYPE_CHECKING, Any, Literal
 import pandas as pd
 
 from emoparse.agents.base import BaseBatchAgent
-from emoparse.agents.emotions import alcance_text
+from emoparse.agents.emotions import (
+    alcance_text,
+    dedupe_emociones,
+    sanitize_emocion,
+)
 from emoparse.core.backend.base import LLMBackend
+from emoparse.genres.schema_factory import emociones_batch_schema
 from emoparse.core.prompts import emotions_pass2 as prompts
 from emoparse.core.schemas import (
     EmocionesBatchItemSchema,
@@ -29,12 +34,27 @@ if TYPE_CHECKING:
     from emoparse.genres.base import Genre
 
 
+#: Tope de caracteres del contexto previo inyectado por unidad. El rolling no
+#: tenía cota propia (a diferencia de `contexto_hilo`) y crecía con el largo
+#: del hilo o del discurso, comiéndose el presupuesto de generación. El pase 2
+#: es la stage con menos margen (arrastra las heurísticas de los dos pases más
+#: el contexto previo), así que la cota es estricta. Se conserva la cola: las
+#: emociones más recientes son las que desambiguan.
+_MAX_ROLLING_CHARS = 300
+
+
 class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
     """Segundo pase de análisis de emociones con contexto previo.
 
     Espera un DataFrame similar al del primer pase, pero con la columna
     adicional `emotion_rolling`, que resume en texto las frases anteriores
-    del mismo discurso (referencia auxiliar para desambiguar, no evidencia).
+    del mismo discurso (referencia auxiliar para desambiguar, no evidencia);
+    en géneros con contexto de hilo, esa columna trae las emociones ya
+    detectadas en los posts padre. Las filas pueden traer además las mismas
+    columnas opcionales de contexto que el pase 1, pensadas para discurso
+    nativo digital: `contexto_hilo` (la cadena de posts a los que la unidad
+    responde), `tecno` (los tecnolingüísticos de la unidad) y `media_desc`
+    (descripciones generadas de la media adjunta).
 
     `emotion_scope` restringe qué experienciadores se analizan, con la misma
     semántica que en el pase 1. Pasar el mismo alcance a ambos pases mantiene
@@ -107,6 +127,10 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         self._genre = genre
 
         if genre is not None:
+            restricted = emociones_batch_schema(genre)
+            if restricted is not None:
+                self.SCHEMA = restricted  # type: ignore[misc]
+
             if "emotions_pass2" in genre.batch_size:
                 self.BATCH_SIZE = genre.batch_size["emotions_pass2"]  # type: ignore[misc]
             elif "emotions" in genre.batch_size:
@@ -120,6 +144,11 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
     # ── Hooks de BaseBatchAgent ──────────────────────────────────────────────
 
     def _build_system(self) -> str:
+        template = "emotions_pass2_system"
+        if self._genre is not None:
+            template = self._genre.prompt_overrides.get(
+                "emotions_pass2", template
+            )
         return prompts.render_system(
             ontologia=self._ontologia,
             heuristicas=self._heuristicas,
@@ -133,25 +162,51 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
             alcance=alcance_text(
                 self._emotion_scope, self._enunciador, self._enunciatarios
             ),
+            template=template,
         )
 
     def _build_user(self, batch: pd.DataFrame) -> str:
+        hilo_genre = self._genre is not None and self._genre.context_unit == "hilo"
+        rolling_label = (
+            "EMOCIONES EN EL HILO "
+            "(posts padre; referencia auxiliar, NO evidencia de este post):"
+            if hilo_genre
+            else "EMOCIONES EN FRASES PREVIAS "
+            "(referencia auxiliar, NO evidencia de esta frase):"
+        )
         bloques: list[str] = []
         for i, (_, row) in enumerate(batch.iterrows()):
             codigo = str(row.get("codigo", ""))
             frase = str(row.get("frase", row.get("contenido", "")))
             actores_str = self._format_actores(row.get("actores"))
-            rolling = str(row.get("emotion_rolling", "")).strip()
+            contexto_hilo = _opt_str(row.get("contexto_hilo"))
+            tecno = _opt_str(row.get("tecno"))
+            media_desc = _opt_str(row.get("media_desc"))
+            rolling = _opt_str(row.get("emotion_rolling"))
+            if len(rolling) > _MAX_ROLLING_CHARS:
+                rolling = "(...)\n" + rolling[-_MAX_ROLLING_CHARS:]
             if not rolling:
                 rolling = "(sin emociones previas)"
 
-            bloques.append(
-                f"UNIDAD [{i}] (codigo={codigo}):\n"
-                f"FRASE: {frase}\n"
-                f"ACTORES IDENTIFICADOS: {actores_str}\n"
-                f"EMOCIONES EN FRASES PREVIAS "
-                f"(referencia auxiliar, NO evidencia de esta frase):\n{rolling}"
-            )
+            partes = [f"UNIDAD [{i}] (codigo={codigo}):"]
+            if contexto_hilo:
+                partes.append(
+                    "CONTEXTO DEL HILO (posts a los que responde; solo para "
+                    "desambiguar, NO fuente de emociones):\n"
+                    f"{contexto_hilo}"
+                )
+            partes.append(f"FRASE: {frase}")
+            partes.append(f"ACTORES IDENTIFICADOS: {actores_str}")
+            if tecno:
+                partes.append(f"TECNOLINGÜÍSTICOS DE LA UNIDAD: {tecno}")
+            if media_desc:
+                partes.append(
+                    "MEDIA ADJUNTA (descripción generada; el post es un "
+                    f"enunciado compuesto texto+imagen):\n{media_desc}"
+                )
+            partes.append(f"{rolling_label}\n{rolling}")
+
+            bloques.append("\n".join(partes))
         unidades_block = "\n\n".join(bloques)
         return prompts.render_user(unidades_block=unidades_block)
 
@@ -161,7 +216,9 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         row: pd.Series,
     ) -> dict[str, Any]:
         emociones_json = json.dumps(
-            [e.model_dump() for e in item.emociones],
+            dedupe_emociones(
+                [sanitize_emocion(e.model_dump()) for e in item.emociones]
+            ),
             ensure_ascii=False,
         )
         return {"emociones": emociones_json}
@@ -200,3 +257,16 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
                 tipo = a.get("tipo", "?")
                 formatted.append(f"{nombre} ({tipo})")
         return "; ".join(formatted) if formatted else "(ninguno)"
+
+
+def _opt_str(value: Any) -> str:
+    """String de una celda opcional: None/NaN → ''.
+
+    Nota de mantenimiento:
+        Duplicado respecto de `emoparse.agents.emotions` (pase 1), como
+        `_format_actores`: si un tercer agente lo requiere, evaluar su
+        extracción a un módulo compartido.
+    """
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    return str(value).strip()

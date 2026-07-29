@@ -92,7 +92,10 @@ def posts_to_discursos(df_posts: pd.DataFrame) -> pd.DataFrame:
     Un post analizable = un discurso (codigo = post_id, contenido = texto).
     Los reposts puros no generan discurso: registran circulación, no
     enunciación propia del reposteador; su análisis emocional es el del
-    post fuente.
+    post fuente. El input incluye `autor_handle` y `autor_display` de forma
+    explícita (además de `autor`, que se conserva por compatibilidad): las
+    stages que resuelven el enunciador o la bio los leen del input sin
+    depender de un join con la tabla `posts`.
     """
     df = df_posts[df_posts["es_repost_puro"] == 0].copy()
     if df.empty:
@@ -109,6 +112,8 @@ def posts_to_discursos(df_posts: pd.DataFrame) -> pd.DataFrame:
         "fuente": df["plataforma"],
         "url": df["url"],
         "autor": df["autor_handle"],
+        "autor_handle": df["autor_handle"],
+        "autor_display": df["autor_display"],
         "tipo_post": df["tipo"],
         "conversacion_id": df["conversacion_id"],
         "lang": df["lang"],

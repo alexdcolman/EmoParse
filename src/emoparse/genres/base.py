@@ -89,10 +89,42 @@ class Genre(BaseModel):
 
     # ── Roles enunciativos válidos ───────────────────────────────────────────
     enunciation_roles: tuple[str, ...] = Field(
-        description="Conjunto cerrado de roles enunciativos que el género "
+        description="Universo cerrado de roles enunciativos que el género "
                     "acepta. Construye dinámicamente Literal[*roles] para "
                     "el schema de EnunciatarioSchema, restringiendo el "
-                    "sampler vía GBNF al universo válido del género.",
+                    "sampler vía GBNF al universo válido del género. Cuando "
+                    "el género discrimina roles por tipo de discurso "
+                    "(`enunciatarios_por_tipo`), este universo es la unión de "
+                    "todos ellos más los transversales: la restricción por "
+                    "tipo se resuelve en el prompt y en un filtro post-hoc, "
+                    "no en el sampler, para no multiplicar variantes de "
+                    "gramática ni de cache por tipo.",
+    )
+
+    # ── Roles enunciativos por tipo de discurso ──────────────────────────────
+    roles_transversales: tuple[str, ...] = Field(
+        default=(),
+        description="Roles enunciativos del dispositivo, válidos en cualquier "
+                    "tipo de discurso del género (p. ej. en el post de red "
+                    "social, el destinatario mencionado y la audiencia "
+                    "ambiente). Se suman a los roles del tipo identificado.",
+    )
+    enunciatarios_por_tipo: dict[str, tuple[str, ...]] = Field(
+        default_factory=dict,
+        description="Mapa tipo_de_discurso → roles enunciativos propios de ese "
+                    "tipo (posiciones de creencia/destinación). La escena "
+                    "enunciativa se cruza: los roles efectivos de un discurso "
+                    "son los transversales más los de su tipo. El tipo lo "
+                    "resuelve `metadata`; si el mapa tiene una sola entrada, "
+                    "se usa siempre (géneros de campo discursivo fijo). Vacío "
+                    "conserva el comportamiento plano (roles = "
+                    "`enunciation_roles`).",
+    )
+    roles_descripciones: dict[str, str] = Field(
+        default_factory=dict,
+        description="Descripción breve de cada rol enunciativo (transversal o "
+                    "por tipo), inyectada en el prompt de enunciación junto al "
+                    "identificador. Claves sin rol asociado se ignoran.",
     )
 
     # ── Overrides opcionales del config global ───────────────────────────────
@@ -114,6 +146,68 @@ class Genre(BaseModel):
                     "no aporta.",
     )
 
+    stages_invalidas: tuple[str, ...] = Field(
+        default=(),
+        description="Stages que no tienen sentido para este género y que el "
+                    "CLI rechaza si se piden explícitamente por --stages. A "
+                    "diferencia de `summarizer=False` (que desactiva en "
+                    "silencio una stage que igual correría en los defaults), "
+                    "esto es para stages que el usuario podría pedir a mano "
+                    "pero que producirían ruido o no aplican: el pase 2 de "
+                    "emociones en textos de una sola frase, por ejemplo. Se "
+                    "informan con un error explícito, no se saltean en "
+                    "silencio, para que quede claro por qué no corrieron.",
+    )
+
+    # ── Detección de emociones ───────────────────────────────────────────────
+    max_emociones_unidad: int = Field(
+        default=10,
+        ge=1,
+        description="Tope de emociones que los pases de detección pueden "
+                    "devolver por unidad. Restringe el schema (maxItems) vía "
+                    "`schema_factory`, así que la gramática obliga a cerrar la "
+                    "lista: acota el peor caso de generación y garantiza que "
+                    "la salida entre en la ventana del modelo. Ajustarlo por "
+                    "género permite ceñirlo a lo que cada unidad puede portar "
+                    "de verdad (un post es mucho más corto que un párrafo de "
+                    "discurso).",
+    )
+
+    # ── Enunciación por género ───────────────────────────────────────────────
+    enunciador_from_handle: bool = Field(
+        default=False,
+        description="Si True, el enunciador se fija de forma determinista "
+                    "desde los campos del input (`autor_display`, con "
+                    "fallback a `autor_handle`), sin inferencia LLM. Pensado "
+                    "para discurso nativo digital, donde la cuenta autora es "
+                    "el enunciador; funciona igual con corpus seudonimizados "
+                    "(el alias es estable por cuenta).",
+    )
+    auditorio_predeterminado: bool = Field(
+        default=False,
+        description="Si True, el auditorio se construye de forma "
+                    "determinista desde el dispositivo, sin inferencia LLM: "
+                    "seguidores de la cuenta (siempre), un auditorio por "
+                    "hashtag presente (nunca combinados) y un destinatario "
+                    "directo por cuenta mencionada.",
+    )
+
+    # ── Tipos de discurso cerrados ───────────────────────────────────────────
+    tipos_discurso: tuple[str, ...] = Field(
+        default=(),
+        description="Vocabulario cerrado de tipos de discurso para la stage "
+                    "metadata. Si no está vacío, construye Literal[*tipos] "
+                    "para `MetadatosSchema.tipo_discurso`, restringiendo el "
+                    "sampler vía GBNF. Tupla vacía conserva el campo libre "
+                    "con el diccionario de tipos como referencia.",
+    )
+    tipos_discurso_descripciones: dict[str, str] = Field(
+        default_factory=dict,
+        description="Descripciones breves de los tipos cerrados, inyectadas "
+                    "en el system prompt junto al identificador. Claves que "
+                    "no estén en `tipos_discurso` se ignoran.",
+    )
+
     prompt_overrides: dict[str, str] = Field(
         default_factory=dict,
         description="Map stage_name → nombre de template Jinja2 alternativo. "
@@ -123,6 +217,48 @@ class Genre(BaseModel):
                     "core/prompts/templates/. Si no se especifica, se "
                     "usa el template default.",
     )
+
+    heuristics_overrides: dict[str, str] = Field(
+        default_factory=dict,
+        description="Map stage_name → archivo de heurísticas propio del "
+                    "género, relativo a knowledge_dir. No reemplaza a las "
+                    "heurísticas base de la stage: se concatena después de "
+                    "ellas, de modo que el género suma sus reglas de lectura "
+                    "sin repetir las comunes. Si el archivo no existe, la "
+                    "stage corre solo con las base.",
+    )
+
+    # ── Helpers de resolución de roles ───────────────────────────────────────
+    def roles_para_tipo(self, tipo_discurso: str | None) -> tuple[str, ...]:
+        """Roles enunciativos efectivos para un tipo de discurso.
+
+        Cruza los transversales del género con los del tipo identificado por
+        `metadata`. Reglas de resolución cuando el tipo no matchea el mapa:
+        con una sola entrada, se usa siempre (géneros de campo fijo, como el
+        presidencial); con varias, se cae a la unión de todos los tipos para
+        no perder ningún rol. Sin mapa por tipo, devuelve `enunciation_roles`.
+        """
+        if not self.enunciatarios_por_tipo:
+            return self.enunciation_roles
+        clave = _norm_tipo(tipo_discurso)
+        mapa_norm = {_norm_tipo(k): v for k, v in self.enunciatarios_por_tipo.items()}
+        if clave in mapa_norm:
+            especificos = mapa_norm[clave]
+        elif len(self.enunciatarios_por_tipo) == 1:
+            especificos = next(iter(self.enunciatarios_por_tipo.values()))
+        else:
+            especificos = tuple(
+                dict.fromkeys(
+                    r for roles in self.enunciatarios_por_tipo.values() for r in roles
+                )
+            )
+        # dict.fromkeys preserva orden y deduplica (transversales primero).
+        return tuple(dict.fromkeys((*self.roles_transversales, *especificos)))
+
+
+def _norm_tipo(tipo: str | None) -> str:
+    """Normaliza un identificador de tipo de discurso para comparar."""
+    return str(tipo or "").strip().lower()
 
 
 # ══════════════════════════════════════════════════════════════════════════════

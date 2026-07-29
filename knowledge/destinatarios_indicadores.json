@@ -1,0 +1,111 @@
+{
+  "version": "v1",
+  "tuit": {
+    "transversales": {
+      "audiencia_ambiente": [
+        "hashtags de alcance amplio o de tendencia, no dirigidos a nadie en particular",
+        "deícticos genéricos o impersonales ('todos', 'la gente', 'acá') sin destinatario individualizado",
+        "ausencia de vocativo o de @mención pese a ser públicamente visible (categoría por default)",
+        "construcciones de alcance genérico ('como sabemos', 'todos vieron que…')"
+      ],
+      "destinatario_mencionado": [
+        "@mención directa",
+        "vocativo con nombre propio o apodo, con o sin @",
+        "deícticos de 2ª persona dirigidos a una entidad identificable ('vos', 'che [nombre]')",
+        "'RT @' o cita de un tuit de un usuario específico como referencia directa"
+      ]
+    },
+    "tipos": {
+      "politico": {
+        "prodestinatario": [
+          "1ª persona del plural inclusiva ('nosotros', 'nuestro pueblo', 'compañeros/as')",
+          "léxico de pertenencia/adhesión (nombre del espacio propio, 'militantes', 'el pueblo')",
+          "convocatoria o agradecimiento al colectivo propio ('gracias a todos los que…', 'seguimos juntos')",
+          "presuposición de acuerdo compartido ('como ya saben', 'una vez más')"
+        ],
+        "paradestinatario": [
+          "apelación a la duda o a la razón más que a la pertenencia ('los invito a pensar', 'miren los datos')",
+          "tono neutro/persuasivo, sin vocativo de pertenencia ni insulto",
+          "condicionales o comparativas persuasivas ('si comparamos…', 'todavía están a tiempo de…')"
+        ],
+        "contradestinatario": [
+          "léxico polémico o descalificador (adjetivación negativa, ironía dirigida al adversario)",
+          "2ª persona o nombre propio del adversario en posición de acusado ('@fulano miente')",
+          "marcadores adversativos y de contraste ('mientras nosotros… ellos', 'a diferencia de')",
+          "preguntas retóricas acusatorias"
+        ]
+      },
+      "periodistico_informativo": {
+        "lector_ciudadano": [
+          "construcciones informativas neutras en 3ª persona, sin vocativo",
+          "marcadores de actualidad/relevancia genérica ('último momento', 'se confirmó que', 'atención')",
+          "'nos' inclusivo, más propio de la columna de opinión ('nos afecta a todos')"
+        ],
+        "instancia_blanco": [],
+        "fuente_referente": [
+          "@mención del organismo, funcionario o protagonista citado como fuente",
+          "verbos de decir en cita ('aseguró que', 'según informó @…', comillas de cita)",
+          "nombre propio + cargo/rol como aposición ('el ministro X dijo…')"
+        ]
+      },
+      "institucional": {
+        "ciudadano_usuario": [
+          "tratamiento formal o de cortesía institucional ('les recordamos', 'usted puede', 'consulte en…')",
+          "verbos de servicio/información pública ('informamos', 'disponible en')",
+          "léxico de trámite/beneficio ('turno', 'trámite', 'acceda a')"
+        ],
+        "comunidad_interna": [
+          "léxico de pertenencia institucional específica ('equipo', nombre propio de la dependencia/área)",
+          "referencias a jerarquía o estructura interna (áreas, direcciones, cargos internos)"
+        ],
+        "rendicion_cuentas": [
+          "léxico de transparencia/gestión ('informamos los resultados de…', 'balance de gestión', cifras de desempeño)",
+          "menciones a medios o etiquetas de prensa institucional",
+          "construcciones defensivas o aclaratorias ante un cuestionamiento ('aclaramos que…', 'en relación a las versiones…')"
+        ]
+      },
+      "humor_meme": {
+        "comunidad_sentido": [
+          "presuposición de conocimiento compartido sin glosa (referencias intertextuales, formatos de meme reconocibles, jerga interna)",
+          "elipsis y economía extrema del enunciado (el destinatario completa el sentido)",
+          "jerga o códigos de comunidad virtual (abreviaturas, inside jokes, meme replicado)"
+        ],
+        "no_iniciado": [],
+        "blanco_burla": [
+          "@mención de la persona o entidad parodiada o increpada",
+          "ironía marcada (comillas irónicas, mayúsculas sarcásticas, 'claro que sí')",
+          "nombre propio en tono burlesco o apodos despectivos"
+        ]
+      },
+      "personal_cotidiano": {
+        "circulo_afectivo": [
+          "2ª persona informal dirigida a alguien cercano, sin @ necesariamente ('che, vieron que…')",
+          "léxico de intimidad o referencias privadas no explicadas (chistes internos, nombres de pila)",
+          "registro coloquial marcado (diminutivos, interjecciones, tuteo informal)"
+        ],
+        "autodestinatario": [
+          "1ª persona singular reflexiva/expresiva sin interpelar a otro ('no puedo creer que hice esto')",
+          "ausencia de vocativo o mención",
+          "marcadores de diario/registro ('hoy me pasó que…', 'nota mental')"
+        ],
+        "testigo_indeseado": []
+      },
+      "promocional": {
+        "enunciatario_target": [
+          "imperativos o exhortaciones a un potencial consumidor ('descubrí', 'probá', 'sumate a')",
+          "2ª persona genérica de venta ('vos te merecés', 'para vos que buscás…')",
+          "léxico de beneficio/deseo asociado al producto ('único', 'exclusivo', 'ideal para vos')"
+        ],
+        "comunidad_marca": [
+          "léxico de fidelidad ('nuestra comunidad', 'gracias por elegirnos', 'para nuestros clientes')",
+          "referencias a vínculo previo (aniversarios, agradecimientos por fidelidad)"
+        ],
+        "prescriptor_amplificador": [
+          "llamados a compartir o retuitear ('compartí', 'etiquetá a un amigo', 'RT si…')",
+          "construcciones de participación o concurso que dependen de la viralización",
+          "hashtags de campaña diseñados para replicarse"
+        ]
+      }
+    }
+  }
+}

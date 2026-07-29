@@ -15,6 +15,11 @@ from loguru import logger
 
 from emoparse.core.schemas import semiosis_from_config
 from emoparse.storage.db import Database
+from emoparse.storage.referencia import (
+    marca_canonicos_index,
+    resolver_canonico,
+    resolver_canonicos,
+)
 
 
 def _json_or_empty(raw: str | None) -> Any:
@@ -225,6 +230,8 @@ def export_emociones_csv(db: Database, output_path: Path) -> int:
         db, "emociones",
         ("actantes_payload", "actantes_version", "actantes_error"),
     )
+    has_exp_canonico = _has_columns(db, "emociones", ("experienciador_canonico",))
+    has_fte_canonico = _has_columns(db, "emociones", ("fuente_canonico",))
 
     extra_select = ""
     if has_tipo_conf:
@@ -235,6 +242,15 @@ def export_emociones_csv(db: Database, output_path: Path) -> int:
         extra_select += (
             ", actantes_payload, actantes_version, actantes_error"
         )
+    if has_exp_canonico:
+        extra_select += ", experienciador_canonico"
+    if has_fte_canonico:
+        extra_select += ", fuente_canonico"
+
+    # Vínculos marca↔referente del run: permiten exportar el referente
+    # canónico de cada emoción junto a la inferencia cruda del modelo.
+    exp_index = marca_canonicos_index(db, "experienciador")
+    fte_index = marca_canonicos_index(db, "fuente")
 
     rows = db.execute(
         f"""
@@ -263,24 +279,39 @@ def export_emociones_csv(db: Database, output_path: Path) -> int:
 
     base_keys = [
         "codigo", "frase_idx", "emocion_idx",
-        "experienciador", "experienciador_marca",
+        "experienciador", "experienciador_marca", "experienciador_referente",
         "tipo_emocion", "fuente_marca",
-        "fuente_inferencia", "modo_existencia",
+        "fuente_inferencia", "fuente_referente", "modo_existencia",
     ]
     for k in base_keys:
         seen_keys.add(k)
         all_keys.append(k)
 
     for row in rows:
+        unidad = (row["codigo"], int(row["frase_idx"]))
         record: dict[str, str] = {
             "codigo": row["codigo"],
             "frase_idx": str(row["frase_idx"]),
             "emocion_idx": str(row["emocion_idx"]),
             "experienciador": row["experienciador"] or "",
             "experienciador_marca": row["experienciador_marca"] or "",
+            "experienciador_referente": resolver_canonico(
+                exp_index.get(unidad),
+                row["experienciador_marca"],
+                override=(
+                    row["experienciador_canonico"] if has_exp_canonico else None
+                ),
+                inferencia=row["experienciador"],
+            ),
             "tipo_emocion": row["tipo_emocion"] or "",
             "fuente_marca": row["fuente_marca"] or "",
             "fuente_inferencia": row["fuente_inferencia"] or "",
+            "fuente_referente": "; ".join(resolver_canonicos(
+                fte_index.get(unidad),
+                row["fuente_marca"],
+                override=row["fuente_canonico"] if has_fte_canonico else None,
+                inferencia=row["fuente_inferencia"],
+            )),
             "modo_existencia": row["modo_existencia"] or "",
         }
 

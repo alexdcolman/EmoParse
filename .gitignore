@@ -228,3 +228,4 @@ models/
 runs/
 exports/
 knowledge/actors_kb.json.bak*
+data/

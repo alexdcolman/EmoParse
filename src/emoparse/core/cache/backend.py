@@ -22,7 +22,7 @@ from emoparse.core.backend.base import (
     TokenUsage,
 )
 from emoparse.core.backend.exceptions import SchemaViolationError
-from emoparse.core.cache.keys import make_cache_key
+from emoparse.core.cache.keys import compute_images_digest, make_cache_key
 from emoparse.core.cache.repository import CacheRepository
 from emoparse.storage.models import RunContext
 
@@ -66,21 +66,9 @@ class CachedBackend(LLMBackend):
         max_items: int | None = None,
         images: list[str] | None = None,
     ) -> LLMResponse:
-        # Las llamadas con imágenes bypassean el cache: la clave actual no
-        # incorpora el contenido visual y un hit sería incorrecto. Extender
-        # make_cache_key con un hash de las imágenes habilitaría cachearlas.
-        if images:
-            logger.debug(
-                f"[CachedBackend:{self.alias}] BYPASS (llamada con imágenes)"
-            )
-            return self._backend.generate(
-                system=system, user=user, schema=schema,
-                max_tokens=max_tokens, temperature=temperature, seed=seed,
-                stop=stop, reset_before=reset_before, max_items=max_items,
-                images=images,
-            )
-
-        # Construir clave; si seed no se pasa, se usa None.
+        # Construir clave; si seed no se pasa, se usa None. Las llamadas con
+        # imágenes incorporan un digest del contenido visual (bytes de paths
+        # locales; string de las URLs), de modo que también son cacheables.
         schema_qualname = (
             f"{schema.__module__}.{schema.__qualname__}" if schema else None
         )
@@ -91,6 +79,7 @@ class CachedBackend(LLMBackend):
             schema_qualname=schema_qualname,
             seed=seed,
             versions=self._ctx.versions,
+            images_digest=compute_images_digest(images),
         )
 
         # Lookup.
@@ -136,6 +125,10 @@ class CachedBackend(LLMBackend):
         logger.debug(
             f"[CachedBackend:{self.alias}] MISS (key={key.digest[:12]}...)"
         )
+        # `images` se pasa solo cuando existe: no todos los backends declaran
+        # el parámetro en su firma (p. ej. lmstudio) y una llamada de texto
+        # no debe depender de eso.
+        extra_kwargs: dict[str, list[str]] = {"images": images} if images else {}
         response = self._backend.generate(
             system=system,
             user=user,
@@ -146,6 +139,7 @@ class CachedBackend(LLMBackend):
             stop=stop,
             reset_before=reset_before,
             max_items=max_items,
+            **extra_kwargs,
         )
 
         # Guardar en cache solo si finish_reason es "stop" o "schema".

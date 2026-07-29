@@ -267,6 +267,20 @@ class PostsRepository:
         ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_autor(self, handle: str) -> dict[str, Any] | None:
+        """Perfil de un autor por handle (cualquier plataforma), o None.
+
+        Para inyectar la bio como contexto en los análisis por post. Si el
+        mismo handle existiera en más de una plataforma, devuelve el primero
+        (determinista por orden de plataforma).
+        """
+        row = self._db.execute(
+            "SELECT * FROM autores WHERE handle = ? ORDER BY plataforma "
+            "LIMIT 1",
+            (str(handle).lstrip("@"),),
+        ).fetchone()
+        return dict(row) if row is not None else None
+
     def naturaleza_by_handle(self) -> dict[str, str]:
         """Mapa handle → naturaleza del referente derivada de la cuenta.
 

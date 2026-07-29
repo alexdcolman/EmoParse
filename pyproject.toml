@@ -1,5 +1,5 @@
 # ══════════════════════════════════════════════════════════════════════════════
-#  EmoParse v0.6.0 — Project metadata
+#  EmoParse v0.6.1 — Project metadata
 # ══════════════════════════════════════════════════════════════════════════════
 
 [build-system]
@@ -123,6 +123,12 @@ analytics = [
 # ── Análisis de redes ────────────────────────────────────────────────────────
 network = [
     "networkx>=3.0,<4",
+    "scipy>=1.11",
+]
+
+# ── Agrupamiento semántico de posts por contenido ────────────────────────────
+embeddings = [
+    "sentence-transformers>=3.0,<6",
 ]
 
 # ── Visualización / data extra ───────────────────────────────────────────────
@@ -148,7 +154,7 @@ dev = [
 
 # ── Instalación completa ─────────────────────────────────────────────────────
 all = [
-    "emoparse[llamacpp,lmstudio,ui,nlp,agents,scraping,scraping_selenium,bluesky,techno,analytics,network,data,utils,dev]",
+    "emoparse[llamacpp,lmstudio,ui,nlp,agents,scraping,scraping_selenium,bluesky,techno,analytics,network,embeddings,data,utils,dev]",
 ]
 
 [project.scripts]

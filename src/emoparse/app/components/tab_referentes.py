@@ -38,6 +38,18 @@ _MOD_COLOR = {
     "identificacion_inferencial": "#c88a8a",
 }
 _MOD_OPCIONES = ["designacion", "referencia_gramatical", "identificacion_inferencial"]
+
+#: Modos de existencia válidos, tomados del schema como fuente de verdad.
+try:
+    from typing import get_args
+
+    from emoparse.core import schemas as _sc
+
+    _MODOS_EXISTENCIA: list[str] = list(get_args(_sc.ModoExistenciaEmocion))
+except Exception:  # pragma: no cover — fallback defensivo
+    _MODOS_EXISTENCIA = [
+        "realizada", "potencial", "actual", "virtual", "inducida_proyectada",
+    ]
 _NAT_OPCIONES = ["persona", "colectivo", "institucion", "objeto_proceso", "otro"]
 _MAX_MARCAS = 30
 _MARCAS_PER_PAGE = 15           # marcas por página dentro de un referente
@@ -993,13 +1005,14 @@ def _render_marca_card(
                 st.caption(
                     "Asigná el experienciador de cada emoción por separado. Útil "
                     "cuando la frase tiene varias emociones y solo algunas "
-                    "corresponden a este referente."
+                    "corresponden a este referente. Si elegís más de un "
+                    "experienciador, la emoción se desdobla: una emoción por "
+                    "experienciador, cada una con su propio modo de existencia."
                 )
-                cid_opts = ["— sin cambio —", "— limpiar (volver a marca) —"] + all_cids
                 for b in briefs:
                     eidx = int(b["emocion_idx"])
                     fijado = bool(b.get("experienciador_fijado"))
-                    ec1, ec2, ec3 = st.columns([3, 2, 1])
+                    ec1, ec2 = st.columns([3, 3])
                     with ec1:
                         marca_txt = "✎ " if fijado else ""
                         st.markdown(
@@ -1011,31 +1024,64 @@ def _render_marca_card(
                             unsafe_allow_html=True,
                         )
                     with ec2:
-                        sel = st.selectbox(
-                            "nuevo experienciador", cid_opts,
+                        sel = st.multiselect(
+                            "nuevo experienciador", all_cids,
                             key=f"expat_sel_{mencion_id}_{eidx}",
                             label_visibility="collapsed",
+                            placeholder="elegí uno o más experienciadores",
                         )
-                    with ec3:
-                        st.markdown("<div style='height:0.15rem;'></div>",
-                                    unsafe_allow_html=True)
+                    modos_sel: list[str] = []
+                    if len(sel) >= 2:
+                        modo_actual = str(b.get("modo") or "")
+                        idx_def = (
+                            _MODOS_EXISTENCIA.index(modo_actual)
+                            if modo_actual in _MODOS_EXISTENCIA else 0
+                        )
+                        mcols = st.columns(min(len(sel), 4))
+                        for k, cid in enumerate(sel):
+                            with mcols[k % len(mcols)]:
+                                modos_sel.append(st.selectbox(
+                                    f"modo · {cid}", _MODOS_EXISTENCIA,
+                                    index=idx_def,
+                                    key=f"expat_modo_{mencion_id}_{eidx}_{k}",
+                                ))
+                    bc1, bc2, _ = st.columns([1, 1, 3])
+                    with bc1:
                         if st.button("asignar", key=f"expat_btn_{mencion_id}_{eidx}",
                                      use_container_width=True):
-                            if sel == "— sin cambio —":
-                                st.toast("Elegí un experienciador o 'limpiar'.",
+                            if not sel:
+                                st.toast("Elegí al menos un experienciador.",
                                          icon="⚠️")
-                            else:
-                                destino = None if sel.startswith("— limpiar") else sel
+                            elif len(sel) == 1:
                                 actions_layer.emocion_set_experiencer_at(
-                                    db_path, codigo, int(unit), eidx, destino
+                                    db_path, codigo, int(unit), eidx, sel[0]
                                 )
                                 st.toast(
-                                    f"Emoción #{eidx}: experienciador "
-                                    + ("limpiado." if destino is None
-                                       else f"→ «{destino}»."),
+                                    f"Emoción #{eidx}: experienciador → «{sel[0]}».",
                                     icon="✅",
                                 )
                                 st.rerun()
+                            else:
+                                res = actions_layer.emocion_split_experiencers(
+                                    db_path, codigo, int(unit), eidx,
+                                    sel, modos_sel,
+                                )
+                                st.toast(
+                                    f"Emoción #{eidx} desdoblada: "
+                                    f"{len(res['nuevos'])} emoción(es) nueva(s).",
+                                    icon="✅",
+                                )
+                                st.rerun()
+                    with bc2:
+                        if st.button("limpiar", key=f"expat_clr_{mencion_id}_{eidx}",
+                                     use_container_width=True,
+                                     help="Volver a resolver por marca."):
+                            actions_layer.emocion_set_experiencer_at(
+                                db_path, codigo, int(unit), eidx, None
+                            )
+                            st.toast(f"Emoción #{eidx}: experienciador limpiado.",
+                                     icon="✅")
+                            st.rerun()
 
         # ── Atribución de fuente por emoción (desarticular) ───────────────────
         if "fuente" in funciones and briefs and unit is not None:
@@ -1043,13 +1089,13 @@ def _render_marca_card(
                 st.caption(
                     "Asigná la fuente de cada emoción por separado. Útil cuando "
                     "la frase tiene varias emociones y solo algunas tienen a "
-                    "este referente como fuente."
+                    "este referente como fuente. Podés elegir más de una: la "
+                    "fuente de una emoción puede combinar referentes."
                 )
-                cid_opts = ["— sin cambio —", "— limpiar (volver a marca) —"] + all_cids
                 for b in briefs:
                     eidx = int(b["emocion_idx"])
                     fijado = bool(b.get("fuente_fijado"))
-                    fc1, fc2, fc3 = st.columns([3, 2, 1])
+                    fc1, fc2 = st.columns([3, 3])
                     with fc1:
                         marca_txt = "✎ " if fijado else ""
                         st.markdown(
@@ -1061,30 +1107,38 @@ def _render_marca_card(
                             unsafe_allow_html=True,
                         )
                     with fc2:
-                        sel = st.selectbox(
-                            "nueva fuente", cid_opts,
+                        sel = st.multiselect(
+                            "nueva fuente", all_cids,
                             key=f"fteat_sel_{mencion_id}_{eidx}",
                             label_visibility="collapsed",
+                            placeholder="elegí una o más fuentes",
                         )
-                    with fc3:
-                        st.markdown("<div style='height:0.15rem;'></div>",
-                                    unsafe_allow_html=True)
+                    bc1, bc2, _ = st.columns([1, 1, 3])
+                    with bc1:
                         if st.button("asignar", key=f"fteat_btn_{mencion_id}_{eidx}",
                                      use_container_width=True):
-                            if sel == "— sin cambio —":
-                                st.toast("Elegí una fuente o 'limpiar'.", icon="⚠️")
+                            if not sel:
+                                st.toast("Elegí al menos una fuente.", icon="⚠️")
                             else:
-                                destino = None if sel.startswith("— limpiar") else sel
-                                actions_layer.emocion_set_fuente_at(
-                                    db_path, codigo, int(unit), eidx, destino
+                                actions_layer.emocion_set_fuentes_at(
+                                    db_path, codigo, int(unit), eidx, sel
                                 )
                                 st.toast(
-                                    f"Emoción #{eidx}: fuente "
-                                    + ("limpiada." if destino is None
-                                       else f"→ «{destino}»."),
+                                    f"Emoción #{eidx}: fuente → "
+                                    f"«{'; '.join(sel)}».",
                                     icon="✅",
                                 )
                                 st.rerun()
+                    with bc2:
+                        if st.button("limpiar", key=f"fteat_clr_{mencion_id}_{eidx}",
+                                     use_container_width=True,
+                                     help="Volver a resolver por marca."):
+                            actions_layer.emocion_set_fuente_at(
+                                db_path, codigo, int(unit), eidx, None
+                            )
+                            st.toast(f"Emoción #{eidx}: fuente limpiada.",
+                                     icon="✅")
+                            st.rerun()
 
 
 def _highlight(frase: str, marca: str) -> str:

@@ -1,3 +1,8 @@
-Caracterizá cada hashtag a partir de su muestra de usos:
+HASHTAG: #{{ hashtag }} ({{ n_usos }} usos en el corpus)
+{% if funciones_previas %}
+FUNCIONES YA IDENTIFICADAS DE ESTE HASHTAG (reusalas si el uso se adecua):
+{{ funciones_previas }}
+{% endif %}
+Caracterizá el funcionamiento del hashtag en cada uno de estos posts:
 
 {{ unidades }}

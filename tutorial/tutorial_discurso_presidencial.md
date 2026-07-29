@@ -222,11 +222,31 @@ Un par de aclaraciones sobre estas etapas:
 - **`judge`** no vuelve a discutir la caracterización fina (foria, intensidad, dominancia): se concentra en los elementos donde el error es más costoso y más verificable —quién siente la emoción y qué la dispara—. Sus sugerencias se aceptan o rechazan en la tab Revisión, con un filtro para ver solo lo que todavía no resolviste.
 - **`actants`** es configurable componente por componente: si en tu corpus alguno de los cuatro (mediador, los dos verificadores, operador de modificación) no aporta nada, se puede desactivar sin tocar código.
 
+## Paso 4bis — Agrupar los discursos por su parecido (opcional)
+
+Una vez caracterizadas las emociones, EmoParse puede agrupar los discursos por el **parecido entre los simulacros emocionales** que construyen. Dos pasajes pueden contar "la misma historia emocional" —el mismo tipo de actor experimentando el mismo tipo de emoción ante el mismo tipo de fuente— aunque no compartan las palabras. Esto no necesita corpus de redes: funciona sobre cualquier corpus de discursos.
+
+```bash
+emoparse network --db runs/<nombre_de_tu_run>.sqlite --similitud
+```
+
+El comando arma un grafo donde cada nodo es una emoción reconstruida y dos emociones se conectan si sus simulacros se parecen; después los agrupa (con el mismo algoritmo de comunidades que usan las redes de interacción) y te muestra qué narra cada grupo: los experienciadores, tipos de emoción y fuentes dominantes de cada uno, los mediadores y verificadores de la emoción, entre otras características. Podés elegir qué componentes del simulacro pesan en el parecido con `--similitud-componentes` (por ejemplo, solo experienciador y tipo de emoción, o sumando la fuente y el mediador, etc.). El resultado se explora en la tab **🕸 Red**, que aparece en cuanto hay un grafo de similitud persistido, y al pasar el cursor por cada nodo ves el simulacro completo, estructurado.
+
+Hay un segundo criterio de agrupamiento, complementario: en vez de agrupar por los componentes del simulacro, agrupa los discursos por el **contenido de su texto**, usando embeddings (vectores que capturan el sentido de cada pasaje):
+
+```bash
+emoparse network --db runs/<nombre_de_tu_run>.sqlite --semantico
+```
+
+Podés correr los dos juntos (`--similitud --semantico`) y comparar: el narrativo agrupa por *qué historia emocional* se cuenta, el semántico por *de qué se habla*. Son preguntas distintas y a veces revelan estructuras distintas del corpus.⁸
+
+> ⁸ El agrupamiento **narrativo** (`--similitud`) es simbólico y explicable: cada grupo se lee por los componentes del simulacro que comparte. El **semántico** (`--semantico`, extra `embeddings`) agrupa por los vectores del texto y capta cercanías que las palabras exactas no muestran. El semántico rinde especialmente en corpus grandes o donde un mismo contenido se dice de muchas formas distintas (típicamente, redes sociales); en un corpus de discursos chico puede no encontrar suficientes vecinos por encima del umbral y no producir grupos —en ese caso el comando lo informa y sigue sin error, y conviene bajar el umbral o ampliar el corpus—. Vale la pena probar ambos: no compiten, responden preguntas diferentes.
+
 ## Paso 5 — Validar
 
-Antes de publicar resultados, medí la validez del análisis sobre tu corpus: el comando `emoparse eval` exporta muestras para anotación humana a ciegas, calcula el acuerdo entre anotadores (alpha de Krippendorff)⁸ y compara el sistema contra un conjunto de referencia. El protocolo completo está en `evals/manual_anotacion.md` y en la documentación.
+Antes de publicar resultados, medí la validez del análisis sobre tu corpus: el comando `emoparse eval` exporta muestras para anotación humana a ciegas, calcula el acuerdo entre anotadores (alpha de Krippendorff)⁹ y compara el sistema contra un conjunto de referencia. El protocolo completo está en `evals/manual_anotacion.md` y en la documentación.
 
-> ⁸ El alpha de Krippendorff es el estándar en análisis de contenido para medir cuánto acuerdan los codificadores humanos entre sí; ese acuerdo es el techo razonable de lo que puede exigírsele al sistema.
+> ⁹ El alpha de Krippendorff es el estándar en análisis de contenido para medir cuánto acuerdan los codificadores humanos entre sí; ese acuerdo es el techo razonable de lo que puede exigírsele al sistema.
 
 ## Preguntas frecuentes
 

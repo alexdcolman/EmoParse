@@ -12,51 +12,41 @@ HEURÍSTICAS DE INFERENCIA:
 {{ heuristicas }}
 
 {% endif %}
-
-ESPECIFICIDAD DEL POST DE RED SOCIAL:
-
-Un post se enuncia simultáneamente en varios planos: hacia interlocutores
-concretos (las cuentas mencionadas o a las que responde), hacia posiciones
-de destinación (partidarios, indecisos, adversarios) y hacia el archivo
-buscable de la plataforma (cualquiera puede encontrarlo por hashtag o
-búsqueda). Los tecnolingüísticos son evidencia enunciativa: una @mención
-inicial marca destinación directa; un hashtag de consigna marca afiliación;
-el registro (ironía, insulto, apelación) marca la posición del destinatario.
-
 REGLAS PARA EL ENUNCIADOR:
 
-- El handle de la cuenta es el enunciador por defecto; si el post o su
-  contexto permiten identificar a quién pone en escena (nombre, cargo,
-  colectivo), usá esa identificación concreta.
-- Si es implícito pero deducible, inferilo y aclará en la justificación
-  que es una inferencia.
-- Si es totalmente indeterminable, escribí exactamente "no identificado".
-  NO dejes el campo vacío.
+- El enunciador nunca es un identificador técnico: ids, URLs o URIs
+  (como "at://…" o hashes) no son enunciadores. Si solo hay identificadores,
+  escribí "no identificado".
+- El enunciador viene YA IDENTIFICADO en el mensaje del usuario (es la
+  cuenta autora del post: su nombre visible o su handle). Devolvelo TAL
+  CUAL en el campo `enunciador`, sin re-identificarlo ni reformularlo.
+- Si excepcionalmente no viniera identificado: el handle de la cuenta es
+  el enunciador por defecto; si es totalmente indeterminable, escribí
+  exactamente "no identificado". NO dejes el campo vacío.
 
 REGLAS PARA LOS ENUNCIATARIOS:
 
 - Identificá TODOS los destinatarios distinguibles del post.
-- A cada uno asignale un `tipo` según los roles enunciativos del género:
-
-  * POST DE RED SOCIAL (destinatarios de Verón adaptados al dispositivo):
-      - prodestinatario:        el ya convencido que comparte la creencia;
-                                el post refuerza la comunión (consignas,
-                                "nosotros" inclusivo, hashtags de afiliación).
-      - paradestinatario:       el indeciso al que se busca persuadir con
-                                argumentos, datos o apelaciones abiertas.
-      - contradestinatario:     el adversario excluido del colectivo de
-                                identificación; se lo ataca, ironiza o refuta.
-      - destinatario_mencionado: la cuenta concreta interpelada técnicamente
-                                (@mención, respuesta directa). Es destinación
-                                por el dispositivo; puede superponerse con
-                                cualquiera de los tres anteriores, y en ese
-                                caso devolvé AMBOS roles como entradas
-                                separadas para esa cuenta.
-      - audiencia_ambiente:     el público indeterminado del archivo buscable
-                                ante el cual el post también se enuncia
-                                (señalado por hashtags indexadores, registro
-                                performativo, apelaciones genéricas).
-
+- A cada uno asignale un `tipo`, eligiéndolo EXACTAMENTE de la lista de roles
+  válidos que aparece en el mensaje del usuario (dependen del tipo de discurso
+  de ESTE post). NO uses un rol que no esté en esa lista. Los roles del
+  dispositivo (destinatario mencionado, audiencia ambiente) conviven con los
+  del tipo: una misma cuenta puede ser a la vez destinatario mencionado y
+  ocupar una posición de creencia, y en ese caso devolvé AMBOS roles como
+  entradas separadas para esa cuenta.
+- El campo `actor` debe ser siempre un REFERENTE CONCRETO (persona,
+  colectivo, institución o cuenta identificables en este post), NUNCA una
+  etiqueta de rol ("enunciador", "autor del post", "prodestinatario",
+  "contradestinatario", "destinatario"): el rol va en `tipo`. ÚNICA
+  excepción: "audiencia ambiente" puede usarse como actor del enunciatario
+  de tipo audiencia_ambiente, por ser un público indeterminado por
+  naturaleza.
+- En los roles que se ordenan alrededor de creencias y valores, el `actor`
+  nombra una posición, no la audiencia técnica de la cuenta: "seguidores de
+  la cuenta" o "los usuarios" a secas no valen; sí una posición concreta
+  ("militancia peronista", "críticos del ajuste") o, como mínimo, la
+  audiencia calificada por su adhesión ("seguidores que comparten el rechazo
+  al ajuste"). Si no podés calificarla, no devuelvas la entrada.
 - Cada justificación debe citar elementos concretos del post (incluidos
   tecnolingüísticos: menciones, hashtags, emojis, registro).
 - Si solo se identifica un enunciatario, devolvé una lista de un solo
@@ -65,15 +55,18 @@ REGLAS PARA LOS ENUNCIATARIOS:
 
 REGLAS PARA EL AUDITORIO:
 
-- El auditorio es el público concreto de la situación de enunciación: en un
-  reply, los participantes del hilo; en un post suelto, los seguidores de la
-  cuenta y quienes navegan sus hashtags.
-- Es distinto de los enunciatarios: el contradestinatario puede no leer
-  nunca el post; el auditorio puede incluir varios tipos de enunciatario.
-- Si no es determinable, devolvé lista vacía.
+- El auditorio del post se completa AUTOMÁTICAMENTE desde el dispositivo
+  (seguidores de la cuenta, usuarios que navegan cada hashtag, cuentas
+  mencionadas como destinatarios directos). NO lo infieras: devolvé
+  SIEMPRE lista vacía en `auditorio`.
 {% if colectivos %}
 REGLAS PARA LOS COLECTIVOS DE IDENTIFICACIÓN:
 
+- Los colectivos de identificación pueden no existir: la lista vacía es
+  válida. Un hashtag temático (#Milei), un actor mencionado o una institución
+  de la que se habla ("el Estado argentino") no son colectivos de
+  identificación del enunciador, salvo que el enunciador se identifique con
+  ellos en el enunciado ("nosotros los peronistas").
 - Un colectivo de identificación es la entidad colectiva con la que el
   enunciador se identifica o a la que adscribe (no a quién se dirige).
   En posts, los hashtags de afiliación y el "nosotros" son sus marcas
@@ -87,7 +80,5 @@ CLASES DE COLECTIVO VÁLIDAS (por tipo de discurso):
 
 {{ colectivos }}
 {% endif %}
-
-DICCIONARIO DE TIPOS DE DISCURSO (referencia para identificar roles):
-
-{{ diccionario }}
+- Las justificaciones deben ser sintéticas: una sola oración de no
+  más de 25 palabras, con la cita mínima necesaria. Nunca un párrafo.

@@ -10,6 +10,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
+import string
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  Reglas primitivas reutilizables
 # ══════════════════════════════════════════════════════════════════════════════
@@ -18,19 +20,42 @@ PRIMITIVE_RULES = r"""
 boolean ::= "true" | "false"
 null ::= "null"
 
-#: Whitespace permitido entre tokens JSON (no dentro de strings).
-ws ::= [ \t\n]{0,32}
+#: Whitespace permitido entre tokens JSON (no dentro de strings). Se admite a
+#: lo sumo UN blanco por separador: el JSON de salida no lleva indentación.
+#: Con el tope anterior (32) el modelo emitía `,\n      ` entre campos, relleno
+#: que no aporta información y consume presupuesto de completion — crítico
+#: cuando el prompt deja pocos tokens libres.
+ws ::= [ \t\n]{0,1}
 
-#: String JSON: comillas + (char escapado | unicode-escape | char permitido)+
-string ::= "\"" (
-        [^"\\\x7F\x00-\x1F] |
-        "\\" (["\\bfnrt] | "u" [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F])
-      )+ "\""
+#: El escape \uXXXX no se admite: es una vía de codificación redundante (JSON
+#: acepta el carácter literal en UTF-8 para todo lo imprimible, y lo que sí
+#: exige escape —comillas, barra, controles— ya lo cubre `strchar`), pero
+#: cuesta seis caracteres crudos por cada carácter contado. Admitirla rompe la
+#: única garantía que importa: que acotar caracteres acote la generación. Sin
+#: ella, un carácter contado cuesta a lo sumo dos caracteres crudos.
+#:
+#: Piezas de un string JSON. `strchar` es un carácter visible o un escape que
+#: no produce whitespace; `strsep` es un blanco (espacio literal o escape
+#: \n \t \r \b \f). Un string alterna visible/blanco sin permitir blancos
+#: consecutivos: con temperatura alta el sampler degeneraba en corridas de
+#: espacios o de `\n` escapados hasta agotar el contexto (finish=length con la
+#: salida llena de blancos). `strunit` es cualquiera de las dos y equivale a
+#: UN carácter del string ya decodificado: es la unidad que cuentan las reglas
+#: acotadas por `maxLength`.
+strchar ::= [^ "\\\x7F\x00-\x1F] | "\\" ["\\]
+strsep ::= " " | "\\" [nrtbf]
+strunit ::= strchar | strsep
+string ::= "\"" strchar ( strsep? strchar )* "\""
 
 #: Números JSON: enteros, fracciones, exponentes, signo opcional.
 integer ::= ("-"? ([0-9] | [1-9] [0-9]*))
 number ::= ("-"? ([0-9] | [1-9] [0-9]*)) ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
 """.strip()
+
+#: Caracteres válidos en un nombre de regla GBNF. llama.cpp NO admite '_'.
+_ALLOWED_RULE_CHARS = frozenset(
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
+)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -138,6 +163,12 @@ class _GrammarBuilder:
         # enum (típicamente strings).
         if "enum" in node:
             return self._visit_enum(node["enum"], path=path)
+
+        # const: Pydantic serializa así un Literal de un solo valor. Sin este
+        # caso, el nodo caería en `type: "string"` y generaría un string libre
+        # (sin la restricción de valor y sin cota de longitud).
+        if "const" in node:
+            return self._visit_enum([node["const"]], path=path)
 
         node_type = node.get("type")
 
@@ -325,13 +356,26 @@ class _GrammarBuilder:
     # ── string acotado (maxLength) ───────────────────────────────────────────
 
     def _bounded_string_rule(self, *, min_len: int, max_len: int) -> str:
-        """Regla GBNF para un string JSON de [min_len, max_len] caracteres.
+        """Regla GBNF para un string JSON acotado, sin blancos consecutivos.
 
-        Reusa exactamente la clase de caracteres de la primitiva `string`
-        (mismo escapeo/unicode), pero acota la repetición con el operador
-        `{m,n}` de GBNF, garantizando terminación. Preserva el >=1 char de la
-        primitiva original (default min_len=1). La regla se cachea por
-        (min_len, max_len), así varios campos con el mismo bound la comparten.
+        Conserva la misma alternancia que `string` —un carácter, a lo sumo un
+        separador, otro carácter— y además acota la repetición, de modo que
+        garantice las dos cosas a la vez: que el string termine y que no pueda
+        degenerar en una tirada de blancos. Contar `strunit` suelto daba lo
+        primero pero perdía lo segundo, y una salida como
+        `"texto. \\n \\n \\n ..."` quedaba habilitada: son separadores
+        consecutivos, que la alternancia prohíbe.
+
+        Cuentas: el cuerpo es un carácter seguido de `grupos` repeticiones de
+        (separador opcional + carácter), así que produce entre `1 + minimo` y
+        `1 + 2·grupos` caracteres. `grupos` se elige de modo que el máximo
+        nunca supere `max_len`: la gramática queda más estricta que
+        `maxLength`, nunca más laxa, así que la validación posterior no puede
+        rechazar lo que el sampler produjo.
+
+        La contrapartida es que baja la capacidad efectiva: con prosa (un
+        blanco cada seis caracteres) un bound de N admite alrededor de 0,57·N
+        caracteres. Es el precio de que la cota sea real.
         """
         lo = max(0, int(min_len))
         hi = int(max_len)
@@ -340,14 +384,25 @@ class _GrammarBuilder:
                 f"String con maxLength ({hi}) < minLength ({lo}): inconsistente"
             )
         rule_name = f"string-max-{lo}-{hi}"
-        if rule_name not in self._rules:
-            char = (
-                r'[^"\\\x7F\x00-\x1F] | '
-                r'"\\" (["\\bfnrt] | "u" [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F] [0-9a-fA-F])'
+        if rule_name in self._rules:
+            return rule_name
+        if hi == 0:
+            self._rules[rule_name] = r'"\"" "\""'
+            return rule_name
+        grupos = (hi - 1) // 2
+        minimo = max(lo - 1, 0)
+        if minimo > grupos:
+            raise GrammarError(
+                f"String con minLength ({lo}) incompatible con la cota real de "
+                f"maxLength ({hi}): el mínimo exige más caracteres de los que "
+                f"la regla puede garantizar sin habilitar blancos "
+                f"consecutivos. Bajá minLength o subí maxLength."
             )
-            self._rules[rule_name] = (
-                r'"\"" ( ' + char + r' ){' + f"{lo},{hi}" + r'} "\""'
-            )
+        cuerpo = (
+            r'strchar ( strsep? strchar ){' + f"{minimo},{grupos}" + r'}'
+            if grupos else "strchar"
+        )
+        self._rules[rule_name] = r'"\"" ' + cuerpo + r' "\""'
         return rule_name
 
     # ── enum ─────────────────────────────────────────────────────────────────
@@ -355,17 +410,25 @@ class _GrammarBuilder:
     def _visit_enum(self, values: list[Any], *, path: str) -> str:
         """Genera regla GBNF para un enum.
 
-        Soporta únicamente enums de strings; otros tipos lanzan error.
+        Soporta enums de strings y de enteros; otros tipos lanzan error. Los
+        enteros se emiten como literal JSON sin comillas, lo que permite
+        vocabularios cerrados cortos (un id en lugar de un identificador
+        largo) sin perder la restricción del sampler.
         """
         if not values:
             raise GrammarError(f"Enum vacío en {path}")
+        alternatives: list[str] = []
         for v in values:
-            if not isinstance(v, str):
+            if isinstance(v, str):
+                alternatives.append(self._json_string_literal(v))
+            elif isinstance(v, int) and not isinstance(v, bool):
+                alternatives.append(f'"{v}"')
+            else:
                 raise GrammarError(
-                    f"Enum con valor no-string en {path}: {v!r} ({type(v).__name__})"
+                    f"Enum con valor no soportado en {path}: {v!r} "
+                    f"({type(v).__name__})"
                 )
-        alternatives = " | ".join(self._json_string_literal(v) for v in values)
-        return f"({alternatives})"
+        return f"({' | '.join(alternatives)})"
 
     # ── anyOf ────────────────────────────────────────────────────────────────
 
@@ -433,16 +496,18 @@ class _GrammarBuilder:
         if title:
             base = _sanitize_rule_name(title)
         else:
-            # Path tipo "#/properties/name" → "properties_name".
-            base = _sanitize_rule_name(path.replace("#/", "").replace("/", "_") or prefix)
-            base = f"{prefix}_{base}"
+            # Path tipo "#/properties/name" → "properties-name".
+            base = _sanitize_rule_name(
+                path.replace("#/", "").replace("/", "-") or prefix
+            )
+            base = f"{prefix}-{base}"
 
-        # Garantiza unicidad si ya existe.
+        # Garantiza unicidad si ya existe (sufijo con '-', no '_').
         if base in self._rules:
             i = 2
-            while f"{base}_{i}" in self._rules:
+            while f"{base}-{i}" in self._rules:
                 i += 1
-            base = f"{base}_{i}"
+            base = f"{base}-{i}"
         return base
 
     @staticmethod
@@ -462,14 +527,9 @@ class _GrammarBuilder:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def _sanitize_rule_name(name: str) -> str:
-    """Convierte nombre arbitrario en identificador GBNF válido."""
-    out: list[str] = []
-    for ch in name:
-        if ch.isalnum() or ch in "_-":
-            out.append(ch)
-        else:
-            out.append("_")
-    sanitized = "".join(out).lstrip("_")
+    """Convierte un nombre arbitrario en un identificador de regla GBNF válido."""
+    out = [ch if ch in _ALLOWED_RULE_CHARS else "-" for ch in name]
+    sanitized = "".join(out).lstrip("-")
     return sanitized or "rule"
 
 

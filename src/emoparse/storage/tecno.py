@@ -106,20 +106,92 @@ class TecnoRepository:
         ).fetchall()
         return [dict(r) | {"extra": _parse_extra(r["extra"])} for r in rows]
 
-    def set_afecto(self, entidad_id: int, afecto: dict[str, Any]) -> None:
-        """Registra el afecto resuelto de un emoji dentro de su `extra`."""
+    def set_extra_key(
+        self, entidad_id: int, key: str, value: Any
+    ) -> None:
+        """Registra un valor bajo una clave del `extra` de una entidad."""
         row = self._db.execute(
             "SELECT extra FROM tecno_entidades WHERE id = ?", (entidad_id,)
         ).fetchone()
         if row is None:
             return
         extra = _parse_extra(row["extra"])
-        extra["afecto"] = afecto
+        extra[key] = value
         with self._db.transaction() as cur:
             cur.execute(
                 "UPDATE tecno_entidades SET extra = ? WHERE id = ?",
                 (json.dumps(extra, ensure_ascii=False), entidad_id),
             )
+
+    def set_afecto(self, entidad_id: int, afecto: dict[str, Any]) -> None:
+        """Registra el afecto resuelto de un emoji dentro de su `extra`."""
+        self.set_extra_key(entidad_id, "afecto", afecto)
+
+    # ── Análisis por uso (hashtags y tecno_usage) ────────────────────────────
+
+    def list_usos_hashtag_sin_funcion(
+        self, valor_norm: str
+    ) -> list[dict[str, Any]]:
+        """Usos de un hashtag cuyo `extra` aún no registra función resuelta.
+
+        Devuelve cada uso con el texto de su unidad, en orden estable.
+        """
+        rows = self._db.execute(
+            "SELECT t.*, f.frase FROM tecno_entidades t "
+            "JOIN frases f ON f.codigo = t.codigo AND f.unit_idx = t.unit_idx "
+            "WHERE t.tipo = 'hashtag' AND t.valor_norm = ? "
+            "AND (t.extra IS NULL OR t.extra NOT LIKE '%\"funcion\"%') "
+            "ORDER BY t.codigo, t.unit_idx, t.inicio",
+            (valor_norm,),
+        ).fetchall()
+        return [dict(r) | {"extra": _parse_extra(r["extra"])} for r in rows]
+
+    def analisis_usos_hashtag(
+        self, valor_norm: str
+    ) -> list[dict[str, Any]]:
+        """Payloads de función por uso ya registrados para un hashtag."""
+        rows = self._db.execute(
+            "SELECT extra FROM tecno_entidades "
+            "WHERE tipo = 'hashtag' AND valor_norm = ? "
+            "AND extra LIKE '%\"funcion\"%'",
+            (valor_norm,),
+        ).fetchall()
+        out: list[dict[str, Any]] = []
+        for r in rows:
+            payload = _parse_extra(r["extra"]).get("funcion")
+            if isinstance(payload, dict):
+                out.append(payload)
+        return out
+
+    def list_unidades_con_tecno_sin_uso(self) -> list[dict[str, Any]]:
+        """Unidades con menciones, tecnografismos o URLs sin uso resuelto.
+
+        Devuelve una entrada por unidad, con el texto de la frase y la lista
+        de entidades pendientes (para el análisis en contexto de la stage
+        `tecno_usage`). Las URLs se caracterizan de forma barata por su
+        función pragmática (fuente/prueba, autopromoción, convocatoria a la
+        acción, enlace temático), apoyándose en el dominio ya normalizado.
+        """
+        rows = self._db.execute(
+            "SELECT t.*, f.frase FROM tecno_entidades t "
+            "JOIN frases f ON f.codigo = t.codigo AND f.unit_idx = t.unit_idx "
+            "WHERE t.tipo IN ('mencion', 'tecnografismo', 'url') "
+            "AND (t.extra IS NULL OR t.extra NOT LIKE '%\"uso\"%') "
+            "ORDER BY t.codigo, t.unit_idx, t.inicio"
+        ).fetchall()
+        unidades: dict[tuple[str, int], dict[str, Any]] = {}
+        for r in rows:
+            key = (str(r["codigo"]), int(r["unit_idx"]))
+            u = unidades.setdefault(key, {
+                "codigo": key[0],
+                "unit_idx": key[1],
+                "frase": str(r["frase"]),
+                "entidades": [],
+            })
+            u["entidades"].append(
+                dict(r) | {"extra": _parse_extra(r["extra"])}
+            )
+        return list(unidades.values())
 
     # ── Muestras de hashtags ─────────────────────────────────────────────────
 

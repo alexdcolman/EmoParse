@@ -19,14 +19,17 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Generic, TypeVar
+from typing import Any, Callable, ClassVar, Generic, TypeVar
 
 import pandas as pd
 from loguru import logger
 from pydantic import BaseModel
 
 from emoparse.core.backend.base import LLMBackend
-from emoparse.core.backend.exceptions import BackendError
+from emoparse.core.backend.exceptions import (
+    BackendError,
+    ContextLengthExceededError,
+)
 from emoparse.core.backend.retry import RetryConfig, retry_with_backoff
 
 #: Schema Pydantic esperado como salida del agente.
@@ -76,6 +79,10 @@ class BaseAgent(ABC, Generic[ResultT]):
         """
         self._backend = backend
         self._retry_config = retry_config
+        #: Callback opcional que la stage engancha para llevar el avance
+        #: cuando le delega el corpus entero al agente en una sola llamada.
+        #: Recibe la cantidad de filas resueltas.
+        self.on_progress: Callable[[int], None] | None = None
         # El system prompt se construye una vez y permanece estable durante
         # todo el procesamiento. Las subclases pueden preparar previamente
         # los datos necesarios en su propio __init__.
@@ -158,12 +165,16 @@ class BaseAgent(ABC, Generic[ResultT]):
 
         results: list[dict[str, Any]] = []
         total = len(df)
-        # Loggear progreso cada 10% (al menos 1 cada vuelta para DFs chicos).
+        # Sin callback de la stage el avance se loguea cada 10%; con callback
+        # lo reporta ella. Una sola fila no informa nada: el "1/1" repetido de
+        # las stages que llaman al agente por discurso solo tapa el avance.
         log_every = max(1, total // 10)
 
         for i, (_, row) in enumerate(df.iterrows()):
             codigo = str(row.get("codigo", f"row_{i}"))
-            if (i + 1) % log_every == 0 or i == 0:
+            if self.on_progress is not None:
+                self.on_progress(1)
+            elif total > 1 and ((i + 1) % log_every == 0 or i == 0):
                 logger.info(f"[{self.NAME}] {i + 1}/{total} ({codigo})")
 
             row_out: dict[str, Any] = row.to_dict()
@@ -211,6 +222,11 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
 
     # ── Inicialización ───────────────────────────────────────────────────────
 
+    #: Columna reservada donde el agente deja el motivo por el que una fila
+    #: quedó sin resolver. No es una columna de salida del schema: la stage la
+    #: lee para persistir el error y no la escribe como resultado.
+    ERROR_COLUMN: ClassVar[str] = "_agente_error"
+
     def __init__(
         self,
         backend: LLMBackend,
@@ -218,6 +234,8 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
     ) -> None:
         self._backend = backend
         self._retry_config = retry_config
+        #: Callback opcional de avance; lo engancha la stage (ver BaseAgent).
+        self.on_progress: Callable[[int], None] | None = None
         self._system = self._build_system()
 
     # ── Métodos que las subclases deben implementar ──────────────────────────
@@ -271,136 +289,164 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
             start = batch_i * self.BATCH_SIZE
             end = min(start + self.BATCH_SIZE, total)
             batch = df_reset.iloc[start:end].reset_index(drop=True)
-            batch_size = len(batch)
 
-            logger.info(
-                f"[{self.NAME}] batch {batch_i + 1}/{n_batches} "
-                f"(filas {start + 1}-{end} de {total})"
+            if self.on_progress is None and n_batches > 1:
+                logger.info(
+                    f"[{self.NAME}] batch {batch_i + 1}/{n_batches} "
+                    f"(filas {start + 1}-{end} de {total})"
+                )
+            results.extend(
+                self._process_batch(batch, split_on_overflow=True)
             )
-
-            # Mapeo entre unit_idx local del batch y fila original.
-            unit_idx_to_row: dict[int, pd.Series] = {
-                i: batch.iloc[i] for i in range(batch_size)
-            }
-
-            # Inicializar todas las filas como "fallidas" — las exitosas
-            # se actualizan después.
-            row_outputs: dict[int, dict[str, Any]] = {}
-            for i in range(batch_size):
-                row_dict = batch.iloc[i].to_dict()
-                for col in self.OUTPUT_COLUMNS:
-                    row_dict[col] = None
-                row_outputs[i] = row_dict
-
-            try:
-                user = self._build_user(batch)
-
-                def _call_backend() -> Any:
-                    response = self._backend.generate(
-                        system=self._system,
-                        user=user,
-                        schema=self.SCHEMA,
-                        max_items=batch_size,
-                    )
-                    if not isinstance(response.parsed, self.SCHEMA):
-                        raise BackendError(
-                            f"Backend devolvió response sin parsed (alias={response.model_alias})"
-                        )
-                    return response.parsed
-
-                if self._retry_config is not None:
-                    parsed = retry_with_backoff(_call_backend, self._retry_config)
-                else:
-                    parsed = _call_backend()
-
-                # `parsed` es un RootModel[List[BatchItem]].
-                # Acceso al list interno: .root en RootModel v2.
-                items = parsed.root  # type: ignore[attr-defined]
-                self._apply_batch_items(
-                    items=items,
-                    unit_idx_to_row=unit_idx_to_row,
-                    row_outputs=row_outputs,
-                    batch_size=batch_size,
-                )
-
-            except BackendError as e:
-                # El batch entero falla → todas las filas del batch
-                # quedan con None en OUTPUT_COLUMNS (ya inicializadas así).
-                logger.warning(
-                    f"[{self.NAME}] batch {batch_i + 1}/{n_batches} falló: "
-                    f"{type(e).__name__}: {e}"
-                )
-
-            # Recolectar resultados del batch en orden.
-            for i in range(batch_size):
-                results.append(row_outputs[i])
+            if self.on_progress is not None:
+                self.on_progress(end - start)
 
         # Restaurar orden original del input.
         out_df = pd.DataFrame(results).sort_values("__orig_index")
         out_df = out_df.drop(columns=["__orig_index"]).reset_index(drop=True)
         return out_df
 
+    def _process_batch(
+        self,
+        batch: pd.DataFrame,
+        *,
+        split_on_overflow: bool,
+    ) -> list[dict[str, Any]]:
+        """Procesa un batch y devuelve una fila de salida por unidad, en orden.
+
+        Ante `ContextLengthExceededError` —error permanente que el retry con
+        backoff no reintenta— y si `split_on_overflow` es True, el batch se
+        parte una sola vez por la mitad y cada mitad se reintenta ya sin volver
+        a partir. Recupera las unidades que hoy se pierden en bloque cuando el
+        batch no cierra el JSON. Con un batch de una sola unidad no hay dónde
+        partir: la unidad se marca fallida, como antes.
+        """
+        batch = batch.reset_index(drop=True)
+        batch_size = len(batch)
+
+        unit_idx_to_row: dict[int, pd.Series] = {
+            i: batch.iloc[i] for i in range(batch_size)
+        }
+        row_outputs: dict[int, dict[str, Any]] = {}
+        for i in range(batch_size):
+            row_dict = batch.iloc[i].to_dict()
+            for col in self.OUTPUT_COLUMNS:
+                row_dict[col] = None
+            row_outputs[i] = row_dict
+
+        try:
+            user = self._build_user(batch)
+
+            def _call_backend() -> Any:
+                response = self._backend.generate(
+                    system=self._system,
+                    user=user,
+                    schema=self.SCHEMA,
+                    max_items=batch_size,
+                )
+                if not isinstance(response.parsed, self.SCHEMA):
+                    raise BackendError(
+                        f"Backend devolvió response sin parsed (alias={response.model_alias})"
+                    )
+                return response.parsed
+
+            if self._retry_config is not None:
+                parsed = retry_with_backoff(_call_backend, self._retry_config)
+            else:
+                parsed = _call_backend()
+
+            items = parsed.root  # type: ignore[attr-defined]
+            self._apply_batch_items(
+                items=items,
+                unit_idx_to_row=unit_idx_to_row,
+                row_outputs=row_outputs,
+                batch_size=batch_size,
+            )
+
+        except ContextLengthExceededError as e:
+            if split_on_overflow and batch_size > 1:
+                mid = batch_size // 2
+                logger.warning(
+                    f"[{self.NAME}] batch de {batch_size} excedió el contexto; "
+                    f"reintento partido en {mid}+{batch_size - mid} (una vez)."
+                )
+                out = self._process_batch(
+                    batch.iloc[:mid], split_on_overflow=False
+                )
+                out += self._process_batch(
+                    batch.iloc[mid:], split_on_overflow=False
+                )
+                return out
+            logger.warning(
+                f"[{self.NAME}] batch de {batch_size} falló: "
+                f"{type(e).__name__}: {e}"
+            )
+
+        except BackendError as e:
+            # El batch entero falla → todas las filas quedan con None en
+            # OUTPUT_COLUMNS (ya inicializadas así).
+            logger.warning(
+                f"[{self.NAME}] batch de {batch_size} falló: "
+                f"{type(e).__name__}: {e}"
+            )
+
+        return [row_outputs[i] for i in range(batch_size)]
+
     # ── Helper: validación de cobertura del batch response ───────────────────
 
     def _apply_batch_items(
-        self,
-        items: list[BaseModel],
-        unit_idx_to_row: dict[int, pd.Series],
-        row_outputs: dict[int, dict[str, Any]],
-        batch_size: int,
-    ) -> None:
-        """Aplica los items del response batch sobre `row_outputs`.
+            self,
+            items: list[BaseModel],
+            unit_idx_to_row: dict[int, pd.Series],
+            row_outputs: dict[int, dict[str, Any]],
+            batch_size: int,
+        ) -> None:
+            """Aplica los items del batch response sobre `row_outputs`.
 
-        Los `unit_idx` fuera de rango se descartan, los duplicados generan
-        warning y los faltantes permanecen con None.
-        """
-        seen: set[int] = set()
-        for item in items:
-            # Sanity: el schema debería garantizar que item tiene unit_idx,
-            # pero si una subclase usa un schema raro, es preferible un error
-            # claro en lugar de AttributeError.
-            unit_idx = getattr(item, "unit_idx", None)
-            if not isinstance(unit_idx, int):
-                logger.warning(
-                    f"[{self.NAME}] Item del batch sin unit_idx int "
-                    f"(item={item!r}). Descartado."
+            - unit_idx == {0..N-1} → biyección correcta: asignar por unit_idx
+                (equivale a posición si vino en orden).
+            - unit_idx == {1..N}   → off-by-one (el modelo 1-indexó): asignar por
+                posición (el contenido está en orden; solo corrió la etiqueta).
+            - cualquier otra cosa   → batch no confiable: no se adivina. Las filas
+                quedan en None → re-pending → las reintenta `emoparse retry`.
+            """
+            idxs = [getattr(it, "unit_idx", None) for it in items]
+            all_int = len(idxs) == batch_size and all(isinstance(x, int) for x in idxs)
+            perfect = all_int and sorted(idxs) == list(range(batch_size))
+            off_by_one = all_int and sorted(idxs) == list(range(1, batch_size + 1))
+
+            if perfect:
+                for item in items:
+                    j = item.unit_idx  # type: ignore[attr-defined]
+                    row_outputs[j].update(
+                        self._map_item_to_columns(item, unit_idx_to_row[j])
+                    )
+                return
+
+            if off_by_one:
+                logger.debug(
+                    f"[{self.NAME}] unit_idx 1-indexado ({idxs}); asigno por posición."
                 )
-                continue
+                for i, item in enumerate(items):
+                    row_outputs[i].update(
+                        self._map_item_to_columns(item, unit_idx_to_row[i])
+                    )
+                return
 
-            if unit_idx < 0 or unit_idx >= batch_size:
-                logger.warning(
-                    f"[{self.NAME}] unit_idx={unit_idx} fuera de rango "
-                    f"[0, {batch_size}). Descartado."
-                )
-                continue
-
-            if unit_idx in seen:
-                logger.warning(
-                    f"[{self.NAME}] unit_idx={unit_idx} duplicado en el "
-                    "batch response. Sobreescribiendo (último gana)."
-                )
-            seen.add(unit_idx)
-
-            row = unit_idx_to_row[unit_idx]
-            row_outputs[unit_idx].update(self._map_item_to_columns(item, row))
-
-        missing = set(range(batch_size)) - seen
-        if missing:
-            # Diagnóstico: qué devolvió realmente el modelo (dejar si se prueban GGUFs nuevos).
+            # No confiable (duplicados / huecos / fuera de rango / cantidad rara).
+            motivo = (
+                f"batch rechazado: unit_idx no confiable (recibidos={idxs}, "
+                f"batch_size={batch_size})"
+            )
             logger.error(
-                "[{}] batch sin match completo | n_items={} | unit_idx recibidos={} | batch_size={}",
+                "[{}] batch RECHAZADO: unit_idx no confiable | recibidos={} | "
+                "batch_size={}. Filas quedan en None para reintento.",
                 self.NAME,
-                len(items),
-                [getattr(it, "unit_idx", None) for it in items],
+                idxs,
                 batch_size,
             )
-            if len(missing) == batch_size:
-                logger.warning(
-                    f"[{self.NAME}] Batch response NO cubrió ningún "
-                    f"unit_idx esperado. Toda la batch queda en None."
-                )
-            else:
-                logger.info(
-                    f"[{self.NAME}] Batch response no cubrió "
-                    f"{sorted(missing)}; esas filas quedan en None."
-                )
+            # Sin esta marca el rechazo no deja rastro en la DB: las filas
+            # vuelven a pendiente y el estado del run informa cero errores
+            # aunque el log haya gritado. La stage decide si la persiste.
+            for salida in row_outputs.values():
+                salida[self.ERROR_COLUMN] = motivo

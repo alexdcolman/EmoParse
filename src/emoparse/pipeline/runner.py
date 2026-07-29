@@ -14,7 +14,7 @@ from loguru import logger
 
 from emoparse.agents.actants import ACTANTS_COMPONENTS
 from emoparse.agents.metadata import MetadataAgent
-from emoparse.agents.enunciation import EnunciationAgent
+from emoparse.agents.enunciation import EnunciationAgent, EnunciatorIdAgent
 from emoparse.agents.summarizer import SummarizerAgent
 from emoparse.config.models import RunConfig
 from emoparse.core.backend.base import LLMBackend
@@ -33,6 +33,7 @@ from emoparse.pipeline.stages import (
     EmotionsPass2Stage,
     EmotionsStage,
     EnunciationStage,
+    TecnoUsageStage,
     ExplodeEmotionsStage,
     JudgeStage,
     MetadataStage,
@@ -63,7 +64,6 @@ from emoparse.storage.models import RunContext, Versions
 from emoparse.storage.posts import PostsRepository
 from emoparse.storage.runs import RunsRepository
 from emoparse.storage.tecno import TecnoRepository
-from emoparse.genres.registry import DEFAULT_GENRE_ID
 
 if TYPE_CHECKING:
     from emoparse.genres.base import Genre
@@ -78,13 +78,14 @@ STAGE_ORDER: tuple[str, ...] = EMOPARSE_DAG.toposort()
 #: `actants` queda OPT-IN: análisis fino opcional sobre emociones detectadas.
 #: `technoparse` y `emoji_affect` quedan OPT-IN por género: las habilitan
 #: los géneros de discurso nativo digital (genre.technoparse=True) vía CLI.
-#: `reframing` y `hashtag_semiotics` son OPT-IN explícito (--stages):
-#: requieren un modelo asignado en `pipeline.stages` del config.
+#: `reframing`, `hashtag_semiotics` y `tecno_usage` son OPT-IN explícito
+#: (--stages): requieren un modelo asignado en `pipeline.stages` del config.
 DEFAULT_ENABLED_STAGES: tuple[str, ...] = tuple(
     s for s in STAGE_ORDER
     if s not in (
         "technoparse", "reframing", "emoji_affect", "hashtag_semiotics",
-        "vision_describe", "emotions_pass2", "deixis", "judge", "actants",
+        "tecno_usage", "vision_describe", "emotions_pass2", "deixis",
+        "judge", "actants", "actors",
     )
 )
 
@@ -157,6 +158,7 @@ class PipelineRunner:
         actants_heuristics_filename: str | None = "heuristicas/actants.md",
         actants_components: tuple[str, ...] = ACTANTS_COMPONENTS,
         genre: "Genre | None" = None,
+        embed_context: bool = False,
     ) -> None:
         """
         Args:
@@ -214,6 +216,7 @@ class PipelineRunner:
         self._actants_heuristics_filename = actants_heuristics_filename
         self._actants_components = actants_components
 
+        self._embed_context = bool(embed_context)
         if genre is None:
             # Import lazy para no acoplar Runner a registry en hot path.
             from emoparse.genres import default_genre as _default_genre
@@ -449,7 +452,7 @@ class PipelineRunner:
             stage = self._build_stage(stage_name)
             stage.metrics = accumulator
             stage.validate_contracts = self._validate_contracts
-            if isinstance(stage, _FraseStage):
+            if isinstance(stage, (_FraseStage, EmotionsPass2Stage)):
                 stage.parallel = self._effective_parallel(stage_name)
             ok = stage.run_pending()
         finally:
@@ -473,6 +476,13 @@ class PipelineRunner:
         """Carga el referentes_kb; devuelve {} si no existe todavía."""
         try:
             return self._knowledge.load_referentes_kb()
+        except KnowledgeError:
+            return {}
+
+    def _load_enunciacion_kb_safe(self) -> dict[str, Any]:
+        """Carga la KB de enunciación; devuelve {} si es ilegible."""
+        try:
+            return self._knowledge.load_enunciacion_kb()
         except KnowledgeError:
             return {}
 
@@ -511,6 +521,24 @@ class PipelineRunner:
             return self._knowledge.load_heuristics(filename)
         except KnowledgeError:
             return None
+
+    def _heuristics_for(self, stage: str, *filenames: str | None) -> str:
+        """Heurísticas efectivas de una stage: base más el aporte del género.
+
+        Los `filenames` son los archivos base, en el orden en que deben
+        leerse (para `emotions_pass2`, las reglas comunes primero y las
+        propias del pase después). Al final se suma el archivo que el género
+        declare en `heuristics_overrides` para esa stage, si existe: el
+        género agrega sus reglas de lectura sin repetir las comunes.
+        Devuelve cadena vacía si no hay ninguna, y en ese caso el template
+        omite la sección.
+        """
+        nombres = [f for f in filenames if f]
+        extra = self._genre.heuristics_overrides.get(stage) if self._genre else None
+        if extra and extra not in nombres:
+            nombres.append(extra)
+        bloques = [self._load_heuristics_safe(n) for n in nombres]
+        return "\n\n".join(b for b in bloques if b)
 
     def _build_stage(self, name: str) -> Stage:
         """Construye el Stage con sus dependencias."""
@@ -568,6 +596,18 @@ class PipelineRunner:
                 genre=self._genre,
             )
 
+        if name == "tecno_usage":
+            backend = self._get_backend(name)
+            return TecnoUsageStage(
+                backend, self._t_repo,
+                heuristicas=self._load_heuristics_safe(
+                    "heuristicas/tecno_usage.md"
+                ),
+                agent_version=self._cfg.versions.prompt,
+                retry_config=self._retry_config,
+                genre=self._genre,
+            )
+
         if name == "summarizer":
             backend = self._get_backend(name)
             agent = SummarizerAgent(
@@ -591,28 +631,68 @@ class PipelineRunner:
                 genre=self._genre,
             )
             return MetadataStage(
-                agent, self._d_repo, agent_version=self._cfg.versions.prompt
+                agent, self._d_repo,
+                agent_version=self._cfg.versions.prompt,
+                posts_repo=self._p_repo,
+                embed_context_provider=self._embed_provider(),
+                hilo_context_provider=self._hilo_provider(),
             )
 
         if name == "enunciation":
             backend = self._get_backend(name)
-            diccionario = self._knowledge.load_diccionario_tipos(
-                self._diccionario_filename
-            )
-            genre_for_agent = (
-                self._genre if self._genre.genre_id != DEFAULT_GENRE_ID else None
-            )
+            heuristicas = self._heuristics_for(
+                "enunciation", self._enunciation_heuristics_filename
+            ) or None
             agent = EnunciationAgent(
-                backend, diccionario,
+                backend,
                 retry_config=self._retry_config,
-                genre=genre_for_agent,
-                heuristicas=self._knowledge.load_heuristics(
-                    self._enunciation_heuristics_filename
-                ) if self._enunciation_heuristics_filename else None,
+                genre=self._genre,
+                heuristicas=heuristicas,
                 colectivos=self._load_colectivos_safe() or None,
+                destinatarios_indicadores=(
+                    self._knowledge.load_destinatarios_indicadores(
+                        self._genre.genre_id
+                    ) or None
+                ),
             )
+            # Sub-paso de identificación del enunciador: determinista en los
+            # géneros con `enunciador_from_handle`; en el resto, un agente
+            # mínimo con modelo propio si `pipeline.stages.enunciator_id`
+            # está configurado (mismo backend de enunciation si no).
+            enunciator_agent = None
+            enunciator_release = None
+            if not self._genre.enunciador_from_handle:
+                id_alias = self._cfg.pipeline.stages.get("enunciator_id")
+                id_backend = (
+                    self._get_backend("enunciator_id") if id_alias else backend
+                )
+                enunciator_agent = EnunciatorIdAgent(
+                    id_backend,
+                    heuristicas=heuristicas,
+                    retry_config=self._retry_config,
+                )
+                # Con modelo propio del sub-paso: descargarlo al terminar la
+                # fase de enunciadores, para no sostener dos modelos en VRAM
+                # durante el análisis principal. Si otra stage usa el mismo
+                # alias, el registry lo recarga cuando haga falta.
+                main_alias = self._cfg.pipeline.stages.get("enunciation")
+                if id_alias and id_alias != main_alias:
+                    def enunciator_release(alias: str = id_alias) -> None:
+                        logger.info(
+                            f"[Runner] Descargando '{alias}' (sub-paso de "
+                            "enunciador) antes del análisis principal."
+                        )
+                        self._registry.unload(alias)
             return EnunciationStage(
-                agent, self._d_repo, agent_version=self._cfg.versions.prompt
+                agent, self._d_repo,
+                agent_version=self._cfg.versions.prompt,
+                enunciator_agent=enunciator_agent,
+                genre=self._genre,
+                enunciacion_kb=self._load_enunciacion_kb_safe(),
+                posts_repo=self._p_repo,
+                embed_context_provider=self._embed_provider(),
+                hilo_context_provider=self._hilo_provider(),
+                enunciator_release=enunciator_release,
             )
 
         if name == "actors":
@@ -629,9 +709,11 @@ class PipelineRunner:
 
         if name == "emotions":
             backend = self._get_backend(name)
-            ontologia = self._knowledge.load_ontology(self._ontology_filename)
-            heuristicas = self._knowledge.load_heuristics(
-                self._emotions_heuristics_filename
+            ontologia = self._knowledge.load_ontology(
+                self._ontology_filename, genre_id=self._genre.genre_id
+            )
+            heuristicas = self._heuristics_for(
+                "emotions", self._emotions_heuristics_filename
             )
             configuraciones = self._knowledge.load_emotion_configurations(
                 self._configurations_filename
@@ -639,10 +721,9 @@ class PipelineRunner:
             hilo_provider = None
             tecno_provider = None
             if self._genre.context_unit == "hilo":
-                from emoparse.pipeline.post_context import (
-                    make_hilo_context_provider,
+                hilo_provider = self._hilo_provider(
+                    max_parents=2, max_chars=1000, include_root=True,
                 )
-                hilo_provider = make_hilo_context_provider(self._p_repo)
             media_provider = None
             if self._genre.technoparse:
                 from emoparse.pipeline.post_context import (
@@ -650,9 +731,17 @@ class PipelineRunner:
                     make_tecno_context_provider,
                 )
                 tecno_provider = make_tecno_context_provider(
-                    self._t_repo, self._load_emoji_lexicon_safe()
+                    self._t_repo, self._load_emoji_lexicon_safe(),
+                    hashtags_como_bloque=True,
                 )
                 media_provider = make_media_context_provider(self._p_repo)
+            if self._embed_provider() is not None:
+                from emoparse.pipeline.post_context import (
+                    combine_context_providers,
+                )
+                media_provider = combine_context_providers(
+                    self._embed_provider(), media_provider
+                )
             return EmotionsStage(
                 backend, self._d_repo, self._f_repo,
                 ontologia=ontologia,
@@ -669,13 +758,45 @@ class PipelineRunner:
 
         if name == "emotions_pass2":
             backend = self._get_backend(name)
-            ontologia = self._knowledge.load_ontology(self._ontology_filename)
-            heuristicas = self._knowledge.load_heuristics(
-                self._emotions_pass2_heuristics_filename
+            ontologia = self._knowledge.load_ontology(
+                self._ontology_filename, genre_id=self._genre.genre_id
+            )
+            heuristicas = self._heuristics_for(
+                "emotions_pass2",
+                self._emotions_heuristics_filename,
+                self._emotions_pass2_heuristics_filename,
             )
             configuraciones = self._knowledge.load_emotion_configurations(
                 self._configurations_filename
             )
+            hilo_provider = None
+            tecno_provider = None
+            media_provider = None
+            hilo_emotion_provider = None
+            if self._genre.context_unit == "hilo":
+                from emoparse.pipeline.post_context import (
+                    make_hilo_emotion_context_provider,
+                )
+                hilo_provider = self._hilo_provider(max_chars=300)
+                hilo_emotion_provider = make_hilo_emotion_context_provider(
+                    self._p_repo, self._f_repo
+                )
+            if self._genre.technoparse:
+                from emoparse.pipeline.post_context import (
+                    make_media_context_provider,
+                    make_tecno_context_provider,
+                )
+                tecno_provider = make_tecno_context_provider(
+                    self._t_repo, self._load_emoji_lexicon_safe()
+                )
+                media_provider = make_media_context_provider(self._p_repo)
+            if self._embed_provider() is not None:
+                from emoparse.pipeline.post_context import (
+                    combine_context_providers,
+                )
+                media_provider = combine_context_providers(
+                    self._embed_provider(), media_provider
+                )
             return EmotionsPass2Stage(
                 backend, self._d_repo, self._f_repo,
                 ontologia=ontologia,
@@ -685,6 +806,10 @@ class PipelineRunner:
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
+                hilo_emotion_context_provider=hilo_emotion_provider,
+                hilo_context_provider=hilo_provider,
+                tecno_context_provider=tecno_provider,
+                media_context_provider=media_provider,
             )
 
         if name == "explode_emotions":
@@ -760,10 +885,9 @@ class PipelineRunner:
             reframing_provider = None
             if self._genre.context_unit == "hilo":
                 from emoparse.pipeline.post_context import (
-                    make_hilo_context_provider,
                     make_reframing_context_provider,
                 )
-                hilo_provider = make_hilo_context_provider(self._p_repo)
+                hilo_provider = self._hilo_provider()
                 reframing_provider = make_reframing_context_provider(
                     self._p_repo
                 )
@@ -773,7 +897,9 @@ class PipelineRunner:
                 heuristicas=self._knowledge.load_heuristics(
                     self._judge_heuristics_filename
                 ) if self._judge_heuristics_filename else None,
-                ontologia=self._knowledge.load_ontology(self._ontology_filename),
+                ontologia=self._knowledge.load_ontology(
+                    self._ontology_filename, genre_id=self._genre.genre_id
+                ),
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
@@ -814,6 +940,55 @@ class PipelineRunner:
             )
             return 1
         return requested
+
+    def _hilo_provider(
+        self,
+        *,
+        max_parents: int = 2,
+        max_chars: int = 600,
+        include_root: bool = False,
+        include_participants: bool = False,
+    ):
+        """Provider de contexto conversacional, con presupuesto por stage.
+
+        Cada stage recibe el contexto que su margen admite: lo que sobra
+        después del prompt estático y del peor caso de generación. `emotions`
+        es la que más margen tiene y recibe la cadena larga con los posts de
+        las cuentas mencionadas que participan del hilo; `emotions_pass2`, que
+        además carga el contexto previo, recibe la versión mínima. Cacheado
+        por combinación de parámetros. None si el género no es conversacional.
+        """
+        if self._genre.context_unit != "hilo":
+            return None
+        cache = getattr(self, "_hilo_providers_cached", None)
+        if cache is None:
+            cache = self._hilo_providers_cached = {}
+        key = (max_parents, max_chars, include_root, include_participants)
+        if key not in cache:
+            from emoparse.pipeline.post_context import (
+                make_hilo_context_provider,
+            )
+            cache[key] = make_hilo_context_provider(
+                self._p_repo, self._h_repo,
+                max_parents=max_parents,
+                max_chars=max_chars,
+                include_root=include_root,
+                include_participants=include_participants,
+            )
+        return cache[key]
+
+    def _embed_provider(self):
+        """Provider de contexto de embed (o None si el flag está apagado)."""
+        if not self._embed_context:
+            return None
+        if getattr(self, "_embed_provider_cached", None) is None:
+            from emoparse.pipeline.post_context import (
+                make_embed_context_provider,
+            )
+            self._embed_provider_cached = make_embed_context_provider(
+                self._p_repo
+            )
+        return self._embed_provider_cached
 
     def _get_backend(self, stage_name: str) -> LLMBackend:
         """Devuelve backend con cache y métricas para una stage."""

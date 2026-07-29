@@ -76,6 +76,29 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
         help="Máximo de posts a extraer en esta corrida. None = sin tope.",
     )
     p.add_argument(
+        "--min-conv-posts",
+        type=int,
+        default=None,
+        metavar="N",
+        help=(
+            "Solo con --query: adquiere únicamente conversaciones con al "
+            "menos N posts. Por cada resultado de búsqueda se expande su "
+            "hilo completo (una llamada por conversación candidata, "
+            "deduplicadas); las conversaciones más cortas se descartan. "
+            "Agnóstico de la fuente: usa el fetch_thread del adapter."
+        ),
+    )
+    p.add_argument(
+        "--max-convs",
+        type=int,
+        default=None,
+        metavar="M",
+        help=(
+            "Con --min-conv-posts: corta tras adquirir M conversaciones que "
+            "pasaron el filtro (economía de adquisición)."
+        ),
+    )
+    p.add_argument(
         "--from",
         dest="from_date",
         type=parse_date,
@@ -156,6 +179,16 @@ def run(args: argparse.Namespace) -> int:
         logger.error(f"[acquire] {e}")
         return 2
 
+    if args.min_conv_posts is not None and args.query is None:
+        logger.error(
+            "[acquire] --min-conv-posts requiere --query (la búsqueda es la "
+            "que descubre conversaciones candidatas)."
+        )
+        return 2
+    if args.max_convs is not None and args.min_conv_posts is None:
+        logger.error("[acquire] --max-convs requiere --min-conv-posts.")
+        return 2
+
     pseudonymizer = (
         Pseudonymizer(Path(f"{args.out}.salt")) if args.pseudonymize else None
     )
@@ -183,7 +216,12 @@ def run(args: argparse.Namespace) -> int:
 
     try:
         with adapter, appender:
-            for record in _iterate(adapter, args):
+            iterador = (
+                _iterate_conversaciones(adapter, args)
+                if args.min_conv_posts is not None
+                else _iterate(adapter, args)
+            )
+            for record in iterador:
                 if appender.has_id(record.id):
                     n_skipped += 1
                     continue
@@ -219,6 +257,61 @@ def run(args: argparse.Namespace) -> int:
         f"fuera_de_rango={n_filtered} → {args.out}"
     )
     return 0
+
+
+def _iterate_conversaciones(
+    adapter, args: argparse.Namespace
+) -> Iterator[PostRecord]:
+    """Búsqueda filtrada por conversaciones de al menos N posts.
+
+    Estrategia económica: itera la búsqueda; por cada post cuya conversación
+    no fue vista aún, expande el hilo completo UNA vez (fetch_thread sobre la
+    raíz). Si el hilo tiene al menos --min-conv-posts posts, los emite todos
+    (el dedupe por id del appender absorbe repetidos); si no, descarta la
+    conversación. Corta al llegar a --max-convs conversaciones adquiridas.
+    El tope --max sigue aplicando sobre los posts escritos, en el loop.
+    """
+    minimo = int(args.min_conv_posts)
+    max_convs = args.max_convs
+    vistas: set[str] = set()
+    adquiridas = 0
+
+    for hit in adapter.search(
+        args.query,
+        max_items=None,
+        from_date=args.from_date,
+        to_date=args.to_date,
+        lang=args.lang,
+    ):
+        raiz = str(hit.conversacion_id or hit.id)
+        if raiz in vistas:
+            continue
+        vistas.add(raiz)
+        try:
+            posts = list(adapter.fetch_thread(raiz))
+        except Exception as e:
+            logger.warning(
+                f"[acquire] No pude expandir la conversación {raiz!r}: {e}. "
+                "La salteo."
+            )
+            continue
+        if not posts:
+            posts = [hit]
+        if len(posts) < minimo:
+            logger.debug(
+                f"[acquire] Conversación {raiz!r} con {len(posts)} post(s) "
+                f"< {minimo}: descartada."
+            )
+            continue
+        adquiridas += 1
+        logger.info(
+            f"[acquire] Conversación {adquiridas}"
+            + (f"/{max_convs}" if max_convs else "")
+            + f": {len(posts)} post(s) ({raiz})."
+        )
+        yield from posts
+        if max_convs is not None and adquiridas >= max_convs:
+            return
 
 
 def _iterate(adapter, args: argparse.Namespace) -> Iterator[PostRecord]:

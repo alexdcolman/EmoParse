@@ -38,6 +38,20 @@ import emoparse.storage.db  # noqa: F401  (side-effect import)
 #: sobre el orden y definición de stages.
 from emoparse.pipeline.runner import STAGE_ORDER
 
+#: El estado por stage lo resuelve el pipeline, que es quien sabe el alcance
+#: de cada una; acá solo se reexpone para las tabs.
+from emoparse.pipeline import status as stage_status
+
+#: Resolución del referente canónico de una emoción: la misma que usan las
+#: stages y el export, para que ninguna tab muestre algo distinto.
+from emoparse.storage.referencia import (
+    canonicos_de_override,
+    hay_base_de_marcas,
+    marca_canonicos_index,
+    resolver_canonico,
+    resolver_canonicos,
+)
+
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Tipos públicos
@@ -61,49 +75,35 @@ class RunInfo:
     n_frases: int
 
 
-@dataclass(frozen=True, slots=True)
-class StageStatus:
-    """Estado agregado de una stage dentro de un run.
-
-    `failed_codigos` contiene los identificadores concretos utilizados
-    por la UI para mostrar qué discursos presentan fallos.
-    """
-    stage: str
-    pending: int
-    failed: int
-    completed: int
-    failed_codigos: list[str]
-
-
 # ══════════════════════════════════════════════════════════════════════════════
-#  Stages — agrupadas por nivel de granularidad
+#  Reexports desde storage.simulacros
 #
-#  La granularidad del schema determina cómo se calcula el estado de
-#  cada stage: por discurso, por frase o por emoción individual.
+#  La reconstrucción del simulacro (prelación de referentes, semas, actantes,
+#  caracterización) vive en la capa de storage porque la comparten la app, el
+#  análisis de redes y el export. Acá se reexpone con los nombres que las tabs
+#  ya consumen, para que ninguna tenga que cambiar de import.
 # ══════════════════════════════════════════════════════════════════════════════
 
-#: Stages que persisten en la tabla `discursos` (1 row = 1 discurso).
-_DISCURSO_STAGES: frozenset[str] = frozenset({"summarizer", "metadata", "enunciation"})
+from emoparse.storage.simulacros import (
+    _ACTANTE_FLAT,
+    _build_filter_sql,
+    _canon_col,
+    _canonico_semas_map,
+    _discurso_enunciador_map,
+    _discurso_len_map,
+    _frase_mention_canonicos,
+    _json_or_none,
+    _menciones_exists,
+    _parse_json,
+    _resolve_marca_canonicos,
+    _unpack_json_dict,
+    get_emociones,
+    get_emociones_enriched,
+)
 
-#: Stages que persisten en la tabla `frases` (1 row = 1 frase).
-#: `emotions_pass2` también vive aquí, en columnas `emociones_pass2_*`.
-_FRASE_STAGES: frozenset[str] = frozenset({"actors", "emotions", "emotions_pass2"})
-
-#: Stage no-LLM que materializa la tabla `emociones` a partir del
-#: payload de emociones detectadas en `frases`.
-_EXPLODE_STAGE: str = "explode_emotions"
-
-#: Stage que escribe en la tabla `emociones`. Su completitud se mide a
-#: nivel emoción (1 row = 1 emoción individual).
-_EMOCION_STAGES: frozenset[str] = frozenset({"characterizer"})
-
-#: Mapping stage → columna persistida en `frases`.
-#: Se mantiene explícito para evitar reflection dinámica sobre schema.
-_FRASE_STAGE_COL: dict[str, str] = {
-    "actors": "actores",
-    "emotions": "emociones",
-    "emotions_pass2": "emociones_pass2",
-}
+#: Re-export: el estado por stage lo calcula `pipeline.status`, que es la
+#: fuente única del criterio de conteo (la comparte el subcomando `status`).
+StageStatus = stage_status.StageStatus
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -331,68 +331,6 @@ def get_frases(
 #  Emociones: un row por emoción individual (post-explode + caracterización)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def get_emociones(
-    db_path: Path,
-    codigos: list[str] | None = None,
-) -> pd.DataFrame:
-    """Devuelve una fila por emoción individual.
-
-    Es la fuente principal para visualizaciones analíticas como curva
-    emocional, comparación entre discursos y análisis por actor.
-
-    Incluye la caracterización expandida (foria, intensidad, dominancia,
-    etc.) y metadata contextual de frase y discurso.
-    """
-    sql, params = _build_filter_sql(
-        base="SELECT e.codigo, e.frase_idx, e.emocion_idx, "
-             "e.experienciador, e.experienciador_marca, "
-             "e.tipo_emocion, e.tipo_emocion_canonico, "
-             "e.fuente_marca, e.fuente_inferencia, "
-             "e.modo_existencia, "
-             "e.caracterizacion_payload, e.caracterizacion_error, "
-             "f.frase, "
-             "d.input "
-             "FROM emociones e "
-             "LEFT JOIN frases f ON e.codigo = f.codigo AND e.frase_idx = f.unit_idx "
-             "LEFT JOIN discursos d ON e.codigo = d.codigo",
-        column="e.codigo",
-        values=codigos,
-        order_by="e.codigo, e.frase_idx, e.emocion_idx",
-    )
-
-    with _ro_connect(db_path) as conn:
-        rows = conn.execute(sql, params).fetchall()
-
-    if not rows:
-        return pd.DataFrame()
-
-    records: list[dict[str, Any]] = []
-    for row in rows:
-        rec: dict[str, Any] = {
-            "codigo":                  row["codigo"],
-            "frase_idx":               row["frase_idx"],
-            "emocion_idx":             row["emocion_idx"],
-            "experienciador":          row["experienciador"],
-            "experienciador_marca":    row["experienciador_marca"],
-            "tipo_emocion":            row["tipo_emocion"],
-            "tipo_emocion_canonico":   row["tipo_emocion_canonico"],
-            "modo_existencia":         row["modo_existencia"],
-            "fuente_marca":            row["fuente_marca"],
-            "fuente_inferencia":       row["fuente_inferencia"],
-            "frase":                   row["frase"],
-            "caracterizacion_error":   row["caracterizacion_error"],
-        }
-        # Caracterización flat: foria, dominancia, intensidad, etc.
-        rec.update(_unpack_json_dict(row["caracterizacion_payload"], prefix=""))
-        # Metadata del discurso (título, fecha).
-        input_data = _parse_json(row["input"])
-        if isinstance(input_data, dict):
-            for key in ("titulo", "fecha", "url"):
-                if key in input_data:
-                    rec[f"discurso__{key}"] = input_data[key]
-        records.append(rec)
-
-    return pd.DataFrame.from_records(records)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -521,174 +459,30 @@ def get_emociones_full(db_path: Path, codigo: str) -> list[dict[str, Any]]:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def get_stage_statuses(db_path: Path) -> list[StageStatus]:
-    """Devuelve un StageStatus por cada stage definida en STAGE_ORDER.
+    """Estado de cada stage del run, en orden topológico.
 
-    El criterio de conteo depende de la granularidad de cada stage:
-
-        - stages de discurso: 1 unidad = 1 discurso
-        - stages de frase: 1 unidad = 1 frase
-        - explode_emotions: cuenta discursos con `emociones_payload`
-            que ya tienen filas materializadas en `emociones`
-        - characterizer: 1 unidad = 1 emoción individual
+    Delega en `pipeline.status`, que define el alcance de cada stage y
+    distingue lo pendiente de lo que queda fuera de ese alcance.
     """
-    out: list[StageStatus] = []
     with _ro_connect(db_path) as conn:
-        for stage in STAGE_ORDER:
-            if stage in _DISCURSO_STAGES:
-                out.append(_count_discurso_stage(conn, stage))
-            elif stage in _FRASE_STAGES:
-                out.append(_count_frase_stage(conn, stage))
-            elif stage == _EXPLODE_STAGE:
-                out.append(_count_explode_stage(conn))
-            elif stage in _EMOCION_STAGES:
-                out.append(_count_characterizer_stage(conn))
-            else:  # pragma: no cover — defensa contra stages nuevas no mapeadas
-                out.append(StageStatus(
-                    stage=stage, pending=0, failed=0, completed=0,
-                    failed_codigos=[],
-                ))
-    return out
+        return stage_status.collect_stage_statuses(conn)
 
 
-def _count_discurso_stage(conn: sqlite3.Connection, stage: str) -> StageStatus:
-    """Calcula el estado de una stage que escribe en `discursos`."""
-    col_p = f"{stage}_payload"
-    col_e = f"{stage}_error"
-    pending = conn.execute(
-        f"SELECT COUNT(*) AS n FROM discursos "
-        f"WHERE {col_p} IS NULL AND {col_e} IS NULL"
-    ).fetchone()["n"]
-    failed = conn.execute(
-        f"SELECT COUNT(*) AS n FROM discursos WHERE {col_e} IS NOT NULL"
-    ).fetchone()["n"]
-    completed = conn.execute(
-        f"SELECT COUNT(*) AS n FROM discursos WHERE {col_p} IS NOT NULL"
-    ).fetchone()["n"]
-    failed_codigos = [
-        r["codigo"] for r in conn.execute(
-            f"SELECT codigo FROM discursos WHERE {col_e} IS NOT NULL "
-            f"ORDER BY codigo LIMIT 50"
-        ).fetchall()
-    ]
-    return StageStatus(
-        stage=stage, pending=pending, failed=failed, completed=completed,
-        failed_codigos=failed_codigos,
-    )
-
-
-def _count_frase_stage(conn: sqlite3.Connection, stage: str) -> StageStatus:
-    """Conteo para stages que escriben en `frases`.
-
-    `failed_codigos` se agrupa por discurso: si varias frases fallan
-    dentro del mismo discurso, el código aparece una sola vez.
-    """
-    col = _FRASE_STAGE_COL[stage]
-    col_p = f"{col}_payload"
-    col_e = f"{col}_error"
-    pending = conn.execute(
-        f"SELECT COUNT(*) AS n FROM frases "
-        f"WHERE {col_p} IS NULL AND {col_e} IS NULL"
-    ).fetchone()["n"]
-    failed = conn.execute(
-        f"SELECT COUNT(*) AS n FROM frases WHERE {col_e} IS NOT NULL"
-    ).fetchone()["n"]
-    completed = conn.execute(
-        f"SELECT COUNT(*) AS n FROM frases WHERE {col_p} IS NOT NULL"
-    ).fetchone()["n"]
-    failed_codigos = [
-        r["codigo"] for r in conn.execute(
-            f"SELECT DISTINCT codigo FROM frases WHERE {col_e} IS NOT NULL "
-            f"ORDER BY codigo LIMIT 50"
-        ).fetchall()
-    ]
-    return StageStatus(
-        stage=stage, pending=pending, failed=failed, completed=completed,
-        failed_codigos=failed_codigos,
-    )
-
-
-def _count_explode_stage(conn: sqlite3.Connection) -> StageStatus:
-    """Conteo para `explode_emotions`.
-
-    No existe una columna propia de estado; se mide verificando cuántos
-    discursos con `emociones_payload` ya tienen filas materializadas en
-    la tabla `emociones`.
-    """
-    pending = conn.execute(
-        "SELECT COUNT(DISTINCT f.codigo) AS n FROM frases f "
-        "WHERE f.emociones_payload IS NOT NULL "
-        "AND NOT EXISTS (SELECT 1 FROM emociones e WHERE e.codigo = f.codigo)"
-    ).fetchone()["n"]
-    completed = conn.execute(
-        "SELECT COUNT(DISTINCT codigo) AS n FROM emociones"
-    ).fetchone()["n"]
-    return StageStatus(
-        stage=_EXPLODE_STAGE, pending=pending, failed=0, completed=completed,
-        failed_codigos=[],
-    )
-
-
-def _count_characterizer_stage(conn: sqlite3.Connection) -> StageStatus:
-    """Conteo para `characterizer` (escribe en `emociones`)."""
-    pending = conn.execute(
-        "SELECT COUNT(*) AS n FROM emociones "
-        "WHERE caracterizacion_payload IS NULL AND caracterizacion_error IS NULL"
-    ).fetchone()["n"]
-    failed = conn.execute(
-        "SELECT COUNT(*) AS n FROM emociones WHERE caracterizacion_error IS NOT NULL"
-    ).fetchone()["n"]
-    completed = conn.execute(
-        "SELECT COUNT(*) AS n FROM emociones WHERE caracterizacion_payload IS NOT NULL"
-    ).fetchone()["n"]
-    failed_codigos = [
-        r["codigo"] for r in conn.execute(
-            "SELECT DISTINCT codigo FROM emociones WHERE caracterizacion_error IS NOT NULL "
-            "ORDER BY codigo LIMIT 50"
-        ).fetchall()
-    ]
-    return StageStatus(
-        stage="characterizer", pending=pending, failed=failed, completed=completed,
-        failed_codigos=failed_codigos,
-    )
+def _table_cols(conn: sqlite3.Connection, table: str) -> set[str]:
+    """Columnas de una tabla, o conjunto vacío si la tabla no existe."""
+    if conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+    ).fetchone() is None:
+        return set()
+    return {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Helpers internos
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _parse_json(s: str | None) -> Any:
-    """Parsea un string JSON a su valor Python, o None si vacío."""
-    if not s:
-        return None
-    try:
-        return json.loads(s)
-    except json.JSONDecodeError as e:
-        logger.warning(f"[app.data] JSON inválido en DB: {e}")
-        return None
 
 
-def _unpack_json_dict(s: str | None, prefix: str) -> dict[str, Any]:
-    """Expande un JSON object plano a un dict con claves prefijadas.
-
-    Si el valor no es un objeto plano, se serializa preservando una única
-    columna para evitar proliferación innecesaria de columnas.
-    """
-    parsed = _parse_json(s)
-    if parsed is None:
-        return {}
-    if isinstance(parsed, dict):
-        out: dict[str, Any] = {}
-        for k, v in parsed.items():
-            # Listas y dicts anidados se serializan como JSON string para que
-            # quepan en una celda de DataFrame sin explotar el ancho.
-            if isinstance(v, (list, dict)):
-                out[f"{prefix}{k}"] = json.dumps(v, ensure_ascii=False)
-            else:
-                out[f"{prefix}{k}"] = v
-        return out
-    # Caso no esperado: payload con lista en top-level.
-    # Se preserva serializado por compatibilidad defensiva.
-    return {prefix.rstrip("_"): json.dumps(parsed, ensure_ascii=False)}
 
 
 def _stage_status_from(payload: str | None, error: str | None) -> str:
@@ -700,22 +494,6 @@ def _stage_status_from(payload: str | None, error: str | None) -> str:
     return "pending"
 
 
-def _build_filter_sql(
-    base: str,
-    column: str,
-    values: list[str] | None,
-    order_by: str,
-) -> tuple[str, tuple[Any, ...]]:
-    """Construye una query con filtro opcional `WHERE ... IN (...)`.
-
-    Los valores se insertan mediante placeholders parametrizados (`?`)
-    para evitar SQL injection. `column` proviene de literales internos.
-    """
-    if values is None or len(values) == 0:
-        return f"{base} ORDER BY {order_by}", ()
-    placeholders = ",".join(["?"] * len(values))
-    sql = f"{base} WHERE {column} IN ({placeholders}) ORDER BY {order_by}"
-    return sql, tuple(values)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -756,14 +534,6 @@ def get_menciones(db_path: Path, codigo: str | None = None) -> pd.DataFrame:
     return pd.DataFrame([dict(r) for r in rows])
 
 
-def _json_or_none(raw: Any) -> Any:
-    """Parsea JSON o devuelve None."""
-    if not raw:
-        return None
-    try:
-        return json.loads(raw)
-    except (json.JSONDecodeError, TypeError):
-        return None
 
 
 def get_referentes_resumen(
@@ -961,176 +731,45 @@ def bulk_links(
 #  Resolución de canónicos por marca (deixis / referentes)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _menciones_exists(conn: sqlite3.Connection) -> bool:
-    return conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='menciones'"
-    ).fetchone() is not None
 
 
-def _frase_mention_canonicos(
-    conn: sqlite3.Connection, funcion: str, codigo: str | None = None
-) -> dict[tuple[str, int], dict[str, dict[str, tuple[int, int]]]]:
-    """(codigo, unit_idx) → {marca_norm: {canonical_id: score}} de una función.
-
-    Base compartida para resolver canónicos desde la capa de marcas (deixis/
-    coref) de forma uniforme en Revisión, Simulacros y Búsqueda.
-    """
-    out: dict[tuple[str, int], dict[str, dict[str, tuple[int, int]]]] = {}
-    if not _menciones_exists(conn):
-        return out
-    rank = {"accepted": 0, "proposed": 1}
-    origin_rank = {"deixis_llm": 0, "human": 1, "auto": 2, "coref": 3, "llm": 4}
-    sql = (
-        "SELECT m.codigo, m.unit_idx, m.marca, mc.canonical_id, mc.status, mc.origin "
-        "FROM menciones m "
-        "JOIN mencion_funcion mf ON mf.mencion_id = m.id AND mf.funcion = ? "
-        "JOIN mencion_canonico mc ON mc.mencion_id = m.id "
-        "WHERE mc.status != 'rejected' "
-    )
-    params: list[Any] = [funcion]
-    if codigo:
-        sql += "AND m.codigo = ? "
-        params.append(codigo)
-    for r in conn.execute(sql, tuple(params)):
-        cid = r["canonical_id"]
-        mm = (r["marca"] or "").strip().lower()
-        if not cid or not mm:
-            continue
-        score = (rank.get(r["status"], 9), origin_rank.get(r["origin"], 9))
-        d = out.setdefault((r["codigo"], r["unit_idx"]), {}).setdefault(mm, {})
-        if cid not in d or score < d[cid]:
-            d[cid] = score
-    return out
 
 
-def _match_canonicos(
-    marca_map: dict[str, dict[str, tuple[int, int]]] | None, fm: str
-) -> list[str]:
-    """Resuelve la marca `fm` (normalizada) contra las menciones de la frase.
-
-    Match exacto primero; si no hay, por contención en ambos sentidos (separa
-    marcas compuestas en sus sub-referentes). Dedup por canonical_id, ordenado
-    por preferencia (aceptado/deixis primero) y luego alfabético.
-    """
-    if not marca_map or not fm:
-        return []
-    if fm in marca_map:
-        matched = {fm: marca_map[fm]}
-    else:
-        matched = {mm: c for mm, c in marca_map.items() if mm in fm or fm in mm}
-    scored: dict[str, tuple[int, int]] = {}
-    for cids in matched.values():
-        for cid, sc in cids.items():
-            if cid not in scored or sc < scored[cid]:
-                scored[cid] = sc
-    return [cid for cid, _ in sorted(scored.items(), key=lambda kv: (kv[1], kv[0]))]
 
 
-def _resolve_marca_canonicos(
-    db_path: Path, codigo: str, funcion: str, marca_field: str
-) -> dict[tuple[int, int], list[str]]:
-    """(unit_idx, emocion_idx) → lista de canónicos DISTINTOS de la marca.
-
-    Usa los helpers compartidos `_frase_mention_canonicos` + `_match_canonicos`,
-    los mismos que Simulacros y Búsqueda, para que deixis/referentes propaguen
-    igual en todas las tabs.
-    """
-    out: dict[tuple[int, int], list[str]] = {}
-    with _ro_connect(db_path) as conn:
-        per = _frase_mention_canonicos(conn, funcion, codigo)
-        if not per:
-            return out
-        for r in conn.execute(
-            "SELECT unit_idx, emociones_payload, emociones_pass2_payload "
-            "FROM frases WHERE codigo = ?",
-            (codigo,),
-        ):
-            marca_map = per.get((codigo, r["unit_idx"]))
-            if not marca_map:
-                continue
-            payload = _json_or_none(r["emociones_pass2_payload"])
-            if not isinstance(payload, list):
-                payload = _json_or_none(r["emociones_payload"])
-            if not isinstance(payload, list):
-                continue
-            for ei, emo in enumerate(payload):
-                if not isinstance(emo, dict):
-                    continue
-                fm = str(emo.get(marca_field) or "").strip().lower()
-                ordered = _match_canonicos(marca_map, fm)
-                if ordered:
-                    out[(r["unit_idx"], ei)] = ordered
-    return out
 
 
-def get_experienciador_canonicos_map(
+def get_experienciador_canonico_map(
     db_path: Path, codigo: str
-) -> dict[tuple[int, int], list[str]]:
-    """(unit_idx, emocion_idx) → canónicos del experienciador (varios, distintos).
+) -> dict[tuple[int, int], str]:
+    """(unit_idx, emocion_idx) → el experienciador canónico de esa emoción.
 
-    Si una emoción tiene fijado `experienciador_canonico` (atribución manual por
-    emoción), ese valor tiene prioridad sobre la resolución por marca. Así la
-    desarticulación por emoción se propaga a todas las vistas.
+    Uno solo por emoción: la atribución manual si la hay, el vínculo
+    marca↔referente de mayor prelación si no, y el canónico de la inferencia
+    como piso. Cuando una marca liga varios referentes aceptados, la emoción ya
+    fue desdoblada en la base (una por referente).
     """
-    base = _resolve_marca_canonicos(
-        db_path, codigo, "experienciador", "experienciador_marca"
-    )
-    with _ro_connect(db_path) as conn:
-        if conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='emociones'"
-        ).fetchone() is None:
-            return base
-        cols = {r["name"] for r in conn.execute("PRAGMA table_info(emociones)")}
-        if "experienciador_canonico" not in cols:
-            return base
-        for r in conn.execute(
-            "SELECT frase_idx, emocion_idx, experienciador_canonico "
-            "FROM emociones WHERE codigo = ? "
-            "AND experienciador_canonico IS NOT NULL "
-            "AND TRIM(experienciador_canonico) != ''",
-            (codigo,),
-        ):
-            fijado = [
-                c.strip() for c in str(r["experienciador_canonico"]).split(";")
-                if c.strip()
-            ]
-            if fijado:
-                base[(int(r["frase_idx"]), int(r["emocion_idx"]))] = fijado
-    return base
+    return {
+        key: canonicos[0]
+        for key, canonicos in _resolve_marca_canonicos(
+            db_path, codigo, "experienciador",
+            "experienciador_marca", "experienciador", "experienciador_canonico",
+        ).items()
+    }
 
 
 def get_fuente_canonicos_map(
     db_path: Path, codigo: str
 ) -> dict[tuple[int, int], list[str]]:
-    """(unit_idx, emocion_idx) → canónicos de la fuente (varios, distintos).
+    """(unit_idx, emocion_idx) → los referentes canónicos de la fuente.
 
-    Si una emoción tiene fijado `fuente_canonico` (atribución manual por
-    emoción), ese valor tiene prioridad sobre la resolución por marca.
+    Misma prelación que `get_experienciador_canonico_map`, pero la fuente de
+    una emoción puede combinar entidades y se devuelven todas.
     """
-    base = _resolve_marca_canonicos(
-        db_path, codigo, "fuente", "fuente_marca"
+    return _resolve_marca_canonicos(
+        db_path, codigo, "fuente",
+        "fuente_marca", "fuente_inferencia", "fuente_canonico",
     )
-    with _ro_connect(db_path) as conn:
-        if conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='emociones'"
-        ).fetchone() is None:
-            return base
-        cols = {r["name"] for r in conn.execute("PRAGMA table_info(emociones)")}
-        if "fuente_canonico" not in cols:
-            return base
-        for r in conn.execute(
-            "SELECT frase_idx, emocion_idx, fuente_canonico "
-            "FROM emociones WHERE codigo = ? "
-            "AND fuente_canonico IS NOT NULL AND TRIM(fuente_canonico) != ''",
-            (codigo,),
-        ):
-            fijado = [
-                c.strip() for c in str(r["fuente_canonico"]).split(";")
-                if c.strip()
-            ]
-            if fijado:
-                base[(int(r["frase_idx"]), int(r["emocion_idx"]))] = fijado
-    return base
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1178,16 +817,19 @@ def search_counts(db_path: Path, term: str) -> dict[str, int]:
                 "SELECT codigo, frase_idx, experienciador, experienciador_marca, "
                 "fuente_marca, fuente_inferencia FROM emociones"
             ):
-                exp_cids = _match_canonicos(
+                exp_canon = resolver_canonico(
                     exp_units.get((r["codigo"], int(r["frase_idx"]))),
-                    (r["experienciador_marca"] or "").strip().lower(),
+                    r["experienciador_marca"],
+                    inferencia=r["experienciador"],
                 )
-                fte_cids = _match_canonicos(
+                fte_cids = resolver_canonicos(
                     fte_units.get((r["codigo"], int(r["frase_idx"]))),
-                    (r["fuente_marca"] or "").strip().lower(),
+                    r["fuente_marca"],
+                    inferencia=r["fuente_inferencia"],
                 )
-                # Texto buscable: inferencia + marca + canónico(s) resuelto(s),
-                # para que coincida igual que lo que muestra la búsqueda.
+                exp_cids = [exp_canon] if exp_canon else []
+                # Texto buscable: inferencia + marca + canónico resuelto, para
+                # que coincida igual que lo que muestra la búsqueda.
                 exp_vals = exp_cids or (
                     [r["experienciador"].strip()] if (r["experienciador"] or "").strip() else []
                 )
@@ -1291,20 +933,6 @@ def frases_for_selection(
 #  Simulacros de emoción (tab Simulacros)
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _canonico_semas_map(
-    conn: sqlite3.Connection,
-) -> dict[str, set[str]]:
-    """Mapa canonical_id → conjunto de semas (no rechazados)."""
-    out: dict[str, set[str]] = {}
-    if conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='canonico_semas'"
-    ).fetchone() is None:
-        return out
-    for r in conn.execute(
-        "SELECT canonical_id, sema FROM canonico_semas WHERE status != 'rejected'"
-    ):
-        out.setdefault(r["canonical_id"], set()).add(r["sema"])
-    return out
 
 
 def get_simulacros(db_path: Path) -> pd.DataFrame:
@@ -1323,11 +951,17 @@ def get_simulacros(db_path: Path) -> pd.DataFrame:
         exp_units = _frase_mention_canonicos(conn, "experienciador")
         fte_units = _frase_mention_canonicos(conn, "fuente")
         semas = _canonico_semas_map(conn)
+        emo_cols = {r["name"] for r in conn.execute("PRAGMA table_info(emociones)")}
+        sel_exp_c = ("e.experienciador_canonico" if "experienciador_canonico" in emo_cols
+                     else "NULL AS experienciador_canonico")
+        sel_fte_c = ("e.fuente_canonico" if "fuente_canonico" in emo_cols
+                     else "NULL AS fuente_canonico")
         rows = conn.execute(
             "SELECT e.codigo, e.frase_idx, e.emocion_idx, "
             "e.experienciador, e.experienciador_marca, "
             "e.tipo_emocion, e.tipo_emocion_canonico, "
             "e.fuente_marca, e.fuente_inferencia, "
+            f"{sel_exp_c}, {sel_fte_c}, "
             "e.actantes_payload, f.frase "
             "FROM emociones e "
             "LEFT JOIN frases f ON e.codigo = f.codigo AND e.frase_idx = f.unit_idx "
@@ -1340,18 +974,26 @@ def get_simulacros(db_path: Path) -> pd.DataFrame:
         vn = act.get("verificador_normativo") or {}
         vo = act.get("verificador_observacional") or {}
         om = act.get("operador_modificacion") or {}
-        exp_cids = _match_canonicos(
+        # Misma prelación que Revisión y Referentes: atribución por emoción
+        # (columna canónica) > vínculo marca↔referente > canónico inferido.
+        exp_c = resolver_canonico(
             exp_units.get((r["codigo"], r["frase_idx"])),
-            (r["experienciador_marca"] or "").strip().lower(),
+            r["experienciador_marca"],
+            override=r["experienciador_canonico"],
+            inferencia=r["experienciador"],
         )
-        fte_cids = _match_canonicos(
+        fte_cids = resolver_canonicos(
             fte_units.get((r["codigo"], r["frase_idx"])),
-            (r["fuente_marca"] or "").strip().lower(),
+            r["fuente_marca"],
+            override=r["fuente_canonico"],
+            inferencia=r["fuente_inferencia"],
         )
-        exp_c = "; ".join(exp_cids)
         fte_c = "; ".join(fte_cids)
-        exp_semas: set = set().union(*(semas.get(c, set()) for c in exp_cids)) if exp_cids else set()
-        fte_semas: set = set().union(*(semas.get(c, set()) for c in fte_cids)) if fte_cids else set()
+        exp_semas = semas.get(exp_c, set()) if exp_c else set()
+        fte_semas: set = (
+            set().union(*(semas.get(c, set()) for c in fte_cids))
+            if fte_cids else set()
+        )
         records.append({
             "codigo": r["codigo"],
             "frase_idx": r["frase_idx"],
@@ -1378,142 +1020,12 @@ def get_simulacros(db_path: Path) -> pd.DataFrame:
 # ══════════════════════════════════════════════════════════════════════════════
 
 #: Actantes aplanados que se exponen a nivel emoción.
-_ACTANTE_FLAT: tuple[tuple[str, str, str], ...] = (
-    ("mediador", "tipo", "mediador"),
-    ("verificador_normativo", "tipo", "verificador_normativo"),
-    ("verificador_normativo", "evaluacion", "verificador_normativo_evaluacion"),
-    ("verificador_observacional", "tipo", "verificador_observacional"),
-    ("verificador_observacional", "evaluacion", "verificador_observacional_evaluacion"),
-    ("operador_modificacion", "funcion", "operador_modificacion"),
-    ("polaridad", "tipo", "polaridad"),
-)
 
 
-def _discurso_enunciador_map(conn: sqlite3.Connection) -> dict[str, str]:
-    """codigo → enunciador (desde enunciation_payload)."""
-    out: dict[str, str] = {}
-    for r in conn.execute("SELECT codigo, enunciation_payload FROM discursos"):
-        payload = _json_or_none(r["enunciation_payload"]) or {}
-        if isinstance(payload, dict):
-            out[r["codigo"]] = str(payload.get("enunciador") or "")
-    return out
 
 
-def _discurso_len_map(conn: sqlite3.Connection) -> dict[str, int]:
-    """codigo → índice de frase máximo (longitud del discurso, para posición relativa)."""
-    out: dict[str, int] = {}
-    for r in conn.execute("SELECT codigo, MAX(unit_idx) AS m FROM frases GROUP BY codigo"):
-        if r["m"] is not None:
-            out[r["codigo"]] = int(r["m"])
-    return out
 
 
-def get_emociones_enriched(
-    db_path: Path,
-    codigos: list[str] | None = None,
-) -> pd.DataFrame:
-    """`get_emociones` + columnas resueltas para el filtrado transversal de las tabs.
-
-    Suma, por emoción, el experienciador y la fuente **canónicos** (con la misma
-    prioridad que la tab Revisión: atribución por emoción > resolución marca↔
-    referente de deixis/coref > crudo del LLM), sus **semas**, el **enunciador**
-    del discurso, los **actantes** aplanados y la longitud del discurso (para la
-    posición relativa). Es la fuente única de curva, actores, tabla y correlación,
-    para no duplicar la lógica de resolución entre tabs.
-
-    Columnas nuevas: `experienciador_canonico`/`fuente_canonico` (str, `; `-join),
-    `experienciador_canonicos`/`fuente_canonicos` (list), `experienciador_semas`/
-    `fuente_semas` (list), `experienciador_efectivo`/`fuente_efectiva` (canónico o,
-    si no resuelve, crudo), `enunciador`, `pos_max_discurso`, y los actantes
-    (`mediador`, `verificador_normativo`, `operador_modificacion`, `polaridad`, …).
-    """
-    base = get_emociones(db_path, codigos)
-    if base.empty:
-        return base
-
-    enr: dict[tuple[str, int, int], dict[str, Any]] = {}
-    enun_map: dict[str, str] = {}
-    len_map: dict[str, int] = {}
-    with _ro_connect(db_path) as conn:
-        if conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='emociones'"
-        ).fetchone() is None:
-            return base
-        exp_units = _frase_mention_canonicos(conn, "experienciador")
-        fte_units = _frase_mention_canonicos(conn, "fuente")
-        semas = _canonico_semas_map(conn)
-        enun_map = _discurso_enunciador_map(conn)
-        len_map = _discurso_len_map(conn)
-        emo_cols = {r["name"] for r in conn.execute("PRAGMA table_info(emociones)")}
-        sel_exp_c = ("experienciador_canonico" if "experienciador_canonico" in emo_cols
-                     else "NULL AS experienciador_canonico")
-        sel_fte_c = ("fuente_canonico" if "fuente_canonico" in emo_cols
-                     else "NULL AS fuente_canonico")
-        sql = (
-            "SELECT codigo, frase_idx, emocion_idx, "
-            "experienciador_marca, fuente_marca, "
-            f"{sel_exp_c}, {sel_fte_c}, actantes_payload FROM emociones"
-        )
-        params: tuple = ()
-        if codigos:
-            qm = ",".join("?" * len(codigos))
-            sql += f" WHERE codigo IN ({qm})"
-            params = tuple(codigos)
-        for r in conn.execute(sql, params):
-            key = (r["codigo"], int(r["frase_idx"]), int(r["emocion_idx"]))
-            fkey = (r["codigo"], int(r["frase_idx"]))
-
-            def _canon(override: Any, marca_map, marca_field: str) -> list[str]:
-                fijado = [c.strip() for c in str(override or "").split(";") if c.strip()]
-                if fijado:
-                    return fijado
-                return _match_canonicos(
-                    marca_map, (r[marca_field] or "").strip().lower()
-                )
-
-            exp_c = _canon(r["experienciador_canonico"], exp_units.get(fkey), "experienciador_marca")
-            fte_c = _canon(r["fuente_canonico"], fte_units.get(fkey), "fuente_marca")
-            exp_s = sorted(set().union(*(semas.get(c, set()) for c in exp_c))) if exp_c else []
-            fte_s = sorted(set().union(*(semas.get(c, set()) for c in fte_c))) if fte_c else []
-            act = _parse_json(r["actantes_payload"]) or {}
-            rec: dict[str, Any] = {
-                "experienciador_canonicos": exp_c,
-                "experienciador_canonico": "; ".join(exp_c),
-                "experienciador_semas": exp_s,
-                "fuente_canonicos": fte_c,
-                "fuente_canonico": "; ".join(fte_c),
-                "fuente_semas": fte_s,
-            }
-            for grupo, leaf, colname in _ACTANTE_FLAT:
-                sub = act.get(grupo) if isinstance(act, dict) else None
-                rec[colname] = (sub.get(leaf) if isinstance(sub, dict) else None) or ""
-            enr[key] = rec
-
-    keys = [
-        (row.codigo, int(row.frase_idx), int(row.emocion_idx))
-        for row in base.itertuples(index=False)
-    ]
-    new_cols = (
-        "experienciador_canonicos", "experienciador_canonico", "experienciador_semas",
-        "fuente_canonicos", "fuente_canonico", "fuente_semas",
-    ) + tuple(c for _, _, c in _ACTANTE_FLAT)
-    for col in new_cols:
-        default: Any = [] if col.endswith(("_canonicos", "_semas")) else ""
-        base[col] = [enr.get(k, {}).get(col, default) for k in keys]
-
-    exp_raw = base["experienciador"].fillna("").astype(str)
-    fte_raw = base.get("fuente_inferencia", pd.Series([""] * len(base))).fillna("").astype(str)
-    base["experienciador_efectivo"] = [
-        c if c else (raw or "—")
-        for c, raw in zip(base["experienciador_canonico"], exp_raw)
-    ]
-    base["fuente_efectiva"] = [
-        c if c else (raw or "—")
-        for c, raw in zip(base["fuente_canonico"], fte_raw)
-    ]
-    base["enunciador"] = base["codigo"].map(enun_map).fillna("")
-    base["pos_max_discurso"] = base["codigo"].map(len_map)
-    return base
 
 
 def list_canonico_semas(db_path: Path, canonical_id: str) -> list[dict[str, Any]]:
@@ -1540,9 +1052,10 @@ def get_deixis_suggestions(
 ) -> list[dict[str, Any]]:
     """Sugerencias deícticas agrupadas por marca/mención.
 
-    Devuelve, por mención con vínculos de deixis (`origin='deixis_llm'`):
-    marca, funciones, frase, código/unidad y la lista de referentes sugeridos
-    (canónico concreto, tipo deíctico y estado). Con `only_pending`, solo las
+    Devuelve, por mención con vínculos deícticos (propuestos por el stage o
+    agregados a mano en esta tab): marca, funciones, frase, código/unidad y la
+    lista de referentes (canónico concreto, tipo deíctico, estado, origen y en
+    qué simulacros de la unidad rige). Con `only_pending`, solo las
     menciones con al menos un referente deíctico aún sin revisar. Con
     `include_unlinked`, suma además las marcas deícticas (1ª/2ª persona) que NO
     tienen ningún vínculo deíctico, con `referentes=[]`, para poder asignarles
@@ -1551,9 +1064,14 @@ def get_deixis_suggestions(
     with _ro_connect(db_path) as conn:
         if not _menciones_exists(conn):
             return []
+        # Vínculos deícticos: los que propuso el stage y los que se agregaron
+        # a mano desde esta tab (que llevan tipo deíctico). Un vínculo humano
+        # sin tipo viene de la tab Referentes y no se revisa acá.
         links = conn.execute(
-            "SELECT mencion_id, canonical_id, deixis_tipo, status "
-            "FROM mencion_canonico WHERE origin = 'deixis_llm'"
+            "SELECT mencion_id, canonical_id, deixis_tipo, status, origin "
+            "FROM mencion_canonico "
+            "WHERE origin IN ('deixis_llm', 'deixis') "
+            "   OR (origin = 'human' AND deixis_tipo IS NOT NULL)"
         ).fetchall()
 
         by_men: dict[int, list[dict[str, Any]]] = {}
@@ -1562,11 +1080,9 @@ def get_deixis_suggestions(
                 "canonical_id": r["canonical_id"],
                 "deixis_tipo": r["deixis_tipo"] or "",
                 "status": r["status"],
+                "origin": r["origin"],
             })
-        mids = [
-            mid for mid, ls in by_men.items()
-            if not only_pending or any(l["status"] == "proposed" for l in ls)
-        ]
+        mids = list(by_men)
 
         if include_unlinked:
             from emoparse.pipeline.deixis import is_deictic
@@ -1598,6 +1114,7 @@ def get_deixis_suggestions(
             func.setdefault(r["mencion_id"], []).append(r["funcion"])
 
         codigos = sorted({men[mid]["codigo"] for mid in mids if mid in men})
+        aplicados = _deixis_aplicados(conn, codigos)
         frase_map: dict[tuple[str, int], str] = {}
         if codigos:
             qc = ",".join("?" * len(codigos))
@@ -1613,17 +1130,60 @@ def get_deixis_suggestions(
         info = men.get(mid)
         if not info:
             continue
+        unidad = (info["codigo"], int(info["unit_idx"]))
+        referentes = sorted(by_men.get(mid, []), key=lambda r: r["deixis_tipo"])
+        for ref in referentes:
+            ref["aplicado_en"] = aplicados.get(unidad, {}).get(
+                ref["canonical_id"], []
+            )
+        pendiente = any(
+            r["status"] != "rejected" and not r["aplicado_en"] for r in referentes
+        ) or not referentes
+        if only_pending and not pendiente:
+            continue
         out.append({
             "mencion_id": mid,
             "codigo": info["codigo"],
             "unit_idx": info["unit_idx"],
             "marca": info["marca"],
             "funciones": sorted(set(func.get(mid, []))),
-            "frase": frase_map.get((info["codigo"], info["unit_idx"]), ""),
-            "referentes": sorted(by_men.get(mid, []),
-                                 key=lambda r: r["deixis_tipo"]),
+            "frase": frase_map.get(unidad, ""),
+            "referentes": referentes,
         })
     out.sort(key=lambda d: (d["codigo"], d["unit_idx"], d["mencion_id"]))
+    return out
+
+
+def _deixis_aplicados(
+    conn: sqlite3.Connection, codigos: list[str]
+) -> dict[tuple[str, int], dict[str, list[str]]]:
+    """Por unidad, en qué simulacros rige cada referente por atribución.
+
+    Un referente está aplicado cuando alguna emoción de la unidad lo fijó como
+    experienciador o como fuente. Es lo que distingue una sugerencia todavía
+    sin usar de una que ya gobierna un simulacro.
+    """
+    out: dict[tuple[str, int], dict[str, list[str]]] = {}
+    if not codigos or conn.execute(
+        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='emociones'"
+    ).fetchone() is None:
+        return out
+    cols = {r["name"] for r in conn.execute("PRAGMA table_info(emociones)")}
+    qc = ",".join("?" * len(codigos))
+    for r in conn.execute(
+        "SELECT codigo, frase_idx, emocion_idx, "
+        f"{_canon_col(cols, 'experienciador_canonico')}, "
+        f"{_canon_col(cols, 'fuente_canonico')} "
+        f"FROM emociones WHERE codigo IN ({qc})",
+        tuple(codigos),
+    ):
+        unidad = (r["codigo"], int(r["frase_idx"]))
+        etiqueta = f"#{int(r['emocion_idx'])}"
+        for campo in ("experienciador_canonico", "fuente_canonico"):
+            for cid in canonicos_de_override(r[campo]):
+                destinos = out.setdefault(unidad, {}).setdefault(cid, [])
+                if etiqueta not in destinos:
+                    destinos.append(etiqueta)
     return out
 
 
@@ -1705,19 +1265,21 @@ def get_items_by_frase(
             emo = (r["tipo_emocion_canonico"] or r["tipo_emocion"] or "").strip()
             if emo:
                 d["emociones"].add(emo)
-            # Experienciadores/fuentes: mostrar el canónico resuelto desde marcas
-            # (deixis/coref); si no resuelve, la inferencia cruda del LLM.
-            exp_cids = _match_canonicos(
+            # Experienciadores/fuentes: el canónico de cada emoción; si no hay
+            # con qué resolverlo, la inferencia cruda del LLM.
+            exp_canon = resolver_canonico(
                 exp_units.get((r["codigo"], int(r["frase_idx"]))),
-                (r["experienciador_marca"] or "").strip().lower(),
+                r["experienciador_marca"],
+                inferencia=r["experienciador"],
             )
-            if exp_cids:
-                d["experienciadores"].update(exp_cids)
+            if exp_canon:
+                d["experienciadores"].add(exp_canon)
             elif (r["experienciador"] or "").strip():
                 d["experienciadores"].add(r["experienciador"].strip())
-            fte_cids = _match_canonicos(
+            fte_cids = resolver_canonicos(
                 fte_units.get((r["codigo"], int(r["frase_idx"]))),
-                (r["fuente_marca"] or "").strip().lower(),
+                r["fuente_marca"],
+                inferencia=r["fuente_inferencia"],
             )
             if fte_cids:
                 d["fuentes"].update(fte_cids)
@@ -1919,7 +1481,10 @@ def get_frase_emociones_brief(
 ) -> dict[tuple[str, int], list[dict[str, Any]]]:
     """Por frase (codigo, unit_idx), un resumen de sus emociones: cada una con
     experienciador, emoción, modo de existencia y fuente (canónicos resueltos,
-    fallback al crudo), más su `emocion_idx`.
+    fallback al crudo), su `emocion_idx` y las marcas de ambos roles.
+
+    Las marcas permiten saber qué simulacros toca una marca dada, que es lo que
+    necesita la tab Deixis para ofrecer reemplazar o añadir por emoción.
 
     Para el tooltip de la tab Referentes y para la atribución por emoción: al
     pasar el cursor por la frase de una marca (experienciador/fuente), ver el
@@ -1949,30 +1514,26 @@ def get_frase_emociones_brief(
         ):
             key = (r["codigo"], int(r["frase_idx"]))
             exp_override = (r["experienciador_canonico"] or "").strip()
-            if exp_override:
-                exp = exp_override
-            else:
-                exp_cids = _match_canonicos(
-                    exp_units.get(key), (r["experienciador_marca"] or "").strip().lower()
-                )
-                exp = "; ".join(exp_cids) or (r["experienciador"] or "").strip() or "—"
+            exp = resolver_canonico(
+                exp_units.get(key), r["experienciador_marca"],
+                override=exp_override, inferencia=r["experienciador"],
+            ) or "—"
             fte_override = (r["fuente_canonico"] or "").strip()
-            if fte_override:
-                fte = fte_override
-            else:
-                fte_cids = _match_canonicos(
-                    fte_units.get(key), (r["fuente_marca"] or "").strip().lower()
-                )
-                fte = "; ".join(fte_cids) or (r["fuente_inferencia"] or "").strip() or "—"
+            fte = "; ".join(resolver_canonicos(
+                fte_units.get(key), r["fuente_marca"],
+                override=fte_override, inferencia=r["fuente_inferencia"],
+            )) or "—"
             emo = (r["tipo_emocion_canonico"] or r["tipo_emocion"] or "").strip() or "—"
             modo = (r["modo_existencia"] or "").strip() or "—"
             out.setdefault(key, []).append({
                 "emocion_idx": int(r["emocion_idx"]),
                 "experienciador": exp,
+                "experienciador_marca": (r["experienciador_marca"] or "").strip(),
                 "experienciador_fijado": bool(exp_override),
                 "emocion": emo,
                 "modo": modo,
                 "fuente": fte,
+                "fuente_marca": (r["fuente_marca"] or "").strip(),
                 "fuente_fijado": bool(fte_override),
             })
     return out
@@ -2165,17 +1726,37 @@ def get_emojis_con_afecto(db_path: Path) -> pd.DataFrame:
 
 
 def get_hashtags_analizados(db_path: Path) -> pd.DataFrame:
-    """Hashtags con caracterización semiótica (y los pendientes, con n_usos)."""
+    """Hashtags con caracterización semiótica (y los pendientes, con n_usos).
+
+    `funcion`/`foria_entorno` son las dominantes derivadas por agregación de
+    los usos; `distribucion` formatea la distribución completa de funciones
+    del `analisis_payload` ('' si el hashtag aún no fue analizado).
+    """
     with _ro_connect(db_path) as conn:
         try:
             rows = conn.execute(
                 "SELECT valor_norm, n_usos, funcion, acoplamiento, "
-                "foria_entorno, justificacion, analisis_error "
-                "FROM hashtags ORDER BY n_usos DESC"
+                "foria_entorno, justificacion, analisis_payload, "
+                "analisis_error FROM hashtags ORDER BY n_usos DESC"
             ).fetchall()
         except sqlite3.OperationalError:
             return pd.DataFrame()
-    return pd.DataFrame([dict(r) for r in rows])
+    records = []
+    for r in rows:
+        rec = {k: r[k] for k in r.keys() if k != "analisis_payload"}
+        payload = _parse_json(r["analisis_payload"]) or {}
+        funciones = payload.get("funciones") if isinstance(payload, dict) else None
+        rec["distribucion"] = (
+            ", ".join(
+                f"{f} ({n})"
+                for f, n in sorted(
+                    funciones.items(), key=lambda kv: -int(kv[1])
+                )
+            )
+            if isinstance(funciones, dict) and funciones else ""
+        )
+        records.append(rec)
+    return pd.DataFrame(records)
 
 
 def get_posts_con_hashtag(db_path: Path, valor_norm: str) -> pd.DataFrame:
@@ -2188,6 +1769,268 @@ def get_posts_con_hashtag(db_path: Path, valor_norm: str) -> pd.DataFrame:
             "ORDER BY p.fecha",
             (valor_norm,),
         ).fetchall()
+    return pd.DataFrame([dict(r) for r in rows])
+
+
+def codigo_labels(db_path: Path) -> dict[str, str]:
+    """Mapa codigo → etiqueta visible para los selectores y gráficos.
+
+    Usa el título del input (`input_titulo`) cuando existe; si no, el código.
+    En corpus de posts mejora la lectura: el código es el id técnico del post.
+    """
+    out: dict[str, str] = {}
+    with _ro_connect(db_path) as conn:
+        for r in conn.execute("SELECT codigo, input FROM discursos"):
+            inp = _json_or_none(r["input"]) or {}
+            titulo = str(inp.get("titulo") or "").strip() if isinstance(inp, dict) else ""
+            out[str(r["codigo"])] = titulo or str(r["codigo"])
+    # Unicidad: dos posts pueden compartir título; se desambigua con el código.
+    vistos: dict[str, int] = {}
+    for label in out.values():
+        vistos[label] = vistos.get(label, 0) + 1
+    for codigo, label in list(out.items()):
+        if vistos[label] > 1 and label != codigo:
+            out[codigo] = f"{label} · {codigo}"
+    return out
+
+
+def get_post_contexto(db_path: Path) -> pd.DataFrame:
+    """Contexto conversacional por post: codigo, conversacion_id, fecha, autor.
+
+    En corpus de posts, `codigo` coincide con `post_id`. Vacío si el run no
+    trae posts.
+    """
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT post_id AS codigo, conversacion_id, fecha, "
+                "autor_handle FROM posts"
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return pd.DataFrame()
+    return pd.DataFrame([dict(r) for r in rows])
+
+
+def get_post_hashtags(db_path: Path) -> pd.DataFrame:
+    """Pares (codigo, hashtag) por cada uso de hashtag en el corpus de posts."""
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT DISTINCT codigo, valor_norm AS hashtag "
+                "FROM tecno_entidades WHERE tipo = 'hashtag'"
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return pd.DataFrame()
+    return pd.DataFrame([dict(r) for r in rows])
+
+
+def get_usos_hashtag(db_path: Path, valor_norm: str) -> pd.DataFrame:
+    """Usos de un hashtag con su análisis por post (drill-down de la tab).
+
+    Una fila por uso, con el post y, si la stage `hashtag_semiotics` corrió,
+    la función, el acoplamiento y la foria de ese uso concreto.
+    """
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT t.codigo, t.extra, p.autor_handle, p.fecha, p.texto "
+                "FROM tecno_entidades t "
+                "LEFT JOIN posts p ON p.post_id = t.codigo "
+                "WHERE t.tipo = 'hashtag' AND t.valor_norm = ? "
+                "ORDER BY p.fecha, t.codigo",
+                (valor_norm,),
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return pd.DataFrame()
+    records = []
+    for r in rows:
+        extra = _parse_json(r["extra"]) or {}
+        funcion = extra.get("funcion") if isinstance(extra, dict) else None
+        funcion = funcion if isinstance(funcion, dict) else {}
+        records.append({
+            "codigo": r["codigo"],
+            "autor_handle": r["autor_handle"],
+            "fecha": r["fecha"],
+            "texto": r["texto"],
+            "funcion": funcion.get("funcion"),
+            "acoplamiento": funcion.get("acoplamiento"),
+            "foria_entorno": funcion.get("foria_entorno"),
+            "justificacion": funcion.get("justificacion"),
+        })
+    return pd.DataFrame(records)
+
+
+def get_tecno_usos(db_path: Path) -> pd.DataFrame:
+    """Menciones, tecnografismos y URLs con su uso pragmático resuelto.
+
+    Una fila por entidad, con el atributo determinista de cada tipo (posición
+    de la mención, subtipo del tecnografismo, dominio de la URL) y, si la
+    stage `tecno_usage` corrió, el uso en contexto y su justificación.
+    """
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT t.codigo, t.unit_idx, t.tipo, t.valor, t.valor_norm, "
+                "t.extra, f.frase FROM tecno_entidades t "
+                "LEFT JOIN frases f "
+                "ON f.codigo = t.codigo AND f.unit_idx = t.unit_idx "
+                "WHERE t.tipo IN ('mencion', 'tecnografismo', 'url') "
+                "ORDER BY t.codigo, t.unit_idx, t.inicio"
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return pd.DataFrame()
+    records = []
+    for r in rows:
+        extra = _parse_json(r["extra"]) or {}
+        extra = extra if isinstance(extra, dict) else {}
+        uso = extra.get("uso")
+        uso = uso if isinstance(uso, dict) else {}
+        records.append({
+            "codigo": r["codigo"],
+            "unit_idx": r["unit_idx"],
+            "tipo": r["tipo"],
+            "valor": r["valor"],
+            "valor_norm": r["valor_norm"],
+            # El dominio ya vive en valor_norm: es el atributo determinista
+            # de la URL, equivalente a la posición o el subtipo de las otras.
+            "atributo": (
+                r["valor_norm"] if r["tipo"] == "url"
+                else extra.get("posicion") or extra.get("subtipo") or ""
+            ),
+            "alcance": extra.get("alcance") or "",
+            "uso": uso.get("uso"),
+            "uso_justificacion": uso.get("justificacion"),
+            "frase": r["frase"],
+        })
+    return pd.DataFrame(records)
+
+
+def get_frases_con_emoji(db_path: Path, emoji: str) -> pd.DataFrame:
+    """Frases donde aparece un emoji, con su afecto resuelto por uso."""
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT t.codigo, t.unit_idx, t.extra, f.frase "
+                "FROM tecno_entidades t "
+                "LEFT JOIN frases f "
+                "ON f.codigo = t.codigo AND f.unit_idx = t.unit_idx "
+                "WHERE t.tipo = 'emoji' AND t.valor = ? "
+                "ORDER BY t.codigo, t.unit_idx",
+                (emoji,),
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return pd.DataFrame()
+    records = []
+    for r in rows:
+        extra = _parse_json(r["extra"]) or {}
+        afecto = extra.get("afecto") if isinstance(extra, dict) else None
+        afecto = afecto if isinstance(afecto, dict) else {}
+        records.append({
+            "codigo": r["codigo"],
+            "unit_idx": r["unit_idx"],
+            "frase": r["frase"],
+            "candidato": afecto.get("candidato"),
+            "foria": afecto.get("foria"),
+            "origin": afecto.get("origin"),
+        })
+    return pd.DataFrame(records)
+
+
+def get_tecno_of_unit(
+    db_path: Path, codigo: str, unit_idx: int
+) -> list[dict[str, Any]]:
+    """Tecno-entidades de una unidad, con `extra` parseado (para Revisión)."""
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT tipo, valor, valor_norm, extra FROM tecno_entidades "
+                "WHERE codigo = ? AND unit_idx = ? ORDER BY inicio",
+                (codigo, int(unit_idx)),
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return []
+    out = []
+    for r in rows:
+        extra = _parse_json(r["extra"]) or {}
+        out.append({
+            "tipo": r["tipo"],
+            "valor": r["valor"],
+            "valor_norm": r["valor_norm"],
+            "extra": extra if isinstance(extra, dict) else {},
+        })
+    return out
+
+
+def agrupar_por_conversacion(
+    db_path: Path, df: pd.DataFrame, modo: str
+) -> pd.DataFrame:
+    """Reagrupa un DataFrame de emociones de posts por conversación pública.
+
+    `modo` es 'hashtag' (un grupo por hashtag; un post con dos hashtags
+    integra ambos grupos) o 'hilo' (conversaciones con al menos dos posts).
+    El `codigo` pasa a ser el id del grupo y `posicion`/`frase_idx`, el orden
+    temporal del post dentro del grupo, de modo que las visualizaciones
+    secuenciales representen la evolución de la conversación.
+    """
+    ctx = get_post_contexto(db_path)
+    fechas = (
+        dict(zip(ctx["codigo"].astype(str), ctx["fecha"]))
+        if not ctx.empty else {}
+    )
+    if modo == "hashtag":
+        pares = get_post_hashtags(db_path)
+        if pares.empty:
+            return pd.DataFrame()
+        grupos = {
+            f"#{tag}": sub["codigo"].astype(str).tolist()
+            for tag, sub in pares.groupby("hashtag")
+        }
+    elif modo == "hilo":
+        if ctx.empty:
+            return pd.DataFrame()
+        con_hilo = ctx[ctx["conversacion_id"].notna()]
+        grupos = {
+            str(conv): sub["codigo"].astype(str).tolist()
+            for conv, sub in con_hilo.groupby("conversacion_id")
+            if len(sub) >= 2
+        }
+    else:
+        raise ValueError(f"Modo de agrupación desconocido: {modo!r}")
+    partes: list[pd.DataFrame] = []
+    for grupo_id, codigos in grupos.items():
+        sub = df[df["codigo"].astype(str).isin(codigos)].copy()
+        if sub.empty:
+            continue
+        orden = sorted(
+            sub["codigo"].astype(str).unique(),
+            key=lambda c: (str(fechas.get(c) or ""), c),
+        )
+        rank = {c: i for i, c in enumerate(orden)}
+        sub["posicion"] = sub["codigo"].astype(str).map(rank)
+        sub["frase_idx"] = sub["posicion"]
+        sub["pos_max_discurso"] = max(rank.values()) if rank else 0
+        sub["codigo"] = grupo_id
+        partes.append(sub)
+    if not partes:
+        return pd.DataFrame()
+    return pd.concat(partes, ignore_index=True)
+
+
+def get_emociones_carac(db_path: Path) -> pd.DataFrame:
+    """Emociones con la caracterización sin expandir.
+
+    Insumo del acoplamiento emocional de `emoparse.network`, que parsea
+    `caracterizacion_payload` por su cuenta; `get_emociones` lo despliega
+    en columnas para el resto de la UI.
+    """
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT codigo, tipo_emocion, tipo_emocion_canonico, "
+                "caracterizacion_payload FROM emociones"
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return pd.DataFrame()
     return pd.DataFrame([dict(r) for r in rows])
 
 

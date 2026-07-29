@@ -4,15 +4,19 @@
 #  Subcomando `status`: muestra el progreso del pipeline en una DB.
 #
 #  Output formato tabla:
-#    Stage          | Pending | Failed | Completed | Total
-#    ───────────────┼─────────┼────────┼───────────┼──────
-#    summarizer     |       0 |      1 |        99 |   100
-#    metadata       |      12 |      0 |        88 |   100
+#    Stage          | Pending | Failed | Completed | n/a | Total
+#    ───────────────┼─────────┼────────┼───────────┼─────┼──────
+#    summarizer     |       0 |      1 |        99 |   0 |   100
+#    metadata       |      12 |      0 |        88 |   0 |   100
 #    ...
 #
-#  Las columnas Pending y Failed son distintas (gracias al fix anterior):
-#  - Pending: nunca corrió.
-#  - Failed: corrió y falló (no se reintenta automático).
+#  El conteo lo resuelve `pipeline.status`, que es la misma fuente que usa
+#  la tab Estado del dashboard. Las columnas no se solapan:
+#  - Pending:   la unidad entra en el alcance de la stage y falta procesarla.
+#  - Failed:    corrió y falló (no se reintenta automático).
+#  - Completed: resuelta.
+#  - n/a:       fuera del alcance de la stage; no entra en el porcentaje.
+#  Una stage que no corrió en este run se marca aparte, sin porcentaje.
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -22,10 +26,9 @@ from pathlib import Path
 
 from loguru import logger
 
+from emoparse.pipeline.status import StageStatus, collect_from_path
 from emoparse.storage.db import Database
 from emoparse.storage.discursos import DiscursosRepository
-from emoparse.storage.emociones import EmocionesRepository
-from emoparse.storage.frases import FrasesRepository
 from emoparse.storage.runs import RunsRepository
 
 
@@ -54,112 +57,52 @@ def handle(args: argparse.Namespace) -> int:
           f"schema={ctx.versions.schema}")
     print()
 
-    d_repo = DiscursosRepository(db)
-    f_repo = FrasesRepository(db)
-    e_repo = EmocionesRepository(db)
-
-    total_discursos = len(d_repo.list_codigos())
+    total_discursos = len(DiscursosRepository(db).list_codigos())
     print(f"Discursos: {total_discursos}")
     print()
 
-    rows = _collect_stage_rows(d_repo, f_repo, e_repo, total_discursos)
-    _print_stage_table(rows)
+    _print_stage_table(collect_from_path(db_path))
 
     return 0
 
 
-def _collect_stage_rows(
-    d_repo: DiscursosRepository,
-    f_repo: FrasesRepository,
-    e_repo: EmocionesRepository,
-    total_discursos: int,
-) -> list[tuple[str, int, int, int, int]]:
-    """Genera filas con stats de cada stage (stage, pending, failed, completed, total).
-
-    Discurso: usa total_discursos.  
-    Frase: usa total de frases.  
-    Caracterización: usa total de emociones.
-    """
-    rows: list[tuple[str, int, int, int, int]] = []
-
-    for stage in ("summarizer", "metadata", "enunciation"):
-        pending = len(d_repo.list_pending(stage))  # type: ignore[arg-type]
-        failed = len(d_repo.list_failed(stage))  # type: ignore[arg-type]
-        completed = len(d_repo.list_completed(stage))  # type: ignore[arg-type]
-        rows.append((stage, pending, failed, completed, total_discursos))
-
-    total_frases = _count_frases(f_repo)
-    for stage_name, stage_key in (("actors", "actores"), ("emotions", "emociones")):
-        pending = len(f_repo.list_pending(stage_key))  # type: ignore[arg-type]
-        # list_failed no disponible para frases; se usa conteo directo.
-        failed = _count_frase_failed(f_repo, stage_key)
-        completed = total_frases - pending - failed
-        rows.append((stage_name, pending, failed, completed, total_frases))
-
-    total_emociones = _count_emociones(e_repo)
-    pending_e = len(e_repo.list_pending_caracterizacion())
-    failed_e = _count_emociones_failed(e_repo)
-    completed_e = total_emociones - pending_e - failed_e
-    rows.append(("characterizer", pending_e, failed_e, completed_e, total_emociones))
-
-    return rows
-
-
-def _count_frases(f_repo: FrasesRepository) -> int:
-    """Total de frases en la tabla."""
-    row = f_repo._db.execute("SELECT COUNT(*) AS n FROM frases").fetchone()
-    return int(row["n"])
-
-
-def _count_frase_failed(f_repo: FrasesRepository, stage_key: str) -> int:
-    """Frases con error registrado en una stage."""
-    col = f"{stage_key}_error"
-    row = f_repo._db.execute(
-        f"SELECT COUNT(*) AS n FROM frases WHERE {col} IS NOT NULL"
-    ).fetchone()
-    return int(row["n"])
-
-
-def _count_emociones(e_repo: EmocionesRepository) -> int:
-    """Total de emociones en la tabla."""
-    row = e_repo._db.execute("SELECT COUNT(*) AS n FROM emociones").fetchone()
-    return int(row["n"])
-
-
-def _count_emociones_failed(e_repo: EmocionesRepository) -> int:
-    """Emociones con error registrado en caracterización."""
-    row = e_repo._db.execute(
-        "SELECT COUNT(*) AS n FROM emociones WHERE caracterizacion_error IS NOT NULL"
-    ).fetchone()
-    return int(row["n"])
-
-
-def _print_stage_table(
-    rows: list[tuple[str, int, int, int, int]],
-) -> None:
-    """Imprime las filas como tabla ASCII."""
-    headers = ("Stage", "Pending", "Failed", "Completed", "Total")
-    name_w = max(len(headers[0]), max(len(r[0]) for r in rows))
+def _print_stage_table(rows: list[StageStatus]) -> None:
+    """Imprime el estado de cada stage como tabla ASCII."""
+    headers = ("Stage", "Pending", "Failed", "Completed", "n/a", "Total")
+    unidad_w = max((len(r.unidad) for r in rows), default=0)
+    name_w = max(len(headers[0]), max((len(r.stage) for r in rows), default=0))
     num_w = 9
 
-    sep = "─" * (name_w + 2) + "┼" + ("─" * num_w + "┼") * 3 + "─" * num_w
-
-    print(f"  {headers[0]:<{name_w}}  │ {headers[1]:>{num_w - 2}} │ "
-          f"{headers[2]:>{num_w - 2}} │ {headers[3]:>{num_w - 2}} │ "
-          f"{headers[4]:>{num_w - 2}}")
+    sep = "─" * (name_w + 2) + "┼" + ("─" * num_w + "┼") * 4 + "─" * num_w
+    print(f"  {headers[0]:<{name_w}}  │ " + " │ ".join(
+        f"{h:>{num_w - 2}}" for h in headers[1:]
+    ))
     print(f"  {sep}")
-    for stage, p, f, c, t in rows:
-        # Marca visual del estado.
-        if t == 0:
-            mark = " "
-        elif p > 0:
-            mark = "·"  # pendiente
-        elif f > 0 and c == 0:
-            mark = "✗"  # fallo
-        elif f > 0:
-            mark = "~"  # parcial
-        else:
-            mark = "✓"  # ok
-        print(f"{mark} {stage:<{name_w}}  │ {p:>{num_w - 2}} │ "
-              f"{f:>{num_w - 2}} │ {c:>{num_w - 2}} │ {t:>{num_w - 2}}")
+    for r in rows:
+        # Una stage que no corrió no tiene pendientes: tiene un universo a
+        # su alcance por si se la habilita.
+        pending = r.pending if r.ejecutada else 0
+        print(f"{_marca(r)} {r.stage:<{name_w}}  │ " + " │ ".join(
+            f"{v:>{num_w - 2}}" for v in (
+                pending, r.failed, r.completed, r.no_aplica, r.total
+            )
+        ) + f"  {r.unidad:<{unidad_w}}")
     print()
+
+    sin_correr = [r.stage for r in rows if not r.ejecutada]
+    if sin_correr:
+        print(f"  No corrieron en este run: {', '.join(sin_correr)}")
+        print()
+
+
+def _marca(r: StageStatus) -> str:
+    """Marca visual del estado de una stage."""
+    if not r.ejecutada:
+        return " "
+    if r.failed and not r.completed:
+        return "✗"
+    if r.failed:
+        return "~"
+    if r.pending:
+        return "·"
+    return "✓"

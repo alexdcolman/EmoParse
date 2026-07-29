@@ -1,10 +1,13 @@
 # ══════════════════════════════════════════════════════════════════════════════
 #  emoparse.pipeline.deixis
 #
-#  Resolución determinista de deícticos de 1ª persona al enunciador del discurso.
+#  Resolución determinista de las marcas y las inferencias que nombran una
+#  posición del dispositivo enunciativo en vez de un referente.
 #
 #  Las menciones de actor en 1ª persona ("yo", "mí", "nosotros"…) refieren al
-#  enunciador del discurso. Se resuelven por discurso (nunca a la KB).
+#  enunciador del discurso, y una inferencia que devuelve la etiqueta del rol
+#  ("el enunciador") refiere a quien lo ocupa. Se resuelven por discurso
+#  (nunca a la KB).
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -69,6 +72,48 @@ def is_deictic(mencion: str) -> bool:
         if len(t) > 4 and t.endswith(_FIRST_PERSON_PLURAL_SUFFIXES):
             return True
     return False
+
+
+#: Etiquetas de rol enunciativo que el modelo devuelve como si fueran
+#: referentes ("el enunciador", "los enunciatarios"). Nombran una posición del
+#: dispositivo, no designan a nadie: el referente concreto está en la
+#: estructura enunciativa del discurso.
+_ROL_ENUNCIADOR = frozenset({
+    "enunciador", "enunciadora", "enunciante", "el que enuncia",
+})
+_ROL_ENUNCIATARIO = frozenset({
+    "enunciatario", "enunciataria", "enunciatarios", "enunciatarias",
+    "auditorio", "destinatario", "destinatarios", "destinataria",
+    "destinatarias", "publico", "audiencia",
+})
+
+#: Determinantes iniciales que no cambian el rol nombrado ("el enunciador").
+_DETERMINANTE_RE = re.compile(r"^(?:el|la|los|las|un|una|unos|unas)\s+")
+
+
+def resolver_rol_enunciativo(
+    inferencia: str,
+    enunciador: str,
+    enunciatarios: list[str] | None = None,
+) -> str:
+    """Referente concreto de una inferencia que solo nombra un rol enunciativo.
+
+    El modelo devuelve a veces "el enunciador" o "los enunciatarios" en el
+    campo de inferencia, que pide un referente. La etiqueta se resuelve contra
+    la estructura enunciativa del discurso: el enunciador, o el enunciatario
+    cuando hay uno solo (con varios no se adivina). Devuelve "" si la
+    inferencia no es una etiqueta de rol o si el rol no tiene referente
+    conocido; en ese caso el valor original queda intacto.
+    """
+    s = _DETERMINANTE_RE.sub("", _normalize_deictic(inferencia))
+    if not s:
+        return ""
+    if s in _ROL_ENUNCIADOR:
+        return str(enunciador or "").strip()
+    if s in _ROL_ENUNCIATARIO:
+        nombres = [str(e).strip() for e in (enunciatarios or []) if str(e).strip()]
+        return nombres[0] if len(nombres) == 1 else ""
+    return ""
 
 
 def resolve_deictic_to_enunciador(

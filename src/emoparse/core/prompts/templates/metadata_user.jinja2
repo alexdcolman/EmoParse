@@ -1,6 +1,20 @@
 CÓDIGO: {{ codigo }}
 
-RESUMEN DEL DISCURSO:
+{% if contexto_hilo %}
+CONTEXTO DEL HILO (conversación en la que se inserta el post; el tipo de
+discurso puede variar dentro de un hilo, ubicá el de ESTE post):
+{{ contexto_hilo }}
+
+{% endif %}{% if bio %}
+BIO DE LA CUENTA AUTORA (contexto para situar el tipo de discurso; NO lo
+determina por sí sola):
+{{ bio }}
+
+{% endif %}{% if adjuntos %}
+INFORMACIÓN ADJUNTA AL POST:
+{{ adjuntos }}
+
+{% endif %}RESUMEN DEL DISCURSO:
 {{ resumen }}
 
 FRAGMENTOS REPRESENTATIVOS:

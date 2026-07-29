@@ -32,6 +32,23 @@ class PostSourceAdapter(ABC):
     #: True si la fuente puede completar `fetch_author_profile` (opt-in, --with-author-profile).
     supports_author_profile: bool = False
 
+    #: True si la fuente puede listar a quién sigue una cuenta (`emoparse follows`).
+    supports_follows: bool = False
+
+    def fetch_follows(
+        self, handle: str, max_items: int | None = None
+    ) -> Iterator[str]:
+        """Itera los handles que una cuenta sigue.
+
+        Solo el lado saliente: la arista A→B se captura desde la lista de A,
+        de modo que nunca hace falta paginar la lista de seguidores, que en
+        cuentas grandes es dos órdenes de magnitud mayor y no aporta ninguna
+        arista que esta no dé.
+        """
+        raise NotImplementedError(
+            f"La fuente '{self.source_id}' no soporta fetch_follows."
+        )
+
     def fetch_author_profile(self, handle: str) -> dict[str, Any] | None:
         """Perfil de un autor (autor_bio/autor_seguidores/autor_siguiendo/autor_verificado).
 

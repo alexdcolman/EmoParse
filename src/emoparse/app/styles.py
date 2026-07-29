@@ -114,6 +114,24 @@ div[data-testid="stDataFrame"] { border-radius: 8px; overflow: hidden; }
     border: 1px solid;
 }
 
+/* ── Tabs ── */
+/* Con muchas tabs, Streamlit hace scroll horizontal con flechas < >. Se
+   fuerza el wrap en varias filas: todas las tabs quedan visibles sin
+   desplazarse. */
+div[data-testid="stTabs"] div[role="tablist"] {
+    flex-wrap: wrap;
+    gap: 0.15rem 0.4rem;
+    overflow-x: visible;
+}
+/* Oculta los botones de scroll (chevrons) que ya no hacen falta. */
+div[data-testid="stTabs"] div[role="tablist"] button[aria-label="scroll"],
+div[data-testid="stTabs"] div[role="tablist"] > button:not([role="tab"]) {
+    display: none !important;
+}
+div[data-testid="stTabs"] button[role="tab"] {
+    white-space: nowrap;
+}
+
 /* ── Dividers ── */
 .ep-divider { border: none; border-top: 1px solid var(--border); margin: 1.5rem 0; }
 

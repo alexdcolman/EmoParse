@@ -25,17 +25,22 @@ from emoparse.storage.discursos import DiscursosRepository
 from emoparse.storage.emociones import EmocionesRepository
 from emoparse.storage.judgments import JudgmentsRepository
 from emoparse.storage.menciones import MencionesRepository
+from emoparse.storage.referencia import (
+    canonicos_de_override,
+    marca_canonicos_index,
+    resolver_canonicos,
+)
 from emoparse.storage.runs import RunsRepository
 
 
-def _commit_canon_value(value: object) -> str | None:
-    """Normaliza el valor del overlay (str o lista) a un único string para la
-    columna `experienciador_canonico`. Lista → unida por '; '. Vacío → None."""
+def _canon_values(value: object) -> list[str]:
+    """Normaliza el valor del overlay (str o lista) a una lista de canónicos.
+
+    Acepta también strings '; '-unidos de overlays previos. Vacío → []."""
     if isinstance(value, (list, tuple)):
-        joined = "; ".join(str(x).strip() for x in value if str(x).strip())
-        return joined or None
+        return [str(x).strip() for x in value if str(x).strip()]
     s = str(value).strip() if value is not None else ""
-    return s or None
+    return [p.strip() for p in s.split(";") if p.strip()]
 
 
 def commit_experiencers_overlay(
@@ -49,8 +54,10 @@ def commit_experiencers_overlay(
     Para cada emoción con override de ``experienciador_canonico`` en el overlay
     de revisión, escribe el valor por (codigo, frase, emoción) en la base; si el
     valor cambió respecto del que había, anula sus payloads de characterizer y
-    actants para que se recalculen. Idempotente. Devuelve
-    {emociones, changed, invalidated}.
+    actants para que se recalculen. Si el override trae dos o más
+    experienciadores, la emoción se desdobla (una por experienciador: el
+    primero queda en la original, el resto genera emociones nuevas, de forma
+    idempotente). Idempotente. Devuelve {emociones, changed, invalidated}.
 
     Es el puente que hace que la revisión humana tenga efectos downstream:
     characterizer/actants/judge prefieren `experienciador_canonico` cuando existe.
@@ -77,12 +84,21 @@ def commit_experiencers_overlay(
         if "experienciador_canonico" not in overrides:
             continue
         n_emos += 1
-        value = _commit_canon_value(overrides.get("experienciador_canonico"))
-        changed = emo.set_experienciador_canonico_at(
-            codigo, frase_idx, emocion_idx, value, version=version
-        )
+        vals = _canon_values(overrides.get("experienciador_canonico"))
+        if len(vals) >= 2:
+            res = emo.split_por_experienciadores(
+                codigo, frase_idx, emocion_idx, vals
+            )
+            orig_changed = bool(res["changed"])
+            changed = orig_changed or bool(res["nuevos"])
+        else:
+            orig_changed = changed = emo.set_experienciador_canonico_at(
+                codigo, frase_idx, emocion_idx,
+                vals[0] if vals else None, version=version,
+            )
         if changed:
             n_changed += 1
+        if orig_changed:
             emo.invalidate_downstream(codigo, frase_idx, emocion_idx)
             n_invalidated += 1
             if judg is not None and judg.invalidate(codigo, frase_idx, emocion_idx):
@@ -170,6 +186,59 @@ def emocion_set_fuente_at(
     value = (canonical_id or "").strip() or None
     return emo.set_fuente_canonico_at(
         codigo, frase_idx, emocion_idx, value, version=version
+    )
+
+
+def emocion_split_experiencers(
+    db_path: Path,
+    codigo: str,
+    frase_idx: int,
+    emocion_idx: int,
+    canonicals: list[str],
+    modos: list[str] | None = None,
+) -> dict:
+    """Desdobla una emoción en una por experienciador canónico.
+
+    Una emoción nunca tiene dos o más experienciadores: el primer canónico
+    queda en la emoción original y cada canónico adicional genera una emoción
+    nueva en la misma frase, con su propio modo de existencia si se pasa
+    `modos` (alineado con `canonicals`). Las emociones nuevas nacen con
+    characterizer/actants pendientes; si la original cambió, se invalida su
+    downstream (y el juicio). Devuelve {'changed', 'nuevos'}.
+    """
+    db = Database(Path(db_path))
+    if not db.table_exists("emociones"):
+        raise RuntimeError("DB sin tabla emociones.")
+    RunsRepository(db).ensure_migrations()
+    emo = EmocionesRepository(db)
+    judg = JudgmentsRepository(db) if db.table_exists("judgments") else None
+    res = emo.split_por_experienciadores(
+        codigo, frase_idx, emocion_idx, canonicals, modos
+    )
+    if res["changed"]:
+        emo.invalidate_downstream(codigo, frase_idx, emocion_idx)
+        if judg is not None:
+            judg.invalidate(codigo, frase_idx, emocion_idx)
+    return res
+
+
+def emocion_set_fuentes_at(
+    db_path: Path,
+    codigo: str,
+    frase_idx: int,
+    emocion_idx: int,
+    canonicals: list[str],
+) -> bool:
+    """Atribuye varios referentes como fuente de UNA emoción.
+
+    A diferencia del experienciador, la fuente no desdobla: una emoción puede
+    tener su origen en una combinación de entidades ("libertarios, radicales y
+    macristas") sin dejar de ser un solo simulacro. Los canónicos se persisten
+    juntos en `fuente_canonico`. Devuelve True si cambió.
+    """
+    return emocion_set_fuente_at(
+        db_path, codigo, frase_idx, emocion_idx,
+        "; ".join(str(c).strip() for c in canonicals if str(c).strip()),
     )
 
 
@@ -336,6 +405,91 @@ def promote_referentes(
         "updated": updated,
         "removed": removed,
     }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Promoción de estructura enunciativa → enunciacion_kb.json
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _default_enunciacion_kb_path() -> Path:
+    """Ruta por defecto del enunciacion_kb (configurable por entorno)."""
+    base = os.environ.get("EMOPARSE_KNOWLEDGE_DIR", "knowledge")
+    return Path(base) / "enunciacion_kb.json"
+
+
+def promote_enunciacion_to_kb(
+    db_path: Path, codigo: str, kb_path: Path | None = None
+) -> dict[str, int]:
+    """Suma la enunciación revisada de un discurso a `enunciacion_kb.json`.
+
+    Agrega los colectivos de identificación del discurso al repertorio
+    conocido de su enunciador (clave: canónico del enunciador), deduplicando
+    por (nombre, clase). No promueve los enunciatarios (varían demasiado
+    entre discursos y contaminan el contexto), ni el auditorio (es
+    situacional), ni las justificaciones (son propias de cada discurso). El
+    repertorio se inyecta como contexto en corridas futuras de la stage
+    `enunciation`. Devuelve conteos {colectivos_added}.
+    """
+    from emoparse.core.text import canonical_slug
+
+    d_repo = DiscursosRepository(Database(Path(db_path)))
+    payload = d_repo.get_payload(codigo, "enunciation")
+    if not payload:
+        raise RuntimeError(f"El discurso {codigo!r} no tiene enunciación.")
+    enunciador = str(payload.get("enunciador") or "").strip()
+    cid = canonical_slug(enunciador)
+    if not cid or enunciador.lower() == "no identificado":
+        raise RuntimeError(
+            f"El discurso {codigo!r} no tiene un enunciador identificable."
+        )
+
+    kb_path = Path(kb_path) if kb_path else _default_enunciacion_kb_path()
+    data: dict = {"version": "1", "enunciadores": {}}
+    if kb_path.is_file():
+        try:
+            loaded = json.loads(kb_path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                data = loaded
+        except json.JSONDecodeError:
+            logger.warning(
+                "[promote_enunciacion] enunciacion_kb ilegible; se recrea."
+            )
+    enunciadores = data.setdefault("enunciadores", {})
+    entry = enunciadores.setdefault(
+        cid,
+        {"display_name": enunciador, "colectivos": []},
+    )
+    if not entry.get("display_name"):
+        entry["display_name"] = enunciador
+
+    def _parse(field: str) -> list[dict]:
+        raw = payload.get(field)
+        try:
+            items = json.loads(raw) if isinstance(raw, str) else (raw or [])
+        except json.JSONDecodeError:
+            items = []
+        return [i for i in items if isinstance(i, dict)]
+
+    n_col = 0
+    kb_col = entry.setdefault("colectivos", [])
+    vistos_c = {
+        (str(c.get("nombre", "")).strip().lower(), str(c.get("clase", "")).strip())
+        for c in kb_col if isinstance(c, dict)
+    }
+    for c in _parse("colectivos_identificacion"):
+        nombre = str(c.get("nombre") or "").strip()
+        clase = str(c.get("clase") or "").strip()
+        if nombre and (nombre.lower(), clase) not in vistos_c:
+            kb_col.append({"nombre": nombre, "clase": clase})
+            vistos_c.add((nombre.lower(), clase))
+            n_col += 1
+
+    _atomic_write_json(kb_path, data)
+    logger.info(
+        f"[promote_enunciacion] {codigo} → {cid}: "
+        f"{n_col} colectivo(s) nuevos en KB."
+    )
+    return {"colectivos_added": n_col}
 
 
 def remove_referente_from_kb(
@@ -600,25 +754,252 @@ def referente_remove_sema(db_path: Path, canonical_id: str, sema: str) -> None:
 # ══════════════════════════════════════════════════════════════════════════════
 
 def deixis_accept(db_path: Path, mencion_id: int, canonical_id: str) -> None:
-    """Acepta un referente deíctico para una marca (sobreescribe el automático)."""
+    """Acepta un referente deíctico para una marca.
+
+    Inscribe la marca en el referente, sin tocar ningún simulacro ni desplazar
+    a los otros referentes de la marca. Aplicar el referente a una emoción
+    concreta (reemplazando su canónico o sumándose a él) es una decisión por
+    simulacro: `deixis_aplicar_a_emocion`.
+    """
     MencionesRepository(Database(Path(db_path))).accept_deixis_link(
         mencion_id, canonical_id
     )
 
 
-def deixis_reject(db_path: Path, mencion_id: int, canonical_id: str) -> None:
-    """Rechaza un referente deíctico propuesto para una marca."""
+def deixis_reject(db_path: Path, mencion_id: int, canonical_id: str) -> int:
+    """Rechaza un referente deíctico para una marca y lo saca de sus simulacros.
+
+    Rechazar el vínculo no alcanza: si el referente ya se había aplicado a una
+    emoción, esa atribución por emoción prima sobre el vínculo y lo seguiría
+    mostrando. Se limpian las atribuciones de las emociones que usan esta marca
+    y apuntan al referente descartado; las que quedan sin ninguna vuelven a
+    resolverse por marca. Devuelve cuántas emociones se limpiaron.
+    """
     MencionesRepository(Database(Path(db_path))).reject_deixis_link(
         mencion_id, canonical_id
+    )
+    return _limpiar_atribuciones(db_path, mencion_id, canonical_id)
+
+
+def _limpiar_atribuciones(
+    db_path: Path, mencion_id: int, canonical_id: str
+) -> int:
+    """Quita un referente de las atribuciones por emoción de una marca."""
+    db = Database(Path(db_path))
+    row = db.execute(
+        "SELECT codigo, unit_idx, marca FROM menciones WHERE id = ?",
+        (mencion_id,),
+    ).fetchone()
+    if row is None or not db.table_exists("emociones"):
+        return 0
+    codigo, unit_idx = str(row["codigo"]), int(row["unit_idx"])
+    marca = str(row["marca"] or "").strip().lower()
+    cid = str(canonical_id or "").strip()
+    if not marca or not cid:
+        return 0
+    funciones = {
+        str(r["funcion"])
+        for r in db.execute(
+            "SELECT funcion FROM mencion_funcion WHERE mencion_id = ?",
+            (mencion_id,),
+        ).fetchall()
+    }
+    emo = EmocionesRepository(db)
+    limpiadas = 0
+    for e in emo.list_emociones_of_discurso(codigo):
+        if int(e["frase_idx"]) != unit_idx:
+            continue
+        idx = int(e["emocion_idx"])
+        for rol, (_f, marca_field, _i, canonico_field) in _CAMPOS_ROL.items():
+            if rol not in funciones:
+                continue
+            if str(e.get(marca_field) or "").strip().lower() != marca:
+                continue
+            quedan = [
+                c for c in canonicos_de_override(e.get(canonico_field))
+                if c != cid
+            ]
+            if quedan == canonicos_de_override(e.get(canonico_field)):
+                continue
+            if rol == "fuente":
+                emocion_set_fuentes_at(db_path, codigo, unit_idx, idx, quedan)
+            else:
+                emocion_set_experiencer_at(
+                    db_path, codigo, unit_idx, idx, quedan[0] if quedan else None
+                )
+            limpiadas += 1
+    if limpiadas:
+        emo.colapsar_duplicados(codigo, unit_idx)
+    return limpiadas
+
+
+def emocion_delete(
+    db_path: Path, codigo: str, frase_idx: int, emocion_idx: int
+) -> bool:
+    """Elimina un simulacro de la base. Devuelve True si existía.
+
+    Escotilla de salida para las emociones que sobran: duplicadas por una
+    edición, o inferidas donde no había ninguna. Arrastra el juicio y los
+    hallazgos de validación de esa emoción; no renumera el resto.
+    """
+    db = Database(Path(db_path))
+    if not db.table_exists("emociones"):
+        raise RuntimeError("DB sin tabla emociones.")
+    RunsRepository(db).ensure_migrations()
+    return EmocionesRepository(db).delete_emocion(codigo, frase_idx, emocion_idx)
+
+
+def deixis_restore(db_path: Path, mencion_id: int, canonical_id: str) -> None:
+    """Devuelve a pendiente un referente deíctico descartado."""
+    MencionesRepository(Database(Path(db_path))).set_link_status(
+        mencion_id, canonical_id, "proposed"
     )
 
 
 def deixis_add(
     db_path: Path, mencion_id: int, canonical_id: str, deixis_tipo: str
 ) -> None:
-    """Agrega a mano un referente deíctico (del discurso) a una marca."""
+    """Agrega a mano un referente deíctico (del discurso) a una marca.
+
+    Como `deixis_accept`, solo inscribe el vínculo marca↔referente.
+    """
     MencionesRepository(Database(Path(db_path))).add_deixis_referente(
         mencion_id, canonical_id, deixis_tipo
+    )
+
+
+#: Campos de la emoción por rol actancial: (función de la marca, marca,
+#: inferencia, columna canónica por emoción).
+_CAMPOS_ROL = {
+    "experienciador": (
+        "experienciador", "experienciador_marca", "experienciador",
+        "experienciador_canonico",
+    ),
+    "fuente": (
+        "fuente", "fuente_marca", "fuente_inferencia", "fuente_canonico",
+    ),
+}
+
+
+def canonicos_actuales_de_emocion(
+    db_path: Path, codigo: str, frase_idx: int, emocion_idx: int, rol: str
+) -> list[str]:
+    """Referentes que hoy rigen un rol de una emoción, en orden.
+
+    Misma resolución que muestran las tabs: atribución por emoción, vínculo
+    marca↔referente, canónico de la inferencia.
+    """
+    funcion, marca_field, inferencia_field, canonico_field = _CAMPOS_ROL[rol]
+    db = Database(Path(db_path))
+    emo = EmocionesRepository(db).get_emocion(codigo, frase_idx, emocion_idx)
+    if emo is None:
+        return []
+    index = marca_canonicos_index(db, funcion, codigo)
+    return resolver_canonicos(
+        index.get((codigo, int(frase_idx))),
+        emo.get(marca_field),
+        override=emo.get(canonico_field),
+        inferencia=emo.get(inferencia_field),
+    )
+
+
+def deixis_aplicar_a_emocion(
+    db_path: Path,
+    codigo: str,
+    frase_idx: int,
+    emocion_idx: int,
+    rol: str,
+    canonical_id: str,
+    modo: str,
+    mencion_id: int | None = None,
+    modo_existencia: str | None = None,
+) -> dict:
+    """Aplica un referente deíctico a UN simulacro, reemplazando o sumándose.
+
+    La marca es de toda la unidad; el referente que rige cada emoción es una
+    decisión por simulacro, y se persiste como atribución por emoción (prima
+    sobre el vínculo de la marca). `modo` es 'reemplazar' o 'anadir', y añadir
+    depende del rol: el experienciador es uno solo, así que la emoción se
+    desdobla (una por referente); la fuente admite combinación, así que el
+    referente se suma sin duplicar nada. `modo_existencia` fija el modo del
+    simulacro que recibe al referente (la emoción nueva si desdobla, la propia
+    si reemplaza): una emoción atribuida al auditorio suele ser potencial. Si
+    se pasa `mencion_id`, el vínculo deíctico queda aceptado en el mismo
+    movimiento. Devuelve {'nuevos': [...], 'duplicada': bool}.
+    """
+    if rol not in _CAMPOS_ROL:
+        raise ValueError(f"rol inválido: {rol}")
+    if modo not in ("reemplazar", "anadir"):
+        raise ValueError(f"modo inválido: {modo}")
+    cid = str(canonical_id or "").strip()
+    if not cid:
+        raise ValueError("canonical_id vacío.")
+
+    # Los referentes que hoy rigen el simulacro se leen ANTES de inscribir el
+    # vínculo: inscribirlo mete al entrante en la resolución de la marca, y
+    # "añadir" lo confundiría con algo que ya estaba y terminaría reemplazando.
+    actuales = canonicos_actuales_de_emocion(
+        db_path, codigo, frase_idx, emocion_idx, rol
+    )
+    if mencion_id is not None:
+        MencionesRepository(Database(Path(db_path))).accept_deixis_link(
+            mencion_id, cid
+        )
+    if rol == "fuente":
+        nuevas = [cid] if modo == "reemplazar" else [
+            *(c for c in actuales if c != cid), cid
+        ]
+        emocion_set_fuentes_at(db_path, codigo, frase_idx, emocion_idx, nuevas)
+        return {"nuevos": [], "duplicada": False}
+
+    if modo == "reemplazar" or cid in actuales or not actuales:
+        emocion_set_experiencer_at(db_path, codigo, frase_idx, emocion_idx, cid)
+        if modo_existencia:
+            emocion_set_modo_at(
+                db_path, codigo, frase_idx, emocion_idx, modo_existencia
+            )
+        EmocionesRepository(Database(Path(db_path))).colapsar_duplicados(
+            codigo, frase_idx
+        )
+        return {"nuevos": [], "duplicada": False}
+
+    # El desdoblamiento conserva el modo de la emoción original en la primera
+    # copia y aplica el pedido a la del referente entrante.
+    actual_modo = _modo_de_emocion(db_path, codigo, frase_idx, emocion_idx)
+    modos = [
+        *(actual_modo for _ in actuales),
+        modo_existencia or actual_modo,
+    ]
+    res = emocion_split_experiencers(
+        db_path, codigo, frase_idx, emocion_idx, [*actuales, cid], modos
+    )
+    caidos = EmocionesRepository(Database(Path(db_path))).colapsar_duplicados(
+        codigo, frase_idx
+    )
+    nuevos = [i for i in res["nuevos"] if i not in caidos]
+    return {"nuevos": nuevos, "duplicada": bool(nuevos)}
+
+
+def _modo_de_emocion(
+    db_path: Path, codigo: str, frase_idx: int, emocion_idx: int
+) -> str:
+    """Modo de existencia actual de una emoción, o "" si no existe."""
+    emo = EmocionesRepository(Database(Path(db_path))).get_emocion(
+        codigo, frase_idx, emocion_idx
+    )
+    return str((emo or {}).get("modo_existencia") or "")
+
+
+def emocion_set_modo_at(
+    db_path: Path, codigo: str, frase_idx: int, emocion_idx: int, modo: str
+) -> bool:
+    """Fija el modo de existencia de UNA emoción. Devuelve True si cambió."""
+    db = Database(Path(db_path))
+    if not db.table_exists("emociones"):
+        raise RuntimeError("DB sin tabla emociones.")
+    RunsRepository(db).ensure_migrations()
+    return EmocionesRepository(db).set_modo_existencia_at(
+        codigo, frase_idx, emocion_idx, modo
     )
 
 

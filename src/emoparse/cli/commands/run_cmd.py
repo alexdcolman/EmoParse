@@ -77,6 +77,13 @@ def handle(args: argparse.Namespace) -> int:
         return 1
 
     db_path = _resolve_db_path(args.db, cfg.paths.runs_dir, args.run_id)
+    accion = _resolver_db_existente(db_path, args)
+    if accion == "cancelar":
+        logger.info("[run] Cancelado por el usuario (DB existente).")
+        return 1
+    if accion == "sobrescribir":
+        _borrar_db(db_path)
+        logger.info(f"[run] DB existente eliminada: {db_path}")
     logger.info(f"[run] DB: {db_path}")
 
     if args.stages:
@@ -87,6 +94,16 @@ def handle(args: argparse.Namespace) -> int:
             return 1
     else:
         enabled = DEFAULT_ENABLED_STAGES
+
+    if genre.stages_invalidas:
+        pedidas_invalidas = [s for s in enabled if s in genre.stages_invalidas]
+        if pedidas_invalidas:
+            logger.error(
+                f"[run] Stage(s) inválida(s) para el género "
+                f"'{genre.genre_id}': {', '.join(pedidas_invalidas)}. "
+                f"No aplican a este género; sacalas de --stages."
+            )
+            return 1
 
     if not genre.summarizer and "summarizer" in enabled:
         enabled = tuple(s for s in enabled if s != "summarizer")
@@ -132,6 +149,7 @@ def handle(args: argparse.Namespace) -> int:
         enabled_stages=enabled,
         genre=genre,
         emotion_scope=emotion_scope,
+        embed_context=bool(getattr(args, "embed", False)),
     ) as runner:
         runner.ingest(df_input)
         if posts_bundle is not None:
@@ -153,6 +171,54 @@ def handle(args: argparse.Namespace) -> int:
             print(f"    {stage_name:<25s} (saltada)")
 
     return 0
+
+
+def _resolver_db_existente(db_path: Path, args: argparse.Namespace) -> str:
+    """Decide qué hacer si la DB del run ya existe.
+
+    Devuelve 'nueva' (no existe), 'reanudar', 'sobrescribir' o 'cancelar'.
+    Con flags explícitas (--overwrite-db / --resume) no pregunta; sin flags,
+    pregunta por consola si hay TTY, y sin TTY falla con instrucciones
+    (evita el pisado silencioso de corpus distintos sobre el mismo archivo).
+    """
+    if not db_path.exists():
+        return "nueva"
+    if getattr(args, "overwrite_db", False):
+        return "sobrescribir"
+    if getattr(args, "resume", False):
+        return "reanudar"
+    import sys
+    if not sys.stdin.isatty():
+        logger.error(
+            f"La DB ya existe: {db_path}. Elegí explícitamente: --resume "
+            "para reanudar ese run, u --overwrite-db para empezar de cero "
+            "(elimina la DB)."
+        )
+        return "cancelar"
+    print(f"\nLa DB del run ya existe: {db_path}")
+    print("  [r] reanudar (seguir desde donde quedó; corpus debe ser el mismo)")
+    print("  [s] sobrescribir (eliminar la DB y empezar de cero)")
+    print("  [c] cancelar")
+    while True:
+        eleccion = input("¿Qué hacés? [r/s/c]: ").strip().lower()
+        if eleccion in ("r", "reanudar"):
+            return "reanudar"
+        if eleccion in ("s", "sobrescribir"):
+            confirmar = input(
+                f"Se elimina {db_path.name} y todo su análisis. ¿Seguro? [s/N]: "
+            ).strip().lower()
+            if confirmar in ("s", "si", "sí", "y", "yes"):
+                return "sobrescribir"
+        elif eleccion in ("c", "cancelar", ""):
+            return "cancelar"
+
+
+def _borrar_db(db_path: Path) -> None:
+    """Elimina la DB y sus archivos satélite de SQLite (-wal, -shm)."""
+    for sufijo in ("", "-wal", "-shm"):
+        f = Path(str(db_path) + sufijo)
+        if f.exists():
+            f.unlink()
 
 
 def _load_input(

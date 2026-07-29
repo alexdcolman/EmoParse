@@ -27,8 +27,10 @@ def render(db_path: Path) -> None:
     st.markdown("### Estado del run")
     st.markdown(
         "<p style='color:#8a8799;font-size:0.88rem;'>"
-        "Vista read-only. Para reintentar errores, ejecutá "
-        "<code>emoparse retry --db [run] --stage [stage]</code> en CLI."
+        "Vista read-only. El porcentaje se calcula sobre las unidades que "
+        "la stage alcanza: lo marcado <code>n/a</code> queda afuera "
+        "(un post sin cita no tiene reframing). Para reintentar errores, "
+        "ejecutá <code>emoparse retry --db [run] --stage [stage]</code>."
         "</p>",
         unsafe_allow_html=True,
     )
@@ -39,7 +41,8 @@ def render(db_path: Path) -> None:
         return
 
     total_failed = sum(s.failed for s in statuses)
-    total_pending = sum(s.pending for s in statuses)
+    total_pending = sum(s.pending for s in statuses if s.ejecutada)
+    sin_correr = [s.stage for s in statuses if not s.ejecutada]
     if total_failed == 0 and total_pending == 0:
         st.markdown("""
         <div class='ep-card' style='border-left:3px solid #6ec89a;'>
@@ -61,6 +64,15 @@ def render(db_path: Path) -> None:
 
     st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
 
+    if sin_correr:
+        st.markdown(
+            "<p style='color:#5a5d6e;font-size:0.8rem;margin:0 0 0.6rem;'>"
+            "Stages que no corrieron en este run: "
+            f"{', '.join(sin_correr)}."
+            "</p>",
+            unsafe_allow_html=True,
+        )
+
     for s in statuses:
         _render_stage_row(s)
 
@@ -70,22 +82,36 @@ def render(db_path: Path) -> None:
 def _render_stage_row(s: data_layer.StageStatus) -> None:
     """Renderiza una fila de estado para una stage del pipeline.
 
-    Incluye métricas de completado, pendientes y errores, y un
-    expander con los códigos fallidos cuando corresponde.
+    Incluye completados, pendientes, errores y las unidades fuera del
+    alcance de la stage, más un expander con los códigos fallidos cuando
+    corresponde. Una stage sin unidades a su alcance se muestra en gris:
+    o no corrió en este run, o el corpus no le daba nada que procesar.
     """
-    total = s.pending + s.failed + s.completed
-    if total == 0:
+    if not s.ejecutada or s.total == 0:
+        # Sin ejecución no hay porcentaje que informar: lo que falta no es
+        # trabajo pendiente sino una stage que este run no corrió.
+        etiqueta = "no ejecutada" if not s.ejecutada else "sin unidades"
+        detalle = (
+            f" · {s.total} unidades a su alcance"
+            if not s.ejecutada and s.total else ""
+        )
         st.markdown(f"""
         <div style='display:flex;align-items:center;justify-content:space-between;
                     padding:0.5rem 0.8rem;border-bottom:1px solid #1a1c22;font-size:0.85rem;'>
-            <span style='color:#5a5d6e;font-family:DM Mono,monospace;'>{s.stage}</span>
-            <span class='badge badge-dim'>—</span>
+            <span style='color:#5a5d6e;font-family:DM Mono,monospace;'>{s.stage}{detalle}</span>
+            <span class='badge badge-dim'>{etiqueta}</span>
         </div>
         """, unsafe_allow_html=True)
         return
 
-    pct = int((s.completed / total) * 100) if total else 0
-
+    pct = s.pct or 0
+    # Lo que quedó fuera del alcance de la stage se muestra aparte: no es
+    # trabajo pendiente y no entra en el porcentaje.
+    na_html = (
+        f"<span style='color:#5a5d6e;font-family:DM Mono,monospace;font-size:0.78rem;'>"
+        f"— {s.no_aplica} n/a</span>"
+        if s.no_aplica else ""
+    )
     summary_html = (
         f"<div style='display:flex;align-items:center;gap:0.8rem;font-size:0.85rem;'>"
         f"<span style='font-family:DM Mono,monospace;color:#e8e4dc;min-width:9rem;'>{s.stage}</span>"
@@ -96,6 +122,8 @@ def _render_stage_row(s: data_layer.StageStatus) -> None:
         f"⏳ {s.pending}</span>"
         f"<span style='color:#c86e6e;font-family:DM Mono,monospace;font-size:0.78rem;'>"
         f"✗ {s.failed}</span>"
+        f"{na_html}"
+        f"<span style='color:#5a5d6e;font-size:0.74rem;'>{s.unidad}</span>"
         f"</div>"
     )
 

@@ -1,5 +1,5 @@
 {
-  "version": "v2",
+  "version": "v3",
   "emociones": {
     "ira": {
       "aliases": [
@@ -55,7 +55,8 @@
         "pánico",
         "aprensión",
         "aprension",
-        "susto"
+        "susto",
+        "horror"
       ],
       "foria": {
         "esperado": [
@@ -102,7 +103,8 @@
         "luto",
         "abatimiento",
         "depresión",
-        "depresion"
+        "depresion",
+        "sufrimiento"
       ],
       "foria": {
         "esperado": [
@@ -198,7 +200,10 @@
         "extranieza",
         "perplejidad",
         "desconcierto",
-        "shock"
+        "shock",
+        "estupefacción",
+        "estupefaccion",
+        "incredulidad"
       ],
       "foria": {
         "esperado": [
@@ -339,7 +344,9 @@
         "certeza",
         "convicción",
         "conviccion",
-        "credibilidad"
+        "credibilidad",
+        "determinación",
+        "determinacion"
       ],
       "foria": {
         "esperado": [
@@ -473,7 +480,9 @@
         "frustración",
         "frustracion",
         "desengaño",
-        "desenganio"
+        "desenganio",
+        "insatisfacción",
+        "insatisfaccion"
       ],
       "foria": {
         "esperado": [
@@ -648,7 +657,10 @@
         "zozobra",
         "inquietud",
         "intranquilidad",
-        "alarma"
+        "alarma",
+        "impaciencia",
+        "preocupación",
+        "preocupacion"
       ],
       "foria": {
         "esperado": [
@@ -692,7 +704,9 @@
         "congoja",
         "desazón",
         "desazon",
-        "desasosiego"
+        "desasosiego",
+        "desesperación",
+        "desesperacion"
       ],
       "foria": {
         "esperado": [
@@ -737,7 +751,8 @@
         "emoción_profunda",
         "emocion_profunda",
         "impacto",
-        "sacudida"
+        "sacudida",
+        "estremecimiento"
       ],
       "foria": {
         "esperado": [
@@ -867,7 +882,10 @@
         "fascinación",
         "fascinacion",
         "deslumbramiento",
-        "reconocimiento_admirativo"
+        "reconocimiento_admirativo",
+        "aprecio",
+        "estima",
+        "respeto"
       ],
       "foria": {
         "esperado": [
@@ -993,7 +1011,8 @@
       "aliases": [
         "sospecha",
         "recelo",
-        "escepticismo_afectivo"
+        "escepticismo_afectivo",
+        "escepticismo"
       ],
       "foria": {
         "esperado": [
@@ -1037,7 +1056,8 @@
         "derrotismo",
         "desgano",
         "desánimo",
-        "desanimo"
+        "desanimo",
+        "desaliento"
       ],
       "foria": {
         "esperado": [
@@ -1121,7 +1141,8 @@
       "aliases": [
         "aborrecimiento",
         "hostilidad_intensa",
-        "inquina"
+        "inquina",
+        "hostilidad"
       ],
       "foria": {
         "esperado": [
@@ -1340,7 +1361,138 @@
       "generos": [
         "tuit"
       ]
+    },
+    "deseo": {
+      "aliases": [
+        "ansia",
+        "ansias",
+        "apetencia",
+        "avidez",
+        "ambición",
+        "ambicion"
+      ],
+      "foria": {
+        "esperado": [
+          "euforico"
+        ],
+        "tolerado": [
+          "ambiforico"
+        ]
+      },
+      "intensidad": {
+        "esperado": [
+          "alta"
+        ],
+        "tolerado": [
+          "neutra_ambivalente",
+          "baja"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "mixta",
+          "cognoscitiva"
+        ],
+        "tolerado": [
+          "corporal"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "potencial",
+          "virtual"
+        ],
+        "tolerado": [
+          "actual",
+          "realizada"
+        ]
+      }
+    },
+    "interés": {
+      "aliases": [
+        "interes",
+        "curiosidad",
+        "intriga"
+      ],
+      "foria": {
+        "esperado": [
+          "euforico",
+          "aforico"
+        ],
+        "tolerado": [
+          "ambiforico"
+        ]
+      },
+      "intensidad": {
+        "esperado": [
+          "baja",
+          "neutra_ambivalente"
+        ],
+        "tolerado": [
+          "alta"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "cognoscitiva"
+        ],
+        "tolerado": [
+          "mixta"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "realizada",
+          "actual"
+        ],
+        "tolerado": [
+          "potencial"
+        ]
+      }
+    },
+    "desamparo": {
+      "aliases": [
+        "indefensión",
+        "indefension",
+        "abandono_sentido"
+      ],
+      "foria": {
+        "esperado": [
+          "disforico"
+        ],
+        "tolerado": [
+          "ambiforico"
+        ]
+      },
+      "intensidad": {
+        "esperado": [
+          "alta",
+          "neutra_ambivalente"
+        ],
+        "tolerado": [
+          "baja"
+        ]
+      },
+      "dominancia": {
+        "esperado": [
+          "mixta"
+        ],
+        "tolerado": [
+          "cognoscitiva",
+          "corporal"
+        ]
+      },
+      "modo_existencia": {
+        "esperado": [
+          "realizada",
+          "actual"
+        ],
+        "tolerado": [
+          "potencial"
+        ]
+      }
     }
   },
-  "notas_v2": "v2 agrega emociones del discurso político en redes (burla, hartazgo, vergüenza_ajena, diversión — restringidas al género tuit vía el campo `generos`) y emociones compartidas de uso frecuente (desprecio, admiración, gratitud, alivio, desconfianza, resignación, envidia, odio). La base es compartida: una entrada SIN campo `generos` está disponible en todos los géneros; con `generos: [\"tuit\"]` solo se ofrece en los prompts de esos géneros (emoparse.knowledge.genre_filter aplica el filtro al formatear la ontología). La normalización de aliases opera siempre sobre la base completa: si un discurso presidencial expresa burla, se normaliza igual, aunque el prompt no la ofrezca como candidata."
+  "notas_v2": "v2 agrega emociones del discurso político en redes (burla, hartazgo, vergüenza_ajena, diversión — restringidas al género tuit vía el campo `generos`) y emociones compartidas de uso frecuente (desprecio, admiración, gratitud, alivio, desconfianza, resignación, envidia, odio). La base es compartida: una entrada SIN campo `generos` está disponible en todos los géneros; con `generos: [\"tuit\"]` solo se ofrece en los prompts de esos géneros (emoparse.knowledge.genre_filter aplica el filtro al formatear la ontología). La normalización de aliases opera siempre sobre la base completa: si un discurso presidencial expresa burla, se normaliza igual, aunque el prompt no la ofrezca como candidata.",
+  "notas_v3": "v3 suma tres emociones compartidas de uso frecuente en el corpus: deseo (tensión hacia un objeto valorado; su modo de existencia esperado es potencial o virtual), interés (curiosidad, intriga; emoción epistémica de baja intensidad) y desamparo (indefensión sentida ante el abandono o la falta de protección). Amplía además los aliases de canónicas existentes con formas observadas en corridas reales (aprecio y respeto → admiración; desesperación → angustia; determinación → confianza; estremecimiento → conmoción; estupefacción e incredulidad → sorpresa; horror → miedo; hostilidad → odio; impaciencia y preocupación → ansiedad; insatisfacción → decepción; sufrimiento → tristeza; desaliento → resignación). Quedan deliberadamente sin canónico los términos que no nombran emociones sino disposiciones, actitudes o registros (altruismo, compromiso, concientización, desaprobación, fortaleza, valentía, solemnidad), los afectos demasiado inespecíficos para normalizar sin pérdida (malestar) y los artefactos de etiqueta compuesta (\"ironía/desprecio\": la ironía es un procedimiento enunciativo; su componente afectivo ya normaliza como burla o desprecio)."
 }

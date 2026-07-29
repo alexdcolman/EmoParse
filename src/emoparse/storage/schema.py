@@ -129,15 +129,23 @@ CREATE TABLE IF NOT EXISTS emociones (
     tipo_emocion_canonico       TEXT,
     normalize_emotions_version  TEXT,
 
-    -- Experienciador canónico, materializado por el commit de la revisión
-    -- (overlay → base). String legible por discurso (p. ej. el nombre del
-    -- enunciador). NULL = sin revisión commiteada para esa emoción.
+    -- Experienciador canónico por emoción. Lo fija el desdoblamiento de
+    -- experienciadores compuestos (origin 'auto', cuando la marca compartida
+    -- no distingue a los referentes partidos) o el commit de la revisión
+    -- humana (origin 'human'). String legible (p. ej. el nombre del
+    -- enunciador). NULL = sin atribución por emoción (se resuelve por marca).
     experienciador_canonico        TEXT,
+    -- Procedencia de experienciador_canonico: 'auto'|'human'. El commit
+    -- humano ('human') nunca es pisado por el desdoblamiento automático.
+    experienciador_canonico_origin TEXT,
 
-    -- Fuente canónica por emoción, fijada en la revisión de referentes. NULL =
-    -- sin atribución por emoción (la fuente se resuelve por marca). Prima sobre
-    -- la resolución por marca en las vistas de referentes/simulacros/búsqueda.
+    -- Fuente canónica por emoción, fijada en la revisión de referentes o por
+    -- el desdoblamiento de fuentes compuestas. NULL = sin atribución por
+    -- emoción (la fuente se resuelve por marca). Prima sobre la resolución
+    -- por marca en las vistas de referentes/simulacros/búsqueda.
     fuente_canonico                TEXT,
+    -- Procedencia de fuente_canonico: 'auto'|'human'.
+    fuente_canonico_origin         TEXT,
 
     -- Output del CharacterizerAgent. JSON con los 4 atributos.
     caracterizacion_payload TEXT,
@@ -586,8 +594,9 @@ CREATE INDEX IF NOT EXISTS idx_tecno_tipo_valor
 # ══════════════════════════════════════════════════════════════════════════════
 #  Tabla `hashtags`: caracterización semiótica a nivel corpus.
 #
-#  Salida de la stage `hashtag_semiotics`: función dominante, acoplamiento
-#  actitud-tema y foria del entorno, por hashtag frecuente.
+#  Salida de la stage `hashtag_semiotics`: derivada por agregación de los
+#  análisis por uso (registrados en `tecno_entidades.extra['funcion']`).
+#  `analisis_payload` conserva la distribución completa de funciones y forias.
 # ══════════════════════════════════════════════════════════════════════════════
 
 CREATE_HASHTAGS = """

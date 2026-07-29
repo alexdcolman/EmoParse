@@ -1,0 +1,26 @@
+{
+  "version": "1",
+  "enunciadores": {
+    "javier_milei": {
+      "display_name": "Javier Milei",
+      "colectivos": [
+        {
+          "nombre": "los argentinos",
+          "clase": "institucional"
+        },
+        {
+          "nombre": "defensores del modelo de la libertad / capitalismo de libre empresa",
+          "clase": "ideológico"
+        },
+        {
+          "nombre": "los libertarios",
+          "clase": "partidario"
+        },
+        {
+          "nombre": "el gobierno de Javier Milei",
+          "clase": "institucional"
+        }
+      ]
+    }
+  }
+}

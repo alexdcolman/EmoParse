@@ -48,14 +48,36 @@ def render(db_path: Path) -> None:
         st.warning("Datos sin columna `codigo`.")
         return
 
+    corpus_posts = data_layer.has_posts(db_path)
+    modo = "post"
+    if corpus_posts:
+        # En posts, la curva por post no dice mucho: por defecto se ve la
+        # evolución de la conversación pública (por hashtag) o del hilo.
+        opciones_modo = _modos_disponibles(db_path)
+        modo = st.radio(
+            "Unidad de la curva",
+            opciones_modo,
+            horizontal=True,
+            key="curva_modo",
+            format_func=_MODO_LABELS.get,
+        )
+        df_em = _df_por_modo(db_path, df_em, modo)
+        if df_em.empty:
+            st.info("Sin datos para esa unidad de curva.")
+            return
+
     codigos = sorted(df_em["codigo"].unique().tolist())
     if not codigos:
         st.info("Sin discursos.")
         return
 
+    unidad_lbl = (
+        _MODO_LABELS.get(modo, "Discurso").replace("Por ", "").capitalize()
+        if corpus_posts else "Discurso"
+    )
     col_sel, col_toggle, col_max = st.columns([3, 1.2, 1])
     with col_sel:
-        codigo_sel = st.selectbox("Discurso", codigos, key="curva_codigo")
+        codigo_sel = st.selectbox(unidad_lbl, codigos, key=f"curva_codigo_{modo}")
     with col_toggle:
         comparar = st.toggle(
             "Comparar con otro",
@@ -74,7 +96,9 @@ def render(db_path: Path) -> None:
     if comparar:
         otros = [c for c in codigos if c != codigo_sel]
         if otros:
-            codigo_b = st.selectbox("Discurso B", otros, key="curva_codigo_b")
+            codigo_b = st.selectbox(
+                f"{unidad_lbl} B", otros, key=f"curva_codigo_b_{modo}"
+            )
 
     # ── Opciones de visualización ────────────────────────────────────────────
     opt_a, opt_b, opt_c = st.columns(3)
@@ -219,3 +243,44 @@ def _render_chips(df_sel: pd.DataFrame, *, usar_llm: bool = False) -> None:
         + "".join(chips_html) + "</div>",
         unsafe_allow_html=True,
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Unidad de la curva para corpus de posts
+# ══════════════════════════════════════════════════════════════════════════════
+
+#: Etiquetas visibles de cada unidad de curva.
+_MODO_LABELS: dict[str, str] = {
+    "hashtag": "Por #hashtag",
+    "hilo": "Por hilo",
+    "post": "Por post",
+}
+
+
+def _modos_disponibles(db_path: Path) -> list[str]:
+    """Unidades de curva disponibles según el corpus (hashtag/hilo primero)."""
+    modos: list[str] = []
+    if not data_layer.get_post_hashtags(db_path).empty:
+        modos.append("hashtag")
+    df_ctx = data_layer.get_post_contexto(db_path)
+    if not df_ctx.empty and df_ctx["conversacion_id"].notna().any():
+        modos.append("hilo")
+    modos.append("post")
+    return modos
+
+
+def _df_por_modo(db_path: Path, df_em: pd.DataFrame, modo: str) -> pd.DataFrame:
+    """Transforma las emociones a la unidad de curva elegida.
+
+    En `post` solo reemplaza los códigos por sus títulos de input. En
+    `hashtag`/`hilo` agrupa los posts de cada conversación: el código pasa a
+    ser el grupo y la posición, el orden temporal del post dentro del grupo,
+    de modo que la curva representa la evolución de la conversación pública.
+    """
+    if modo == "post":
+        labels = data_layer.codigo_labels(db_path)
+        out = df_em.copy()
+        out["codigo"] = out["codigo"].map(lambda c: labels.get(c, c))
+        return out
+
+    return data_layer.agrupar_por_conversacion(db_path, df_em, modo)

@@ -83,13 +83,24 @@ models:
 #  Etapas disponibles (en orden de ejecución):
 #
 #    Activas por defecto:
-#      summarizer, metadata, enunciation, actors, emotions,
+#      summarizer, metadata, enunciation, emotions,
 #      explode_emotions, normalize_emotions, characterizer.
 #
 #    Opcionales (se declaran acá para asignarles modelo, pero solo
 #    se ejecutan si se piden con `--stages` en la CLI):
-#      emotions_pass2, deixis, modalidad, semas, actants, judge,
-#      reframing, hashtag_semiotics, vision_describe.
+#      actors, emotions_pass2, deixis, modalidad, semas, actants, judge,
+#      reframing, hashtag_semiotics, tecno_usage, vision_describe.
+#      `actors` es recomendada (enriquece a `emotions` con los actores del
+#      discurso) pero no obligatoria: `emotions` corre sin ella. Algunas
+#      etapas no aplican a ciertos géneros y se rechazan con un error si se
+#      piden (p. ej. `emotions_pass2` en tuit: una sola unidad no tiene
+#      contexto previo que releer).
+#
+#    Sub-pasos con modelo propio (no son nodos del pipeline):
+#      enunciator_id — identificación del enunciador previa al análisis
+#      enunciativo, en géneros clásicos. Si se omite, usa el modelo de
+#      enunciation; con alias propio (recomendado: un modelo chico) se
+#      cargan ambos modelos durante la stage.
 #
 #    Género tuit (discurso nativo digital): el género habilita solo
 #    `technoparse` y `emoji_affect` automáticamente. `technoparse`,
@@ -105,12 +116,15 @@ pipeline:
     summarizer:      qwen3-14b
     metadata:        phi4-mini
     enunciation:     qwen3-14b
+    # Sub-paso de identificación del enunciador (schema mínimo, apto para
+    # un modelo chico). Opcional: sin esta línea usa el modelo de enunciation.
+    enunciator_id:   phi4-mini
     actors:          qwen3-14b
     emotions:        qwen3-14b
     characterizer:   qwen3-14b
 
     # ── Etapas opcionales ─────────────────────────────────────────────
-    # Declararlas acá deja el modelo asignado, pero NO se ejecutan por
+    # Declararlas acá deja el modelo asignado, pero no se ejecutan por
     # default. Para correrlas, pasarlas en `--stages` al invocar
     # `emoparse run` (junto con sus dependencias).
 
@@ -122,7 +136,7 @@ pipeline:
     # identificación). Requiere `enunciation` corrido previamente.
     deixis:          qwen3-14b
 
-    # Clasificación de la MODALIDAD REFERENCIAL de cada vínculo marca→referente
+    # Clasificación de la modalidad referencial de cada vínculo marca→referente
     # (designacion / referencia_gramatical / identificacion_inferencial) y la
     # naturaleza del referente. Pre-pass NLP (spaCy) + LLM solo para los casos
     # ambiguos. Requiere `explode_emotions` (y idealmente `deixis`) previos.
@@ -144,8 +158,17 @@ pipeline:
     # ironía, denuncia...). Opt-in vía --stages.
     # reframing:         qwen3-14b
 
-    # Caracterización semiótica de hashtags a nivel corpus. Opt-in.
+    # Análisis semiótico de hashtags por uso: la función se caracteriza en
+    # cada post donde el hashtag aparece, con las funciones ya identificadas
+    # del mismo hashtag como contexto creciente; la caracterización a nivel
+    # corpus se deriva por agregación. Opt-in.
     # hashtag_semiotics: qwen3-14b
+
+    # Uso pragmático de menciones (interpelar, confrontar, exponer, citar,
+    # agradecer, convocar, marcar afiliación) y tecnografismos (énfasis,
+    # grito, ironía, celebración, risa, saturación, marca identitaria) en el
+    # contexto de cada post. Opt-in.
+    # tecno_usage:       qwen3-14b
 
     # Desambiguación en contexto de emojis ambiguos. Si se omite, la
     # etapa corre igual en modo léxico-only.
@@ -199,7 +222,7 @@ paths:
 #    knowledge — Subir cuando cambian datos base que afectan a todo el
 #                pipeline de forma transversal. Es el menos frecuente.
 #
-#    prompt    — Subir cuando cambia CÓMO se le pide algo al modelo:
+#    prompt    — Subir cuando cambia cómo se le pide algo al modelo:
 #                  · plantillas de prompt de cualquier agente, o
 #                  · archivos de heurísticas por agente.
 #
@@ -208,7 +231,7 @@ paths:
 #                configuraciones emocionales, base de actores conocidos,
 #                o cualquier otro JSON de datos del proyecto.
 #
-#    schema    — Subir cuando cambia la ESTRUCTURA de salida que se le
+#    schema    — Subir cuando cambia la estructura de salida que se le
 #                exige al modelo: los esquemas de datos (por ejemplo, al
 #                agregar o quitar campos de una etapa).
 #

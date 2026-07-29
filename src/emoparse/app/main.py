@@ -86,6 +86,23 @@ def main() -> None:
         )
         return
 
+    # Secciones de primer nivel, hermanas entre sí. "Ejecutar" es el
+    # constructor de comandos; vive al nivel de "Resultados", no como una tab
+    # dentro de ellos.
+    with st.sidebar:
+        st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
+        seccion = st.radio(
+            "Sección",
+            ["Resultados", "Ejecutar"],
+            key="ep_seccion",
+            label_visibility="collapsed",
+        )
+
+    if seccion == "Ejecutar":
+        from emoparse.app.components import tab_ejecutar
+        tab_ejecutar.render(db_path)
+        return
+
     st.markdown("# Resultados")
     st.markdown(
         "<p style='color:#8a8799;margin-top:-0.5rem;'>"
@@ -108,10 +125,17 @@ def main() -> None:
         "📝 Revisión",
         "🔁 Estado del run",
     ]
-    # Las tabs de tecnodiscurso solo aparecen si el run trae corpus de posts.
+    # La tab Red aparece con corpus de posts (grafos de interacción) o cuando
+    # hay grafos de similitud persistidos (semántico / simulacros), que valen
+    # para cualquier género. Las de tecnodiscurso siguen siendo solo de posts.
     corpus_posts = data.has_posts(db_path)
+    hay_red = corpus_posts or bool(data.list_red_grafos(db_path))
+    n_fijas = len(labels)  # 12 tabs fijas de la página Resultados
+    if hay_red:
+        labels.append("🕸 Red")
+    idx_red = n_fijas if hay_red else None
     if corpus_posts:
-        labels += ["🧵 Hilos", "🕸 Red", "#️⃣ Hashtags", "✳ Tecno"]
+        labels += ["🧵 Hilos", "#️⃣ Hashtags", "✳ Tecno"]
 
     tabs = st.tabs(labels)
     (tab_curva_, tab_act, tab_tab, tab_comp, tab_busq, tab_corr, tab_sim,
@@ -142,18 +166,21 @@ def main() -> None:
     with tab_est:
         tab_estado.render(db_path)
 
+    if idx_red is not None:
+        from emoparse.app.components import tab_red
+        with tabs[idx_red]:
+            tab_red.render(db_path)
+
     if corpus_posts:
         from emoparse.app.components import (
             tab_hashtags,
             tab_hilos,
-            tab_red,
             tab_tecno,
         )
-        tab_hil, tab_red_, tab_hash, tab_tec = tabs[12:16]
+        # Las tres tabs de posts van después de Red (que ya está en labels).
+        tab_hil, tab_hash, tab_tec = tabs[idx_red + 1:idx_red + 4]
         with tab_hil:
             tab_hilos.render(db_path)
-        with tab_red_:
-            tab_red.render(db_path)
         with tab_hash:
             tab_hashtags.render(db_path)
         with tab_tec:

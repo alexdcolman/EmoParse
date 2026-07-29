@@ -140,10 +140,34 @@ def render(db_path: Path) -> None:
     )
 
     st.divider()
-    if st.button("💾 Guardar enunciación", type="primary",
-                 key=f"enun_save_{codigo}"):
-        _save(db_path, codigo, data, enunciador, just,
-              edited_enun, edited_aud, edited_col)
+    b1, b2 = st.columns([1, 1])
+    with b1:
+        if st.button("💾 Guardar enunciación", type="primary",
+                     key=f"enun_save_{codigo}"):
+            _save(db_path, codigo, data, enunciador, just,
+                  edited_enun, edited_aud, edited_col)
+    with b2:
+        if st.button(
+            "⬆ Promover a KB de enunciación",
+            key=f"enun_kb_{codigo}",
+            help=(
+                "Suma los enunciatarios y colectivos guardados de este "
+                "discurso al repertorio conocido de su enunciador "
+                "(knowledge/enunciacion_kb.json). Ese repertorio se inyecta "
+                "como contexto en corridas futuras de la stage enunciation. "
+                "Guardá antes los cambios de esta tab."
+            ),
+        ):
+            try:
+                res = actions_layer.promote_enunciacion_to_kb(db_path, codigo)
+                st.toast(
+                    f"KB de enunciación: {res['enunciatarios_added']} "
+                    f"enunciatario(s) y {res['colectivos_added']} "
+                    f"colectivo(s) nuevos.",
+                    icon="✅",
+                )
+            except RuntimeError as e:
+                st.toast(str(e), icon="⚠️")
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────

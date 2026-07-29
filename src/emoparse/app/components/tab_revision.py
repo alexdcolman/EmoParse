@@ -20,6 +20,7 @@ from emoparse.app.revision_overlay import (
     RevisionOverlay,
     default_overlay_path,
 )
+from emoparse.storage.referencia import primer_canonico
 
 #: Opciones de los campos tipados (Literal). Se importan del esquema como única
 #: fuente de verdad, campo por campo (si falta uno, no invalida el resto).
@@ -109,15 +110,6 @@ def _canon_label(canon: Any, kb_disp: dict[str, str]) -> str:
     return kb_disp.get(str(canon), str(canon))
 
 
-def _canon_display(value: Any, kb_disp: dict[str, str]) -> str:
-    """Como `_canon_label` pero acepta str o lista (varios experienciadores)."""
-    if isinstance(value, (list, tuple)):
-        return "; ".join(
-            _canon_label(x, kb_disp) for x in value if str(x).strip()
-        )
-    return _canon_label(value, kb_disp)
-
-
 def _toggle(label: str, key: str) -> bool:
     fn = getattr(st, "toggle", st.checkbox)
     return bool(fn(label, key=key, value=st.session_state.get(key, False)))
@@ -147,7 +139,12 @@ def render(db_path: Path) -> None:
         st.info("No hay discursos cargados para este run.")
         return
     codigos = sorted(df_disc["codigo"].astype(str).unique().tolist())
-    codigo = st.selectbox("Discurso", codigos, key="rev_codigo")
+    corpus_posts = data_layer.has_posts(db_path)
+    labels = data_layer.codigo_labels(db_path) if corpus_posts else {}
+    codigo = st.selectbox(
+        "Post" if corpus_posts else "Discurso", codigos, key="rev_codigo",
+        format_func=lambda c: labels.get(c, c),
+    )
 
     overlay_path = default_overlay_path(db_path)
     try:
@@ -176,35 +173,45 @@ def render(db_path: Path) -> None:
     kb_ids = _kb_ids(db_path, ov)
     kb_disp = _kb_display(db_path, ov)
     fuente_canon = data_layer.get_fuente_canonicos_map(db_path, codigo)
-    exp_canon = data_layer.get_experienciador_canonicos_map(db_path, codigo)
+    exp_canon = data_layer.get_experienciador_canonico_map(db_path, codigo)
+    media_post = (
+        data_layer.get_media_of_post(db_path, codigo) if corpus_posts else []
+    )
 
     st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
 
     only_sug = st.toggle(
-        "🔎 Solo emociones con sugerencias del juez sin resolver",
+        "🔎 Solo emociones marcadas por el juez sin resolver",
         key=f"rev_sugfilter_{codigo}",
+        help="Incluye tanto las emociones con sugerencias de corrección "
+             "pendientes como las que el juez marcó para revisar sin proponer "
+             "un valor concreto.",
     )
 
     frases_sorted = df_fr.sort_values("unit_idx")
     if only_sug:
         frases_list: list[tuple[Any, list[dict[str, Any]]]] = []
+        n_emos_total = 0
         n_sug_total = 0
         for _, fr in frases_sorted.iterrows():
             ui = int(fr["unit_idx"])
             pend = [
                 e for e in emos_by_frase.get(ui, [])
-                if _emotion_pending_sug_count(ov, codigo, ui, e) > 0
+                if _emotion_needs_review(ov, codigo, ui, e)
             ]
             if pend:
+                n_emos_total += len(pend)
                 n_sug_total += sum(
                     _emotion_pending_sug_count(ov, codigo, ui, e) for e in pend
                 )
                 frases_list.append((fr, pend))
-        st.caption(
-            f"{n_sug_total} sugerencia(s) sin resolver en "
-            f"{len(frases_list)} frase(s)."
-            if frases_list else "No hay sugerencias del juez sin resolver. 🎉"
-        )
+        if frases_list:
+            detalle = f"{n_emos_total} emoción(es) para revisar"
+            if n_sug_total:
+                detalle += f", {n_sug_total} con sugerencia accionable"
+            st.caption(detalle + ".")
+        else:
+            st.caption("No hay emociones del juez sin resolver. 🎉")
     else:
         frases_list = [
             (fr, emos_by_frase.get(int(fr["unit_idx"]), []))
@@ -229,18 +236,54 @@ def render(db_path: Path) -> None:
     if total:
         st.caption(f"Frases {start + 1}–{end} de {total} · página {page}/{n_pages}.")
 
-    for fr, emos in frases_list[start:end]:
-        _render_frase(
-            ov, codigo,
-            unit_idx=int(fr["unit_idx"]),
-            frase=str(fr["frase"]),
-            actores=actores_by_frase.get(int(fr["unit_idx"]), []),
-            emociones=emos,
-            kb_ids=kb_ids,
-            kb_disp=kb_disp,
-            fuente_canon=fuente_canon,
-            exp_canon=exp_canon,
-        )
+    if corpus_posts and len(codigos) > 1:
+        # En posts hay pocas emociones por unidad: los márgenes llevan la
+        # navegación anterior/siguiente entre posts, junto a las tarjetas.
+        i_actual = codigos.index(codigo) if codigo in codigos else 0
+        nav_izq, cuerpo, nav_der = st.columns([0.06, 0.88, 0.06])
+        with nav_izq:
+            st.button(
+                "◀", key=f"rev_prev_{codigo}", use_container_width=True,
+                disabled=i_actual == 0, help="Post anterior",
+                on_click=_nav_codigo, args=(codigos, -1),
+            )
+        with nav_der:
+            st.button(
+                "▶", key=f"rev_next_{codigo}", use_container_width=True,
+                disabled=i_actual >= len(codigos) - 1, help="Post siguiente",
+                on_click=_nav_codigo, args=(codigos, 1),
+            )
+    else:
+        cuerpo = st.container()
+
+    with cuerpo:
+        for fr, emos in frases_list[start:end]:
+            ui = int(fr["unit_idx"])
+            _render_frase(
+                ov, codigo,
+                unit_idx=ui,
+                frase=str(fr["frase"]),
+                actores=actores_by_frase.get(ui, []),
+                emociones=emos,
+                kb_ids=kb_ids,
+                kb_disp=kb_disp,
+                fuente_canon=fuente_canon,
+                exp_canon=exp_canon,
+                tecno=(
+                    data_layer.get_tecno_of_unit(db_path, codigo, ui)
+                    if corpus_posts else None
+                ),
+                media=media_post if corpus_posts and ui == 0 else None,
+            )
+
+
+def _nav_codigo(codigos: list[str], delta: int) -> None:
+    """Mueve el selector de discurso al anterior/siguiente (callback)."""
+    actual = st.session_state.get("rev_codigo")
+    i = codigos.index(actual) if actual in codigos else 0
+    st.session_state["rev_codigo"] = codigos[
+        max(0, min(len(codigos) - 1, i + delta))
+    ]
 
 
 # ── Header (una sola vez) ────────────────────────────────────────────────────
@@ -324,12 +367,37 @@ def _emotion_pending_sug_count(
     )
 
 
+def _emotion_needs_review(
+    ov: RevisionOverlay, codigo: str, unit_idx: int, em: dict[str, Any],
+) -> bool:
+    """True si la emoción amerita revisión del juez y sigue sin resolverse.
+
+    Cubre dos casos que el conteo de sugerencias por sí solo perdía: la
+    emoción con sugerencias accionables pendientes (las que se aceptan o
+    rechazan) y la que el juez marcó incoherente sin proponer corrección
+    concreta (el schema admite `coherente=False` con `sugerencias` vacías, y
+    esas igual hay que mirarlas). Una vez saldada la incoherencia en el
+    overlay, deja de contar.
+    """
+    if _emotion_pending_sug_count(ov, codigo, unit_idx, em) > 0:
+        return True
+    juicio = em.get("juicio") or {}
+    # Incoherente sin ninguna sugerencia accionable: el juez la marcó pero no
+    # propuso corrección. No hay estado de resolución que consultar (no es una
+    # sugerencia que se acepte o rechace), así que se muestra mientras el
+    # juicio siga siendo incoherente. Es preferible mostrarla de más que
+    # ocultar una emoción que el juez pidió revisar.
+    return juicio.get("coherente") is False
+
+
 def _render_frase(
     ov: RevisionOverlay, codigo: str, *, unit_idx: int, frase: str,
     actores: list[dict[str, Any]], emociones: list[dict[str, Any]],
     kb_ids: list[str], kb_disp: dict[str, str],
     fuente_canon: dict[tuple[int, int], list[str]] | None = None,
     exp_canon: dict[tuple[int, int], str] | None = None,
+    tecno: list[dict[str, Any]] | None = None,
+    media: list[dict[str, Any]] | None = None,
 ) -> None:
     activos = [
         e for e in emociones
@@ -350,6 +418,10 @@ def _render_frase(
         f"#{unit_idx}</span>&nbsp; {_esc(frase)}</div>",
         unsafe_allow_html=True,
     )
+    if tecno:
+        _render_tecno_chips(tecno)
+    if media:
+        _render_media(media)
     st.caption(
         f"{len(activos) + n_nuevas} emoción(es) · {n_act} actor(es)"
         + (f" · {len(eliminadas)} eliminada(s)" if eliminadas else "")
@@ -379,6 +451,96 @@ def _render_frase(
         "<div style='border-bottom:1px solid #1a1c22;margin:0.5rem 0;'></div>",
         unsafe_allow_html=True,
     )
+
+
+#: Color por tipo de tecnolingüístico (chips bajo el post en Revisión).
+_TECNO_COLORS: dict[str, str] = {
+    "hashtag": "#7c9ec8",
+    "mencion": "#6ec89a",
+    "emoji": "#c8a96e",
+    "url": "#8a8799",
+    "tecnografismo": "#d28aa8",
+}
+
+
+def _render_tecno_chips(tecno: list[dict[str, Any]]) -> None:
+    """Tecnolingüísticos de la unidad como chips, bajo la tarjeta del post.
+
+    Cada chip muestra el valor y, si los stages en contexto corrieron, su
+    análisis abreviado (función del hashtag, uso de la mención o del
+    tecnografismo, afecto del emoji), con la justificación como tooltip.
+    """
+    chips: list[str] = []
+    for e in tecno:
+        tipo = str(e.get("tipo") or "")
+        color = _TECNO_COLORS.get(tipo, "#8a8799")
+        extra = e.get("extra") or {}
+        detalle = ""
+        title = ""
+        if tipo == "hashtag":
+            fn = extra.get("funcion") or {}
+            detalle = str(fn.get("funcion") or extra.get("funcion_sintactica") or "")
+            title = str(fn.get("justificacion") or "")
+        elif tipo in ("mencion", "tecnografismo"):
+            uso = extra.get("uso") or {}
+            base = str(extra.get("posicion") or extra.get("subtipo") or "")
+            detalle = str(uso.get("uso") or base)
+            title = str(uso.get("justificacion") or "")
+        elif tipo == "emoji":
+            af = extra.get("afecto") or {}
+            detalle = str(af.get("candidato") or "")
+        elif tipo == "url":
+            detalle = str(e.get("valor_norm") or "")
+        valor = str(e.get("valor") or "")
+        chips.append(
+            f"<span title='{_esc(title)}' style='display:inline-block;"
+            f"font-size:0.68rem;font-family:DM Mono,monospace;color:{color};"
+            f"border:1px solid {color}44;border-radius:5px;"
+            f"padding:1px 7px;margin:2px 4px 2px 0;'>"
+            f"{_esc(valor)}"
+            + (f" <span style='color:#5a5d6e;'>· {_esc(detalle)}</span>"
+               if detalle else "")
+            + "</span>"
+        )
+    st.markdown(
+        f"<div style='margin:0.1rem 0 0.25rem;'>{''.join(chips)}</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _render_media(media: list[dict[str, Any]]) -> None:
+    """Thumbnail y descripción de la media del post, bajo la tarjeta."""
+    for m in media:
+        payload = m.get("descripcion_payload")
+        payload = payload if isinstance(payload, dict) else {}
+        src = m.get("url") or m.get("path_local")
+        mc1, mc2 = st.columns([1, 5])
+        with mc1:
+            mostrado = False
+            if src:
+                try:
+                    st.image(src, width=110)
+                    mostrado = True
+                except Exception:
+                    mostrado = False
+            if not mostrado:
+                st.markdown(
+                    "<div style='font-size:1.6rem;text-align:center;'>🖼</div>",
+                    unsafe_allow_html=True,
+                )
+        with mc2:
+            tipo_img = str(payload.get("tipo_imagen") or m.get("tipo") or "imagen")
+            desc = str(payload.get("descripcion") or "").strip()
+            ocr = str(m.get("ocr_text") or "").strip()
+            st.markdown(
+                f"<div style='font-size:0.78rem;color:#8a8799;line-height:1.5;'>"
+                f"<span class='badge badge-dim'>{_esc(tipo_img)}</span> "
+                f"{_esc(desc) if desc else '(sin descripción generada)'}"
+                + (f"<br><span style='color:#5a5d6e;'>texto en imagen: "
+                   f"{_esc(ocr[:160])}</span>" if ocr else "")
+                + "</div>",
+                unsafe_allow_html=True,
+            )
 
 
 def _render_deleted_emociones(
@@ -517,7 +679,7 @@ def _render_add_actor(
 def _render_emocion_card(
     ov: RevisionOverlay, codigo: str, unit_idx: int,
     em: dict[str, Any], kb_ids: list[str], kb_disp: dict[str, str],
-    fuente_canon: dict[tuple[int, int], list[str]] | None = None,
+    fuente_canon: dict[tuple[int, int], str] | None = None,
     exp_canon: dict[tuple[int, int], str] | None = None,
 ) -> None:
     """Tarjeta de UNA emoción: info completa en solo-lectura; la edición de cada
@@ -527,12 +689,14 @@ def _render_emocion_card(
     confirmado = eff.get("_confirmado", {})
 
     tipo = eff.get("tipo_emocion_canonico") or eff.get("tipo_emocion") or "?"
-    canon_exp = _canon_display(eff.get("experienciador_canonico"), kb_disp)
-    deixis_cids = (exp_canon or {}).get((unit_idx, eidx)) or []
-    if not canon_exp and deixis_cids:
-        canon_exp = _canon_label(deixis_cids[0], kb_disp)
-        if len(deixis_cids) > 1:
-            canon_exp += f" (+{len(deixis_cids) - 1})"
+    # El overlay admite varios experienciadores mientras se edita (el commit
+    # los desdobla en una emoción por referente); la tarjeta muestra el que
+    # rige esta emoción.
+    canon_exp = _canon_label(
+        primer_canonico(eff.get("experienciador_canonico"))
+        or (exp_canon or {}).get((unit_idx, eidx), ""),
+        kb_disp,
+    )
 
     juicio = em.get("juicio") or {}
     sug_by_path: dict[tuple[str, ...], dict[str, Any]] = {}
@@ -574,8 +738,11 @@ def _render_emocion_card(
             )
 
         det = em
-        fuente_cids = (fuente_canon or {}).get((unit_idx, eidx)) or []
-        canon_fte = "; ".join(_canon_label(c, kb_disp) for c in fuente_cids)
+        # La fuente de una emoción puede combinar referentes.
+        canon_fte = "; ".join(
+            _canon_label(c, kb_disp)
+            for c in (fuente_canon or {}).get((unit_idx, eidx), [])
+        )
         _element(ov, codigo, unit_idx, eidx, label="Experienciador",
                  path=["experienciador"], value=det.get("experienciador"),
                  det_value=det.get("experienciador"), sctx=sctx,

@@ -70,6 +70,15 @@ def export_graph(
     return paths
 
 
+def export_table(df: pd.DataFrame, out_dir: Path | str, nombre: str) -> Path:
+    """Exporta un DataFrame de análisis a CSV en el directorio de salida."""
+    out = Path(out_dir).expanduser().resolve()
+    out.mkdir(parents=True, exist_ok=True)
+    path = out / f"{nombre}.csv"
+    df.to_csv(path, index=False, encoding="utf-8")
+    return path
+
+
 def _gexf_safe(val: Any) -> Any:
     """GEXF no admite None ni tipos exóticos: castear a tipos simples."""
     if isinstance(val, (int, float, str, bool)):

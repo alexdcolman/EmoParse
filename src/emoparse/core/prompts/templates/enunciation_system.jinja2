@@ -10,9 +10,9 @@ HEURÍSTICAS DE INFERENCIA:
 {{ heuristicas }}
 
 {% endif %}
-
 REGLAS PARA EL ENUNCIADOR:
 
+- El enunciador nunca es un identificador técnico: ids, URLs o URIs (como "at://…" o hashes) no son enunciadores. Si solo hay identificadores, escribí "no identificado".
 - Si es explícito (firma, presentación, identificación clara), usá ese nombre.
 - Si es implícito pero deducible del contexto, inferilo y aclará en la
   justificación que es una inferencia.
@@ -22,22 +22,13 @@ REGLAS PARA EL ENUNCIADOR:
 REGLAS PARA LOS ENUNCIATARIOS:
 
 - Identificá TODOS los destinatarios distinguibles del discurso.
-- A cada uno asignale un `tipo` según los roles enunciativos válidos.
-  Estos roles dependen del género del discurso identificado:
-
-  * DISCURSO POLÍTICO (Verón):
-      - prodestinatario:      el ya convencido, base electoral
-      - paradestinatario:     el indeciso al que se busca persuadir
-      - contradestinatario:   el adversario, el que se ataca
-  * TUIT / REDES SOCIALES:
-      - seguidor:             quien suscribe a la postura
-      - oponente:             quien se opone
-      - audiencia_general:    público amplio sin alineación clara
-  * DISCURSO PÚBLICO / PERIODÍSTICO:
-      - audiencia_objetivo:   público al que se busca informar
-      - fuente:               quien provee información citada
-      - oponente_ideologico:  postura contraria mencionada
-
+- A cada uno asignale un `tipo`, eligiéndolo EXACTAMENTE de la lista de roles
+  válidos que aparece en el mensaje del usuario (dependen del tipo de discurso
+  de ESTE texto). NO uses un rol que no esté en esa lista.
+- El campo `actor` debe ser siempre un REFERENTE CONCRETO (persona,
+  colectivo, institución identificables en este discurso), NUNCA una
+  etiqueta de rol ("enunciador", "autor", "prodestinatario",
+  "contradestinatario", "destinatario"): el rol va en `tipo`.
 - Cada justificación debe citar elementos concretos del texto.
 - Si solo se identifica un enunciatario, devolvé una lista de un solo
   elemento. NO devuelvas lista vacía: todo discurso tiene al menos un
@@ -51,10 +42,13 @@ REGLAS PARA EL AUDITORIO:
   auditorio; el auditorio puede incluir a varios tipos de enunciatario a la vez.
 - Ejemplos: "los presentes en el Foro de Davos", "la audiencia de cadena
   nacional", "los asistentes al acto".
+- El campo `actor` del auditorio también debe ser un referente concreto,
+  nunca una etiqueta de rol.
 - Si no es determinable, devolvé lista vacía.
 {% if colectivos %}
 REGLAS PARA LOS COLECTIVOS DE IDENTIFICACIÓN:
 
+- Los colectivos de identificación pueden no existir: la lista vacía es válida. Un hashtag temático (#Milei), un actor mencionado o una institución de la que se habla ("el Estado argentino") no son colectivos de identificación del enunciador, salvo que el enunciador se identifique con ellos en el enunciado ("nosotros los peronistas").
 - Un colectivo de identificación es la entidad colectiva con la que el
   enunciador se identifica o a la que adscribe (no a quién se dirige).
 - Para cada colectivo, asigná una `clase` usando EXACTAMENTE uno de los
@@ -66,7 +60,4 @@ CLASES DE COLECTIVO VÁLIDAS (por tipo de discurso):
 
 {{ colectivos }}
 {% endif %}
-
-DICCIONARIO DE TIPOS DE DISCURSO (referencia para identificar roles):
-
-{{ diccionario }}
+- Las justificaciones deben ser sintéticas: una sola oración de no más de 25 palabras, con la cita mínima necesaria. Nunca un párrafo.

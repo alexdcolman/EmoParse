@@ -20,10 +20,31 @@ import streamlit as st
 from emoparse.app import data as data_layer
 
 
+#: Etiquetas y descripciones de la unidad de copresencia.
+_UNIDADES: dict[str, tuple[str, str]] = {
+    "frase": ("Por frase", "Pares de emociones que caen en una misma frase."),
+    "hilo": ("Por hilo", "Pares de emociones que coexisten en una misma "
+             "conversación (hilo)."),
+    "hashtag": ("Por #hashtag", "Pares de emociones que coexisten en los "
+                "posts de un mismo hashtag."),
+}
+
+
 def render(db_path: Path) -> None:
     """Renderiza la tab de co-ocurrencia de emociones."""
     st.markdown("### Co-ocurrencia de emociones")
-    st.caption("Pares de emociones que caen en una misma frase.")
+
+    unidad = "frase"
+    corpus_posts = data_layer.has_posts(db_path)
+    if corpus_posts:
+        unidad = st.radio(
+            "Unidad de copresencia",
+            list(_UNIDADES),
+            horizontal=True,
+            key="corr_unidad",
+            format_func=lambda u: _UNIDADES[u][0],
+        )
+    st.caption(_UNIDADES[unidad][1])
 
     df = data_layer.get_emociones_enriched(db_path)
     if df.empty:
@@ -40,32 +61,49 @@ def render(db_path: Path) -> None:
         st.info("Sin emociones tipificadas.")
         return
 
-    # Conjunto de emociones distintas por frase.
-    por_frase = (
-        df.groupby(["codigo", "frase_idx"])["emo"]
-        .agg(lambda s: sorted(set(s)))
-    )
+    # Grupo de copresencia → emoción → unidades (codigo, frase_idx).
+    grupos = _agrupar(db_path, df, unidad)
+    if not grupos:
+        st.info("Sin unidades de copresencia para este corpus.")
+        return
+
+    if unidad in ("hilo", "hashtag"):
+        etiqueta = "Hilos" if unidad == "hilo" else "Hashtags"
+        sel_grupos = st.multiselect(
+            f"{etiqueta} a incluir (vacío = todos)",
+            sorted(grupos),
+            key=f"corr_grupos_{unidad}",
+        )
+        if sel_grupos:
+            grupos = {k: grupos[k] for k in sel_grupos if k in grupos}
+        if not grupos:
+            st.info("Sin grupos seleccionados.")
+            return
 
     pair_counts: Counter = Counter()
     solo_counts: Counter = Counter()
     pair_frases: dict[tuple[str, str], list[tuple[str, int]]] = defaultdict(list)
-    n_frases_multi = 0
-    for (codigo, frase_idx), emos in por_frase.items():
+    n_multi = 0
+    for emo_units in grupos.values():
+        emos = sorted(emo_units)
         for e in emos:
             solo_counts[e] += 1
         if len(emos) >= 2:
-            n_frases_multi += 1
+            n_multi += 1
             for a, b in combinations(emos, 2):
                 pair_counts[(a, b)] += 1
-                pair_frases[(a, b)].append((codigo, int(frase_idx)))
+                pair_frases[(a, b)].extend(
+                    sorted(emo_units[a] | emo_units[b])
+                )
 
+    unidad_n = {"frase": "frases", "hilo": "hilos", "hashtag": "hashtags"}[unidad]
     if not pair_counts:
-        st.info("No hay frases con dos o más emociones distintas.")
+        st.info(f"No hay {unidad_n} con dos o más emociones distintas.")
         return
 
     st.markdown(
         f"<p style='color:#8a8799;font-size:0.85rem;'>"
-        f"{n_frases_multi} frases con copresencia · "
+        f"{n_multi} {unidad_n} con copresencia · "
         f"{len(pair_counts)} pares distintos.</p>",
         unsafe_allow_html=True,
     )
@@ -92,15 +130,18 @@ def render(db_path: Path) -> None:
                 denom = min(solo_counts[a], solo_counts[b]) or 1
                 assoc.loc[a, b] = pair_counts.get(_pair(a, b), 0) / denom
 
-    st.markdown("#### Matriz (color = asociación · número = frases juntas / diagonal = total)")
+    st.markdown(
+        f"#### Matriz (color = asociación · número = {unidad_n} juntas / "
+        "diagonal = total)"
+    )
     _render_matrix(assoc, counts_m)
 
     # ── Ranking de pares ──────────────────────────────────────────────────────
     st.markdown("#### Pares más frecuentes")
     pares = pd.DataFrame(
         [(a, b, n) for (a, b), n in pair_counts.items()],
-        columns=["emoción A", "emoción B", "frases juntas"],
-    ).sort_values("frases juntas", ascending=False).reset_index(drop=True)
+        columns=["emoción A", "emoción B", f"{unidad_n} juntas"],
+    ).sort_values(f"{unidad_n} juntas", ascending=False).reset_index(drop=True)
     st.dataframe(pares, use_container_width=True, hide_index=True)
 
     # ── Detalle de un par: frases con su análisis emocional ───────────────────
@@ -120,9 +161,58 @@ def render(db_path: Path) -> None:
         if not frases:
             st.info(f"No hay frases donde coexistan **{emo_a}** y **{emo_b}**.")
         else:
-            st.caption(f"{len(frases)} frase(s) con copresencia de «{emo_a}» y «{emo_b}».")
-            for codigo, frase_idx in frases:
+            tope = 40
+            st.caption(
+                f"{len(frases)} frase(s) del par «{emo_a}» × «{emo_b}»"
+                + (f" (se muestran las primeras {tope})."
+                   if len(frases) > tope else ".")
+            )
+            for codigo, frase_idx in frases[:tope]:
                 _render_frase_analisis(df, codigo, frase_idx)
+
+
+def _agrupar(
+    db_path: Path, df: pd.DataFrame, unidad: str
+) -> dict[str, dict[str, set[tuple[str, int]]]]:
+    """Grupo de copresencia → emoción → unidades (codigo, frase_idx).
+
+    'frase' agrupa por (codigo, frase_idx); 'hilo' por conversación (los
+    posts sin hilo forman su propio grupo); 'hashtag' por hashtag (un post
+    con dos hashtags integra ambos grupos).
+    """
+    grupos: dict[str, dict[str, set[tuple[str, int]]]] = defaultdict(
+        lambda: defaultdict(set)
+    )
+
+    def _sumar(clave: str, row) -> None:
+        grupos[clave][str(row.emo)].add((str(row.codigo), int(row.frase_idx)))
+
+    if unidad == "frase":
+        for row in df.itertuples(index=False):
+            _sumar(f"{row.codigo}·u{row.frase_idx}", row)
+    elif unidad == "hilo":
+        ctx = data_layer.get_post_contexto(db_path)
+        conv = (
+            dict(zip(ctx["codigo"].astype(str), ctx["conversacion_id"]))
+            if not ctx.empty else {}
+        )
+        for row in df.itertuples(index=False):
+            clave = conv.get(str(row.codigo))
+            if clave is None or (isinstance(clave, float) and pd.isna(clave)) \
+                    or not str(clave).strip():
+                clave = str(row.codigo)
+            _sumar(str(clave), row)
+    elif unidad == "hashtag":
+        pares = data_layer.get_post_hashtags(db_path)
+        if pares.empty:
+            return {}
+        tags_por_post: dict[str, list[str]] = defaultdict(list)
+        for r in pares.itertuples(index=False):
+            tags_por_post[str(r.codigo)].append(str(r.hashtag))
+        for row in df.itertuples(index=False):
+            for tag in tags_por_post.get(str(row.codigo), []):
+                _sumar(f"#{tag}", row)
+    return {k: dict(v) for k, v in grupos.items()}
 
 
 def _pair(a: str, b: str) -> tuple[str, str]:

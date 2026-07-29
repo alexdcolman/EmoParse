@@ -11,10 +11,18 @@ from dataclasses import dataclass, field
 
 @dataclass(frozen=True, slots=True)
 class StageNode:
-    """Nodo del DAG de stages."""
+    """Nodo del DAG de stages.
+
+    `deps` son dependencias duras: la stage no puede correr sin ellas y
+    habilitarla exige habilitarlas. `soft_deps` son de orden: si la otra
+    stage está habilitada, corre antes; si no, esta corre igual. Sirven para
+    los enriquecedores opcionales —una stage que mejora su salida con el
+    output de otra pero funciona sin él— sin volver obligatoria a la otra.
+    """
 
     name: str
     deps: tuple[str, ...] = field(default_factory=tuple)
+    soft_deps: tuple[str, ...] = field(default_factory=tuple)
 
 
 class StageDAG:
@@ -28,7 +36,7 @@ class StageDAG:
 
         all_names = set(names)
         for node in nodes:
-            unknown = set(node.deps) - all_names
+            unknown = (set(node.deps) | set(node.soft_deps)) - all_names
             if unknown:
                 raise ValueError(
                     f"Stage '{node.name}' depende de stages inexistentes: "
@@ -51,7 +59,11 @@ class StageDAG:
         return self._nodes[name].deps
 
     def transitive_deps(self, name: str) -> set[str]:
-        """Dependencias transitivas de una stage."""
+        """Dependencias duras transitivas de una stage.
+
+        Solo las duras: son las que hay que habilitar junto con la stage. Las
+        blandas ordenan pero no arrastran, así que no entran acá.
+        """
         if name not in self._nodes:
             raise KeyError(f"Stage desconocida: {name}")
         result: set[str] = set()
@@ -89,11 +101,18 @@ class StageDAG:
     # ── Helpers internos ─────────────────────────────────────────────────────
 
     def _compute_toposort(self) -> tuple[str, ...]:
-        """Topological sort de Kahn."""
+        """Topological sort de Kahn.
+
+        Ordena por dependencias duras y blandas: ambas imponen orden. La
+        diferencia entre una y otra es de habilitación, no de secuencia, y
+        se resuelve en `validate_subset` (la dura exige a su dep, la blanda
+        no). Como todo el grafo es acíclico incluyendo las blandas, sumarlas
+        acá no puede introducir ciclos.
+        """
         indegree: dict[str, int] = {n: 0 for n in self._nodes}
         consumers: dict[str, list[str]] = {n: [] for n in self._nodes}
         for node in self._nodes.values():
-            for dep in node.deps:
+            for dep in (*node.deps, *node.soft_deps):
                 indegree[node.name] += 1
                 consumers[dep].append(node.name)
 
@@ -136,14 +155,20 @@ EMOPARSE_DAG = StageDAG(
         # Ambas consumen `tecno_entidades`.
         StageNode("emoji_affect", deps=("technoparse",)),
         StageNode("hashtag_semiotics", deps=("technoparse",)),
+        # Uso pragmático de menciones y tecnografismos en contexto.
+        StageNode("tecno_usage", deps=("technoparse",)),
         # Multimodal: describe media adjunta; corre temprano para servir de
         # contexto a las stages de emociones. Requiere backend con --mmproj.
         StageNode("vision_describe", deps=()),
         StageNode("summarizer", deps=()),
         StageNode("metadata", deps=("summarizer",)),
         StageNode("enunciation", deps=("metadata",)),
+        # actors enriquece a emotions pero no la condiciona: EmotionsStage
+        # tolera su ausencia (pasa el contexto de actores vacío). Es soft_dep
+        # para que, cuando ambas corran, actors vaya primero, sin volver
+        # obligatorio a actors.
         StageNode("actors", deps=("enunciation",)),
-        StageNode("emotions", deps=("actors",)),
+        StageNode("emotions", deps=("enunciation",), soft_deps=("actors",)),
         StageNode("emotions_pass2", deps=("emotions",)),
         StageNode("explode_emotions", deps=("emotions",)),
         StageNode("deixis", deps=("explode_emotions",)),

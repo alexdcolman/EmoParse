@@ -6,102 +6,62 @@ Una emoción es un estado afectivo atribuible a un actor (experienciador)
 que se manifiesta o se infiere en el discurso. Incluye emociones explícitas
 ("tengo miedo") e inferibles ("temblando frente al juez" → miedo).
 
-ONTOLOGÍA DE EMOCIONES (referencia):
+MODOS DE EXISTENCIA DE LA EMOCIÓN (referencia):
 
 {{ ontologia }}
 
 CONFIGURACIONES DEL SIMULACRO EMOCIONAL (TIPO_CONF):
 
-Cada emoción detectada debe asignarse a UNA de las 8 configuraciones
-siguientes según cómo es portada en la unidad textual. Elegí la
-configuración predominante; si hay varias activas, priorizá la marca
-léxica/sintáctica más directa (sustantivo > adjetivo > verbo
-psicológico) por sobre las inferenciales.
-
-Las configuraciones sostenidas en sustantivos, adjetivos o verbos
-psicológicos SOLO aplican si la marca léxica pertenece a la FAMILIA
-LÉXICA de una emoción ("amor", "amaba", "amado"). Una palabra que no
-nombra ni deriva de una emoción ("inclaudicable", "aliado") NO es marca
-léxica emocional: la emoción se porta por otra vía (indicadores
-cognitivos, de comportamiento, axiológicos, descriptivo-narrativos o
-transposición).
-
-La configuración 8 (transposicion_situacion_reconocimiento_potencial)
-se usa cuando ninguna marca léxica o conductual la determina con
-claridad y la emoción se reconstruye desde la situación enunciativa.
+Cada emoción se asigna a UNA de estas ocho configuraciones, según cómo la
+porta la unidad. Usá exactamente el nombre canónico de la clave.
 
 {{ configuraciones }}
 
-REGLAS:
+CAMPOS DE CADA EMOCIÓN (usá EXACTAMENTE estas claves abreviadas):
 
-- Por cada emoción identificada, indicá:
-    * experienciador:   referente CONCRETO del actor que experimenta la
-                        emoción (ej. "el presidente", "los manifestantes").
-                        Puede ocupar el rol de enunciador, enunciatario o
-                        actor mencionado, pero NUNCA uses la etiqueta de
-                        rol como valor ("enunciador", "enunciatario/s",
-                        "actor"): identificá a QUIÉN designa en este
-                        discurso. Es la inferencia, no la marca.
-    * experienciador_marca: el sintagma o ítem léxico LITERAL y BREVE de la
-                        unidad que identifica al experienciador ("nosotros",
-                        "el presidente", o el verbo si el sujeto es tácito:
-                        "tienen miedo"). NUNCA una cláusula entera.
-    * tipo_emocion:     nombre concreto (ej. miedo, alegría, indignación).
-                        NO uses categorías abstractas tipo "negativa".
-    * fuente_inferencia: el actor o circunstante CONCRETO que DESENCADENA la
-                        emoción en el experienciador, es decir su ORIGEN
-                        (nunca la etiqueta de rol "enunciador",
-                        "enunciatario/s" o "actor", sino a quién designan).
-                        Sintagma nominal BREVE (máx ~6 palabras), no una
-                        explicación. "no identificado" si no es determinable.
-    * fuente_marca:     el sintagma o ítem léxico LITERAL que nombra esa fuente,
-                        CONTIGUO y BREVE (máx ~6 palabras), copiado tal cual del
-                        texto, SIN elipsis ("...") ni saltos entre cláusulas
-                        ("la barbarie invasora"). "no identificado" si no aparece
-                        en la unidad.
-    * modo_existencia:  realizada | potencial | actual | virtual | inducida_proyectada
-                        - realizada:           efectivamente sentida en el discurso.
-                        - potencial:           susceptible de aparecer pero no manifiesta.
-                        - actual:              ocurriendo en el presente del enunciado.
-                        - virtual:             presupuesta sin manifestarse.
-                        - inducida_proyectada: provocada/atribuida por el discurso a otros.
-    * tipo_configuracion: una de las 8 configuraciones listadas arriba
-                          (usá exactamente el nombre canónico de la clave).
+  * exp   experienciador: el referente CONCRETO que siente la emoción ("el
+                       presidente", "los manifestantes"). Es la
+                       inferencia, no la marca.
+  * expm  marca del experienciador: el sintagma o ítem léxico LITERAL y BREVE
+                       de la unidad que lo identifica ("nosotros", "el presidente",
+                       o el verbo si el sujeto es tácito: "tienen miedo"). Nunca
+                       una cláusula entera.
+  * emo   tipo de emoción: el nombre de UNA emoción, en sustantivo.
+  * fue   fuente: el actor o circunstante CONCRETO que DESENCADENA la emoción
+                       en el experienciador, es decir su ORIGEN. Sintagma
+                       nominal BREVE (máx ~6 palabras), no una explicación.
+                       "no identificado" si no es determinable.
+  * fuem  marca de la fuente: el sintagma LITERAL que la nombra, CONTIGUO y
+                       BREVE (máx ~6 palabras), copiado tal cual del texto,
+                       sin elipsis ("...") ni saltos entre cláusulas. "no
+                       identificado" si no aparece en la unidad.
+  * modo  modo de existencia: uno de los modos listados arriba, o
+                       inducida_proyectada (provocada o atribuida por el
+                       discurso a otro actor).
+  * conf  configuración: el NÚMERO (1 a 8) de la configuración que le
+                       corresponde, según la lista de arriba.
+{% if heuristicas %}
+REGLAS DE INFERENCIA:
 
-- UNA entidad por experienciador y por fuente; nunca una conjunción. Si un rol
-  enumera varias entidades distintas ("los colectivistas y los socialistas";
-  "paz y prosperidad"), devolvé UNA entrada por entidad de ESE rol (misma
-  emoción y tipo). Ej.: "yo deseo paz y prosperidad" → 2 entradas (fuente "paz"
-  / fuente "prosperidad"); "me irritan los colectivistas y los socialistas" → 2
-  entradas. Partí solo el rol enumerado (no hagas el producto de ambos). Los
-  plurales deícticos ("nosotros", "ustedes") NO se parten: quedan como UNA marca.
-{% if alcance %}
-
-- ALCANCE RESTRINGIDO: detectá ÚNICAMENTE emociones cuyo experienciador sea {{ alcance }}. Ignorá (no devuelvas) emociones de cualquier otro actor, aunque estén presentes en la unidad.
+{{ heuristicas }}
+{% endif %}{% if alcance %}
+ALCANCE RESTRINGIDO: detectá ÚNICAMENTE emociones cuyo experienciador sea
+{{ alcance }}. Ignorá (no devuelvas) las de cualquier otro actor, aunque
+estén presentes en la unidad.
 {% else %}
-
-- Identificá emociones de cualquier actor mencionado en la unidad,
-  incluyendo enunciador y enunciatarios.
+ALCANCE: identificá emociones de cualquier actor presente en la unidad,
+incluidos el enunciador y los enunciatarios.
 {% endif %}
-
-- NO uses contenido de OTRAS unidades para inferir emociones de una.
-
-- Si no hay emociones identificables, devolvé lista vacía. NO inventes.
-
-- Evitá duplicar la misma emoción para el mismo experienciador en
-  la misma unidad (a menos que tengan modo_existencia distinto).
-
-- DEBES devolver exactamente una entrada por unidad del prompt, con
-  su `unit_idx` correspondiente.
-
+SALIDA: devolvé exactamente una entrada por unidad del prompt, con su
+`unit_idx` y la lista de emociones de esa unidad (vacía si no hay).
 {% if resumen %}
 RESUMEN DEL DISCURSO (contexto de fondo, NO fuente de emociones):
 Solo para desambiguar el experienciador, la fuente o el tipo de una emoción
 que YA detectás en la unidad. No agregues emociones que la unidad no exprese.
 
 {{ resumen }}
-
-{% endif %}CONTEXTO GLOBAL DEL DISCURSO:
+{% endif %}
+CONTEXTO GLOBAL DEL DISCURSO:
 
   Título:     {{ titulo }}
   Tipo:       {{ tipo_discurso }}

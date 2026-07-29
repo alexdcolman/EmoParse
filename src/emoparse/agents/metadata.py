@@ -21,6 +21,22 @@ from emoparse.core.backend.base import LLMBackend
 from emoparse.core.prompts import metadata as prompts
 from emoparse.core.schemas import MetadatosSchema
 from emoparse.genres.base import Genre
+from emoparse.genres.schema_factory import metadatos_schema
+
+
+def _opt(row, key: str):
+    """Valor de una celda opcional del DF ('' / NaN / None → None)."""
+    value = row.get(key)
+    if value is None:
+        return None
+    try:
+        import pandas as _pd
+        if _pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    s = str(value).strip()
+    return s or None
 
 
 class MetadataAgent(BaseAgent[MetadatosSchema]):
@@ -52,10 +68,12 @@ class MetadataAgent(BaseAgent[MetadatosSchema]):
         Args:
             backend: Backend LLM ya inicializado.
             diccionario_tipos: Diccionario de tipos de discurso usado en el
-                system prompt.
+                system prompt (referencia para géneros de tipo libre).
             retry_config: Política opcional de reintentos.
-            genre: Parámetro reservado para compatibilidad de configuración
-                por género. Actualmente no modifica prompts ni schema.
+            genre: Configuración opcional de género discursivo. Si declara
+                `tipos_discurso`, restringe el schema de `tipo_discurso` a
+                ese vocabulario cerrado y puede sustituir el template del
+                system prompt vía `prompt_overrides`.
         """
         # Debe inicializarse antes de super().__init__ porque la base
         # construye el system prompt durante el init.
@@ -63,12 +81,35 @@ class MetadataAgent(BaseAgent[MetadatosSchema]):
             diccionario_tipos, ensure_ascii=False, indent=2
         )
         self._genre = genre
+
+        # Si el género cierra el vocabulario, reemplazar el schema antes de
+        # llamar a super().__init__, para que la clase base use la versión
+        # correcta durante la inicialización.
+        if genre is not None:
+            restricted = metadatos_schema(genre)
+            if restricted is not None:
+                self.SCHEMA = restricted  # type: ignore[misc]
+
         super().__init__(backend, retry_config=retry_config)
 
     # ── Hooks de BaseAgent ───────────────────────────────────────────────────
 
     def _build_system(self) -> str:
-        return prompts.render_system(diccionario=self._diccionario_str)
+        template = "metadata_system"
+        tipos: str | None = None
+        if self._genre is not None:
+            template = self._genre.prompt_overrides.get("metadata", template)
+            if self._genre.tipos_discurso:
+                descs = self._genre.tipos_discurso_descripciones
+                tipos = "\n".join(
+                    f"- {t}: {descs[t]}" if t in descs else f"- {t}"
+                    for t in self._genre.tipos_discurso
+                )
+        return prompts.render_system(
+            diccionario=self._diccionario_str,
+            tipos=tipos,
+            template=template,
+        )
 
     def _build_user(self, row: pd.Series) -> str:
         codigo = str(row["codigo"])
@@ -80,6 +121,9 @@ class MetadataAgent(BaseAgent[MetadatosSchema]):
             codigo=codigo,
             resumen=resumen,
             fragmentos=fragmentos,
+            bio=_opt(row, "autor_bio"),
+            adjuntos=_opt(row, "adjuntos"),
+            contexto_hilo=_opt(row, "contexto_hilo"),
         )
 
     def _map_to_columns(

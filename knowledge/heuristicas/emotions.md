@@ -1,61 +1,24 @@
-Reglas heurísticas para la inferencia de emociones en discursos:
+Reglas de inferencia emocional. Se aplican a cada unidad por separado.
 
-Estas reglas se aplican para identificar emociones que pueden estar explícitas o inferibles a partir del texto. No inventes emociones; solo deducílas si hay indicios semánticos, sintácticos o contextuales suficientes.
+Detección
+- No inventes emociones: registrá solo las que tienen indicio léxico, sintáctico o situacional en la unidad analizada. Si no hay ninguno, devolvé lista vacía.
+- No uses contenido de otras unidades para inferir emociones de una.
+- No repitas la misma emoción para el mismo experienciador en la misma unidad, salvo que difieran en modo de existencia.
 
-1. Sostenido en sustantivos de emoción
-   - Identificá emociones nombradas directamente mediante sustantivos pertenecientes a la familia léxica de alguna emoción (por ejemplo: "miedo", "alegría", "tristeza").
-   - Considerá el contexto para determinar el actor afectado.
-   - Ejemplo:
-     - Frase: "Su tristeza era evidente."
-     - Emoción inferida: "tristeza" atribuida al sujeto de la frase.
+Experienciador y fuente
+- Cada emoción tiene UN experienciador. Si dos actores sienten la misma emoción, devolvé una entrada por actor, cada una con su propio modo de existencia: el enunciador puede sentirla realizada y proyectarla al auditorio como potencial.
+- Nunca fusiones experienciadores distintos en una sola etiqueta ("macri_milei", "javier milei y asistentes"): son entradas separadas. La fuente, en cambio, puede combinar entidades ("me irritan los colectivistas y los socialistas" es una sola emoción).
+- Si el segundo término es un posesivo anafórico sobre el primero, resolvé la anáfora al separar: "Carlitos y su círculo cercano" da "Carlitos" y "círculo cercano de Carlitos". Un "su X" nunca queda suelto como referente.
+- El experienciador es un referente con nombre, nunca el deíctico ni el rol ("nosotros", "enunciador", "enunciatario") ni una construcción sobre ellos. Si un plural deíctico ("nosotros", "nuestro") abarca varios referentes distinguibles (el enunciador y su gobierno, el enunciador y el pueblo), devolvé una entrada por referente. La marca, en cambio, se transcribe entera: los plurales deícticos no se parten como marca.
 
-2. Sostenido en adjetivos de emoción
-   - Buscá emociones expresadas mediante adjetivos calificativos pertenecientes a la familia léxica de alguna emoción (por ejemplo: "feliz", "ansioso", "enojado").
-   - Asegurate de asociarlas correctamente al actor que experimenta la emoción.
-   - Ejemplo:
-     - Frase: "Estaba ansioso ante la noticia."
-     - Emoción inferida: "ansiedad" del actor mencionado.
+Denominación de las categorías
+- Una sola denominación por campo. Si dudás entre dos, escribí solo la primera: nunca "Argentina / Estado argentino", nunca "curiosidad / ironía".
+- tipo_emocion nombra UNA emoción, en sustantivo y sin agregados: "indignación", no "frustración, arrepentimiento", no "estrés/agobio", no "sentirse traicionado", no "alegría, justificación: …". Sin comillas, comas, barras, paréntesis ni glosas.
 
-3. Ordenados alrededor de verbos psicológicos
-   - Detectá verbos que denotan procesos emocionales o estados afectivos (por ejemplo: "temer", "alegrarse", "lamentar").
-   - Inferí la emoción a partir de la conjugación y el sujeto del verbo.
-   - Ejemplo:
-     - Frase: "Lamentó la pérdida de su amigo."
-     - Emoción inferida: "tristeza" del actor que lamenta.
+Modo de existencia
+- Las emociones atribuidas a la audiencia o a los destinatarios son siempre potenciales, salvo que el texto simule explícitamente que ya la sienten ("entiendo que estén enojados" da realizada).
 
-4. Cualificación afectiva por indicadores cognitivos
-   - Identificá emociones inferibles a partir de juicios, evaluaciones o inferencias sobre los estados afectivos de quienes experimentan esas emociones.
-   - Estas expresiones no mencionan la emoción directamente, pero activan marcos cognitivos asociados.
-   - Ejemplo:
-     - Frase: "No podía soportar la injusticia."
-     - Emoción inferida: "indignación" del actor afectado.
-
-5. Cualificación afectiva por indicadores de comportamiento
-   - Inferí emociones a partir de gestos, posturas, actitudes o acciones que reflejan estados afectivos.
-   - Ejemplo:
-     - Frase: "Se tapó la cara y comenzó a llorar."
-     - Emoción inferida: "tristeza" del actor que llora.
-
-6. Cualificación afectiva por indicadores axiológicos
-   - Identificá emociones inferibles de la valoración del discurso: lo que se presenta como deseable, indeseable, legítimo o ilegítimo.
-   - Ejemplo:
-     - Frase: "Rechazaron la propuesta injusta."
-     - Emoción inferida: "indignación" de los actores que rechazan.
-
-7. Cualificación afectiva por componentes descriptivo-narrativos
-   - Inferí emociones a partir de la escenificación de acontecimientos o situaciones narradas.
-   - Ejemplo:
-     - Frase: "El incendio devoró todo el vecindario mientras ellos huían despavoridamente."
-     - Emoción inferida: "pánico" de los actores afectados.
-
-8. Cualificación afectiva por transposición de la situación de reconocimiento potencial
-   - Identificá emociones inferibles desde la forma en que el discurso organiza una situación potencialmente emocionante.
-   - Ejemplo:
-     - Frase: "Con respecto a los informes que dan cuenta de estos hechos, vemos la misma lógica que en el caso anterior, donde quienes resultan investigados son las víctimas en lugar de los victimarios."
-     - Emoción inferida: "indignación" atribuida como emoción potencial al enunciatario del discurso.
-   
-Instrucciones generales:
-- No inventes emociones; deducí solo si hay indicios claros.
-- Asociá cada emoción al sujeto correspondiente que la experimenta según el contexto.
-- Evitá repetir emociones ya registradas para el mismo actor en la misma frase.
-- Considerá contexto discursivo y frases cercanas para desambiguar el tipo de emoción.
+Configuración del simulacro (TIPO_CONF)
+- Elegí la configuración predominante. Si hay varias activas, priorizá la marca léxica o sintáctica más directa (sustantivo > adjetivo > verbo psicológico) por sobre las inferenciales.
+- Las configuraciones sostenidas en sustantivos, adjetivos o verbos psicológicos solo aplican si la marca pertenece a la familia léxica de una emoción ("amor", "amaba", "amado"). Una palabra que no nombra ni deriva de una emoción ("inclaudicable", "aliado") no es marca léxica emocional: ahí la emoción se porta por indicadores cognitivos, de comportamiento, axiológicos, descriptivo-narrativos o por transposición.
+- Usá transposicion_situacion_reconocimiento_potencial cuando ninguna marca léxica ni conductual la determina con claridad y la emoción se reconstruye desde la situación enunciativa.

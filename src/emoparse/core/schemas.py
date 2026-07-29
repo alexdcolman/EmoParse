@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from typing import Literal, Annotated
+from typing import Literal, Annotated, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, RootModel
 
@@ -45,15 +45,16 @@ class MetadatosSchema(StrictBase):
         description="Justificación breve del tipo identificado, basada en el texto",
     )
     ciudad: str = Field(
-        description="Ciudad desde donde se emite el discurso. "
-                    "Si no se puede determinar, devolver 'no identificado'",
+        description="Ciudad desde donde se emite el discurso, SOLO si el "
+                    "texto la menciona o declara. Si no: 'no identificado'",
     )
     provincia: str = Field(
-        description="Provincia o estado. Si no se puede determinar, "
-                    "devolver 'no identificado'",
+        description="Provincia o estado, SOLO si el texto lo menciona o "
+                    "declara. Si no: 'no identificado'",
     )
     pais: str = Field(
-        description="País. Si no se puede determinar, devolver 'no identificado'",
+        description="País, SOLO si el texto lo menciona o declara. NO "
+                    "inferirlo del idioma ni del tema. Si no: 'no identificado'",
     )
     lugar_justificacion: str = Field(
         description="Justificación breve del lugar identificado",
@@ -64,31 +65,69 @@ class MetadatosSchema(StrictBase):
 #  Enunciación
 # ══════════════════════════════════════════════════════════════════════════════
 
-#: Roles enunciativos consolidados de los géneros del proyecto.
+#: Roles enunciativos consolidados de los géneros del proyecto. Es el universo
+#: base (fallback sin género); cada género restringe `EnunciatarioSchema.tipo`
+#: a su propio subconjunto vía `schema_factory`. La destinación se cruza por
+#: tipo de discurso: la tríada veroniana (político), las figuras de Charaudeau
+#: (periodístico e institucional) y las de la bibliografía de audiencias en
+#: redes, más dos posiciones transversales del dispositivo.
 TipoEnunciatario = Literal[
-    # Discurso político (Verón)
+    # Transversales del dispositivo
+    "destinatario_mencionado",
+    "audiencia_ambiente",
+    # Político (Verón)
     "prodestinatario",
     "paradestinatario",
     "contradestinatario",
-    # Tuit / redes sociales
-    "seguidor",
-    "oponente",
-    "audiencia_general",
-    # Periodismo / discurso público
-    "audiencia_objetivo",
-    "fuente",
-    "oponente_ideologico",
+    # Periodístico informativo (Charaudeau + redes)
+    "lector_ciudadano",
+    "instancia_blanco",
+    "fuente_referente",
+    # Institucional
+    "ciudadano_usuario",
+    "comunidad_interna",
+    "rendicion_cuentas",
+    # Humor / meme
+    "comunidad_sentido",
+    "no_iniciado",
+    "blanco_burla",
+    # Personal / cotidiano
+    "circulo_afectivo",
+    "autodestinatario",
+    "testigo_indeseado",
+    # Promocional
+    "enunciatario_target",
+    "comunidad_marca",
+    "prescriptor_amplificador",
 ]
+
+
+#: Cotas de longitud de los campos de texto libre de la estructura enunciativa.
+#: No son un criterio de estilo: la gramática las traduce a repeticiones
+#: acotadas, de modo que un string siempre termina. Sin ellas, un string podía
+#: crecer sin límite y el sampler agotaba el contexto con relleno. Los valores
+#: dan margen sobre lo que piden los prompts (justificación de una oración,
+#: denominaciones breves).
+_MAX_JUSTIFICACION = 300
+_MAX_ACTOR = 160
+_MAX_CLASE = 80
+
+#: Tope de entradas por lista de la estructura enunciativa. Mismo criterio: la
+#: gramática acota la repetición y garantiza cierre del array. Holgado respecto
+#: de lo que devuelve un discurso real.
+_MAX_ENTRADAS_ENUNCIACION = 12
 
 
 class EnunciadorSchema(StrictBase):
     """Quién emite el discurso. Persona, institución o colectivo."""
     actor: str = Field(
+        max_length=_MAX_ACTOR,
         description="Nombre o denominación del enunciador. "
                     "Si es implícito, inferir del contexto. "
                     "Si es totalmente indeterminable: 'no identificado'.",
     )
     justificacion: str = Field(
+        max_length=_MAX_JUSTIFICACION,
         description="Justificación breve de la identificación, citando "
                     "elementos del texto.",
     )
@@ -100,6 +139,7 @@ class EnunciatarioSchema(StrictBase):
     Campo `tipo` restringido vía Literal a roles válidos.
     """
     actor: str = Field(
+        max_length=_MAX_ACTOR,
         description="Actor o grupo destinatario. Si es genérico: "
                     "'audiencia general', 'simpatizantes', etc.",
     )
@@ -107,6 +147,7 @@ class EnunciatarioSchema(StrictBase):
         description="Rol enunciativo según el género del discurso.",
     )
     justificacion: str = Field(
+        max_length=_MAX_JUSTIFICACION,
         description="Justificación breve, citando elementos del texto.",
     )
 
@@ -119,11 +160,13 @@ class AuditorioSchema(StrictBase):
     público concreto presente en la situación de enunciación.
     """
     actor: str = Field(
+        max_length=_MAX_ACTOR,
         description="Auditorio directo del discurso (p. ej. 'los presentes en "
                     "el Foro de Davos', 'la cadena nacional'). Si es "
                     "indeterminable: 'no identificado'.",
     )
     justificacion: str = Field(
+        max_length=_MAX_JUSTIFICACION,
         description="Justificación breve, citando elementos del texto o de la "
                     "situación de enunciación.",
     )
@@ -137,16 +180,19 @@ class ColectivoIdentificacionSchema(StrictBase):
     discurso). Las clases inválidas se descartan al persistir.
     """
     clase: str = Field(
+        max_length=_MAX_CLASE,
         description="Clase del colectivo según la ontología provista para el "
                     "tipo de discurso (p. ej. institucional, partidario, "
                     "ideológico). Usar EXACTAMENTE uno de los identificadores "
                     "listados.",
     )
     nombre: str = Field(
+        max_length=_MAX_ACTOR,
         description="Denominación concreta del colectivo (p. ej. 'gobierno de "
                     "Milei', 'La Libertad Avanza', 'libertarismo').",
     )
     justificacion: str = Field(
+        max_length=_MAX_JUSTIFICACION,
         description="Justificación breve, citando elementos del texto.",
     )
 
@@ -157,17 +203,20 @@ class EnunciacionSchema(StrictBase):
         description="El enunciador del discurso.",
     )
     enunciatarios: list[EnunciatarioSchema] = Field(
+        max_length=_MAX_ENTRADAS_ENUNCIACION,
         description="Lista de enunciatarios identificados. Puede haber 1 o "
                     "varios. Si solo se identifica uno, devolver una lista "
                     "con un solo elemento.",
     )
     auditorio: list[AuditorioSchema] = Field(
+        max_length=_MAX_ENTRADAS_ENUNCIACION,
         description="Auditorio directo (quienes escuchan o leen el discurso). "
                     "Puede haber varios. Devolvé lista vacía SOLO si es "
                     "realmente indeterminable; si el discurso da pistas del "
                     "público presente, identificalo.",
     )
     colectivos: list[ColectivoIdentificacionSchema] = Field(
+        max_length=_MAX_ENTRADAS_ENUNCIACION,
         description="Colectivos de identificación del enunciador, según la "
                     "ontología provista. Pueden ser varios. Devolvé lista vacía "
                     "solo si no hay evidencia en el discurso.",
@@ -253,6 +302,18 @@ TipoConfiguracion = Literal[
 ]
 
 
+#: Id numérico de cada configuración, en el orden de `TipoConfiguracion`.
+#: La detección devuelve el id y no el identificador largo: el nombre canónico
+#: cuesta unos quince tokens por emoción y el id uno, sin perder restricción
+#: (el sampler elige de un vocabulario igual de cerrado). El agente resuelve
+#: id → nombre antes de persistir, así que lo almacenado no cambia.
+TipoConfiguracionId = Literal[1, 2, 3, 4, 5, 6, 7, 8]
+
+CONFIGURACION_POR_ID: dict[int, str] = {
+    i: nombre for i, nombre in enumerate(get_args(TipoConfiguracion), start=1)
+}
+
+
 #: Derivación determinista: tipo_configuracion → (modo_semiotizacion,
 #: modo_identificacion). Reemplaza la inferencia LLM de esas dos variables, que
 #: están atadas a la configuración. Se pierde la identificación "mixta".
@@ -279,31 +340,44 @@ def semiosis_from_config(tipo_configuracion: str | None) -> tuple[str, str]:
 class EmocionSchema(StrictBase):
     """Una emoción detectada en una unidad textual."""
     experienciador: str = Field(
+        alias="exp",
         description="Referente del experienciador: actor que experimenta la "
                     "emoción (enunciador, enunciatario o actor mencionado). Es "
-                    "la INFERENCIA del referente, no la marca de superficie.",
+                    "la INFERENCIA del referente, no la marca de superficie. "
+                    "Exactamente UNA entidad: nunca una conjunción ni una "
+                    "etiqueta que fusione nombres distintos ('macri_milei'). "
+                    "Si más de un actor experimenta la emoción, devolver una "
+                    "emoción por experienciador.",
     )
     experienciador_marca: str = Field(
+        alias="expm",
         description="Marca discursiva del experienciador: la expresión LITERAL "
                     "de la unidad que lo porta ('nosotros', 'el presidente', "
                     "sujeto tácito como 'tienen miedo'). Transcribila tal cual.",
     )
     tipo_emocion: str = Field(
+        alias="emo",
         description="Nombre de la emoción (ej. miedo, alegría, indignación). "
                     "Usar nombres concretos, no categorías abstractas.",
     )
     fuente_marca: str = Field(
+        alias="fuem",
         description="Marca discursiva de la FUENTE de la emoción: la expresión "
                     "LITERAL que la porta ('la barbarie invasora', 'el "
                     "capitalismo de libre empresa'). Si la fuente no es "
                     "identificable en la unidad, poné \"no identificado\".",
     )
     fuente_inferencia: str = Field(
-        description="Quién o qué desencadena la emoción. Si no se puede "
+        alias="fue",
+        description="Quién o qué desencadena la emoción. Exactamente UNA "
+                    "entidad: nunca una conjunción ni una etiqueta que fusione "
+                    "nombres distintos ('macri_milei'); si hay varias fuentes, "
+                    "devolver una emoción por fuente. Si no se puede "
                     "determinar, escribir literalmente 'no identificado'. "
                     "NO dejar vacío.",
     )
     modo_existencia: ModoExistenciaEmocion = Field(  # type: ignore[valid-type]
+        alias="modo",
         description="Modo de existencia semiótica de la emoción: "
                     "realizada (efectivamente sentida), "
                     "potencial (susceptible de aparecer), "
@@ -311,25 +385,18 @@ class EmocionSchema(StrictBase):
                     "virtual (presupuesta, no manifiesta), "
                     "inducida_proyectada (provocada o atribuida por el discurso).",
     )
-    tipo_configuracion: TipoConfiguracion = Field(  # type: ignore[valid-type]
-        description="Configuración del simulacro emocional (TIPO_CONF). "
-                    "Identifica cómo la emoción es portada en la unidad: "
-                    "sostenido_en_sustantivos, sostenido_en_adjetivos, "
-                    "ordenado_alrededor_de_verbos_psicologicos, "
-                    "cualificacion_por_indicadores_cognitivos, "
-                    "cualificacion_por_indicadores_comportamiento, "
-                    "cualificacion_por_indicadores_axiologicos, "
-                    "cualificacion_por_componentes_descriptivo_narrativos, "
-                    "transposicion_situacion_reconocimiento_potencial. "
+    tipo_configuracion: TipoConfiguracionId = Field(  # type: ignore[valid-type]
+        alias="conf",
+        description="Id de la configuración del simulacro emocional "
+                    "(TIPO_CONF), del 1 al 8 según la lista provista. "
+                    "Identifica cómo la emoción es portada en la unidad. "
                     "Las configuraciones sostenidas en sustantivos, adjetivos "
                     "o verbos psicológicos SOLO aplican si la marca léxica "
                     "pertenece a la familia léxica de una emoción ('amor', "
-                    "'amaba', 'amado'); una palabra no emocional ('inclaudicable') "
-                    "no cuenta como tal. "
-                    "DEBE elegirse exactamente una; si ninguna marca léxica "
-                    "lo determina con claridad, usar la configuración 8 "
-                    "(transposicion_situacion_reconocimiento_potencial) "
-                    "como fallback de proyección situacional.",
+                    "'amaba', 'amado'); una palabra no emocional "
+                    "('inclaudicable') no cuenta como tal. DEBE elegirse "
+                    "exactamente una; si ninguna marca léxica lo determina "
+                    "con claridad, usar la 8 (transposición situacional).",
     )
 
 
@@ -1095,9 +1162,13 @@ class ListaReframingsBatchSchema(
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  Semiótica de hashtags (nivel corpus)
+#  Semiótica de hashtags (análisis por uso)
 # ══════════════════════════════════════════════════════════════════════════════
 
+#: Tipología sugerida de funciones de hashtag. El campo `funcion` del uso es
+#: abierto: el agente puede proponer etiquetas nuevas (snake_case) cuando
+#: ninguna función conocida se adecua; la caracterización a nivel corpus se
+#: deriva por agregación de los usos.
 FuncionHashtag = Literal[
     "topico",
     "afiliacion_consigna",
@@ -1106,6 +1177,44 @@ FuncionHashtag = Literal[
     "campania",
     "mixto",
 ]
+
+
+class HashtagUsoSchema(StrictBase):
+    """Funcionamiento de un hashtag en un post concreto."""
+    funcion: str = Field(
+        description="Función del hashtag EN ESTE POST: una de las funciones "
+                    "conocidas (topico, afiliacion_consigna, evaluativo, "
+                    "ironico, campania, o las ya identificadas para este "
+                    "hashtag) o una etiqueta nueva breve en snake_case si "
+                    "ninguna se adecua.",
+    )
+    acoplamiento: str = Field(
+        description="Qué evaluación o afecto acopla a qué objeto de discurso "
+                    "EN ESTE POST, en una frase breve. 'sin acoplamiento "
+                    "discernible' si solo indexa.",
+    )
+    foria_entorno: Foria = Field(  # type: ignore[valid-type]
+        description="Tonalidad fórica del post en el que aparece el hashtag.",
+    )
+    justificacion: str = Field(
+        description="Justificación breve citando el post.",
+    )
+
+
+class HashtagUsoBatchItemSchema(StrictBase):
+    """Un uso del batch de usos de un hashtag."""
+    unit_idx: int = Field(
+        description="Índice 0-based del uso en el batch.",
+    )
+    analisis: HashtagUsoSchema = Field(
+        description="Funcionamiento del hashtag en ese post.",
+    )
+
+
+class ListaHashtagUsosBatchSchema(
+    RootModel[Annotated[list[HashtagUsoBatchItemSchema], Field(min_length=1)]]
+):
+    """Batch response del análisis por uso de un hashtag."""
 
 
 class HashtagSemioticsSchema(StrictBase):
@@ -1147,6 +1256,85 @@ class ListaHashtagsBatchSchema(
     RootModel[Annotated[list[HashtagBatchItemSchema], Field(min_length=1)]]
 ):
     """Batch response de semiótica de hashtags."""
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Uso pragmático de menciones y tecnografismos (en contexto)
+# ══════════════════════════════════════════════════════════════════════════════
+
+#: Usos pragmáticos de menciones (@cuenta), funciones de tecnografismos y
+#: funciones de URLs (links externos). Un solo Literal compartido: el prompt
+#: indica qué valores corresponden a cada tipo de entidad.
+UsoTecno = Literal[
+    # Menciones
+    "interpelar",
+    "confrontar",
+    "exponer_escrachar",
+    "citar_referir",
+    "agradecer_reconocer",
+    "convocar",
+    "marcar_afiliacion",
+    # Tecnografismos
+    "enfasis",
+    "grito_indignacion",
+    "celebracion",
+    "ironia_burla",
+    "risa_complicidad",
+    "saturacion_expresiva",
+    "marca_identitaria",
+    "etiqueta_tematica",
+    "reticencia_sugerencia",
+    "incredulidad_asombro",
+    # URLs (links externos)
+    "fuente_prueba",
+    "autopromocion",
+    "convocatoria_accion",
+    "enlace_tematico",
+    # Común
+    "otro",
+]
+
+
+class TecnoUsoSchema(StrictBase):
+    """Uso en contexto de una mención, un tecnografismo o una URL del post."""
+    valor: str = Field(
+        description="La entidad TAL COMO APARECE en la lista de entidades de "
+                    "la unidad (copiar exactamente, con @ o con la grafía "
+                    "original).",
+    )
+    uso: UsoTecno = Field(  # type: ignore[valid-type]
+        description="Uso pragmático en este post. Para menciones: "
+                    "interpelar, confrontar, exponer_escrachar, "
+                    "citar_referir, agradecer_reconocer, convocar, "
+                    "marcar_afiliacion. Para tecnografismos: enfasis, "
+                    "grito_indignacion, celebracion, ironia_burla, "
+                    "risa_complicidad, saturacion_expresiva, "
+                    "marca_identitaria, etiqueta_tematica, "
+                    "reticencia_sugerencia, incredulidad_asombro. Para "
+                    "URLs: fuente_prueba, "
+                    "autopromocion, convocatoria_accion, enlace_tematico. "
+                    "'otro' si ninguno se adecua.",
+    )
+    justificacion: str = Field(
+        description="Justificación breve citando el post.",
+    )
+
+
+class TecnoUsoUnidadSchema(StrictBase):
+    """Usos de las entidades de una unidad del batch."""
+    unit_idx: int = Field(
+        description="Índice 0-based de la unidad en el batch.",
+    )
+    usos: list[TecnoUsoSchema] = Field(
+        description="Un uso por entidad listada en la unidad. No inventar "
+                    "entidades no listadas.",
+    )
+
+
+class ListaTecnoUsosBatchSchema(
+    RootModel[Annotated[list[TecnoUsoUnidadSchema], Field(min_length=1)]]
+):
+    """Batch response del análisis de uso de menciones y tecnografismos."""
 
 
 # ══════════════════════════════════════════════════════════════════════════════

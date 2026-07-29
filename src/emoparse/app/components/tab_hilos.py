@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pandas as pd
 import streamlit as st
 
 from emoparse.app import data
@@ -37,8 +38,10 @@ def render(db_path: Path) -> None:
         st.warning("Sin posts capturados para esa conversación.")
         return
 
+    # `profundidad` puede venir nula (huérfanos, raíces sin cálculo): pandas
+    # la entrega como NaN, que no es None, así que se guarda con pd.notna.
     profundidad = {
-        str(r["post_id"]): int(r["profundidad"]) if r["profundidad"] is not None else 0
+        str(r["post_id"]): int(r["profundidad"]) if pd.notna(r["profundidad"]) else 0
         for _, r in df_posts.iterrows()
     }
     for _, post in df_posts.iterrows():

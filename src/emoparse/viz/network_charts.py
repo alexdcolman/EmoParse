@@ -29,12 +29,18 @@ def fig_red(
     df_aristas: pd.DataFrame,
     df_metricas: pd.DataFrame,
     max_nodos: int = 400,
+    etiquetas: dict[str, str] | None = None,
 ) -> go.Figure:
     """Grafo de interacción con layout de resortes y color por comunidad.
 
     El layout se calcula acá (networkx spring, seed fija) sobre los
     `max_nodos` de mayor PageRank: para redes grandes, Gephi (export GEXF
     de `emoparse network`) es la herramienta adecuada.
+
+    `etiquetas` mapea nodo → texto a mostrar al pasar el cursor. En los
+    grafos de cuentas el identificador ya dice todo, pero en los de contenido
+    y de parecido narrativo el nodo es un id opaco: sin esto, el grafo no se
+    puede leer.
     """
     import networkx as nx
 
@@ -81,8 +87,9 @@ def fig_red(
             fila = metricas.loc[nodo]
             comunidad = fila.get("comunidad")
             pagerank = float(fila.get("pagerank") or 0.0)
+        encabezado = (etiquetas or {}).get(str(nodo)) or str(nodo)
         textos.append(
-            f"{nodo}<br>pagerank={pagerank:.4f}"
+            f"{encabezado}<br>pagerank={pagerank:.4f}"
             + (f"<br>comunidad={int(comunidad)}" if comunidad is not None
                and not pd.isna(comunidad) else "")
         )
@@ -125,6 +132,34 @@ def fig_matriz_forica(matrix: pd.DataFrame) -> go.Figure:
         xaxis_title="foria de la respuesta",
         yaxis_title="foria del post padre",
         margin=dict(l=10, r=10, t=30, b=10), height=420,
+    )
+    return fig
+
+
+def fig_perfil_forico(perfil: pd.DataFrame) -> go.Figure:
+    """Barras apiladas con la composición fórica de cada comunidad."""
+    if perfil.empty:
+        return _fig_vacia("Sin perfil emocional por comunidad.")
+    forias = [
+        f for f in FORIA_COLORS
+        if isinstance(f, str) and f in perfil.columns
+    ]
+    agg = perfil.groupby("comunidad")[forias].sum().sort_index()
+    etiquetas = [f"comunidad {c}" for c in agg.index]
+
+    fig = go.Figure()
+    for f in forias:
+        fig.add_trace(go.Bar(
+            x=agg[f], y=etiquetas, name=f, orientation="h",
+            marker_color=FORIA_COLORS[f],
+            hovertemplate="%{y}<br>" + f + ": %{x}<extra></extra>",
+        ))
+    fig.update_layout(
+        template="plotly_dark", barmode="stack",
+        margin=dict(l=10, r=10, t=10, b=10),
+        height=max(260, 44 * len(agg)),
+        xaxis_title="emociones",
+        legend=dict(orientation="h", y=-0.2),
     )
     return fig
 

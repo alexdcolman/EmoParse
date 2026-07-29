@@ -89,6 +89,46 @@ def emo_color(emocion: str) -> str:
     return ACCENT2
 
 
+#: Orden de grupos fóricos para el ordenamiento de emociones. No es un
+#: continuo: solo agrupa por una propiedad ya analizada de cada emoción.
+_FORIA_ORDEN: tuple[str, ...] = ("euforico", "ambiforico", "aforico", "disforico")
+
+
+def orden_emociones(df: pd.DataFrame, emo_col: str = "tipo_emocion") -> list[str]:
+    """Orden de las emociones presentes, informado por su foria dominante.
+
+    Agrupa por la foria dominante observada de cada emoción en el propio
+    DataFrame (eufórico → ambifórico → afórico → disfórico → sin foria) y
+    ordena alfabéticamente dentro de cada grupo. Sin columna `foria`, cae a
+    orden alfabético.
+    """
+    if df.empty or emo_col not in df.columns:
+        return []
+    emos = [e for e in df[emo_col].dropna().unique() if str(e).strip()]
+    if "foria" not in df.columns:
+        return sorted(emos, key=lambda e: _fold(str(e)))
+    rank = {f: i for i, f in enumerate(_FORIA_ORDEN)}
+    dom: dict[str, str] = {}
+    for e in emos:
+        serie = df.loc[df[emo_col] == e, "foria"].dropna().map(_fold)
+        serie = serie[serie != ""]
+        dom[e] = str(serie.mode().iloc[0]) if not serie.empty else ""
+    return sorted(
+        emos,
+        key=lambda e: (rank.get(dom.get(e, ""), len(_FORIA_ORDEN)), _fold(str(e))),
+    )
+
+
+def _texto_marcador(color: str) -> str:
+    """Color de texto legible sobre un marcador del color dado."""
+    try:
+        r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
+    except (ValueError, IndexError):
+        return "#ffffff"
+    luminancia = 0.299 * r + 0.587 * g + 0.114 * b
+    return "#0e0f13" if luminancia > 150 else "#ffffff"
+
+
 def _base_layout(**kwargs) -> dict:
     """Layout base compartido por todas las figuras."""
     base = dict(
@@ -225,7 +265,8 @@ def curva_emocional(
     if "tipo_emocion" not in df_sel.columns:
         return _empty_figure("Sin columna 'tipo_emocion'")
 
-    emociones = df_sel["tipo_emocion"].dropna().unique().tolist()
+    emociones = orden_emociones(df_sel)
+    numeros = {e: i + 1 for i, e in enumerate(emociones)}
     fig = go.Figure()
 
     for emo in emociones:
@@ -237,10 +278,12 @@ def curva_emocional(
         )
         fig.add_trace(go.Scatter(
             x=df_emo["posicion"], y=[emo] * len(df_emo),
-            mode="markers", name=emo,
+            mode="markers+text", name=f"{numeros[emo]} · {emo}",
+            text=[str(numeros[emo])] * len(df_emo),
+            textfont=dict(size=8, color=_texto_marcador(color), family=FONT),
             marker=dict(
-                color=color, size=10, symbol="circle",
-                line=dict(color=BORDER, width=1), opacity=0.85,
+                color=color, size=13, symbol="circle",
+                line=dict(color=BORDER, width=1), opacity=0.9,
             ),
             hovertext=hover_text, hoverinfo="text",
         ))
@@ -249,7 +292,10 @@ def curva_emocional(
     fig.update_layout(**_base_layout(
         title=dict(text=f"Trayectoria emocional · {codigo}", font=dict(color=ACCENT, size=13)),
         xaxis_title=xtitle,
-        yaxis_title="Emoción",
+        yaxis=dict(
+            title="Emoción", gridcolor=BORDER, zerolinecolor=BORDER,
+            categoryorder="array", categoryarray=list(reversed(emociones)),
+        ),
         height=max(300, len(emociones) * 50 + 100),
     ))
     return fig
@@ -288,7 +334,8 @@ def curva_emocional_comparada(
     if df_all.empty or "tipo_emocion" not in df_all.columns:
         return _empty_figure("Sin datos para los discursos seleccionados")
 
-    emociones_globales = df_all["tipo_emocion"].dropna().unique().tolist()
+    emociones_globales = orden_emociones(df_all)
+    numeros = {e: i + 1 for i, e in enumerate(emociones_globales)}
     seen_emos: set[str] = set()
 
     for row_idx, codigo in enumerate(codigos, start=1):
@@ -313,10 +360,14 @@ def curva_emocional_comparada(
             fig.add_trace(
                 go.Scatter(
                     x=df_emo["posicion"], y=[emo] * len(df_emo),
-                    mode="markers", name=emo,
+                    mode="markers+text", name=f"{numeros[emo]} · {emo}",
+                    text=[str(numeros[emo])] * len(df_emo),
+                    textfont=dict(
+                        size=8, color=_texto_marcador(color), family=FONT,
+                    ),
                     marker=dict(
-                        color=color, size=9, symbol="circle",
-                        line=dict(color=BORDER, width=1), opacity=0.85,
+                        color=color, size=12, symbol="circle",
+                        line=dict(color=BORDER, width=1), opacity=0.9,
                     ),
                     legendgroup=emo,
                     showlegend=show_in_legend,
@@ -342,7 +393,11 @@ def curva_emocional_comparada(
     )
     xtitle = "Posición relativa (%)" if posicion_relativa else "Posición"
     fig.update_xaxes(gridcolor=BORDER, zerolinecolor=BORDER, title_text=xtitle)
-    fig.update_yaxes(gridcolor=BORDER, zerolinecolor=BORDER)
+    fig.update_yaxes(
+        gridcolor=BORDER, zerolinecolor=BORDER,
+        categoryorder="array",
+        categoryarray=list(reversed(emociones_globales)),
+    )
     # Los títulos de subplot (códigos comprimidos) van más chicos para no saturar.
     for ann in fig.layout.annotations:
         ann.font = dict(size=10, color=TEXT_DIM, family=FONT)
@@ -366,7 +421,16 @@ def distribucion_emociones(
 
     counts = df_f[por].value_counts().reset_index()
     counts.columns = ["emocion", "n"]
-    counts = counts.sort_values("n")
+    orden = orden_emociones(df_f, emo_col=por)
+    if orden:
+        # Orden ontológico (foria dominante) invertido: el primer grupo arriba.
+        pos = {e: i for i, e in enumerate(orden)}
+        counts = counts.sort_values(
+            "emocion", key=lambda s: s.map(lambda e: pos.get(e, len(pos))),
+            ascending=False,
+        )
+    else:
+        counts = counts.sort_values("n")
     colors = [emo_color(e) for e in counts["emocion"]]
 
     fig = go.Figure(go.Bar(
@@ -469,6 +533,9 @@ def perfil_comparado(
     )
     if normalize:
         pivot = pivot.div(pivot.sum(axis=1).replace(0, 1), axis=0)
+    orden = [e for e in orden_emociones(df_f) if e in pivot.columns]
+    if orden:
+        pivot = pivot[orden]
 
     fig = go.Figure()
     labels = [_short_codigo(c) for c in pivot.index]
@@ -583,7 +650,11 @@ def trayectoria_comparada(
         ),
         yaxis=dict(
             title="Emoción dominante", gridcolor=BORDER,
-            categoryorder="array", categoryarray=sorted(all_emociones),
+            categoryorder="array",
+            categoryarray=(
+                [e for e in orden_emociones(df_f) if e in all_emociones]
+                + sorted(all_emociones - set(orden_emociones(df_f)))
+            ),
         ),
         height=560,
     ))
@@ -611,6 +682,9 @@ def radar_discurso(
         emociones_ref = df_f["tipo_emocion"].value_counts().head(8).index.tolist()
     if not emociones_ref:
         return _empty_figure("Sin emociones para el radar")
+    orden = [e for e in orden_emociones(df_f) if e in set(emociones_ref)]
+    if orden:
+        emociones_ref = orden
 
     fig = go.Figure()
     disc_colors = [ACCENT, ACCENT2, "#6ec89a", "#c86e6e", "#9e7cc8"]

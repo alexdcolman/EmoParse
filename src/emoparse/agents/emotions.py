@@ -27,14 +27,20 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Callable
 
 import pandas as pd
 
 from emoparse.agents.base import BaseBatchAgent
 from emoparse.core.backend.base import LLMBackend
+from emoparse.genres.schema_factory import emociones_batch_schema
 from emoparse.core.prompts import emotions as prompts
+from emoparse.core.text import (
+    sanitize_emotion_label,
+    sanitize_referent_label,
+)
 from emoparse.core.schemas import (
+    CONFIGURACION_POR_ID,
     EmocionesBatchItemSchema,
     ListaEmocionesBatchSchema,
 )
@@ -45,6 +51,77 @@ if TYPE_CHECKING:
 
 #: Valores válidos del alcance de detección (experienciadores a analizar).
 EMOTION_SCOPE_VALUES: tuple[str, ...] = ("enunciador", "enunciatarios", "actores")
+
+#: Campos de inferencia de una emoción y su saneador. Las marcas
+#: (`experienciador_marca`, `fuente_marca`) NO se sanean: son transcripción
+#: literal de la unidad y cualquier recorte rompería esa correspondencia.
+_SANEADORES: dict[str, Callable[[str | None], str]] = {
+    "tipo_emocion": sanitize_emotion_label,
+    "experienciador": sanitize_referent_label,
+    "fuente_inferencia": sanitize_referent_label,
+}
+
+
+def sanitize_emocion(emo: dict[str, Any]) -> dict[str, Any]:
+    """Devuelve la emoción con sus campos de inferencia saneados.
+
+    Garantiza determinísticamente lo que el prompt pide: una sola categoría
+    por campo, sin alternativas ("Argentina / Estado argentino"), sin
+    enumeraciones ni perífrasis en `tipo_emocion`, y sin restos tipográficos
+    de una generación truncada. Un campo que quedaría vacío se deja como
+    estaba: es preferible una etiqueta sucia a perder la emoción.
+
+    Resuelve además el id de configuración a su nombre canónico, de modo que
+    lo que se persiste es el identificador de siempre.
+    """
+    out = dict(emo)
+    conf = out.get("tipo_configuracion")
+    if isinstance(conf, int) and not isinstance(conf, bool):
+        nombre = CONFIGURACION_POR_ID.get(conf)
+        if nombre:
+            out["tipo_configuracion"] = nombre
+    for campo, sanear in _SANEADORES.items():
+        crudo = out.get(campo)
+        if not isinstance(crudo, str):
+            continue
+        limpio = sanear(crudo)
+        if limpio:
+            out[campo] = limpio
+    return out
+
+
+def dedupe_emociones(emociones: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Elimina emociones repetidas dentro de una misma unidad.
+
+    Aplica la regla que el prompt ya pide ("no repitas la misma emoción para
+    el mismo experienciador en la misma unidad, salvo que difieran en modo de
+    existencia") de forma determinista, en vez de confiar en que el modelo la
+    respete. La identidad es (experienciador, tipo_emocion, modo_existencia),
+    normalizados: dos entradas que solo difieren en la marca o en la
+    justificación son la misma emoción. Preserva el orden de aparición.
+
+    Cubre el caso degenerado en que el sampler entra en bucle y repite el
+    mismo objeto hasta agotar el presupuesto: lo repetido no llega a
+    persistirse.
+    """
+    vistas: set[tuple[str, str, str]] = set()
+    out: list[dict[str, Any]] = []
+    for e in emociones:
+        clave = (
+            _norm_clave(e.get("experienciador")),
+            _norm_clave(e.get("tipo_emocion")),
+            _norm_clave(e.get("modo_existencia")),
+        )
+        if clave in vistas:
+            continue
+        vistas.add(clave)
+        out.append(e)
+    return out
+
+
+def _norm_clave(valor: Any) -> str:
+    """Normaliza un campo para comparar identidad de emociones."""
+    return " ".join(str(valor or "").strip().lower().split())
 
 
 def alcance_text(
@@ -144,6 +221,11 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else ()
         self._genre = genre
 
+        if genre is not None:
+            restricted = emociones_batch_schema(genre)
+            if restricted is not None:
+                self.SCHEMA = restricted  # type: ignore[misc]
+
         if genre is not None and "emotions" in genre.batch_size:
             self.BATCH_SIZE = genre.batch_size["emotions"]  # type: ignore[misc]
 
@@ -207,7 +289,9 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         row: pd.Series,
     ) -> dict[str, Any]:
         emociones_json = json.dumps(
-            [e.model_dump() for e in item.emociones],
+            dedupe_emociones(
+                [sanitize_emocion(e.model_dump()) for e in item.emociones]
+            ),
             ensure_ascii=False,
         )
         return {"emociones": emociones_json}

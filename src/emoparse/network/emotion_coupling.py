@@ -92,8 +92,9 @@ def community_emotion_profile(
 
     Una fila por (comunidad, tipo de emoción) con conteos y la distribución
     fórica. El tipo usa `tipo_emocion_canonico` si existe; si no,
-    `tipo_emocion`.
+    `tipo_emocion`. Los handles se comparan sin distinguir mayúsculas.
     """
+    communities = {str(k).lower(): v for k, v in communities.items()}
     autor_por_post = {
         str(r["post_id"]): str(r["autor_handle"]).lower()
         for r in df_posts.to_dict(orient="records")

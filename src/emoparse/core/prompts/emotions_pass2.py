@@ -20,6 +20,7 @@ def render_system(
     alcance: str = "",
     heuristicas: str = "",
     resumen: str = "",
+    template: str = "emotions_pass2_system",
 ) -> str:
     """SYSTEM del pase 2.
 
@@ -29,13 +30,21 @@ def render_system(
     parámetro `alcance` restringe los experienciadores a analizar, con la
     misma semántica que en el pase 1.
 
-    `heuristicas` es deprecado: se mantiene por compatibilidad pero el
-    template ya no lo referencia, así que cualquier valor pasado se ignora.
+    `heuristicas` son las reglas de inferencia ya compuestas por el runner
+    (base común, agregados del género y reglas propias del pase 2); el
+    template las inyecta como bloque propio y omite la sección si están
+    vacías.
+
+    `template` es el nombre del template Jinja2 del system prompt. Los
+    géneros pueden sustituirlo vía `Genre.prompt_overrides` (p. ej.
+    'emotions_pass2_system_tuit'). El template alternativo debe aceptar
+    las mismas variables que el default.
     """
     return render(
-        "emotions_pass2_system",
+        template,
         ontologia=ontologia,
         configuraciones=configuraciones,
+        heuristicas=heuristicas,
         titulo=titulo,
         tipo_discurso=tipo_discurso,
         enunciador=enunciador,

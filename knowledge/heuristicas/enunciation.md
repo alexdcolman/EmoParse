@@ -15,9 +15,10 @@ Estas reglas orientan la identificación del enunciador principal y los enunciat
 
 3. **Roles enunciativos según género discursivo**
    - Discurso político: prodestinatario (simpatizantes), paradestinatario (indecisos), contradestinatario (adversarios).
-   - Redes sociales / tuits: seguidor, oponente, audiencia_general.
+   - Redes sociales / tuits: prodestinatario, paradestinatario, contradestinatario, destinatario_mencionado (la cuenta interpelada vía @), audiencia_ambiente (el público indeterminado del archivo buscable).
    - Periodismo / discurso público: audiencia_objetivo, fuente, oponente_ideologico.
    - Asigná solo los roles válidos para el género identificado.
+   - El rol va siempre en el campo `tipo`; el campo `actor` debe ser un referente concreto (persona, colectivo, institución o cuenta identificables), nunca una etiqueta de rol ("enunciador", "autor del post", "prodestinatario", "destinatario"). Única excepción: "audiencia ambiente", indeterminada por naturaleza.
 
 4. **Marcas de polifonía y cita**
    - Si el discurso cita otras voces ("ellos dicen", "según X"), no confundas al citado con el enunciador.
@@ -31,3 +32,9 @@ Instrucciones generales:
 - Priorizá las marcas textuales explícitas sobre la inferencia contextual.
 - Si hay ambigüedad entre dos enunciatarios posibles, registrá ambos con su respectiva justificación.
 - Evitá confundir actores mencionados en el contenido del discurso con el enunciatario.
+
+Reglas adicionales:
+
+- El enunciador nunca es un identificador técnico (ids, URLs, URIs como "at://…").
+- Los colectivos de identificación pueden no existir: lista vacía válida. Hashtags temáticos o actores mencionados no son colectivos del enunciador salvo identificación explícita.
+- Justificaciones sintéticas: una sola oración de no más de 25 palabras.

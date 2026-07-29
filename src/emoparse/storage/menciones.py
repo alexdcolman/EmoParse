@@ -17,27 +17,16 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any
 
 from emoparse.pipeline.deixis import is_first_person_deictic
 from emoparse.storage.db import Database
+from emoparse.storage.referencia import (
+    es_canonico_invalido,
+    es_referente_desconocido,
+    split_coordinacion,
+)
 from emoparse.core.text import canonical_slug
-
-#: Valores que cuentan como "sin referente" y no generan canónico propuesto.
-_DESCONOCIDO = frozenset({
-    "", "no identificado", "no_identificado", "no identificada",
-    "no se identifica", "no_se_identifica", "ninguno", "ninguna", "?",
-})
-
-#: Separadores de coordinación: comas y conjunciones (y/e/o/u) como palabra.
-_CONJ_RE = re.compile(r"\s*(?:,|\by\b|\be\b|\bo\b|\bu\b)\s*", re.IGNORECASE)
-#: Detecta si hay al menos una conjunción coordinante (señal de enumeración).
-_HAS_CONJ_RE = re.compile(r"\b(?:y|e|o|u)\b", re.IGNORECASE)
-#: Segmentos triviales (solo artículo/determinante) que no son entidad.
-_ARTICULOS = frozenset({
-    "el", "la", "los", "las", "un", "una", "unos", "unas", "lo", "su", "sus",
-})
 
 
 def _norm(s: Any) -> str:
@@ -47,33 +36,7 @@ def _norm(s: Any) -> str:
 
 def _es_desconocido(s: str) -> bool:
     """True si la marca/inferencia no aporta referente."""
-    return s.lower() in _DESCONOCIDO
-
-
-def _split_coordinacion(text: str) -> list[str]:
-    """Parte una marca/inferencia coordinada en sus entidades singulares.
-
-    Conservador: SOLO parte si hay una conjunción coordinante (y/e/o/u); así no
-    corta comas apositivas ("Milei, el presidente"). Descarta segmentos triviales
-    (solo artículo) y deduplica. Si no hay enumeración clara, devuelve [text].
-
-    Ej.: "los socialistas y el estatismo" → ["los socialistas", "el estatismo"].
-    Ej.: "la academia, los organismos internacionales, la política y la teoría
-    económica" → los 4 sintagmas. Ej.: "paz y prosperidad" → ["paz", "prosperidad"].
-    """
-    t = _norm(text)
-    if not t or not _HAS_CONJ_RE.search(t):
-        return [t] if t else []
-    parts = [p.strip() for p in _CONJ_RE.split(t) if p and p.strip()]
-    parts = [p for p in parts if len(p) >= 3 and p.lower() not in _ARTICULOS]
-    seen: set[str] = set()
-    out: list[str] = []
-    for p in parts:
-        k = p.lower()
-        if k not in seen:
-            seen.add(k)
-            out.append(p)
-    return out if len(out) >= 2 else [t]
+    return es_referente_desconocido(s)
 
 
 def _acumular_single(
@@ -93,6 +56,8 @@ def _acumular_single(
     if entry is None:
         inferencia = _norm(inferencia)
         canonical = "" if _es_desconocido(inferencia) else canonical_slug(inferencia)
+        if es_canonico_invalido(canonical):
+            canonical = ""
         entry = {
             "unit_idx": unit_idx,
             "marca": marca,
@@ -105,7 +70,10 @@ def _acumular_single(
         inferencia = _norm(inferencia)
         if not _es_desconocido(inferencia):
             entry["llm_inferencia"] = inferencia
-            entry["canonical_proposed"] = canonical_slug(inferencia)
+            propuesto = canonical_slug(inferencia)
+            entry["canonical_proposed"] = (
+                None if es_canonico_invalido(propuesto) else propuesto
+            )
     entry["funciones"].add(funcion)
 
 
@@ -117,30 +85,33 @@ def _acumular(
     funcion: str,
     inferencia: str,
 ) -> None:
-    """Acumula una marca; si es una coordinación, la parte en entidades singulares.
+    """Acumula una marca; si nombra varias entidades, la parte en singulares.
 
     Fix determinístico de casos compuestos que el modelo no separó ("los
-    socialistas y el estatismo" → dos menciones). Alinea la inferencia con la
-    marca si tienen la misma cantidad de partes; si no, deriva el canónico de
-    cada sub-marca. La emoción conserva su `fuente_marca`/`experienciador_marca`
-    compuesta original: el resolver por contención la mapea a los sub-referentes.
+    socialistas y el estatismo" → dos menciones). Quien decide cuántas
+    entidades hay es la INFERENCIA, igual que en el desdoblamiento de
+    emociones: la marca se parte solo si la inferencia parte en la misma
+    cantidad de partes, y cada sub-marca se queda con la suya. Si no alinean,
+    la marca entra entera con la inferencia del modelo ("adormecida o
+    cajoneada" es una sola entidad: "estado de la causa judicial"). La emoción
+    conserva su marca compuesta original: el resolver por contención la mapea
+    a los sub-referentes.
     """
     marca = _norm(marca)
     if not marca:
         return
-    m_parts = _split_coordinacion(marca)
-    if len(m_parts) <= 1:
+    m_parts = split_coordinacion(marca)
+    i_parts = split_coordinacion(_norm(inferencia))
+    if len(m_parts) < 2 or len(i_parts) != len(m_parts):
         _acumular_single(
             acc, unit_idx=unit_idx, marca=marca, funcion=funcion,
             inferencia=inferencia,
         )
         return
-    i_parts = _split_coordinacion(_norm(inferencia))
-    aligned = i_parts if len(i_parts) == len(m_parts) else None
     for idx, mp in enumerate(m_parts):
         _acumular_single(
             acc, unit_idx=unit_idx, marca=mp, funcion=funcion,
-            inferencia=aligned[idx] if aligned else mp,
+            inferencia=i_parts[idx],
         )
 
 
@@ -410,7 +381,7 @@ class MencionesRepository:
                 for k in cluster
                 if (inf := inf_by_key.get(k, "")) and not _es_desconocido(inf)
             ]
-            slugs = [s for s in slugs if s]
+            slugs = [s for s in slugs if s and not es_canonico_invalido(s)]
             if not slugs:
                 return ""
             counts = Counter(slugs)
@@ -540,12 +511,6 @@ class MencionesRepository:
                 "WHERE mencion_id = ? AND canonical_id = ?",
                 (now, mencion_id, canonical_id),
             )
-            cur.execute(
-                "UPDATE mencion_canonico SET status = 'rejected', reviewed_at = ? "
-                "WHERE mencion_id = ? AND canonical_id != ? "
-                "AND origin NOT IN ('deixis_llm', 'human')",
-                (now, mencion_id, canonical_id),
-            )
 
     def reject_deixis_link(self, mencion_id: int, canonical_id: str) -> None:
         """Rechaza un referente deíctico propuesto para una marca."""
@@ -564,9 +529,10 @@ class MencionesRepository:
     ) -> None:
         """Agrega a mano un referente deíctico a una marca (lo deja aceptado).
 
-        Inscribe la marca en el referente concreto y sobreescribe el canónico
-        automático, igual que `accept_deixis_link`. Útil cuando se rechaza la
-        sugerencia del LLM y se quiere asignar otro referente del discurso.
+        Inscribe la marca en el referente concreto, sin desplazar a los otros
+        referentes de la marca, igual que `accept_deixis_link`. Útil cuando se
+        rechaza la sugerencia del LLM y se quiere asignar otro referente del
+        discurso.
         """
         from datetime import datetime, timezone
 
@@ -583,12 +549,6 @@ class MencionesRepository:
                 "    status = 'accepted', deixis_tipo = excluded.deixis_tipo, "
                 "    reviewed_at = excluded.reviewed_at",
                 (mencion_id, canonical_id, deixis_tipo, now),
-            )
-            cur.execute(
-                "UPDATE mencion_canonico SET status = 'rejected', reviewed_at = ? "
-                "WHERE mencion_id = ? AND canonical_id != ? "
-                "AND origin NOT IN ('deixis_llm', 'human')",
-                (now, mencion_id, canonical_id),
             )
 
     def repoint_deixis_in_discurso(

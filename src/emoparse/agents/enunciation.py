@@ -7,16 +7,24 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 import pandas as pd
 
 from emoparse.agents.base import BaseAgent
 from emoparse.core.backend.base import LLMBackend
+from emoparse.core.text import strip_accents_lower
 from emoparse.core.prompts import enunciation as prompts
-from emoparse.core.schemas import EnunciacionSchema
+from emoparse.core.schemas import EnunciacionSchema, EnunciadorSchema
 from emoparse.genres.base import Genre
 from emoparse.genres.schema_factory import enunciacion_schema
+
+
+#: Tope de indicadores lingüísticos por rol inyectados en el prompt. Acota el
+#: tamaño del bloque de roles para no comer el margen de completion en el
+#: género tuit, donde el prompt de enunciation ya vive cerca del límite.
+_MAX_INDICADORES_POR_ROL = 3
 
 
 class EnunciationAgent(BaseAgent[EnunciacionSchema]):
@@ -29,6 +37,13 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         - `enunciatarios` (JSON serializado)
         - `auditorio` (JSON serializado)
         - `colectivos_identificacion` (JSON serializado)
+
+    Los roles enunciativos válidos dependen del tipo de discurso: el schema
+    los acota al universo del género (`enunciation_roles`), y el prompt de
+    cada discurso lista solo los del tipo identificado por `metadata` (más los
+    transversales del dispositivo), con sus indicadores lingüísticos
+    orientativos. Un filtro post-hoc descarta los enunciatarios cuyo rol no
+    corresponde a ese tipo.
     """
 
     NAME = "enunciation"
@@ -47,34 +62,35 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
     def __init__(
         self,
         backend: LLMBackend,
-        diccionario_tipos: dict[str, Any],
         heuristicas: str | None = None,
         colectivos: dict[str, Any] | None = None,
+        destinatarios_indicadores: dict[str, Any] | None = None,
         retry_config: Any | None = None,
         genre: Genre | None = None,
     ) -> None:
         """
         Args:
             backend: Backend LLM utilizado para generación estructurada.
-            diccionario_tipos: Diccionario de tipos discursivos utilizado
-                en el system prompt.
             heuristicas: Reglas heurísticas para identificación de
                 estructura enunciativa. Si None, no se inyectan en el
                 system prompt.
             colectivos: Ontología de colectivos de identificación por tipo de
                 discurso. Si None, no se piden colectivos.
+            destinatarios_indicadores: Indicadores lingüísticos de destinatario
+                por tipo de discurso para ESTE género (`{"transversales": ...,
+                "tipos": {...}}`). Se inyectan en el prompt como pistas
+                orientativas del tipo identificado. Si None, el bloque de
+                roles se arma solo con las descripciones.
             retry_config: Política de reintentos ante errores transitorios.
-            genre: Configuración opcional de género discursivo. Si se
-                provee, restringe los roles enunciativos válidos del schema
-                y puede sustituir el template del system prompt vía
-                `prompt_overrides`.
+            genre: Configuración de género discursivo. Restringe los roles
+                enunciativos válidos del schema y define, por tipo de discurso,
+                qué roles se listan en el prompt (`enunciatarios_por_tipo`,
+                `roles_transversales`, `roles_descripciones`).
         """
-        self._diccionario_str = json.dumps(
-            diccionario_tipos, ensure_ascii=False, indent=2
-        )
         self._heuristicas = heuristicas
         self._colectivos_str = _format_colectivos(colectivos)
         self._clases_validas = _allowed_colectivo_clases(colectivos)
+        self._indicadores = destinatarios_indicadores or {}
         self._genre = genre
 
         # Si se define genre, reemplazar el schema antes de llamar a
@@ -92,7 +108,6 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         if self._genre is not None:
             template = self._genre.prompt_overrides.get("enunciation", template)
         return prompts.render_system(
-            diccionario=self._diccionario_str,
             heuristicas=self._heuristicas,
             colectivos=self._colectivos_str or None,
             template=template,
@@ -102,10 +117,19 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         codigo = str(row["codigo"])
         resumen = _resolve_resumen(row)
         fragmentos = _extract_fragments(row)
+        enunciador = _opt_cell(row, "enunciador_fijado")
+        repertorio = _opt_cell(row, "repertorio_kb")
+        roles_block = self._roles_block(_opt_cell(row, "tipo_discurso"))
         return prompts.render_user(
             codigo=codigo,
             resumen=resumen,
             fragmentos=fragmentos,
+            enunciador=enunciador or None,
+            repertorio=repertorio or None,
+            bio=_opt_cell(row, "autor_bio") or None,
+            adjuntos=_opt_cell(row, "adjuntos") or None,
+            roles_block=roles_block or None,
+            contexto_hilo=_opt_cell(row, "contexto_hilo") or None,
         )
 
     def _map_to_columns(
@@ -115,14 +139,31 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
     ) -> dict[str, Any]:
         # Serialización JSON para mantener compatibilidad tabular.
         # ensure_ascii=False preserva texto en español.
-        enunciatarios_json = json.dumps(
-            [e.model_dump() for e in parsed.enunciatarios],
-            ensure_ascii=False,
-        )
-        auditorio_json = json.dumps(
-            [a.model_dump() for a in parsed.auditorio],
-            ensure_ascii=False,
-        )
+        permitidos = self._roles_permitidos(_opt_cell(row, "tipo_discurso"))
+        enunciatarios = [
+            e.model_dump()
+            for e in parsed.enunciatarios
+            if not es_rol_enunciativo(e.actor)
+            and not es_destinacion_sin_posicion(e.actor, e.tipo)
+            and _rol_admitido(e.tipo, permitidos)
+        ]
+        enunciatarios_json = json.dumps(enunciatarios, ensure_ascii=False)
+        # Auditorio: predeterminado desde el dispositivo si la fila lo trae
+        # (géneros con `auditorio_predeterminado`); si no, el inferido, sin
+        # etiquetas de rol.
+        auditorio_fijo = _opt_cell(row, "auditorio_fijo")
+        if auditorio_fijo:
+            try:
+                auditorio = json.loads(auditorio_fijo)
+            except json.JSONDecodeError:
+                auditorio = []
+        else:
+            auditorio = [
+                a.model_dump()
+                for a in parsed.auditorio
+                if not es_rol_enunciativo(a.actor)
+            ]
+        auditorio_json = json.dumps(auditorio, ensure_ascii=False)
         # Validación post-hoc de la clase de colectivo contra la ontología:
         # se descartan las clases no reconocidas (el schema deja `clase` libre).
         colectivos = [
@@ -132,13 +173,276 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
             or c.clase.strip().lower() in self._clases_validas
         ]
         colectivos_json = json.dumps(colectivos, ensure_ascii=False)
+        enunciador = _opt_cell(row, "enunciador_fijado") or parsed.enunciador.actor
+        enunciador_just = (
+            _opt_cell(row, "enunciador_fijado_justificacion")
+            or parsed.enunciador.justificacion
+        )
         return {
-            "enunciador": parsed.enunciador.actor,
-            "enunciador_justificacion": parsed.enunciador.justificacion,
+            "enunciador": enunciador,
+            "enunciador_justificacion": enunciador_just,
             "enunciatarios": enunciatarios_json,
             "auditorio": auditorio_json,
             "colectivos_identificacion": colectivos_json,
         }
+
+    # ── Roles por tipo de discurso ───────────────────────────────────────────
+
+    def _roles_permitidos(self, tipo_discurso: str) -> set[str]:
+        """Roles enunciativos válidos para el tipo, normalizados para comparar.
+
+        Vacío si el género no discrimina roles por tipo: en ese caso no se
+        filtra (cualquier rol del schema es válido).
+        """
+        if self._genre is None or not self._genre.enunciatarios_por_tipo:
+            return set()
+        return {
+            _norm_rol(r) for r in self._genre.roles_para_tipo(tipo_discurso or None)
+        }
+
+    def _roles_block(self, tipo_discurso: str) -> str:
+        """Bloque de roles válidos para este discurso, con indicadores.
+
+        Lista cada rol admisible con su descripción breve y, si el género
+        aporta indicadores lingüísticos para el tipo, un puñado de pistas
+        orientativas. Vacío si el género no discrimina roles por tipo (el
+        system prompt del género ya no enumera roles fijos, pero sin genre
+        no hay lista que ofrecer y el bloque se omite)."""
+        if self._genre is None or not self._genre.enunciatarios_por_tipo:
+            return ""
+        roles = self._genre.roles_para_tipo(tipo_discurso or None)
+        if not roles:
+            return ""
+        descripciones = self._genre.roles_descripciones
+        indicadores = self._indicadores_por_rol(tipo_discurso)
+        lineas = [
+            "ROLES ENUNCIATIVOS VÁLIDOS PARA ESTE POST (asigná a cada "
+            "enunciatario uno de estos `tipo`). Los indicadores son "
+            "orientativos: no siempre están presentes ni se respetan, no los "
+            "tomes al pie de la letra.",
+        ]
+        for rol in roles:
+            desc = descripciones.get(rol, "")
+            lineas.append(f"- {rol}" + (f": {desc}" if desc else ""))
+            pistas = (indicadores.get(rol) or [])[:_MAX_INDICADORES_POR_ROL]
+            if pistas:
+                lineas.append("    Indicadores: " + "; ".join(pistas))
+        return "\n".join(lineas)
+
+    def _indicadores_por_rol(self, tipo_discurso: str) -> dict[str, list[str]]:
+        """Mapea rol → indicadores para el tipo identificado (transversales
+        siempre; los del tipo solo si el tipo matchea una entrada del mapa)."""
+        out: dict[str, list[str]] = {}
+        transversales = self._indicadores.get("transversales")
+        if isinstance(transversales, dict):
+            for rol, pistas in transversales.items():
+                if isinstance(pistas, list):
+                    out[rol] = [str(p) for p in pistas]
+        clave = self._tipo_key(tipo_discurso)
+        tipos = self._indicadores.get("tipos")
+        if clave and isinstance(tipos, dict) and isinstance(tipos.get(clave), dict):
+            for rol, pistas in tipos[clave].items():
+                if isinstance(pistas, list):
+                    out[rol] = [str(p) for p in pistas]
+        return out
+
+    def _tipo_key(self, tipo_discurso: str) -> str | None:
+        """Clave de `enunciatarios_por_tipo` que corresponde al tipo, o None.
+
+        None cuando el tipo no matchea y el género tiene varias entradas (se
+        cae a la unión de roles y no se cargan indicadores específicos, para
+        no confundir). Con una sola entrada, se usa esa."""
+        if self._genre is None:
+            return None
+        mapa = self._genre.enunciatarios_por_tipo
+        if not mapa:
+            return None
+        norm_keys = {_norm_rol(k): k for k in mapa}
+        clave = _norm_rol(tipo_discurso)
+        if clave in norm_keys:
+            return norm_keys[clave]
+        if len(mapa) == 1:
+            return next(iter(mapa))
+        return None
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Sub-paso de identificación del enunciador
+# ══════════════════════════════════════════════════════════════════════════════
+
+class EnunciatorIdAgent(BaseAgent[EnunciadorSchema]):
+    """Identifica solo el enunciador de un discurso, normalizado.
+
+    Sub-paso previo a la identificación del resto de la estructura
+    enunciativa: devuelve la denominación mínima del enunciador (nombre y
+    apellido, o denominación institucional breve) para que la stage la fije
+    y la propague al prompt principal y al canónico. Prompt mínimo, apto
+    para un modelo chico (configurable vía `pipeline.stages.enunciator_id`).
+    Agrega las columnas `enunciador_fijado` y
+    `enunciador_fijado_justificacion`.
+    """
+
+    NAME = "enunciator_id"
+    SCHEMA = EnunciadorSchema
+    OUTPUT_COLUMNS = (
+        "enunciador_fijado",
+        "enunciador_fijado_justificacion",
+    )
+
+    def __init__(
+        self,
+        backend: LLMBackend,
+        heuristicas: str | None = None,
+        retry_config: Any | None = None,
+    ) -> None:
+        """
+        Args:
+            backend: Backend LLM utilizado para generación estructurada.
+            heuristicas: Reglas heurísticas de identificación del enunciador.
+        """
+        self._heuristicas = heuristicas
+        super().__init__(backend, retry_config=retry_config)
+
+    def _build_system(self) -> str:
+        return prompts.render_enunciator_id_system(
+            heuristicas=self._heuristicas
+        )
+
+    def _build_user(self, row: pd.Series) -> str:
+        return prompts.render_user(
+            codigo=str(row["codigo"]),
+            resumen=_resolve_resumen(row),
+            fragmentos=_extract_fragments(row),
+        )
+
+    def _map_to_columns(
+        self,
+        parsed: EnunciadorSchema,
+        row: pd.Series,
+    ) -> dict[str, Any]:
+        return {
+            "enunciador_fijado": parsed.actor,
+            "enunciador_fijado_justificacion": parsed.justificacion,
+        }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Helpers de referentes vs. roles enunciativos
+# ══════════════════════════════════════════════════════════════════════════════
+
+#: Etiquetas de rol enunciativo que nunca son un referente válido. Los agentes
+#: deben devolver referentes concretos; estas etiquetas se filtran post-hoc
+#: como defensa. "audiencia ambiente" queda fuera de la lista: es el único rol
+#: admisible como actor, por ser un público indeterminado por naturaleza.
+_ROL_LABELS = frozenset({
+    "enunciador", "enunciatario", "enunciatarios",
+    "autor", "autor del post", "autor post", "autora", "la cuenta",
+    "prodestinatario", "paradestinatario", "contradestinatario",
+    "destinatario", "destinatarios", "destinatario mencionado",
+    "destinatario directo", "actor", "auditorio",
+    # Roles por tipo de discurso del post (nunca son el referente concreto).
+    "lector ciudadano", "instancia blanco", "fuente referente",
+    "ciudadano usuario", "comunidad interna", "rendicion cuentas",
+    "rendicion de cuentas", "comunidad sentido", "comunidad de sentido",
+    "no iniciado", "blanco burla", "blanco de la burla",
+    "circulo afectivo", "autodestinatario", "testigo indeseado",
+    "enunciatario target", "comunidad marca", "comunidad de marca",
+    "prescriptor amplificador",
+})
+
+
+#: Roles cuya destinación se ordena alrededor de creencias y valores: el
+#: prodestinatario presupone las compartidas, el contradestinatario las
+#: opuestas y el paradestinatario su suspensión. El actor de estos roles
+#: tiene que nombrar esa posición, no la audiencia técnica de la cuenta.
+_ROLES_DE_CREENCIA = frozenset({
+    "prodestinatario", "paradestinatario", "contradestinatario",
+})
+
+#: Núcleos que designan a la audiencia por el dispositivo (los seguidores de
+#: una cuenta, el público de la plataforma) y no por lo que cree.
+_AUDIENCIA_DISPOSITIVO_RE = re.compile(
+    r"^(?:l[oa]s\s+|el\s+|la\s+)?"
+    r"(?:seguidor(?:e?s)?|followers|audiencia|publico|lector(?:e?s|as)?|"
+    r"usuari[oa]s?|comunidad|gente|espectador(?:e?s|as)?)\b"
+)
+
+#: Marca de que la audiencia viene calificada por una posición ("seguidores
+#: que comparten el rechazo al ajuste", "público afín al gobierno").
+_CALIFICACION_RE = re.compile(
+    r"\b(?:que|quienes|afin(?:es)?|contrari[oa]s|partidari[oa]s|adherentes|"
+    r"critic[oa]s|a\s+favor|en\s+contra|opuest[oa]s|convencid[oa]s)\b"
+)
+
+
+def _norm_rol(valor: Any) -> str:
+    """Normaliza un identificador de rol/tipo para comparar (sin acentos)."""
+    return strip_accents_lower(valor).strip().replace("-", "_")
+
+
+def _rol_admitido(tipo: Any, permitidos: set[str]) -> bool:
+    """True si el rol está entre los permitidos del tipo (o no hay filtro)."""
+    if not permitidos:
+        return True
+    return _norm_rol(tipo) in permitidos
+
+
+def es_rol_enunciativo(actor: Any) -> bool:
+    """True si `actor` es una etiqueta de rol y no un referente concreto."""
+    norm = str(actor or "").strip().lower().replace("_", " ")
+    norm = " ".join(norm.split())
+    return norm in _ROL_LABELS
+
+
+def es_destinacion_sin_posicion(actor: Any, tipo: Any) -> bool:
+    """True si un destinatario de creencia se nombra solo por el dispositivo.
+
+    Los tres roles veronianos se ordenan alrededor de creencias y valores,
+    así que "seguidores de la cuenta" o "los usuarios" no los identifican:
+    esa es la audiencia técnica, que ya se registra en el auditorio y en
+    `audiencia_ambiente`. Se admite la audiencia calificada por su posición
+    ("seguidores que comparten el rechazo al ajuste"). Los demás roles no
+    se filtran por este criterio.
+    """
+    rol = strip_accents_lower(tipo).strip().replace("-", "_")
+    if rol not in _ROLES_DE_CREENCIA:
+        return False
+    norm = " ".join(strip_accents_lower(actor).split())
+    if not _AUDIENCIA_DISPOSITIVO_RE.match(norm):
+        return False
+    return not _CALIFICACION_RE.search(norm)
+
+
+def _opt_cell(row: pd.Series, key: str) -> str:
+    """String de una celda opcional de la fila: ausente/None/NaN → ''."""
+    value = row.get(key)
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    return str(value).strip()
+
+
+def format_repertorio_kb(entry: dict[str, Any] | None) -> str:
+    """Formatea la entrada de la KB de enunciación de un enunciador.
+
+    Devuelve texto con los colectivos de identificación conocidos, apto para
+    inyectarse en el prompt principal; string vacío si no hay entrada. Los
+    enunciatarios no se inyectan: varían demasiado entre discursos para
+    servir de contexto (aunque la KB conserve entradas viejas).
+    """
+    if not isinstance(entry, dict) or not entry:
+        return ""
+    lines: list[str] = []
+    colectivos = entry.get("colectivos") or []
+    if isinstance(colectivos, list) and colectivos:
+        lines.append("COLECTIVOS DE IDENTIFICACIÓN CONOCIDOS:")
+        for c in colectivos:
+            if not isinstance(c, dict):
+                continue
+            nombre = str(c.get("nombre") or "").strip()
+            clase = str(c.get("clase") or "").strip()
+            if nombre:
+                lines.append(f"  - {nombre}" + (f" ({clase})" if clase else ""))
+    return "\n".join(lines)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

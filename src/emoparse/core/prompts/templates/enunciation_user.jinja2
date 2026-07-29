@@ -1,6 +1,30 @@
 CÓDIGO: {{ codigo }}
+{% if enunciador %}
+ENUNCIADOR (ya identificado; devolvelo tal cual en el campo `enunciador`,
+no lo re-identifiques): {{ enunciador }}
+{% endif %}{% if roles_block %}
+{{ roles_block }}
+{% endif %}{% if repertorio %}
+REPERTORIO CONOCIDO DE ESTE ENUNCIADOR (de análisis previos; usá estas
+identificaciones si se adecuan a ESTE discurso, con evidencia propia;
+proponé nuevas si no se adecuan; no copies las que no tengan evidencia):
+{{ repertorio }}
+{% endif %}{% if contexto_hilo %}
+CONTEXTO DEL HILO (conversación a la que pertenece el post; solo para
+desambiguar la destinación, NO es fuente de enunciatarios):
+{{ contexto_hilo }}
+{% endif %}
+{% if bio %}
+BIO DE LA CUENTA AUTORA (contexto de quién enuncia; no implica colectivos
+de identificación ni roles por sí sola):
+{{ bio }}
 
-RESUMEN DEL DISCURSO:
+{% endif %}{% if adjuntos %}
+INFORMACIÓN ADJUNTA AL POST (links, imágenes, video; contexto de qué se
+comparte):
+{{ adjuntos }}
+
+{% endif %}RESUMEN DEL DISCURSO:
 {{ resumen }}
 
 FRAGMENTOS REPRESENTATIVOS:

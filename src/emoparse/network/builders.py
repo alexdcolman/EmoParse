@@ -12,6 +12,11 @@
 #  - hashtag_co: hashtag ↔ hashtag co-ocurrentes en un mismo post (no
 #                dirigido; se emite con origen < destino).
 #
+#  El grafo `follow` (autor → autor seguido) no se construye acá: no está en
+#  los posts sino en la plataforma, y lo adquiere `emoparse follows`. Figura
+#  en GRAFOS_AUTOR porque, una vez persistido, se mide y se perfila igual que
+#  los demás grafos de cuentas.
+#
 #  En reply/rt/qt el destino requiere que el post referido esté capturado
 #  (para conocer a su autor); las referencias a posts ausentes se omiten.
 # ══════════════════════════════════════════════════════════════════════════════
@@ -22,8 +27,14 @@ from itertools import combinations
 
 import pandas as pd
 
-#: Grafos disponibles.
+#: Grafos construibles desde el corpus de posts.
 GRAFOS: tuple[str, ...] = ("reply", "mention", "rt", "qt", "hashtag_co")
+
+#: Grafo de seguimiento, adquirido de la plataforma (no derivable del corpus).
+GRAFO_FOLLOW: str = "follow"
+
+#: Grafos cuyos nodos son autores (en hashtag_co los nodos son hashtags).
+GRAFOS_AUTOR: tuple[str, ...] = ("reply", "mention", "rt", "qt", GRAFO_FOLLOW)
 
 #: Columnas del DataFrame de aristas.
 EDGE_COLUMNS: tuple[str, ...] = ("grafo", "origen", "destino", "post_id", "peso", "fecha")
