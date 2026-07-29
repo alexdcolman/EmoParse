@@ -4,6 +4,8 @@
 
 *Si venís del [tutorial de discursos presidenciales](tutorial_discurso_presidencial.md), gran parte del flujo te va a parecer familiar, porque el corazón del análisis —la reconstrucción del simulacro emocional de cada emoción— es el mismo. Lo que cambia es el objeto. Un tuit no es un discurso político en miniatura, es un objeto distinto. Se trata un enunciado que existe dentro de un dispositivo (la plataforma), atravesado por hashtags, menciones, emojis, links, citas y respuestas, y que construye una escena enunciativa que la plataforma misma configura (para más info, podés mirar la [tipología de destinatarios por tipo de tuit](https://github.com/alexdcolman/EmoParse/blob/main/docs/other/tipologia_destinatarios_tuits_fundamentacion.md)). Por eso, el tuit no puede tener el mismo tratamiento (como texto plano) que los discursos tradicionales.*
 
+*Los conceptos principales del enfoque teórico-metodológico están repuestos [en este diccionario conceptual](https://github.com/alexdcolman/EmoParse/blob/main/docs/CONCEPTOS.md).*
+
 ## Qué podés lograr
 
 Al final de este tutorial, la idea es que hayas analizado un pequeño corpus de posts de una red social y puedas responder, con evidencia sistemática, preguntas como:

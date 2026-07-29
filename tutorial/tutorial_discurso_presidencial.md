@@ -2,6 +2,8 @@
 
 *Tutorial para analistas del discurso y cientistas sociales en general. No hace falta experiencia en programación: cada paso indica exactamente qué escribir. Las notas al pie explican la maquinaria computacional para el que tenga ganas de profundizar.*
 
+*Los conceptos principales del enfoque teórico-metodológico están repuestos [en este diccionario conceptual](https://github.com/alexdcolman/EmoParse/blob/main/docs/CONCEPTOS.md).*
+
 ## Qué vas a lograr
 
 La idea es que al final de este tutorial hayas analizado un pequeño corpus de discursos presidenciales y puedas responder, con evidencia sistemática, preguntas como:
@@ -258,4 +260,4 @@ Antes de publicar resultados, medí la validez del análisis sobre tu corpus: el
 
 **¿La unificación de referentes se puede automatizar del todo?** No, al menos no sin perder distinciones que probablemente te interesen. El sistema hace la parte que puede hacer de forma determinística y conservadora, y te deja a vos las decisiones donde el criterio analítico pesa más que el parecido textual. Cuanto más grande el corpus, más tiempo hay que reservar para esto.
 
-**¿Puedo analizar otros géneros?** Sí: el sistema de géneros adapta el pipeline (discursos, y también tuits). Para sumar otros géneros, tenés que adaptar el código. El sistema está armado para que esa adaptación intente ser lo más fácil posible, pero también puede implicar modificaciones sustanciales. No todos los géneros corresponden a los mismos tipos de objetos, ni se pueden tratar todos como "documentos" de texto plano metodológicamente. Por ejemplo, el tuit implica un pipeline bastante diferente — ver el tutorial correspondiente, `tutorial_tuits.md`.
+**¿Puedo analizar otros géneros?** Sí: el sistema de géneros adapta el pipeline (discursos, y también tuits). Para sumar otros géneros, tenés que adaptar el código. El sistema está armado para que esa adaptación intente ser lo más fácil posible, pero también puede implicar modificaciones sustanciales. No todos los géneros corresponden a los mismos tipos de objetos, ni se pueden tratar todos como "documentos" de texto plano metodológicamente. Por ejemplo, el tuit implica un pipeline bastante diferente — [ver el tutorial correspondiente](https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_tuits.md).
