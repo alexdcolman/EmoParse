@@ -185,6 +185,9 @@ def get_genre() -> Genre:
         # tuit, que es una sola unidad, no hay contexto previo que aportar.
         stages_invalidas=("emotions_pass2",),
         max_emociones_unidad=5,
+        # Los overrides de emotions_pass2 quedan declarados aunque la stage
+        # esté en stages_invalidas: son inertes mientras lo esté, y evitan
+        # perder la configuración si alguna vez se revierte la invalidación.
         prompt_overrides={
             "emotions": "emotions_system_tuit",
             "emotions_pass2": "emotions_pass2_system_tuit",
