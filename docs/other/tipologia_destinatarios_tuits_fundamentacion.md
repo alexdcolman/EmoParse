@@ -129,8 +129,8 @@ Para todas las categorías (transversales y específicas): si un tipo teórico n
 
 ## 4. Referencias
 
-- Aladro Vico, E., & Jardón Clemente, M. (2022). Los memes como jerga del lenguaje digital. *CIC. Cuadernos de Información y Comunicación*, 27, 143-157.
-- Aladro Vico, E., & Requeijo Rey, P. (2023). Capítulo 3. Memes, humor y odio. Derivación simbólica y pensamiento grupal en las bisociaciones del humor de los memes en cámaras de eco. *Espejo de Monografías de Comunicación Social*, (13), 57-86.
+- Aladro Vico, E., y Jardón Clemente, M. (2022). Los memes como jerga del lenguaje digital. *CIC. Cuadernos de Información y Comunicación*, 27, 143-157.
+- Aladro Vico, E., y Requeijo Rey, P. (2023). Capítulo 3. Memes, humor y odio. Derivación simbólica y pensamiento grupal en las bisociaciones del humor de los memes en cámaras de eco. *Espejo de Monografías de Comunicación Social*, (13), 57-86.
 - Alarcón Zayas, V. (2017). Humorismo como creación y fortalecimiento de los vínculos en la sociedad red: el caso de los memes sobre filósofos. *Revista de Comunicación*, 16(1), 122-146.
 - Astigueta, M. E. (2022). Twitter, engagement y discurso: Abordaje cuantitativo y cualitativo de la cuenta @mauriciomacri. *InMediaciones de la Comunicación*, 17(2), 51-68.
 - Capriotti, P. (1999). *Planificación estratégica de la imagen corporativa*. Ariel.
@@ -139,11 +139,11 @@ Para todas las categorías (transversales y específicas): si un tipo teórico n
 - Charaudeau, P. (2003). *El discurso de la información. La construcción del espejo social*. Gedisa. (Ed. original: *Le discours d'information médiatique*, 1997, Nathan).
 - Floch, J.-M. (1993). *Semiótica, marketing y comunicación: Bajo los signos, las estrategias*. Paidós.
 - Hermida, A. (2010). Twittering the news: The emergence of ambient journalism. *Journalism Practice*, 4(3), 297-308.
-- Lozano, J., Peña-Marín, C., & Abril, G. (1982). *Análisis del discurso: Hacia una semiótica de la interacción textual*. Cátedra.
+- Lozano, J., Peña-Marín, C., y Abril, G. (1982). *Análisis del discurso: Hacia una semiótica de la interacción textual*. Cátedra.
 - Maingueneau, D. (1998). *Analyser les textes de communication*. Dunod.
 - Maingueneau, D. (2004). ¿"Situación de enunciación" o "situación de comunicación"? *Revista Discurso*, 3(5).
-- Marwick, A. E., & boyd, d. (2011). I tweet honestly, I tweet passionately: Twitter users, context collapse, and the imagined audience. *New Media & Society*, 13(1), 114-133.
-- Marwick, A. E., & boyd, d. (2014). Networked privacy: How teenagers negotiate context in social media. *New Media & Society*, 16(7), 1051-1067.
+- Marwick, A. E., y Boyd, D. (2011). I tweet honestly, I tweet passionately: Twitter users, context collapse, and the imagined audience. *New Media & Society*, 13(1), 114-133.
+- Marwick, A. E., y Boyd, D. (2014). Networked privacy: How teenagers negotiate context in social media. *New Media & Society*, 16(7), 1051-1067.
 - Mazzuchino, M. G. (2020). Twitter como espacio (¿anti?)político: análisis discursivo de los tuits del presidente Mauricio Macri. *RALED*, 17(2).
 - Slimovich, A. (2014). El discurso machista en Twitter. Un análisis sobre la campaña para la reelección del Jefe de Gobierno de Buenos Aires. *Revista de Estudios Políticos y Estratégicos*, 2, 8-27.
 - Slimovich, A. (2017a). Discursos políticos para todos y todas. Reflexiones sobre las redes sociales del presidente argentino Macri. *Sociales en Debate*, 12, 37-48.
