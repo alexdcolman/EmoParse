@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Glosario — EmoParse</title>
+<meta name="description" content="Las categorías de análisis de EmoParse y los términos de su funcionamiento, definidos por separado.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans+Condensed:wght@400;600&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/estilo.css">
+</head>
+<body>
+<a class="saltar" href="#principal">Ir al contenido</a>
+
+<div class="hoja">
+
+  <header class="masthead">
+    <h1 class="titulo"><a href="index.html">EmoParse</a></h1>
+    <p class="bajada">Análisis semiótico de emociones en discursos</p>
+    <p class="sello"><span>v0.6.3</span><span>Beta</span><span>Licencia MIT</span></p>
+  </header>
+
+  <nav class="nav" aria-label="Navegación del sitio">
+    <h2>Secciones</h2>
+    <ul>
+      <li><a href="index.html">Portada</a></li>
+      <li><a href="enfoque.html">El enfoque</a></li>
+      <li><a href="pipeline.html">Cómo funciona</a></li>
+      <li><a href="digital.html">Posts y redes</a></li>
+      <li><a href="tablero.html">El tablero</a></li>
+      <li><a href="empezar.html">Empezar</a></li>
+      <li><a href="glosario.html" aria-current="page">Glosario</a></li>
+    </ul>
+    <h2>En esta página</h2>
+    <ol class="indice">
+      <li><a href="#nucleo"><span class="num">1</span>Nociones de base</a></li>
+      <li><a href="#escena"><span class="num">2</span>La escena de habla</a></li>
+      <li><a href="#actores"><span class="num">3</span>Actores y referentes</a></li>
+      <li><a href="#emocion"><span class="num">4</span>La emoción y sus dimensiones</a></li>
+      <li><a href="#relacional"><span class="num">5</span>La configuración relacional</a></li>
+      <li><a href="#digital"><span class="num">6</span>Categorías del post</a></li>
+      <li><a href="#trabajo"><span class="num">7</span>Términos de funcionamiento</a></li>
+    </ol>
+    <h2>Repositorio</h2>
+    <ul>
+      <li><a href="https://github.com/alexdcolman/EmoParse">Código en GitHub</a></li>
+    </ul>
+  </nav>
+
+  <main class="cuerpo" id="principal">
+  <div class="contenido">
+
+    <h1>Glosario</h1>
+
+    <p class="entradilla">Las seis primeras secciones reúnen las categorías con las que el sistema
+    lee. La última reúne los términos que aparecen al instalarlo y usarlo. La versión extensa de las
+    categorías, con su procedencia bibliográfica, está en el diccionario conceptual del repositorio.</p>
+
+    <h2 id="nucleo"><span class="num">1</span>Nociones de base</h2>
+
+    <dl class="defs">
+      <dt>Emoción discursiva</dt>
+      <dd>El efecto que se produce cuando una configuración de marcas de un texto es reconocida como
+      portadora de cierta cualificación afectiva. Se distingue del estado corporal y afectivo de una
+      persona, cuya materialidad el sistema no aborda.</dd>
+
+      <dt>Efecto de sentido</dt>
+      <dd>Una forma no transporta un sentido: produce efectos al ser reconocida. El sentido son esos
+      efectos. De ahí que el análisis no pueda reducirse al rastreo de palabras aisladas.</dd>
+
+      <dt>Marca</dt>
+      <dd>Una señal observable inscripta en un soporte: léxica, gramatical, tipográfica. Es lo único
+      a lo que un lector accede de manera directa.</dd>
+
+      <dt>Configuración</dt>
+      <dd>El modo en que un conjunto de marcas aparece organizado.</dd>
+
+      <dt>Localizador</dt>
+      <dd>La relación entre una marca y la emoción que sostiene. Las marcas no son la emoción: la
+      localizan, en la medida en que al ser reconocidas dan lugar a un efecto afectivamente
+      cualificado.</dd>
+
+      <dt>Simulacro de emoción</dt>
+      <dd>La forma esquemática que adquiere la reconstrucción de una emoción: un conjunto de
+      posiciones articuladas, cada una con sus marcas. Es la unidad de trabajo del sistema.</dd>
+
+      <dt>Modo de semiotización</dt>
+      <dd>Cómo el discurso da forma significativa a una emoción, sin suponer que alguien la esté
+      sintiendo. Toma tres valores: <em>dicha</em> cuando se la nombra, <em>mostrada</em> cuando se
+      la deja ver por indicios, <em>sostenida</em> cuando surge de la descripción de una situación.</dd>
+    </dl>
+
+    <h2 id="escena"><span class="num">2</span>La escena de habla</h2>
+
+    <dl class="defs">
+      <dt>Enunciador</dt>
+      <dd>La posición identificable con el «yo» del discurso. No se confunde con el autor empírico ni,
+      en un post, con el identificador técnico de la cuenta.</dd>
+
+      <dt>Enunciatario</dt>
+      <dd>La posición identificable con el «tú». Puede haber varios: un mismo discurso se dirige
+      simultáneamente a destinatarios distintos con estatutos distintos.</dd>
+
+      <dt>Prodestinatario, paradestinatario, contradestinatario</dt>
+      <dd>Los tres destinatarios del discurso político. El primero comparte las creencias del
+      enunciador y recibe el refuerzo; el segundo está indeciso y es objeto de persuasión; el tercero
+      es el adversario, con quien se sostiene la polémica.</dd>
+
+      <dt>Auditorio</dt>
+      <dd>El público concreto presente en la situación: quienes efectivamente escuchan o leen. Se
+      distingue de los enunciatarios, que son posiciones de destinación. Un contradestinatario rara
+      vez está en el auditorio.</dd>
+
+      <dt>Colectivo de identificación</dt>
+      <dd>La entidad colectiva con la que el enunciador se identifica, «nosotros los peronistas». Un
+      colectivo del que solo se habla no cuenta como tal.</dd>
+
+      <dt>Deixis</dt>
+      <dd>El conjunto de marcas que refieren sin nombrar: «yo», «nosotros», «ustedes», «veamos».
+      Resolverlas exige tener antes identificados el enunciador, el auditorio y los colectivos.</dd>
+
+      <dt>Audiencia ambiente</dt>
+      <dd>El público difuso e imaginado que resulta inevitable cuando una plataforma reúne, en un
+      mismo lugar, audiencias que en otro contexto estarían separadas.</dd>
+    </dl>
+
+    <h2 id="actores"><span class="num">3</span>Actores y referentes</h2>
+
+    <dl class="defs">
+      <dt>Actor discursivo</dt>
+      <dd>Una figura autónoma del universo del texto: personas, colectivos, instituciones. Incluye
+      actores deducibles de expresiones que no los nombran, como «la represión», de donde se deduce
+      «los represores».</dd>
+
+      <dt>Mención</dt>
+      <dd>Una marca en su lugar: una expresión situada en un texto y una unidad, registrada con
+      independencia de la función que cumpla.</dd>
+
+      <dt>Referente canónico</dt>
+      <dd>La unidad bajo la cual se agrupan las distintas expresiones que remiten a lo mismo. Es un
+      objeto construido por el análisis, no un dato del texto.</dd>
+
+      <dt>Modalidad referencial</dt>
+      <dd>De qué manera una marca refiere a su referente: designándolo con un nombre, refiriéndolo
+      gramaticalmente sin nombrarlo, o identificándolo por la actitud que expresa.</dd>
+
+      <dt>Sema</dt>
+      <dd>Un rasgo semántico distintivo de un referente, tomado de un vocabulario organizado por
+      dimensiones. La primera decisión es la clase: si el referente es un actor, algo que lo rodea, o
+      una cualidad que califica otra cosa.</dd>
+    </dl>
+
+    <h2 id="emocion"><span class="num">4</span>La emoción y sus dimensiones</h2>
+
+    <dl class="defs">
+      <dt>Experienciador</dt>
+      <dd>El actor al que se atribuye el proceso afectivo. Se registra por partida doble: el referente
+      inferido y la marca literal que lo identifica.</dd>
+
+      <dt>Fuente</dt>
+      <dd>Aquello que origina la emoción. Se distingue del mediador, que la transporta, y del
+      operador, que interviene sobre ella.</dd>
+
+      <dt>Tipo de configuración</dt>
+      <dd>Cómo el texto sostiene la emoción, en ocho clases: por un sustantivo, un adjetivo, un verbo
+      psicológico, un indicador cognitivo, uno de comportamiento, uno de valoración, la descripción de
+      una situación, o una situación planteada para inducir la emoción en quien escucha.</dd>
+
+      <dt>Modo de existencia</dt>
+      <dd>El estatuto de realización de la emoción en el discurso. <em>Virtual</em>: posible, todavía
+      no convocada. <em>Actual</em>: insinuada sin realización plena. <em>Potencial</em>: disponible,
+      proyectada sobre un actor. <em>Realizado</em>: expresada o actuada.</dd>
+
+      <dt>Foria</dt>
+      <dd>La orientación de valor de la emoción. <em>Eufórica</em>, del lado de lo agradable;
+      <em>disfórica</em>, del lado de lo desagradable; <em>ambifórica</em>, con ambos polos activos;
+      <em>afórica</em>, sin orientación marcada.</dd>
+
+      <dt>Dominancia</dt>
+      <dd>El registro en que la emoción se hace reconocible: corporal, cognoscitiva o mixta. Refiere
+      al tipo de marcas del texto y no a la fisiología de nadie.</dd>
+
+      <dt>Intensidad</dt>
+      <dd>El nivel de activación afectiva que presenta en esa unidad: alta, baja, o imposible de
+      calificar entre una y otra.</dd>
+
+      <dt>Duración</dt>
+      <dd>La extensión del estado. <em>Instantánea</em>: aparece y se disuelve. <em>Durable</em>: se
+      extiende sin estabilizarse. <em>Permanente</em>: un rasgo estable del experienciador.</dd>
+
+      <dt>Tipo de atribución</dt>
+      <dd>Quién atribuye la emoción y en qué condiciones. La atribución a sí mismo y la atribución a
+      un tercero exigen que la emoción esté nombrada con un término del campo léxico correspondiente
+      y asignada gramaticalmente a un actor. Si falta cualquiera de las dos condiciones, el valor es
+      <em>sin atribución</em>.</dd>
+
+      <dt>Temporalidad</dt>
+      <dd>Dónde se ubica la emoción respecto del momento en que se habla: contemporánea, en un pasado
+      histórico, en un porvenir, sin anclaje temporal, o indeterminada.</dd>
+
+      <dt>Aspecto</dt>
+      <dd>Cómo se presenta el desarrollo interno del estado: completo, en curso, con foco en el
+      inicio, con foco en el cese, repetido, o sin marcar.</dd>
+    </dl>
+
+    <h2 id="relacional"><span class="num">5</span>La configuración relacional</h2>
+
+    <dl class="defs">
+      <dt>Mediador</dt>
+      <dd>Aquello que vehiculiza la emoción entre su origen y quien la siente: el discurso mismo, una
+      voz citada, un documento, un objeto, un espacio, una acción.</dd>
+
+      <dt>Verificador normativo</dt>
+      <dd>La operación que evalúa la adecuación de la emoción a una norma, para legitimarla o
+      rechazarla.</dd>
+
+      <dt>Verificador observacional</dt>
+      <dd>La operación que evalúa la autenticidad de la emoción o la veracidad de aquello que la
+      desencadena.</dd>
+
+      <dt>Operador de modificación</dt>
+      <dd>La operación dirigida a actuar sobre la emoción de alguien: argumentar sobre ella, proyectar
+      un horizonte afectivo, buscar activarla, o bloquearla.</dd>
+
+      <dt>Polaridad</dt>
+      <dd>Si la emoción se predica afirmada o negada, y bajo qué modalidad. Negar una emoción la
+      inscribe en el discurso, con efectos distintos de los de afirmarla.</dd>
+    </dl>
+
+    <h2 id="digital"><span class="num">6</span>Categorías del post</h2>
+
+    <dl class="defs">
+      <dt>Tecnodiscurso</dt>
+      <dd>El post entendido como enunciado compuesto, donde las marcas del dispositivo son materia del
+      análisis y no ruido a limpiar.</dd>
+
+      <dt>Tecnografismo</dt>
+      <dd>Las marcas gráficas propias de la escritura en pantalla: mayúsculas sostenidas,
+      alargamientos de letras, risas escritas, puntuación expresiva.</dd>
+
+      <dt>Acoplamiento</dt>
+      <dd>Qué valoración o afecto queda ligado a qué objeto de discurso en un post determinado.</dd>
+
+      <dt>Reencuadre</dt>
+      <dd>Lo que hace un post al citar o repostear otro: adherir, tomar distancia con ironía,
+      denunciar, o difundir sin tomar posición.</dd>
+
+      <dt>Emociones citadas</dt>
+      <dd>El estatuto de las emociones que aparecen en lo citado respecto de quien cita:
+      <em>asumidas</em> cuando las hace propias, <em>semiotizadas</em> cuando las exhibe o las comenta
+      sin experimentarlas.</dd>
+    </dl>
+
+    <h2 id="trabajo"><span class="num">7</span>Términos de funcionamiento</h2>
+
+    <dl class="defs">
+      <dt>Modelo de lenguaje</dt>
+      <dd>Un programa que recibe un texto y produce otro, eligiendo una palabra por vez entre todas
+      las posibles. Es la tecnología detrás de asistentes como ChatGPT.</dd>
+
+      <dt>Modelo local</dt>
+      <dd>Un modelo que corre en la computadora de quien lo usa, sin conexión con ningún servicio
+      externo. El material analizado no sale de esa máquina.</dd>
+
+      <dt>Generación restringida</dt>
+      <dd>Una técnica que limita las palabras que el modelo puede elegir en cada punto. Ahí donde un
+      campo espera un valor de foria, las únicas continuaciones habilitadas son las cuatro de la
+      lista, de modo que una salida inválida resulta imposible.</dd>
+
+      <dt>Consola</dt>
+      <dd>La ventana donde se le dan órdenes escritas a la computadora. También llamada terminal o
+      línea de comandos.</dd>
+
+      <dt>Corrida</dt>
+      <dd>Una ejecución del análisis sobre un corpus, identificada con un nombre y archivada en un
+      archivo propio junto con las versiones de todo lo que usó.</dd>
+
+      <dt>Etapa</dt>
+      <dd>Cada uno de los pasos encadenados del análisis. Resuelven preguntas acotadas y se pueden
+      correr por separado.</dd>
+
+      <dt>Placa de video</dt>
+      <dd>El componente de la computadora que hace muchos cálculos en paralelo. Los modelos de
+      lenguaje están hechos para aprovecharla, así que con placa el análisis va bastante más
+      rápido.</dd>
+
+      <dt>Cuantización</dt>
+      <dd>Una compresión que reduce la precisión numérica interna de un modelo. Ocupa menos espacio y
+      corre más rápido, con una pérdida de calidad pequeña.</dd>
+
+      <dt>Memoria de respuestas</dt>
+      <dd>Un registro de lo ya consultado al modelo, para no repetir trabajo. Su clave incluye las
+      versiones de las instrucciones y las categorías, así que modificar una invalida solo lo que
+      dependía de ella.</dd>
+
+      <dt>Grafo</dt>
+      <dd>Un conjunto de puntos unidos por líneas. En el análisis de redes, los puntos son cuentas y
+      las líneas son vínculos entre ellas.</dd>
+
+      <dt>Centralidad</dt>
+      <dd>Cuán importante es una cuenta dentro de una red. Se mide de varias maneras: por cuántos
+      vínculos tiene, por cuán importantes son quienes la señalan, o por cuántas veces queda en el
+      camino más corto entre otras dos.</dd>
+
+      <dt>Comunidad</dt>
+      <dd>Una zona de la red donde los vínculos son mucho más densos hacia adentro que hacia afuera.
+      Se distingue del grupo donde todas las cuentas se vinculan entre sí, que es una figura más
+      exigente.</dd>
+
+      <dt>Representación numérica del texto</dt>
+      <dd>Una forma de ubicar cada texto en un espacio donde la cercanía corresponde a la afinidad de
+      contenido. Permite agrupar textos que hablan de lo mismo aunque no compartan palabras.</dd>
+
+      <dt>Acuerdo entre anotadores</dt>
+      <dd>Una medida de cuánto coinciden varias personas al anotar el mismo material, descontando el
+      acuerdo que se esperaría por azar. Por encima de 0,8 se considera confiable.</dd>
+
+      <dt>Precisión y exhaustividad</dt>
+      <dd>Dos medidas complementarias del acierto. La precisión informa qué proporción de lo detectado
+      era correcto; la exhaustividad, qué proporción de lo que había fue efectivamente detectado. Su
+      combinación se resume en una tercera medida.</dd>
+    </dl>
+
+    <hr>
+
+    <p>El diccionario conceptual completo, con la procedencia bibliográfica de cada categoría y la
+    forma en que se volvió computable, está en
+    <a href="https://github.com/alexdcolman/EmoParse/blob/main/docs/CONCEPTOS.md">el repositorio</a>.</p>
+
+  </div>
+  </main>
+
+  <footer class="pie">
+    <div>
+      <h2>Proyecto</h2>
+      <p>EmoParse se desarrolla en el marco de una investigación sobre análisis automático de
+      emociones en discursos.</p>
+      <p><a href="https://github.com/alexdcolman/EmoParse">github.com/alexdcolman/EmoParse</a></p>
+    </div>
+    <div>
+      <h2>Autoría</h2>
+      <p><a href="https://independent.academia.edu/AlexColman1">Alex Colman</a></p>
+      <p>alexdcolman@gmail.com</p>
+    </div>
+    <div>
+      <h2>Licencia</h2>
+      <p>MIT. Si se usa en una publicación, una referencia al repositorio ayuda a sostener
+      el proyecto.</p>
+    </div>
+  </footer>
+
+</div>
+<script src="assets/js/figuras.js"></script>
+</body>
+</html>

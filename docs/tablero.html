@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El tablero — EmoParse</title>
+<meta name="description" content="Las vistas del tablero de EmoParse: exploración de resultados, revisión de atribuciones y estado de la corrida.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans+Condensed:wght@400;600&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/estilo.css">
+</head>
+<body>
+<a class="saltar" href="#principal">Ir al contenido</a>
+
+<div class="hoja">
+
+  <header class="masthead">
+    <h1 class="titulo"><a href="index.html">EmoParse</a></h1>
+    <p class="bajada">Análisis semiótico de emociones en discursos</p>
+    <p class="sello"><span>v0.6.3</span><span>Beta</span><span>Licencia MIT</span></p>
+  </header>
+
+  <nav class="nav" aria-label="Navegación del sitio">
+    <h2>Secciones</h2>
+    <ul>
+      <li><a href="index.html">Portada</a></li>
+      <li><a href="enfoque.html">El enfoque</a></li>
+      <li><a href="pipeline.html">Cómo funciona</a></li>
+      <li><a href="digital.html">Posts y redes</a></li>
+      <li><a href="tablero.html" aria-current="page">El tablero</a></li>
+      <li><a href="empezar.html">Empezar</a></li>
+      <li><a href="glosario.html">Glosario</a></li>
+    </ul>
+    <h2>En esta página</h2>
+    <ol class="indice">
+      <li><a href="#que-es"><span class="num">1</span>Qué es</a></li>
+      <li><a href="#explorar"><span class="num">2</span>Explorar resultados</a></li>
+      <li><a href="#revisar"><span class="num">3</span>Revisar y corregir</a></li>
+      <li><a href="#posts"><span class="num">4</span>Vistas de posts</a></li>
+      <li><a href="#estado"><span class="num">5</span>Estado y comandos</a></li>
+    </ol>
+    <h2>Repositorio</h2>
+    <ul>
+      <li><a href="https://github.com/alexdcolman/EmoParse">Código en GitHub</a></li>
+    </ul>
+  </nav>
+
+  <main class="cuerpo" id="principal">
+  <div class="contenido">
+
+    <h1>El tablero</h1>
+
+    <p class="entradilla">Una aplicación que se abre en el navegador y lee los resultados de cada
+    corrida. Sirve para dos cosas distintas: explorar lo que salió y corregir lo que haga falta. Las
+    correcciones se guardan aparte y se pueden revertir.</p>
+
+    <h2 id="que-es"><span class="num">1</span>Qué es</h2>
+
+    <p>El tablero corre en la misma computadora donde se hizo el análisis y se abre con un comando.
+    Al arrancar, lista todas las corridas disponibles con su estado, y trabaja sobre la que se
+    seleccione. La lectura de los resultados es de solo lectura: nada de lo que se haga en el tablero
+    modifica el archivo original de la corrida hasta que se lo pida de manera explícita.</p>
+
+    <figure>
+      <div class="marco">
+        <img src="assets/img/08-tablero-general.png" alt="Vista general del tablero: el selector de corridas en la barra lateral y las pestañas de exploración arriba.">
+      </div>
+      <figcaption><span class="fnum">Figura 8.</span> Vista general, con el selector de corridas al
+      costado y las pestañas de exploración.</figcaption>
+    </figure>
+
+    <h2 id="explorar"><span class="num">2</span>Explorar resultados</h2>
+
+    <h3>Curva emocional</h3>
+
+    <p>Un gráfico que recorre el discurso de principio a fin y ubica cada emoción en el punto donde
+    aparece. Las emociones vienen numeradas y ordenadas por su orientación de valor dominante, del
+    lado agradable al desagradable. Se puede filtrar por referente, por rasgo semántico de quien
+    siente o de lo que desencadena, y por cualquiera de las dimensiones de caracterización. El eje
+    horizontal admite posición absoluta o relativa, lo que permite comparar discursos de largo
+    distinto. Se pueden poner dos discursos lado a lado, cada uno con sus propios filtros.</p>
+
+    <figure>
+      <div class="marco">
+        <img src="assets/img/09-curva.png" alt="Curva emocional: cada emoción ubicada en el punto del discurso donde aparece, coloreada según su orientación de valor, con el panel de filtros al costado.">
+      </div>
+      <figcaption><span class="fnum">Figura 9.</span> Curva emocional de un discurso, con las
+      emociones ordenadas por orientación de valor.</figcaption>
+    </figure>
+
+    <p class="leyenda-foria">
+      <span><i class="f-euf"></i> eufórica</span>
+      <span><i class="f-dis"></i> disfórica</span>
+      <span><i class="f-amb"></i> ambifórica</span>
+      <span><i class="f-afo"></i> afórica</span>
+    </p>
+
+    <h3>Por actor</h3>
+
+    <p>Una matriz de actores por emociones, donde el color indica la frecuencia, más un gráfico de
+    dispersión que cruza orientación de valor con intensidad. Sirve para ver de un vistazo qué
+    emociones se le atribuyen a cada actor del corpus.</p>
+
+    <h3>Tabla</h3>
+
+    <p>Exploración tabular con filtros encadenados a tres niveles, incluidas las columnas del
+    análisis relacional. Exporta lo filtrado a un archivo de planilla.</p>
+
+    <h3>Búsqueda</h3>
+
+    <p>Busca por texto, con soporte para palabra suelta, frase exacta y término opcional, o por
+    selección de una emoción, un actor, un experienciador o una fuente. Los resultados muestran cada
+    unidad completa con su contexto inmediato, y debajo sus emociones agrupadas, cada una con quién
+    la siente y qué la desencadena.</p>
+
+    <h3>Co-ocurrencia</h3>
+
+    <p>Qué emociones aparecen juntas en una misma unidad. Presenta una matriz coloreada por fuerza de
+    asociación y un ranking de pares; al elegir un par, lista las unidades donde coexisten. En corpus
+    de posts, la unidad de copresencia puede ser también el hilo o la etiqueta.</p>
+
+    <h3>Simulacros</h3>
+
+    <p>La reconstrucción completa de cada emoción con todas sus posiciones a la vista. Filtra por tipo
+    de posición ocupada, por rasgos semánticos de quien siente y de lo que desencadena, por emoción y
+    por texto.</p>
+
+    <h3>Comparar discursos</h3>
+
+    <p>Perfil emocional, gráfico radial, trayectoria a lo largo del texto y distribución comparada
+    entre discursos. En corpus de posts, la trayectoria recorre conversaciones enteras.</p>
+
+    <h2 id="revisar"><span class="num">3</span>Revisar y corregir</h2>
+
+    <h3>Referentes</h3>
+
+    <p>La vista donde se unifica el corpus. Muestra todas las marcas agrupadas bajo cada referente,
+    con buscador, y permite aceptar, rechazar, quitar o reasignar cada vínculo, fusionar referentes
+    entre sí, dar de alta y de baja, y editar los rasgos semánticos de cada uno. Incluye las acciones
+    en lote y las fusiones sugeridas descritas en
+    <a href="pipeline.html#revision">Cómo funciona</a>.</p>
+
+    <h3>Deixis</h3>
+
+    <p>Revisión de las asignaciones propuestas para «yo», «nosotros» y «ustedes». Cada referente
+    propuesto se puede descartar, restaurar o reemplazar por otro. Debajo aparecen las emociones donde
+    esa marca interviene, y el referente se aplica una por una: reemplazar el que estaba o sumar el
+    nuevo. Sumar un experienciador desdobla la emoción; sumar una fuente la agrega a la misma.</p>
+
+    <h3>Enunciación</h3>
+
+    <p>Edición de la situación de habla de cada discurso, con un botón para incorporar lo revisado al
+    repertorio acumulado de ese enunciador.</p>
+
+    <h3>Revisión</h3>
+
+    <p>Lectura unidad por unidad, paginada, con las emociones en tarjetas al costado. Cada elemento
+    muestra como valor principal el referente ya unificado y, en cuerpo menor, la inferencia original
+    del modelo y la marca del texto. La edición aparece vacía y solo al pulsar su botón, de modo que
+    una corrección sea siempre un acto deliberado. Si se corrió la segunda lectura por otro modelo,
+    sus sugerencias aparecen al lado de cada elemento para aceptarlas o rechazarlas, con un filtro
+    para ver únicamente lo que quedó sin resolver.</p>
+
+    <figure>
+      <div class="marco">
+        <img src="assets/img/10-revision.png" alt="Vista de revisión: el texto de la unidad a la izquierda y las emociones en tarjetas al costado, con el valor unificado, la inferencia original y la marca del texto.">
+      </div>
+      <figcaption><span class="fnum">Figura 10.</span> Revisión unidad por unidad, con cada emoción y
+      su procedencia a la vista.</figcaption>
+    </figure>
+
+    <h2 id="posts"><span class="num">4</span>Vistas de posts</h2>
+
+    <p>Cuando la corrida contiene posts, aparecen cuatro vistas más.</p>
+
+    <dl class="defs">
+      <dt>Hilos</dt>
+      <dd>El árbol de la conversación, con la sangría marcando la profundidad de cada respuesta, la
+      orientación de valor de cada post y la operación con que cada uno reencuadra lo que cita.</dd>
+
+      <dt>Red</dt>
+      <dd>El grafo interactivo coloreado por comunidad, la tabla de cuentas ordenadas por centralidad
+      y el perfil emocional de cada comunidad. Conviven tres familias de grafo: las cuentas y sus
+      vínculos, las emociones agrupadas por parecido, y los posts agrupados por contenido. Las dos
+      últimas hacen que esta vista aparezca también en corpus de discursos.</dd>
+
+      <dt>Etiquetas</dt>
+      <dd>El ranking de etiquetas coloreado por la orientación de valor de su entorno, la distribución
+      completa de funciones de cada una, y el detalle de cada aparición.</dd>
+
+      <dt>Marcas del dispositivo</dt>
+      <dd>La distribución de etiquetas, menciones, enlaces, emojis y tecnografismos, con el uso de
+      cada uno en su contexto y las unidades donde aparece cada emoji.</dd>
+    </dl>
+
+    <p>Las vistas generales también se adaptan: la curva emocional pasa a mostrar la evolución de la
+    conversación pública por etiqueta o por hilo, la co-ocurrencia agrupa por hilo o por etiqueta, y
+    la revisión muestra cada post con sus marcas del dispositivo y sus imágenes, con navegación entre
+    posts en los márgenes.</p>
+
+    <figure>
+      <div class="marco">
+        <img src="assets/img/11-hilos.png" alt="Vista de hilos: el árbol conversacional indentado, con la orientación de valor de cada post y la operación de reencuadre de las citas.">
+      </div>
+      <figcaption><span class="fnum">Figura 11.</span> Árbol de una conversación, con la orientación
+      de valor de cada post.</figcaption>
+    </figure>
+
+    <h2 id="estado"><span class="num">5</span>Estado y comandos</h2>
+
+    <p>Una vista muestra el progreso de todas las etapas, cada una en su granularidad real, y reúne
+    las herramientas de trabajo por lotes: revisión agrupada de actores nuevos, incorporación de
+    experienciadores corregidos a la base con propagación a las etapas que dependían de ellos, y
+    edición de la base acumulada de actores.</p>
+
+    <p>Una sección aparte arma los comandos que hay que escribir en la consola. Se eligen las opciones
+    con controles y el tablero muestra la línea lista para copiar. No ejecuta nada: el análisis corre
+    en la consola, que es lo apropiado para un proceso largo.</p>
+
+    <figure>
+      <div class="marco">
+        <img src="assets/img/12-ejecutar.png" alt="Constructor de comandos: los controles para elegir corrida, etapas y opciones, y la línea de comando resultante lista para copiar.">
+      </div>
+      <figcaption><span class="fnum">Figura 12.</span> Constructor de comandos, para quien prefiera
+      no recordar la sintaxis.</figcaption>
+    </figure>
+
+  </div>
+  </main>
+
+  <footer class="pie">
+    <div>
+      <h2>Proyecto</h2>
+      <p>EmoParse se desarrolla en el marco de una investigación sobre análisis automático de
+      emociones en discursos.</p>
+      <p><a href="https://github.com/alexdcolman/EmoParse">github.com/alexdcolman/EmoParse</a></p>
+    </div>
+    <div>
+      <h2>Autoría</h2>
+      <p><a href="https://independent.academia.edu/AlexColman1">Alex Colman</a></p>
+      <p>alexdcolman@gmail.com</p>
+    </div>
+    <div>
+      <h2>Licencia</h2>
+      <p>MIT. Si se usa en una publicación, una referencia al repositorio ayuda a sostener
+      el proyecto.</p>
+    </div>
+  </footer>
+
+</div>
+<script src="assets/js/figuras.js"></script>
+</body>
+</html>

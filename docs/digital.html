@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Posts y redes — EmoParse</title>
+<meta name="description" content="Cómo EmoParse analiza posts de redes sociales: etiquetas, menciones, emojis, hilos, y el análisis de las redes entre cuentas.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans+Condensed:wght@400;600&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/estilo.css">
+</head>
+<body>
+<a class="saltar" href="#principal">Ir al contenido</a>
+
+<div class="hoja">
+
+  <header class="masthead">
+    <h1 class="titulo"><a href="index.html">EmoParse</a></h1>
+    <p class="bajada">Análisis semiótico de emociones en discursos</p>
+    <p class="sello"><span>v0.6.3</span><span>Beta</span><span>Licencia MIT</span></p>
+  </header>
+
+  <nav class="nav" aria-label="Navegación del sitio">
+    <h2>Secciones</h2>
+    <ul>
+      <li><a href="index.html">Portada</a></li>
+      <li><a href="enfoque.html">El enfoque</a></li>
+      <li><a href="pipeline.html">Cómo funciona</a></li>
+      <li><a href="digital.html" aria-current="page">Posts y redes</a></li>
+      <li><a href="tablero.html">El tablero</a></li>
+      <li><a href="empezar.html">Empezar</a></li>
+      <li><a href="glosario.html">Glosario</a></li>
+    </ul>
+    <h2>En esta página</h2>
+    <ol class="indice">
+      <li><a href="#genero"><span class="num">1</span>Un post no es un texto plano</a></li>
+      <li><a href="#extraccion"><span class="num">2</span>Qué se extrae</a></li>
+      <li><a href="#escena"><span class="num">3</span>La escena que arma la plataforma</a></li>
+      <li><a href="#reencuadre"><span class="num">4</span>Citar y repostear</a></li>
+      <li><a href="#emojis"><span class="num">5</span>Emojis y etiquetas</a></li>
+      <li><a href="#usos"><span class="num">6</span>Para qué se usa cada marca</a></li>
+      <li><a href="#imagenes"><span class="num">7</span>Las imágenes</a></li>
+      <li><a href="#redes"><span class="num">8</span>Las redes entre cuentas</a></li>
+      <li><a href="#corpus"><span class="num">9</span>Conseguir el corpus</a></li>
+    </ol>
+    <h2>Repositorio</h2>
+    <ul>
+      <li><a href="https://github.com/alexdcolman/EmoParse">Código en GitHub</a></li>
+    </ul>
+  </nav>
+
+  <main class="cuerpo" id="principal">
+  <div class="contenido">
+
+    <h1>Posts y redes</h1>
+
+    <p class="entradilla">Un post de red social es un enunciado que existe dentro de un dispositivo.
+    Sus etiquetas, menciones, emojis y mayúsculas sostenidas son materia del análisis, y la plataforma
+    misma define buena parte de la situación de habla. El género <code>tuit</code> trabaja con esas
+    condiciones en lugar de limpiarlas.</p>
+
+    <div class="specimen">
+      <p class="fuente-texto">Otra vez lo mismo <span class="marca fue">@ministerio<span class="etq">mención</span></span>.
+      <span class="marca emo">BASTA<span class="etq">mayúsculas</span></span> de anuncios vacíos
+      <span class="marca fue">#tarifazo<span class="etq">etiqueta</span></span> 🤬</p>
+      <div class="lectura">
+        <dl>
+          <dt>Uso de la mención</dt>
+          <dd>confrontar</dd>
+          <dt>Uso de las mayúsculas</dt>
+          <dd>grito de indignación</dd>
+          <dt>Función de la etiqueta</dt>
+          <dd>evaluativa <em>(nombra y condena a la vez)</em></dd>
+          <dt>Aporte del emoji</dt>
+          <dd>indignación, foria disfórica</dd>
+          <dt>Quién habla</dt>
+          <dd>la cuenta autora, sin inferencia</dd>
+        </dl>
+      </div>
+    </div>
+
+    <h2 id="genero"><span class="num">1</span>Un post no es un texto plano</h2>
+
+    <p>En un discurso presidencial, quién habla y a quiénes se dirige hay que reconstruirlo desde el
+    texto. En un post, buena parte de esa escena viene dada: quien habla es la cuenta que publica, el
+    público se arma con quienes la siguen, hay un destinatario por cada cuenta mencionada y un público
+    por cada etiqueta usada. El sistema aprovecha esa información en lugar de deducirla, lo que hace
+    la revisión de esa parte del análisis bastante más liviana.</p>
+
+    <p>A cambio aparecen capas que un discurso tradicional no tiene: las marcas propias del
+    dispositivo, la estructura de los hilos con sus respuestas y sus citas, las imágenes adjuntas, y
+    la red de vínculos entre las cuentas.</p>
+
+    <p class="marginal">El principio del subsistema es anotar sin borrar. El texto del post nunca se
+    modifica; cada elemento se extrae con su posición exacta y se guarda aparte.</p>
+
+    <h2 id="extraccion"><span class="num">2</span>Qué se extrae</h2>
+
+    <p>Un primer paso recorre cada post y separa sus elementos, sin usar ningún modelo de lenguaje y
+    sin alterar el texto original.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Elemento</th><th>Qué se registra</th></tr></thead>
+      <tbody>
+        <tr><td>Etiquetas <span class="glosa">(hashtags)</span></td><td>La forma y su función en la oración: integrada a la sintaxis o pospuesta como rótulo al final.</td></tr>
+        <tr><td>Menciones <span class="glosa">(@cuenta)</span></td><td>La cuenta referida y su posición, vocativa o integrada. Cada mención da de alta un referente con vínculo ya aceptado.</td></tr>
+        <tr><td>Enlaces</td><td>La dirección y el dominio al que apunta.</td></tr>
+        <tr><td>Emojis</td><td>El emoji, incluidas las secuencias compuestas de varios símbolos.</td></tr>
+        <tr><td>Tecnografismos</td><td>Mayúsculas sostenidas, alargamientos de letras, risas escritas, puntuación expresiva.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>Que las menciones den de alta referentes antes de cualquier inferencia tiene un efecto
+    práctico: la base de actores del corpus arranca poblada con identificadores que son únicos por
+    definición, y eso reduce el trabajo de unificación posterior.</p>
+
+    <h2 id="escena"><span class="num">3</span>La escena que arma la plataforma</h2>
+
+    <p>Quien habla es la cuenta autora del post, tomada de su identificador único. Funciona igual con
+    corpus anonimizados, porque el alias se deriva de ese identificador y se mantiene estable a lo
+    largo de todo el corpus.</p>
+
+    <p>El público se construye sin inferencia: quienes siguen a la cuenta, un público por cada
+    etiqueta presente y un destinatario directo por cada cuenta mencionada. Los roles de destinatario,
+    en cambio, dependen del tipo de discurso que se identifique en cada post, y ese tipo se toma de un
+    vocabulario cerrado.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Tipo de post</th><th>Posiciones de destinatario propias del tipo</th></tr></thead>
+      <tbody>
+        <tr><td>Político</td><td>quien comparte las creencias, el indeciso a persuadir, el adversario</td></tr>
+        <tr><td>Periodístico</td><td>el lector ciudadano, el segmento al que apunta la estrategia editorial, el actor citado o etiquetado</td></tr>
+        <tr><td>Institucional</td><td>el ciudadano usuario, la comunidad interna, la instancia ante la que se rinde cuentas</td></tr>
+        <tr><td>Humor o meme</td><td>la comunidad que comparte el sentido, quien queda afuera del chiste, el blanco de la burla</td></tr>
+        <tr><td>Personal</td><td>el círculo afectivo, uno mismo, el testigo indeseado</td></tr>
+        <tr><td>Promocional</td><td>el destinatario buscado, la comunidad de marca, quien amplifica o recomienda</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>A esos roles se suman dos posiciones presentes en cualquier post, porque son propiedades del
+    dispositivo y no del tipo de discurso. Una es el destinatario mencionado, la interpelación
+    explícita mediante una arroba. La otra es la audiencia ambiente: el público difuso e imaginado que
+    resulta inevitable cuando la plataforma reúne, en un mismo lugar, audiencias que en otro contexto
+    estarían separadas.</p>
+
+    <h2 id="reencuadre"><span class="num">4</span>Citar y repostear</h2>
+
+    <p>Cuando un post retoma otro, hace algo con él. Un paso clasifica esa operación mirando el
+    comentario de quien cita y su relación con lo citado: puede haber adhesión, ironía que toma
+    distancia, denuncia, o difusión sin toma de posición.</p>
+
+    <p>Por separado se registra el estatuto de las emociones que aparecen en lo citado. Pueden estar
+    asumidas, cuando quien cita las hace propias, o exhibidas sin experimentarlas, que es el caso
+    típico de la denuncia y de la ironía. La distinción evita atribuirle a quien denuncia la euforia
+    que está exhibiendo para condenarla.</p>
+
+    <h2 id="emojis"><span class="num">5</span>Emojis y etiquetas</h2>
+
+    <p>Un emoji no porta un afecto fijo. El sistema parte de los valores típicos de cada uno, que
+    están en una lista curada, pero decide siempre por el contexto: una carcajada sobre una desgracia
+    ajena celebrada es burla del lado desagradable, y sobre una anécdota propia es risa del lado
+    agradable. La ironía invierte los valores, y un emoji meramente ilustrativo, una calabaza junto a
+    una receta, no aporta afecto alguno. La repetición intensifica sin cambiar el tipo.</p>
+
+    <p>Los emojis inequívocos se resuelven con la lista, sin consumir tiempo de modelo. Solo los
+    ambiguos van al análisis en contexto.</p>
+
+    <p>Las etiquetas funcionan a la vez como segmento del enunciado y como operador de indexación:
+    proyectan el post hacia un archivo buscable y pueden construir comunión alrededor de valores. Su
+    funcionamiento cambia de un post a otro, así que se caracterizan en cada uso, no en general.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Función</th><th>Qué hace la etiqueta</th></tr></thead>
+      <tbody>
+        <tr><td>Tópico</td><td>Indexa un tema sin evaluarlo.</td></tr>
+        <tr><td>Afiliación</td><td>Construye comunión alrededor de una causa; usarla es sumarse.</td></tr>
+        <tr><td>Evaluativa</td><td>Porta una valoración sobre su objeto. «#tarifazo» nombra y condena a la vez.</td></tr>
+        <tr><td>Irónica</td><td>Invierte el valor de aquello que nombra.</td></tr>
+        <tr><td>Campaña</td><td>Forma parte de una acción coordinada.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>De cada uso se registran además el acoplamiento, es decir qué valoración queda ligada a qué
+    objeto en ese post, y la orientación de valor del entorno. La caracterización general de una
+    etiqueta se deriva después por agregación de todos sus usos, con la distribución completa a la
+    vista, así que una etiqueta que admite posts de valoraciones opuestas queda registrada como
+    tópico y no como evaluativa.</p>
+
+    <figure>
+      <div class="marco">
+        <img src="assets/img/05-hashtags.png" alt="Vista de etiquetas: el ranking de hashtags coloreado por la orientación de valor de su entorno, la distribución de funciones de cada uno, y el detalle de cada uso.">
+      </div>
+      <figcaption><span class="fnum">Figura 5.</span> Las etiquetas del corpus, con la distribución de
+      funciones de cada una y el detalle de cada aparición.</figcaption>
+    </figure>
+
+    <h2 id="usos"><span class="num">6</span>Para qué se usa cada marca</h2>
+
+    <p>Ni el tipo de elemento ni su posición en la oración deciden su función. Un paso caracteriza el
+    uso de cada mención, cada tecnografismo y cada enlace dentro del post donde aparece, y cita el
+    post para justificarlo.</p>
+
+    <ul>
+      <li>Una mención puede interpelar, confrontar, exponer a la cuenta ante terceros, citarla,
+      agradecerle, convocarla o marcar afiliación con ella.</li>
+      <li>Unas mayúsculas sostenidas pueden ser grito de indignación, celebración, énfasis neutro, o
+      un simple rótulo temático, la volanta del titular trasladada al post.</li>
+      <li>Unos puntos suspensivos pueden insinuar o expresar incredulidad; una risa escrita puede ser
+      complicidad o burla, según haya o no alguien a quien se ridiculiza.</li>
+      <li>Un enlace puede funcionar como fuente y prueba, como autopromoción, como convocatoria o
+      como enlace temático.</li>
+    </ul>
+
+    <figure>
+      <div class="marco">
+        <img src="assets/img/06-tecno.png" alt="Vista de marcas del dispositivo: distribución de etiquetas, menciones, enlaces, emojis y tecnografismos, con el uso de cada uno en su contexto.">
+      </div>
+      <figcaption><span class="fnum">Figura 6.</span> Distribución de las marcas del dispositivo y el
+      uso de cada una en su contexto.</figcaption>
+    </figure>
+
+    <h2 id="imagenes"><span class="num">7</span>Las imágenes</h2>
+
+    <p>Un paso opcional describe las imágenes adjuntas: qué muestran, qué texto se lee en ellas, de
+    qué tipo son, si se trata de una plantilla de meme o de una captura de otro post. Esa descripción
+    entra después como contexto del análisis emocional, así que el post se analiza como un enunciado
+    compuesto de texto e imagen. Requiere un modelo capaz de leer imágenes, que se configura aparte.</p>
+
+    <h2 id="redes"><span class="num">8</span>Las redes entre cuentas</h2>
+
+    <p>El análisis de redes corre después del análisis emocional y no usa modelos de lenguaje. Su
+    costo está en las consultas a la plataforma, no en cómputo local.</p>
+
+    <h3>Los grafos</h3>
+
+    <p>Un <span class="term">grafo</span> es un conjunto de puntos unidos por líneas. Acá los puntos
+    son cuentas y las líneas son vínculos entre ellas: quién responde a quién, quién menciona a quién,
+    quién repostea o cita a quién, y qué cuentas usan las mismas etiquetas. Con esos vínculos, el
+    sistema calcula dos cosas.</p>
+
+    <p>Por un lado, qué cuentas ocupan posiciones centrales en la conversación, con medidas estándar
+    del área: cuántos vínculos tiene cada cuenta, cuán importantes son quienes la señalan, y con qué
+    frecuencia una cuenta queda en el camino más corto entre otras dos.<a class="nref" href="#n1" id="r1">1</a>
+    Por otro, qué comunidades de cuentas se forman, entendidas como zonas donde los vínculos son
+    mucho más densos hacia adentro que hacia afuera. Opcionalmente se reportan también los grupos
+    donde todas las cuentas se vinculan entre sí, que son una figura distinta de la comunidad.</p>
+
+    <h3>Quién sigue a quién</h3>
+
+    <p>El seguimiento vive en la plataforma y no en los posts, así que se consulta aparte, en un
+    paso que se corre una vez y que se puede interrumpir y retomar. El sistema pregunta a quién sigue
+    cada cuenta del corpus y conserva los vínculos internos al corpus. Es una foto del momento de la
+    consulta.<a class="nref" href="#n2" id="r2">2</a></p>
+
+    <h3>Circulación de las emociones</h3>
+
+    <p>Los vínculos entre cuentas se cruzan después con el análisis emocional. El sistema informa el
+    perfil emocional de cada comunidad, y una matriz que muestra con qué orientación de valor se
+    responde a cada orientación de valor: si la disforia escala, si contagia, o si se le responde con
+    ironía del lado agradable.</p>
+
+    <p>Un análisis adicional mide el contagio por tipo de emoción, es decir cuánto se replica cada
+    tipo en las respuestas por encima de lo que su frecuencia haría esperar,<a class="nref" href="#n3" id="r3">3</a>
+    y parte la matriz en dos: lo que ocurre puertas adentro de una comunidad y lo que ocurre en el
+    cruce entre comunidades.</p>
+
+    <h3>Agrupar por parecido</h3>
+
+    <p>Dos agrupamientos más no dependen de que el corpus sea de posts, así que también sirven para
+    corpus de discursos. Uno agrupa las emociones reconstruidas por parecido entre sus componentes:
+    mismo tipo de experienciador, mismo tipo de emoción, misma clase de fuente. Permite encontrar qué
+    fragmentos del corpus cuentan, en ese sentido, la misma historia emocional. El otro agrupa los
+    textos por parecido de contenido.<a class="nref" href="#n4" id="r4">4</a></p>
+
+    <figure>
+      <div class="marco">
+        <img src="assets/img/07-red.png" alt="Vista de la red de emociones reconstruidas por similitud entre sus componentes, con los nodos coloreados por comunidad y la tabla de emociones centrales de cada comunidad.">
+      </div>
+      <figcaption><span class="fnum">Figura 7.</span> Red de emociones reconstruidas
+      por similitud entre sus componentes, con las comunidades detectadas.</figcaption>
+    </figure>
+
+    <p>Todo el análisis se explora en el tablero y se exporta a archivos abiertos, listos para
+    trabajar en programas especializados en redes.</p>
+
+    <h2 id="corpus"><span class="num">9</span>Conseguir el corpus</h2>
+
+    <p>El sistema adquiere posts de Bluesky y de Mastodon, importa volcados de datos ya publicados en
+    formatos de tabla o de texto estructurado, y admite la interfaz oficial de X, que requiere plan
+    pago. La adquisición es incremental: si se interrumpe, retoma donde estaba y no duplica lo que ya
+    tenía.</p>
+
+    <p>Se puede pedir además que descargue las imágenes adjuntas, que complete el perfil de cada
+    cuenta autora, o que restrinja la adquisición a conversaciones con un mínimo de posts, expandiendo
+    el hilo completo de cada una.</p>
+
+    <div class="nota">
+      <span class="rotulo">Anonimización</span>
+      <p>Una opción reemplaza los identificadores de cuenta por alias estables derivados de una clave
+      local, y borra la biografía, el nombre visible y los datos originales. La estructura de los
+      hilos y de las redes se preserva, así que el análisis relacional sigue siendo posible sobre un
+      corpus anonimizado. Las consideraciones éticas y los límites del procedimiento están
+      documentados en el repositorio.</p>
+    </div>
+
+    <div class="notas">
+      <h2>Notas</h2>
+      <ol>
+        <li id="n1">Grado, PageRank e intermediación. El cálculo de intermediación se limita a redes
+        de hasta dos mil cuentas, porque su costo crece rápido con el tamaño. La detección de
+        comunidades usa el algoritmo de Louvain con semilla fija, de modo que dos corridas sobre el
+        mismo material dan el mismo resultado. <a href="#r1">↩</a></li>
+        <li id="n2">Se consulta solo a quién sigue cada cuenta, nunca quién la sigue. El vínculo entre
+        dos cuentas se captura igual desde cualquiera de los dos lados, y una cuenta sigue a cientos
+        mientras puede tener cientos de miles de seguidores. <a href="#r2">↩</a></li>
+        <li id="n3">La medida es el <em>lift</em>: un valor mayor que uno indica que ese tipo de
+        emoción aparece en las respuestas más de lo que se esperaría por su sola frecuencia en el
+        corpus. <a href="#r3">↩</a></li>
+        <li id="n4">El parecido de contenido se calcula con representaciones numéricas del texto, que
+        ubican cada post en un espacio donde la cercanía corresponde a la afinidad temática. Requiere
+        una biblioteca adicional, pesada; el agrupamiento por parecido entre emociones reconstruidas
+        funciona sin ella. <a href="#r4">↩</a></li>
+      </ol>
+    </div>
+
+  </div>
+  </main>
+
+  <footer class="pie">
+    <div>
+      <h2>Proyecto</h2>
+      <p>EmoParse se desarrolla en el marco de una investigación sobre análisis automático de
+      emociones en discursos.</p>
+      <p><a href="https://github.com/alexdcolman/EmoParse">github.com/alexdcolman/EmoParse</a></p>
+    </div>
+    <div>
+      <h2>Autoría</h2>
+      <p><a href="https://independent.academia.edu/AlexColman1">Alex Colman</a></p>
+      <p>alexdcolman@gmail.com</p>
+    </div>
+    <div>
+      <h2>Licencia</h2>
+      <p>MIT. Si se usa en una publicación, una referencia al repositorio ayuda a sostener
+      el proyecto.</p>
+    </div>
+  </footer>
+
+</div>
+<script src="assets/js/figuras.js"></script>
+</body>
+</html>

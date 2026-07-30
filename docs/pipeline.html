@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cómo funciona — EmoParse</title>
+<meta name="description" content="Las etapas del análisis de EmoParse, la unificación de actores, la revisión humana y las capas de control sobre la salida.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans+Condensed:wght@400;600&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/estilo.css">
+</head>
+<body>
+<a class="saltar" href="#principal">Ir al contenido</a>
+
+<div class="hoja">
+
+  <header class="masthead">
+    <h1 class="titulo"><a href="index.html">EmoParse</a></h1>
+    <p class="bajada">Análisis semiótico de emociones en discursos</p>
+    <p class="sello"><span>v0.6.3</span><span>Beta</span><span>Licencia MIT</span></p>
+  </header>
+
+  <nav class="nav" aria-label="Navegación del sitio">
+    <h2>Secciones</h2>
+    <ul>
+      <li><a href="index.html">Portada</a></li>
+      <li><a href="enfoque.html">El enfoque</a></li>
+      <li><a href="pipeline.html" aria-current="page">Cómo funciona</a></li>
+      <li><a href="digital.html">Posts y redes</a></li>
+      <li><a href="tablero.html">El tablero</a></li>
+      <li><a href="empezar.html">Empezar</a></li>
+      <li><a href="glosario.html">Glosario</a></li>
+    </ul>
+    <h2>En esta página</h2>
+    <ol class="indice">
+      <li><a href="#etapas"><span class="num">1</span>Las etapas</a></li>
+      <li><a href="#unidades"><span class="num">2</span>En qué se corta el texto</a></li>
+      <li><a href="#escena"><span class="num">3</span>Quién habla y a quiénes</a></li>
+      <li><a href="#referentes"><span class="num">4</span>Marcas y referentes</a></li>
+      <li><a href="#revision"><span class="num">5</span>La revisión humana</a></li>
+      <li><a href="#control"><span class="num">6</span>Cuatro capas de control</a></li>
+      <li><a href="#validez"><span class="num">7</span>Medir la validez</a></li>
+      <li><a href="#reanudar"><span class="num">8</span>Interrumpir y retomar</a></li>
+    </ol>
+    <h2>Repositorio</h2>
+    <ul>
+      <li><a href="https://github.com/alexdcolman/EmoParse">Código en GitHub</a></li>
+    </ul>
+  </nav>
+
+  <main class="cuerpo" id="principal">
+  <div class="contenido">
+
+    <h1>Cómo funciona</h1>
+
+    <p class="entradilla">El análisis avanza por etapas encadenadas. Cada una resuelve una pregunta
+    acotada, guarda su resultado y deja el terreno preparado para la siguiente. Se pueden correr
+    todas de una vez o de a bloques, revisando lo que salió antes de seguir.</p>
+
+    <h2 id="etapas"><span class="num">1</span>Las etapas</h2>
+
+    <p>Cada etapa trabaja sobre un nivel distinto del material. Algunas leen el discurso completo,
+    otras van unidad por unidad, otras recorren emociones ya detectadas o actores ya identificados.
+    Las etapas marcadas como opcionales se activan solo si se las pide.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead>
+        <tr><th>Etapa</th><th>Nivel</th><th>Qué resuelve</th><th></th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>summarizer</code></td><td>discurso</td><td>Un resumen del texto completo, que después sirve de contexto a las demás etapas.</td><td class="dato">activa</td></tr>
+        <tr><td><code>metadata</code></td><td>discurso</td><td>El tipo de discurso y el lugar, si el texto lo menciona.</td><td class="dato">activa</td></tr>
+        <tr><td><code>enunciation</code></td><td>discurso</td><td>Quién habla, a quiénes se dirige, ante qué público y con qué colectivos se identifica.</td><td class="dato">activa</td></tr>
+        <tr><td><code>actors</code></td><td>unidad</td><td>Los actores nombrados o deducibles: personas, colectivos, instituciones.</td><td class="dato">activa</td></tr>
+        <tr><td><code>emotions</code></td><td>unidad</td><td>Primera lectura de emociones, unidad por unidad y de forma aislada.</td><td class="dato">activa</td></tr>
+        <tr><td><code>emotions_pass2</code></td><td>unidad</td><td>Segunda lectura, con las unidades anteriores del mismo discurso como contexto.</td><td class="dato">opcional</td></tr>
+        <tr><td><code>explode_emotions</code></td><td>emoción</td><td>Separa cada emoción en su propia fila y siembra los vínculos entre marcas y referentes. Sin modelo.</td><td class="dato">activa</td></tr>
+        <tr><td><code>deixis</code></td><td>marca</td><td>A quién remite cada «yo», «nosotros», «ustedes».</td><td class="dato">opcional</td></tr>
+        <tr><td><code>modalidad</code></td><td>vínculo</td><td>De qué manera cada marca refiere a su referente.</td><td class="dato">opcional</td></tr>
+        <tr><td><code>normalize_emotions</code></td><td>emoción</td><td>El nombre canónico de cada emoción, según la lista editable.</td><td class="dato">activa</td></tr>
+        <tr><td><code>characterizer</code></td><td>emoción</td><td>Foria, dominancia, intensidad, duración, atribución, temporalidad y aspecto.</td><td class="dato">activa</td></tr>
+        <tr><td><code>actants</code></td><td>emoción</td><td>Mediador, verificadores, operador de modificación y polaridad.</td><td class="dato">opcional</td></tr>
+        <tr><td><code>judge</code></td><td>emoción</td><td>Un segundo modelo revisa la reconstrucción y propone correcciones acotadas.</td><td class="dato">opcional</td></tr>
+        <tr><td><code>semas</code></td><td>referente</td><td>Los rasgos semánticos de cada referente, tomados de un vocabulario curado.</td><td class="dato">activa</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p class="marginal">Las dependencias entre etapas están declaradas. Pedir solo <code>emotions</code>
+    hace que el programa verifique antes que <code>actors</code> esté completa, y avise si no lo está.</p>
+
+    <p>La primera lectura de emociones analiza cada unidad por separado, sin ver lo que vino antes.
+    La razón es evitar que una unidad cargada de indignación arrastre a la siguiente. La segunda
+    lectura, opcional, vuelve sobre las mismas unidades con el contexto previo a la vista, para
+    detectar continuidades, contrastes y escaladas. Cada emoción que agrega tiene que apoyarse en
+    algo citable de la unidad actual.</p>
+
+    <figure>
+      <div class="marco">
+        <img src="assets/img/03-etapas.png" alt="Grafo de dependencias entre las etapas del análisis: qué etapa necesita cuál terminada antes de poder correr.">
+      </div>
+      <figcaption><span class="fnum">Figura 3.</span> Dependencias entre etapas. Las flechas indican
+      qué tiene que estar resuelto antes de que una etapa pueda correr.</figcaption>
+    </figure>
+
+    <h2 id="unidades"><span class="num">2</span>En qué se corta el texto</h2>
+
+    <p>El modo de segmentar condiciona qué configuraciones emocionales resultan visibles. Cada género
+    declara su unidad: los discursos presidenciales se cortan por frase, los posts se toman enteros,
+    porque un post es de por sí una unidad breve.</p>
+
+    <p>El cortador de frases contempla las abreviaturas del español, junta oraciones muy cortas y
+    parte las muy largas por punto y coma o por coma. Una emoción que solo se reconoce en la
+    continuidad de varias frases puede perderse en una lectura frase por frase, y esa es la carencia
+    que la segunda lectura viene a cubrir.</p>
+
+    <h2 id="escena"><span class="num">3</span>Quién habla y a quiénes</h2>
+
+    <p>Antes de buscar emociones, el sistema reconstruye la situación de habla, porque sin ella un
+    «nosotros» no tiene a quién remitir y una emoción atribuida al público no se distingue de una
+    atribuida a quien habla.</p>
+
+    <p>La reconstrucción se hace en dos pasos. Primero se resuelve el <span class="term">enunciador</span>,
+    la posición identificable con el «yo» del discurso. Un paso breve devuelve su denominación
+    normalizada, «el presidente Javier Milei» pasa a «Javier Milei». Con esa posición ya fijada, un
+    segundo paso identifica el resto: los <span class="term">enunciatarios</span> con sus roles, el
+    <span class="term">auditorio</span> que efectivamente escucha, y los
+    <span class="term">colectivos de identificación</span> con los que el enunciador se inscribe
+    («nosotros los peronistas»).</p>
+
+    <p>Cada una de esas posiciones se completa con un actor concreto, una persona, un colectivo o una
+    institución, nunca con la etiqueta del rol. El rol va en un campo aparte.</p>
+
+    <div class="nota">
+      <span class="rotulo">Repertorio acumulado</span>
+      <p>El sistema guarda, por enunciador, el repertorio de colectivos con los que se identificó en
+      discursos anteriores, y lo ofrece como contexto en corridas futuras. La instrucción incluye la
+      libertad de proponer identificaciones nuevas cuando las conocidas no se ajustan, así que el
+      repertorio orienta sin imponer.</p>
+    </div>
+
+    <h2 id="referentes"><span class="num">4</span>Marcas y referentes</h2>
+
+    <p>Todas las expresiones que el análisis toca se registran en una base común de
+    <span class="term">marcas</span>. Una marca es una expresión situada en un lugar concreto del
+    corpus: «Javier Milei», «ellos», «la casta», «tomamos». Las funciones que esa marca cumple, ser
+    actor, ser quien siente, ser lo que desencadena, se guardan aparte, así que una misma expresión
+    puede cumplir dos funciones sin duplicarse.</p>
+
+    <p>Cada marca se liga después a uno o más <span class="term">referentes canónicos</span>: la
+    unidad bajo la cual se agrupan las distintas expresiones que remiten a lo mismo. «El presidente»,
+    «Milei» y «el jefe de Estado» pueden converger en un solo referente, y a partir de ahí las cuentas
+    del corpus dejan de estar fragmentadas.</p>
+
+    <p>El agrupamiento es automático y se apoya en cuatro procedimientos, ninguno de los cuales
+    consume tiempo de modelo: coincidencia léxica entre expresiones, la inferencia que el propio
+    modelo produjo al detectar el actor, la resolución de la primera persona hacia el enunciador, y la
+    coincidencia con una base de referentes ya conocidos. La regla es deliberadamente cautelosa. Es
+    preferible que queden casi duplicados sin unir, para que alguien los resuelva, antes que se
+    fusionen dos referentes distintos y se borre una distinción que el corpus sostenía.</p>
+
+    <h3>Deixis</h3>
+
+    <p>Palabras como «yo», «nosotros» o «ustedes» refieren sin nombrar, y por eso la coincidencia
+    léxica no puede resolverlas: «nosotros» no comparte ninguna letra con «argentinos». Una etapa
+    opcional toma el enunciador, el auditorio y los colectivos ya identificados y asigna cada una de
+    esas marcas a referentes concretos. La asignación puede ser múltiple, porque «nuestro equipo»
+    puede remitir a la vez a quien habla y al colectivo con el que se identifica.</p>
+
+    <h3>De qué manera refiere una marca</h3>
+
+    <p>Otra etapa opcional clasifica el modo en que cada marca refiere a su referente, en un eje
+    independiente de si el vínculo se acepta o se rechaza. Una marca puede <em>designar</em> al
+    referente con un nombre o un sustantivo («Javier Milei», «el presidente de la Nación»),
+    <em>referirlo gramaticalmente</em> sin nombrarlo («yo», «he defendido»), o
+    <em>identificarlo por inferencia</em> a partir de la actitud que expresa: «ellos son la casta
+    corrupta» identifica a quien habla como quien sostiene esa posición, aunque no lo nombre.</p>
+
+    <p>La clasificación es por vínculo y no por marca, porque un mismo sintagma puede designar a un
+    referente e identificar por inferencia a otro. Tenerla permite conservar el vínculo, sin perder a
+    quien siente la emoción, y a la vez filtrar solo las designaciones para estudiar cómo el discurso
+    construye sus objetos.</p>
+
+    <p>El procedimiento combina dos recursos. Un análisis gramatical resuelve los casos claros de
+    manera barata y precisa: los pronombres y las formas verbales van a referencia gramatical, los
+    nombres propios a designación. El modelo de lenguaje interviene solo en los casos ambiguos, los
+    sintagmas de nombre común que pueden ser una denominación o un epíteto valorativo.</p>
+
+    <h2 id="revision"><span class="num">5</span>La revisión humana</h2>
+
+    <p>La revisión es parte del método y ocupa una porción sustantiva del tiempo de trabajo. Con
+    cientos o miles de vínculos, revisar uno por uno no alcanza, así que el tablero ofrece dos
+    herramientas para hacerlo a escala.</p>
+
+    <p><strong>Acciones en lote.</strong> Aceptan o rechazan de una vez todos los vínculos que
+    cumplan un filtro combinado: el estado actual, el modo de referencia, la función, con la
+    posibilidad de excluir («que no incluya fuente»), y los referentes a incluir o dejar afuera. El
+    resultado se calcula al pulsar un botón, y el rechazo pide confirmación.</p>
+
+    <p><strong>Fusiones sugeridas.</strong> Como el agrupamiento automático es cauteloso, quedan
+    casi duplicados: «sociedad humana», «sociedad humanidad», «sociedad humana humanidad». Un detector
+    los propone agrupados, sin usar modelos de lenguaje. Compara solo los referentes que comparten
+    alguna palabra significativa, mide el parecido entre ellos por las palabras en común y por la
+    inclusión de un conjunto en otro, y opcionalmente agrega un parecido de significado que capta
+    sinónimos sin letras compartidas. Cada grupo propuesto se revisa y se fusiona a mano, o se
+    descarta.</p>
+
+    <figure>
+      <div class="marco">
+        <img src="assets/img/04-referentes.png" alt="Vista de revisión de referentes: las marcas agrupadas bajo cada referente canónico, con su estado, y el panel de fusiones sugeridas al costado.">
+      </div>
+      <figcaption><span class="fnum">Figura 4.</span> Revisión de referentes, con las marcas agrupadas
+      y las fusiones propuestas para resolver a mano.</figcaption>
+    </figure>
+
+    <p>Cuando una unidad tiene varias emociones que comparten la marca de quien las siente, la
+    atribución se puede hacer emoción por emoción: fijar la indignación en un referente y dejar el
+    miedo en otro, sin arrastrar una con la otra. Si se atribuye más de un experienciador a la misma
+    emoción, esta se desdobla en una emoción por referente, y cada una queda con su propio grado de
+    realización. Varias fuentes, en cambio, conviven en una sola.</p>
+
+    <div class="nota">
+      <span class="rotulo">Las ediciones no tocan los datos originales</span>
+      <p>Las correcciones se guardan en un archivo aparte que se aplica por encima al leer. Los
+      borrados se pueden revertir y la escritura conserva una copia de respaldo. Un botón explícito
+      materializa lo revisado en la base y vuelve a marcar como pendientes las etapas posteriores que
+      dependían de lo que cambió.</p>
+    </div>
+
+    <h2 id="control"><span class="num">6</span>Cuatro capas de control</h2>
+
+    <p>La salida del modelo pasa por controles sucesivos, cada uno de los cuales atrapa lo que el
+    anterior no puede ver.</p>
+
+    <dl class="defs">
+      <dt>Forma</dt>
+      <dd>La restricción sobre la generación garantiza que la ficha esté completa, con los campos
+      previstos y sin campos de más. Un resultado mal formado no puede producirse.</dd>
+
+      <dt>Tipo</dt>
+      <dd>Cada etapa verifica lo que recibe y lo que entrega contra un contrato declarado: qué
+      columnas tienen que estar, de qué tipo, con qué valores admisibles. Ahí se detectan los errores
+      de encastre entre etapas.</dd>
+
+      <dt>Coherencia semiótica</dt>
+      <dd>Un conjunto de reglas declaradas revisa las combinaciones que el marco teórico no admite,
+      sin recurrir a ningún modelo. Cada incidencia queda registrada para que alguien decida si
+      corresponde a un error del sistema o a un fenómeno que la regla no preveía.</dd>
+
+      <dt>Segunda lectura por otro modelo</dt>
+      <dd>Un paso opcional pone a un segundo modelo a revisar la reconstrucción, con el contexto del
+      discurso y una ventana de unidades vecinas.</dd>
+    </dl>
+
+    <h3>Algunas de las reglas</h3>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Regla</th><th>Qué señala</th></tr></thead>
+      <tbody>
+        <tr><td class="dato">V01</td><td>Una emoción presentada como posible no puede tener a quien habla como quien la siente.</td></tr>
+        <tr><td class="dato">V02</td><td>Una fuente sin identificar junto a una intensidad alta indica tensión en la lectura.</td></tr>
+        <tr><td class="dato">V04</td><td>Una emoción sin orientación de valor no puede tener intensidad alta.</td></tr>
+        <tr><td class="dato">V06</td><td>Una emoción apenas virtual y sin orientación de valor es contradictoria.</td></tr>
+        <tr><td class="dato">V09</td><td>La misma emoción del mismo actor aparece dos veces en la misma unidad.</td></tr>
+        <tr><td class="dato">V11</td><td>La emoción detectada no figura en la lista de categorías, o viola sus restricciones.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>El alcance del segundo modelo está acotado a propósito. Corrige quién siente la emoción, de
+    qué tipo es, qué la desencadena, en qué grado se realiza, cuándo ocurre y su configuración
+    relacional. Deja sin tocar la foria, la dominancia, la intensidad, la duración y la
+    atribución.<a class="nref" href="#n1" id="r1">1</a></p>
+
+    <h2 id="validez"><span class="num">7</span>Medir la validez</h2>
+
+    <p>La cuarta instancia de control es humana, y funciona como un circuito completo de cuatro
+    pasos.</p>
+
+    <ol>
+      <li><strong>Muestra a ciegas.</strong> El sistema exporta una planilla con una selección
+      equilibrada de unidades, la mitad con detección y la mitad sin ella, mezcladas y sin ninguna
+      salida del modelo a la vista. Se reparte una copia por anotador.</li>
+      <li><strong>Acuerdo entre anotadores.</strong> Con las planillas completas, el programa calcula
+      cuánto coinciden las personas entre sí, dimensión por dimensión, con una medida estándar que
+      descuenta el acuerdo esperable por azar. Un valor por encima de 0,8 se considera confiable;
+      entre 0,667 y 0,8, tentativo; por debajo, conviene revisar el manual de anotación antes de
+      atribuirle el problema al modelo.<a class="nref" href="#n2" id="r2">2</a></li>
+      <li><strong>Conjunto de referencia.</strong> De resolver los desacuerdos sale un conjunto de
+      casos con respuesta acordada, versionado. Comparar cada corrida contra él informa cuántas
+      emociones se detectaron correctamente, cuántas se pasaron por alto y cuántas se inventaron, más
+      el acierto en cada dimensión.</li>
+      <li><strong>Control de sobredetección.</strong> Una corrida sobre textos administrativos sin
+      carga emocional estima con qué frecuencia el modelo detecta emociones donde no las hay.</li>
+    </ol>
+
+    <p>Cada modificación de una instrucción o de una lista de categorías se convierte así en un
+    experimento con resultado medible.</p>
+
+    <h2 id="reanudar"><span class="num">8</span>Interrumpir y retomar</h2>
+
+    <p>Analizar un corpus grande lleva horas. El proceso se puede cortar y retomar: lo que ya
+    terminó queda registrado como completo y no se vuelve a procesar. Las unidades que fallaron
+    quedan marcadas aparte y se reintentan solas, con reglas configurables sobre qué reintentar y
+    cuántas veces.</p>
+
+    <p>Las respuestas ya obtenidas se guardan en una memoria interna cuya clave incluye las versiones
+    de las instrucciones, de las listas de categorías y de los formatos de salida. Cambiar solo una
+    instrucción invalida únicamente lo que dependía de ella, y el resto del trabajo se conserva.</p>
+
+    <div class="notas">
+      <h2>Notas</h2>
+      <ol>
+        <li id="n1">La razón es teórica. En las dimensiones donde el abanico de lecturas admisibles es
+        amplio, pedirle a un segundo modelo que corrija al primero reproduce un sesgo conocido: el
+        juicio se desplaza hacia el valor que se le presentó de antemano, sin que haya un criterio más
+        firme para dirimir entre lecturas igualmente aceptables. La corrección se reserva para los
+        casos donde tiene sentido exigir acierto, como una atribución equivocada por discurso
+        referido, una ironía no reconocida o una polaridad invertida. <a href="#r1">↩</a></li>
+        <li id="n2">La medida es el alfa de Krippendorff. La implementación es propia, sin
+        dependencias externas, admite datos faltantes y está verificada contra los valores publicados
+        del ejemplo canónico. <a href="#r2">↩</a></li>
+      </ol>
+    </div>
+
+  </div>
+  </main>
+
+  <footer class="pie">
+    <div>
+      <h2>Proyecto</h2>
+      <p>EmoParse se desarrolla en el marco de una investigación sobre análisis automático de
+      emociones en discursos.</p>
+      <p><a href="https://github.com/alexdcolman/EmoParse">github.com/alexdcolman/EmoParse</a></p>
+    </div>
+    <div>
+      <h2>Autoría</h2>
+      <p><a href="https://independent.academia.edu/AlexColman1">Alex Colman</a></p>
+      <p>alexdcolman@gmail.com</p>
+    </div>
+    <div>
+      <h2>Licencia</h2>
+      <p>MIT. Si se usa en una publicación, una referencia al repositorio ayuda a sostener
+      el proyecto.</p>
+    </div>
+  </footer>
+
+</div>
+<script src="assets/js/figuras.js"></script>
+</body>
+</html>

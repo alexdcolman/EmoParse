@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Empezar — EmoParse</title>
+<meta name="description" content="Qué hace falta para correr EmoParse, cómo se instala, cómo se configura y cómo se hace un primer análisis.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans+Condensed:wght@400;600&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/estilo.css">
+</head>
+<body>
+<a class="saltar" href="#principal">Ir al contenido</a>
+
+<div class="hoja">
+
+  <header class="masthead">
+    <h1 class="titulo"><a href="index.html">EmoParse</a></h1>
+    <p class="bajada">Análisis semiótico de emociones en discursos</p>
+    <p class="sello"><span>v0.6.3</span><span>Beta</span><span>Licencia MIT</span></p>
+  </header>
+
+  <nav class="nav" aria-label="Navegación del sitio">
+    <h2>Secciones</h2>
+    <ul>
+      <li><a href="index.html">Portada</a></li>
+      <li><a href="enfoque.html">El enfoque</a></li>
+      <li><a href="pipeline.html">Cómo funciona</a></li>
+      <li><a href="digital.html">Posts y redes</a></li>
+      <li><a href="tablero.html">El tablero</a></li>
+      <li><a href="empezar.html" aria-current="page">Empezar</a></li>
+      <li><a href="glosario.html">Glosario</a></li>
+    </ul>
+    <h2>En esta página</h2>
+    <ol class="indice">
+      <li><a href="#requisitos"><span class="num">1</span>Qué hace falta</a></li>
+      <li><a href="#instalar"><span class="num">2</span>Instalar</a></li>
+      <li><a href="#modelos"><span class="num">3</span>Los modelos</a></li>
+      <li><a href="#configurar"><span class="num">4</span>Configurar</a></li>
+      <li><a href="#primer-analisis"><span class="num">5</span>Un primer análisis</a></li>
+      <li><a href="#posts"><span class="num">6</span>Un corpus de posts</a></li>
+      <li><a href="#comandos"><span class="num">7</span>Los comandos</a></li>
+      <li><a href="#problemas"><span class="num">8</span>Si algo falla</a></li>
+    </ol>
+    <h2>Repositorio</h2>
+    <ul>
+      <li><a href="https://github.com/alexdcolman/EmoParse">Código en GitHub</a></li>
+    </ul>
+  </nav>
+
+  <main class="cuerpo" id="principal">
+  <div class="contenido">
+
+    <h1>Empezar</h1>
+
+    <p class="entradilla">EmoParse se instala una vez y se usa escribiendo comandos en la consola de
+    la computadora. Los tutoriales del repositorio indican exactamente qué escribir en cada paso.
+    Esta página describe qué hace cada cosa.</p>
+
+    <div class="nota">
+      <span class="rotulo">La consola</span>
+      <p>La consola, también llamada terminal o línea de comandos, es una ventana donde se le dan
+      órdenes escritas a la computadora en lugar de hacer clic. Viene incluida en Windows, macOS y
+      Linux. Todo lo que sigue son líneas para escribir ahí y apretar Enter.</p>
+    </div>
+
+    <h2 id="requisitos"><span class="num">1</span>Qué hace falta</h2>
+
+    <dl class="defs">
+      <dt>Python 3.11 o posterior</dt>
+      <dd>El lenguaje en el que está escrito EmoParse. Se descarga del sitio oficial y se instala como
+      cualquier otro programa.</dd>
+
+      <dt>Git</dt>
+      <dd>Un programa para descargar y mantener actualizado el código desde el repositorio.</dd>
+
+      <dt>Alrededor de 20 GB de disco</dt>
+      <dd>Los modelos de lenguaje son archivos grandes y se guardan en la computadora.</dd>
+
+      <dt>Una placa de video, recomendada</dt>
+      <dd>La placa de video es el componente que hace muchos cálculos en paralelo. Los modelos de
+      lenguaje están hechos para aprovecharla, así que con placa el análisis va bastante más rápido.
+      Sin placa el programa funciona igual, con el procesador común, pero un corpus grande puede
+      tardar mucho.<a class="nref" href="#n1" id="r1">1</a></dd>
+    </dl>
+
+    <h2 id="instalar"><span class="num">2</span>Instalar</h2>
+
+    <p>Tres pasos: traer el código, armarle un espacio propio, e instalarlo.</p>
+
+<pre><code><span class="c"># 1. Traer el código</span>
+git clone https://github.com/alexdcolman/EmoParse.git
+cd EmoParse
+
+<span class="c"># 2. Crear un espacio aislado para las bibliotecas del programa</span>
+python -m venv .venv
+source .venv/bin/activate        <span class="c"># Linux y macOS</span>
+<span class="c"># .venv\Scripts\activate       # Windows</span>
+
+<span class="c"># 3. Instalar</span>
+pip install -e ".[llamacpp,ui,scraping]"</code></pre>
+
+    <p class="marginal">El espacio aislado del segundo paso evita que las bibliotecas de EmoParse
+    interfieran con las de otros programas de la misma computadora. Hay que activarlo cada vez que se
+    abra una consola nueva.</p>
+
+    <p>Lo que va entre corchetes en el tercer paso son los agregados opcionales. Cada uno suma una
+    capacidad y se instala solo si hace falta.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Agregado</th><th>Para qué</th></tr></thead>
+      <tbody>
+        <tr><td><code>llamacpp</code></td><td>Correr modelos de lenguaje localmente.</td></tr>
+        <tr><td><code>lmstudio</code></td><td>Usar modelos a través de LM Studio, una aplicación con interfaz gráfica.</td></tr>
+        <tr><td><code>ui</code></td><td>El tablero de exploración.</td></tr>
+        <tr><td><code>scraping</code></td><td>Bajar discursos de sitios web.</td></tr>
+        <tr><td><code>nlp</code></td><td>Análisis gramatical, que usa la etapa de modalidad referencial.</td></tr>
+        <tr><td><code>bluesky</code></td><td>Adquirir posts de Bluesky. Mastodon no requiere agregado.</td></tr>
+        <tr><td><code>techno</code></td><td>Lectura de emojis compuestos de varios símbolos.</td></tr>
+        <tr><td><code>network</code></td><td>Análisis de redes entre cuentas.</td></tr>
+        <tr><td><code>embeddings</code></td><td>Agrupamiento de textos por parecido de contenido. Pesado; opcional.</td></tr>
+        <tr><td><code>all</code></td><td>Todo lo anterior.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>La etapa de modalidad referencial necesita además un modelo gramatical del español, que se baja
+    una vez:</p>
+
+<pre><code>pip install -e ".[nlp]"
+python -m spacy download es_core_news_md</code></pre>
+
+    <h2 id="modelos"><span class="num">3</span>Los modelos</h2>
+
+    <p>EmoParse no incluye los modelos de lenguaje: se descargan por separado y se guardan en la
+    carpeta <code>models/</code>. Vienen en un formato comprimido que permite usarlos en computadoras
+    comunes, a costa de una pérdida mínima de precisión.<a class="nref" href="#n2" id="r2">2</a></p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Modelo</th><th>Tamaño</th><th>Para qué etapas</th></tr></thead>
+      <tbody>
+        <tr><td><code>qwen3-14b</code></td><td class="dato">~9 GB</td><td>Detección de emociones, actores, situación de habla, caracterización.</td></tr>
+        <tr><td><code>qwen3-30b-a3b</code></td><td class="dato">~18 GB</td><td>Resumen de textos largos.</td></tr>
+        <tr><td><code>phi-4-mini-instruct</code></td><td class="dato">~2 GB</td><td>Tareas de ficha simple, como el tipo de discurso.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>Un modelo distinto por etapa es la configuración habitual: las tareas de ficha breve no
+    justifican un modelo grande. El programa carga y descarga los modelos de la memoria de la placa a
+    medida que cambia de etapa, así que no conviven dos modelos grandes al mismo tiempo.</p>
+
+    <h2 id="configurar"><span class="num">4</span>Configurar</h2>
+
+    <p>La configuración vive en un archivo de texto que se copia del ejemplo incluido y se edita. Ahí
+    se indican dónde están los modelos, qué modelo usa cada etapa, de a cuántas unidades se procesa
+    por vez y dónde se guardan los resultados.</p>
+
+<pre><code>cp config.example.yaml config.yaml</code></pre>
+
+    <h2 id="primer-analisis"><span class="num">5</span>Un primer análisis</h2>
+
+    <p>La entrada mínima es una planilla con dos columnas: un identificador único por texto y el texto
+    en sí. El programa incluye además un descargador para el sitio de Casa Rosada.</p>
+
+<pre><code><span class="c"># Opción A: usar una planilla propia (columnas: codigo, contenido)</span>
+
+<span class="c"># Opción B: bajar discursos de Casa Rosada</span>
+emoparse scrape --source casarosada \
+  --out data/discursos.csv \
+  --from 2024-01-01 --to 2024-12-31
+
+<span class="c"># Correr el análisis</span>
+emoparse run \
+  --config config.yaml \
+  --input  data/discursos.csv \
+  --run-id mi_primer_analisis
+
+<span class="c"># Ver cómo viene, desde otra consola</span>
+emoparse status --db runs/mi_primer_analisis.sqlite
+
+<span class="c"># Abrir el tablero</span>
+emoparse app</code></pre>
+
+    <p>Conviene correr por bloques y revisar cada resultado antes de seguir, en lugar de lanzar todo
+    de una vez. Las etapas se eligen con <code>--stages</code>:</p>
+
+<pre><code>emoparse run ... --stages actors,emotions,explode_emotions</code></pre>
+
+    <div class="nota">
+      <span class="rotulo">Dónde queda todo</span>
+      <p>Cada análisis produce un archivo único en la carpeta <code>runs/</code>, con el nombre que se
+      le haya dado. Ese archivo contiene el texto de entrada, todos los resultados intermedios y las
+      versiones exactas de las instrucciones y las categorías que se usaron. Copiarlo a otra
+      computadora alcanza para reproducir la exploración completa.</p>
+    </div>
+
+    <h2 id="posts"><span class="num">6</span>Un corpus de posts</h2>
+
+    <p>Para posts de redes sociales, el corpus se adquiere primero y se analiza después, con la
+    indicación del género.</p>
+
+<pre><code><span class="c"># 1. Adquirir</span>
+emoparse acquire --source bluesky --query "#tarifazo" --lang es \
+    --max 500 --out data/tarifazo.jsonl
+
+<span class="c"># 2. Analizar</span>
+emoparse run --config config.yaml --genre tuit \
+    --input data/tarifazo.jsonl --run-id tarifazo01
+
+<span class="c"># 3. Redes entre cuentas</span>
+emoparse network --db runs/tarifazo01.sqlite \
+    --flujo --similitud --export-dir exports/red</code></pre>
+
+    <p>Los detalles del género, sus etapas propias y las opciones de adquisición están en
+    <a href="digital.html">Posts y redes</a>.</p>
+
+    <h2 id="comandos"><span class="num">7</span>Los comandos</h2>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Comando</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>emoparse run</code></td><td>Corre el análisis.</td></tr>
+        <tr><td><code>emoparse app</code></td><td>Abre el tablero.</td></tr>
+        <tr><td><code>emoparse scrape</code></td><td>Baja discursos de un sitio registrado.</td></tr>
+        <tr><td><code>emoparse acquire</code></td><td>Adquiere posts a un corpus incremental.</td></tr>
+        <tr><td><code>emoparse follows</code></td><td>Consulta quién sigue a quién entre las cuentas del corpus.</td></tr>
+        <tr><td><code>emoparse network</code></td><td>Construye y analiza las redes de una corrida.</td></tr>
+        <tr><td><code>emoparse eval</code></td><td>Circuito de validación: muestras a ciegas, acuerdo, conjunto de referencia.</td></tr>
+        <tr><td><code>emoparse status</code></td><td>Qué quedó pendiente, qué falló y qué terminó, por etapa.</td></tr>
+        <tr><td><code>emoparse inspect</code></td><td>Estado completo de un texto en particular.</td></tr>
+        <tr><td><code>emoparse retry</code></td><td>Limpia los errores para volver a intentarlos.</td></tr>
+        <tr><td><code>emoparse validate</code></td><td>Aplica las reglas de coherencia sobre las emociones.</td></tr>
+        <tr><td><code>emoparse modalidad</code></td><td>Clasifica el modo de referencia sin usar modelos de lenguaje.</td></tr>
+        <tr><td><code>emoparse judge</code></td><td>Resumen de la revisión hecha por el segundo modelo.</td></tr>
+        <tr><td><code>emoparse metrics</code></td><td>Tiempos, cantidades y errores por etapa.</td></tr>
+        <tr><td><code>emoparse stats</code></td><td>Estado de la memoria de respuestas ya obtenidas.</td></tr>
+        <tr><td><code>emoparse export</code></td><td>Exporta los resultados a planillas.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <p>Todos aceptan <code>--help</code>, que describe sus opciones.</p>
+
+    <h2 id="problemas"><span class="num">8</span>Si algo falla</h2>
+
+    <h3>Se queda sin memoria al cargar el modelo</h3>
+    <p>Hay tres salidas, de menor a mayor pérdida: reducir cuánto del modelo se carga en la placa de
+    video, reducir el tamaño de texto que el modelo lee de una vez, o usar una versión más comprimida
+    del mismo modelo.</p>
+
+    <h3>Avisa que el texto excede el límite, pero el texto no parece largo</h3>
+    <p>Puede ocurrir por dos razones. Una es que las instrucciones más el texto superen lo que el
+    modelo admite de una vez. La otra es que el modelo no haya terminado de cerrar su respuesta dentro
+    del límite de longitud fijado. El mensaje de error informa cuál de las dos fue. Las instrucciones
+    de lectura se pueden acortar sin tocar el programa: están en archivos de texto aparte.</p>
+
+    <h3>Algunas unidades salen sin ninguna emoción</h3>
+    <p>Es un resultado legítimo si no hay emoción que detectar. Si ocurre de manera sistemática en
+    unidades con emoción evidente, conviene revisar tres cosas: que la lista de categorías cubra ese
+    tipo de emoción, que las indicaciones de lectura contemplen el caso, y que el modelo elegido no
+    esté por debajo de lo que la tarea exige.</p>
+
+    <h3>Los resultados no se repiten entre corridas</h3>
+    <p>El manejo de la semilla de azar cambió entre versiones de la biblioteca que corre los modelos.
+    Al actualizarla conviene volver a verificar que dos corridas idénticas den lo mismo.</p>
+
+    <h3>El tablero no encuentra la corrida</h3>
+    <p>El tablero busca en la carpeta indicada en la configuración. Conviene abrirlo desde el mismo
+    directorio donde se corrió el análisis.</p>
+
+    <div class="notas">
+      <h2>Notas</h2>
+      <ol>
+        <li id="n1">Para la configuración estándar hacen falta unos 12 GB de memoria en la placa de
+        video. Los modelos más grandes requieren una placa mayor, o repartir el trabajo entre la placa
+        y la memoria común, lo que funciona a menor velocidad. El análisis de redes y la adquisición
+        de corpus no usan la placa en absoluto. <a href="#r1">↩</a></li>
+        <li id="n2">La compresión se llama cuantización: reduce la precisión numérica interna del
+        modelo, con lo que ocupa menos espacio y corre más rápido. Las variantes recomendadas
+        conservan la calidad de las respuestas para estas tareas. <a href="#r2">↩</a></li>
+      </ol>
+    </div>
+
+    <hr>
+
+    <p>Los dos tutoriales del repositorio recorren un caso completo paso a paso, uno para
+    <a href="https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_discurso_presidencial.md">discursos presidenciales</a>
+    y otro para <a href="https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_tuits.md">posts de redes sociales</a>.</p>
+
+  </div>
+  </main>
+
+  <footer class="pie">
+    <div>
+      <h2>Proyecto</h2>
+      <p>EmoParse se desarrolla en el marco de una investigación sobre análisis automático de
+      emociones en discursos.</p>
+      <p><a href="https://github.com/alexdcolman/EmoParse">github.com/alexdcolman/EmoParse</a></p>
+    </div>
+    <div>
+      <h2>Autoría</h2>
+      <p><a href="https://independent.academia.edu/AlexColman1">Alex Colman</a></p>
+      <p>alexdcolman@gmail.com</p>
+    </div>
+    <div>
+      <h2>Licencia</h2>
+      <p>MIT. Si se usa en una publicación, una referencia al repositorio ayuda a sostener
+      el proyecto.</p>
+    </div>
+  </footer>
+
+</div>
+<script src="assets/js/figuras.js"></script>
+</body>
+</html>

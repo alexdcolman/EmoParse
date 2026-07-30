@@ -1,0 +1,726 @@
+/* ==========================================================================
+   EmoParse — hoja de estilo
+   Registro: instrumental de laboratorio / publicación académica.
+   La paleta cromática deriva del eje de foria de la propia ontología
+   (eufórico / disfórico / ambifórico / afórico); no hay color de marca.
+   ========================================================================== */
+
+:root {
+  /* Superficies */
+  --ground:        #e4e6e2;
+  --surface:       #fcfcfa;
+  --surface-alt:   #f4f4f0;
+
+  /* Tinta */
+  --ink:           #191a18;
+  --ink-soft:      #55584f;
+  --ink-faint:     #7e8179;
+
+  /* Reglas y bordes */
+  --rule:          #c9ccc5;
+  --rule-soft:     #dcded8;
+
+  /* Estructura (numeración de secciones, enlaces, marcas de navegación) */
+  --struct:        #2e4551;
+  --struct-soft:   #5b7181;
+
+  /* Eje de foria — pareja divergente de la tradición de visualización científica */
+  --euforico:      #2c6e63;
+  --disforico:     #a6412c;
+  --amboforico:    #9a7a2e;
+  --aforico:       #7c7f79;
+
+  /* Tipografía */
+  --serif:  "Spectral", "Source Serif 4", Georgia, "Times New Roman", serif;
+  --sans:   "IBM Plex Sans Condensed", "IBM Plex Sans", "Helvetica Neue", sans-serif;
+  --mono:   "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+
+  /* Métrica */
+  --col:      68ch;
+  --nav-w:    15.5rem;
+  --gutter:   2.25rem;
+}
+
+/* --------------------------------------------------------------- reset -- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { animation-duration: .001ms !important; transition-duration: .001ms !important; }
+}
+
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 17px;
+  line-height: 1.62;
+  font-variant-numeric: oldstyle-nums proportional-nums;
+}
+
+img { max-width: 100%; height: auto; display: block; }
+
+/* -------------------------------------------------------------- layout -- */
+
+.hoja {
+  display: grid;
+  grid-template-columns: var(--nav-w) minmax(0, 1fr);
+  max-width: 82rem;
+  margin: 0 auto;
+  background: var(--surface);
+  border-left: 1px solid var(--rule);
+  border-right: 1px solid var(--rule);
+  min-height: 100vh;
+}
+
+.cuerpo {
+  padding: 2.5rem var(--gutter) 5rem;
+  min-width: 0;
+}
+
+.contenido { max-width: var(--col); }
+
+/* Notas al margen: aparecen al costado solo cuando hay lugar real. */
+@media (min-width: 1180px) {
+  .cuerpo { padding-right: 0; }
+  .contenido { max-width: var(--col); }
+  .marginal {
+    float: right;
+    clear: right;
+    width: 13.5rem;
+    margin: .35rem -15.5rem .9rem 0;
+    font-family: var(--sans);
+    font-size: .8rem;
+    line-height: 1.5;
+    color: var(--ink-soft);
+    border-top: 2px solid var(--rule);
+    padding-top: .45rem;
+  }
+}
+.marginal {
+  font-family: var(--sans);
+  font-size: .84rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  border-left: 2px solid var(--rule);
+  padding: .1rem 0 .1rem .8rem;
+  margin: 1rem 0;
+}
+
+/* ----------------------------------------------------------- cabecera -- */
+
+.masthead {
+  grid-column: 1 / -1;
+  border-bottom: 2px solid var(--ink);
+  padding: 1.1rem var(--gutter) .8rem;
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.masthead .titulo {
+  font-family: var(--serif);
+  font-size: 1.5rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  margin: 0;
+}
+.masthead .titulo a { color: inherit; text-decoration: none; background: none; }
+
+.masthead .bajada {
+  font-family: var(--sans);
+  font-size: .87rem;
+  color: var(--ink-soft);
+  margin: 0;
+}
+
+.masthead .sello {
+  margin-left: auto;
+  font-family: var(--sans);
+  font-size: .74rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.masthead .sello span::after { content: " · "; }
+.masthead .sello span:last-child::after { content: ""; }
+
+/* -------------------------------------------------------------- navmenu -- */
+
+.nav {
+  border-right: 1px solid var(--rule);
+  padding: 2.5rem 1.35rem 3rem;
+  font-family: var(--sans);
+  font-size: .88rem;
+  align-self: start;
+  position: sticky;
+  top: 0;
+  max-height: 100vh;
+  overflow-y: auto;
+}
+
+.nav h2 {
+  font-size: .7rem;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  font-weight: 600;
+  margin: 0 0 .55rem;
+  font-family: var(--sans);
+}
+
+.nav ol, .nav ul { list-style: none; margin: 0 0 1.8rem; padding: 0; }
+.nav li { margin: 0 0 .1rem; }
+
+.nav a {
+  display: block;
+  padding: .2rem 0;
+  color: var(--ink-soft);
+  text-decoration: none;
+  background: none;
+  border-bottom: none;
+}
+.nav a:hover { color: var(--struct); }
+.nav a[aria-current="page"] {
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--struct);
+  padding-left: .55rem;
+}
+
+.nav .indice a { font-size: .83rem; color: var(--ink-faint); }
+.nav .indice a:hover { color: var(--struct); }
+.nav .indice .num {
+  font-family: var(--mono);
+  font-size: .74rem;
+  color: var(--struct-soft);
+  margin-right: .35rem;
+}
+
+/* ------------------------------------------------------------ tipografía -- */
+
+h1 {
+  font-size: 2.15rem;
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: -.015em;
+  margin: 0 0 .5rem;
+  max-width: 22ch;
+}
+
+.entradilla {
+  font-size: 1.12rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  margin: 0 0 2.4rem;
+  padding-bottom: 1.4rem;
+  border-bottom: 1px solid var(--rule);
+  max-width: 62ch;
+}
+
+h2 {
+  font-size: 1.32rem;
+  font-weight: 600;
+  line-height: 1.25;
+  margin: 3.1rem 0 .85rem;
+  scroll-margin-top: 1.5rem;
+}
+
+h2 .num {
+  font-family: var(--mono);
+  font-size: .78rem;
+  font-weight: 400;
+  color: var(--struct);
+  display: block;
+  margin-bottom: .28rem;
+  letter-spacing: .04em;
+}
+
+h3 {
+  font-size: 1.03rem;
+  font-weight: 600;
+  margin: 2rem 0 .5rem;
+  scroll-margin-top: 1.5rem;
+}
+
+h4 {
+  font-family: var(--sans);
+  font-size: .8rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  margin: 1.7rem 0 .45rem;
+}
+
+p { margin: 0 0 1.05rem; }
+
+a {
+  color: var(--struct);
+  text-decoration: none;
+  border-bottom: 1px solid var(--struct-soft);
+}
+a:hover { border-bottom-color: var(--struct); background: #eef1f2; }
+a:focus-visible { outline: 2px solid var(--struct); outline-offset: 2px; }
+
+strong { font-weight: 600; }
+
+ul, ol { margin: 0 0 1.15rem; padding-left: 1.35rem; }
+li { margin-bottom: .38rem; }
+
+ul.compacta li, ol.compacta li { margin-bottom: .18rem; }
+
+dl.defs { margin: 0 0 1.4rem; }
+dl.defs dt {
+  font-weight: 600;
+  margin-top: 1rem;
+}
+dl.defs dd { margin: .1rem 0 0; color: var(--ink-soft); }
+
+hr {
+  border: none;
+  border-top: 1px solid var(--rule);
+  margin: 2.6rem 0;
+}
+
+/* --------------------------------------------------- término y glosa -- */
+
+/* Primera aparición de un término del vocabulario del sistema. */
+.term {
+  font-style: italic;
+}
+
+/* Glosa breve, entre paréntesis, en cuerpo menor. */
+.glosa {
+  font-family: var(--sans);
+  font-size: .88em;
+  color: var(--ink-soft);
+}
+
+code, kbd, samp {
+  font-family: var(--mono);
+  font-size: .84em;
+  background: var(--surface-alt);
+  border: 1px solid var(--rule-soft);
+  border-radius: 2px;
+  padding: .06em .3em;
+}
+
+pre {
+  font-family: var(--mono);
+  font-size: .8rem;
+  line-height: 1.65;
+  background: #21262a;
+  color: #dfe3e0;
+  padding: 1rem 1.1rem;
+  overflow-x: auto;
+  margin: 1.2rem 0 1.4rem;
+  border-left: 3px solid var(--struct);
+}
+pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: inherit;
+  color: inherit;
+}
+pre .c { color: #8b978f; font-style: italic; }
+
+/* ------------------------------------------------- SIGNATURE: specimen -- */
+/* El dispositivo central del sitio: un fragmento de texto con sus marcas
+   señaladas y, debajo, la reconstrucción que el sistema deriva de ellas.
+   Reproduce la relación marca → hipótesis en la que se apoya el programa. */
+
+.specimen {
+  margin: 1.8rem 0 2.2rem;
+  border-top: 2px solid var(--ink);
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface);
+  padding: 1.2rem 0 0;
+}
+
+.specimen .fuente-texto {
+  font-size: 1.22rem;
+  line-height: 2.05;
+  margin: 0 0 1.35rem;
+  letter-spacing: -.005em;
+}
+
+.marca {
+  position: relative;
+  white-space: nowrap;
+  padding-bottom: .12em;
+  border-bottom: 2px solid var(--aforico);
+}
+.marca > .etq {
+  font-family: var(--sans);
+  font-size: .58em;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  vertical-align: .55em;
+  margin-left: .18em;
+  color: var(--ink-faint);
+  white-space: nowrap;
+}
+.marca.exp  { border-bottom-color: var(--struct); }
+.marca.exp  > .etq { color: var(--struct); }
+.marca.fue  { border-bottom-color: var(--disforico); }
+.marca.fue  > .etq { color: var(--disforico); }
+.marca.emo  { border-bottom-color: var(--euforico); }
+.marca.emo  > .etq { color: var(--euforico); }
+
+.specimen .lectura {
+  border-top: 1px solid var(--rule);
+  padding: .9rem 0 1.1rem;
+  font-family: var(--sans);
+  font-size: .87rem;
+}
+.specimen .lectura dl {
+  display: grid;
+  grid-template-columns: 12.5rem 1fr;
+  gap: .16rem 1rem;
+  margin: 0;
+}
+.specimen .lectura dt {
+  color: var(--ink-faint);
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  font-size: .72rem;
+  padding-top: .2rem;
+}
+.specimen .lectura dd { margin: 0; color: var(--ink); }
+.specimen .lectura dd em { color: var(--ink-soft); }
+
+@media (max-width: 620px) {
+  .specimen .lectura dl { grid-template-columns: 1fr; gap: 0; }
+  .specimen .lectura dt { margin-top: .6rem; }
+}
+
+/* Aparición escalonada de las marcas, solo en la portada.
+   El estado visible es el de base: si la animación no corre, por la razón que
+   sea, las marcas ya están a la vista. */
+@media (prefers-reduced-motion: no-preference) {
+  .specimen.animado .marca {
+    border-bottom-color: transparent;
+    animation: subrayar .5s ease-out forwards;
+  }
+  .specimen.animado .marca > .etq {
+    opacity: 0;
+    animation: aparecer .4s ease-out forwards;
+  }
+  .specimen.animado .marca:nth-of-type(1)   { animation-delay: .35s; }
+  .specimen.animado .marca:nth-of-type(1) > .etq { animation-delay: .60s; }
+  .specimen.animado .marca:nth-of-type(2)   { animation-delay: .70s; }
+  .specimen.animado .marca:nth-of-type(2) > .etq { animation-delay: .95s; }
+  .specimen.animado .marca:nth-of-type(3)   { animation-delay: 1.05s; }
+  .specimen.animado .marca:nth-of-type(3) > .etq { animation-delay: 1.30s; }
+}
+@keyframes subrayar {
+  from { border-bottom-color: transparent; }
+  to   { border-bottom-color: currentColor; }
+}
+@keyframes aparecer { from { opacity: 0; } to { opacity: 1; } }
+
+.specimen.animado .marca.exp { color: var(--struct); }
+.specimen.animado .marca.fue { color: var(--disforico); }
+.specimen.animado .marca.emo { color: var(--euforico); }
+.specimen.animado .marca { color: var(--aforico); }
+.specimen.animado .fuente-texto { color: var(--ink); }
+
+/* --------------------------------------------------------------- tablas -- */
+
+.tabla-caja { overflow-x: auto; margin: 1.3rem 0 1.6rem; }
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: var(--sans);
+  font-size: .86rem;
+  line-height: 1.45;
+}
+
+thead th {
+  text-align: left;
+  font-weight: 600;
+  font-size: .72rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border-bottom: 1.5px solid var(--ink);
+  padding: .4rem .7rem .35rem 0;
+  vertical-align: bottom;
+}
+
+tbody td {
+  border-bottom: 1px solid var(--rule-soft);
+  padding: .48rem .7rem .48rem 0;
+  vertical-align: top;
+}
+
+tbody tr:last-child td { border-bottom: 1px solid var(--rule); }
+
+td code, th code { font-size: .82em; }
+
+td.dato { font-family: var(--mono); font-size: .78rem; white-space: nowrap; }
+
+/* --------------------------------------------------------------- figuras -- */
+/* Los diagramas necesitan más ancho que la columna de lectura, así que la
+   figura se extiende sobre el margen derecho, y se puede abrir aparte en
+   tamaño completo. */
+
+figure {
+  margin: 1.8rem 0 2rem;
+  clear: both;
+}
+
+@media (min-width: 1040px) { figure { margin-right:  -8rem; } }
+@media (min-width: 1180px) { figure { margin-right: -16rem; } }
+@media (min-width: 1280px) { figure { margin-right: -22rem; } }
+
+figure .marco {
+  position: relative;
+  border: 1px solid var(--rule);
+  background: var(--surface-alt);
+  min-height: 9rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+figure .marco > a {
+  display: block;
+  width: 100%;
+  border-bottom: none;
+  background: none;
+}
+figure .marco > a:hover { background: none; }
+figure .marco > a:focus-visible { outline: 2px solid var(--struct); outline-offset: -2px; }
+figure img { width: 100%; display: block; }
+
+figure .lupa {
+  position: absolute;
+  right: .5rem;
+  bottom: .5rem;
+  font-family: var(--sans);
+  font-size: .72rem;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  background: var(--surface);
+  border: 1px solid var(--rule);
+  padding: .2rem .5rem;
+  pointer-events: none;
+  opacity: .85;
+}
+figure .marco > a:hover ~ .lupa,
+figure .marco > a:focus-visible ~ .lupa {
+  color: var(--struct);
+  border-color: var(--struct-soft);
+  opacity: 1;
+}
+
+figure .pendiente {
+  font-family: var(--mono);
+  font-size: .74rem;
+  color: var(--ink-faint);
+  text-align: center;
+  padding: 2.6rem 1rem;
+  line-height: 1.7;
+}
+figure .pendiente b { display: block; font-weight: 400; color: var(--ink-soft); }
+
+figcaption {
+  font-family: var(--sans);
+  font-size: .81rem;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  margin-top: .55rem;
+  padding-left: 0;
+}
+figcaption .fnum {
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: .03em;
+}
+
+/* --------------------------------------------------------------- leyenda -- */
+
+.leyenda-foria {
+  font-family: var(--sans);
+  font-size: .78rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: .2rem 1.15rem;
+  margin: .6rem 0 1.6rem;
+  color: var(--ink-soft);
+}
+.leyenda-foria span { display: inline-flex; align-items: center; gap: .38rem; }
+.leyenda-foria i {
+  width: .95rem; height: .28rem; display: inline-block; border-radius: 1px;
+}
+.f-euf { background: var(--euforico); }
+.f-dis { background: var(--disforico); }
+.f-amb { background: var(--amboforico); }
+.f-afo { background: var(--aforico); }
+
+/* ---------------------------------------------------------------- avisos -- */
+
+.nota {
+  border-top: 1px solid var(--rule);
+  border-bottom: 1px solid var(--rule);
+  background: var(--surface-alt);
+  padding: .85rem 1rem;
+  margin: 1.5rem 0;
+  font-size: .95rem;
+}
+.nota p:last-child { margin-bottom: 0; }
+.nota .rotulo {
+  font-family: var(--sans);
+  font-size: .7rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  display: block;
+  margin-bottom: .25rem;
+}
+
+/* ------------------------------------------------------------ notas al pie -- */
+
+.notas {
+  margin-top: 3.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--rule);
+  font-size: .9rem;
+  color: var(--ink-soft);
+}
+.notas h2 {
+  font-family: var(--sans);
+  font-size: .72rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 .6rem;
+  font-weight: 600;
+}
+.notas ol { padding-left: 1.2rem; }
+.notas li { margin-bottom: .5rem; scroll-margin-top: 2rem; }
+
+a.nref {
+  font-size: .72em;
+  vertical-align: .45em;
+  border-bottom: none;
+  padding: 0 .1em;
+  font-family: var(--sans);
+}
+a.nref:hover { background: #eef1f2; }
+
+/* ------------------------------------------------------------- recorrido -- */
+
+.recorrido {
+  display: grid;
+  gap: 0;
+  margin: 1.6rem 0 2rem;
+  border-top: 1px solid var(--rule);
+}
+.recorrido a {
+  display: block;
+  padding: .85rem 0;
+  border-bottom: 1px solid var(--rule);
+  border-top: none;
+  text-decoration: none;
+  color: var(--ink);
+}
+.recorrido a:hover { background: var(--surface-alt); }
+.recorrido .tit { font-weight: 600; font-size: 1.02rem; }
+.recorrido .des {
+  display: block;
+  font-family: var(--sans);
+  font-size: .85rem;
+  color: var(--ink-soft);
+  margin-top: .12rem;
+}
+
+/* ------------------------------------------------------------------- pie -- */
+
+.pie {
+  grid-column: 1 / -1;
+  border-top: 2px solid var(--ink);
+  padding: 1.5rem var(--gutter) 2.5rem;
+  font-family: var(--sans);
+  font-size: .84rem;
+  color: var(--ink-soft);
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: 1.2rem 2rem;
+}
+.pie h2 {
+  font-size: .7rem;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+  margin: 0 0 .4rem;
+  font-family: var(--sans);
+  font-weight: 600;
+}
+.pie p { margin: 0 0 .4rem; }
+.pie a { color: var(--struct); }
+
+/* -------------------------------------------------------------- saltar -- */
+
+.saltar {
+  position: absolute;
+  left: -9999px;
+  background: var(--ink);
+  color: var(--surface);
+  padding: .5rem .9rem;
+  font-family: var(--sans);
+  font-size: .85rem;
+  border: none;
+  z-index: 10;
+}
+.saltar:focus { left: .5rem; top: .5rem; }
+
+/* ---------------------------------------------------------- responsivo -- */
+
+@media (max-width: 900px) {
+  body { font-size: 16.5px; }
+  .hoja { grid-template-columns: 1fr; }
+  .nav {
+    position: static;
+    max-height: none;
+    border-right: none;
+    border-bottom: 1px solid var(--rule);
+    padding: 1.4rem var(--gutter);
+    columns: 2;
+    column-gap: 1.5rem;
+  }
+  .nav ol, .nav ul { margin-bottom: 1rem; }
+  .nav .indice { display: none; }
+  .cuerpo { padding: 2rem var(--gutter) 3.5rem; }
+  .masthead { padding: 1rem var(--gutter) .75rem; }
+  .masthead .sello { margin-left: 0; width: 100%; }
+}
+
+@media (max-width: 560px) {
+  :root { --gutter: 1.15rem; }
+  body { font-size: 16px; }
+  h1 { font-size: 1.72rem; }
+  .nav { columns: 1; }
+  .specimen .fuente-texto { font-size: 1.08rem; line-height: 1.95; }
+  .marca { white-space: normal; }
+}
+
+@media print {
+  .nav, .saltar { display: none; }
+  .hoja { grid-template-columns: 1fr; border: none; }
+  body { background: #fff; font-size: 11pt; }
+  a { color: inherit; border: none; }
+  pre { background: #f3f3f3; color: #111; border-left: 2px solid #999; }
+  figure { margin-right: 0; }
+  .lupa { display: none; }
+}

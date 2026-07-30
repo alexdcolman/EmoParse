@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>El enfoque — EmoParse</title>
+<meta name="description" content="De dónde salen las categorías de EmoParse: la emoción como efecto de discurso, el simulacro de emoción y el principio de que solo se analiza lo observable.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans+Condensed:wght@400;600&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/estilo.css">
+</head>
+<body>
+<a class="saltar" href="#principal">Ir al contenido</a>
+
+<div class="hoja">
+
+  <header class="masthead">
+    <h1 class="titulo"><a href="index.html">EmoParse</a></h1>
+    <p class="bajada">Análisis semiótico de emociones en discursos</p>
+    <p class="sello"><span>v0.6.3</span><span>Beta</span><span>Licencia MIT</span></p>
+  </header>
+
+  <nav class="nav" aria-label="Navegación del sitio">
+    <h2>Secciones</h2>
+    <ul>
+      <li><a href="index.html">Portada</a></li>
+      <li><a href="enfoque.html" aria-current="page">El enfoque</a></li>
+      <li><a href="pipeline.html">Cómo funciona</a></li>
+      <li><a href="digital.html">Posts y redes</a></li>
+      <li><a href="tablero.html">El tablero</a></li>
+      <li><a href="empezar.html">Empezar</a></li>
+      <li><a href="glosario.html">Glosario</a></li>
+    </ul>
+    <h2>En esta página</h2>
+    <ol class="indice">
+      <li><a href="#efecto"><span class="num">1</span>La emoción como efecto</a></li>
+      <li><a href="#niveles"><span class="num">2</span>Qué se puede observar</a></li>
+      <li><a href="#simulacro"><span class="num">3</span>El simulacro de emoción</a></li>
+      <li><a href="#marca"><span class="num">4</span>La marca y lo que localiza</a></li>
+      <li><a href="#grillas"><span class="num">5</span>Grillas explícitas</a></li>
+      <li><a href="#genero"><span class="num">6</span>Género y tipo de discurso</a></li>
+      <li><a href="#procedencia"><span class="num">7</span>Procedencia</a></li>
+    </ol>
+    <h2>Repositorio</h2>
+    <ul>
+      <li><a href="https://github.com/alexdcolman/EmoParse">Código en GitHub</a></li>
+    </ul>
+  </nav>
+
+  <main class="cuerpo" id="principal">
+  <div class="contenido">
+
+    <h1>El enfoque</h1>
+
+    <p class="entradilla">Las categorías con las que EmoParse lee no salen de una taxonomía de
+    emociones básicas ni de un modelo entrenado sobre juicios ajenos. Salen de un conjunto de
+    tradiciones del análisis del discurso, traducidas a campos, listas de valores y pasos de un
+    procedimiento.</p>
+
+    <h2 id="efecto"><span class="num">1</span>La emoción como efecto de sentido</h2>
+
+    <p>Una cosa es el estado corporal y afectivo de una
+    persona, con su materialidad neurobiológica. Otra es lo que ocurre cuando alguien lee «el Papa
+    está enojado» y le asigna «enojo» a un actor. Esa asignación opera sobre marcas observables y
+    produce una <span class="term">emoción discursiva</span>: un efecto que se produce cuando una
+    configuración de marcas, realizada en un texto, es reconocida, por quien lee, como portadora de
+    cierta cualificación afectiva.</p>
+
+    <p>Cuando un modelo de lenguaje identifica una emoción en un texto hace exactamente esa
+    operación. Su salida es una emoción discursiva, y vale como hipótesis de lectura sobre una
+    configuración de marcas. EmoParse toma esa condición como punto de partida y organiza toda su
+    arquitectura alrededor de ella.</p>
+
+    <p class="marginal">Un mismo enunciado, «acaban de matar al presidente», admite lecturas
+    afectivas opuestas según dónde circule. Esa divergencia integra el fenómeno, y por eso el sistema
+    la mide en lugar de suprimirla.</p>
+
+    <p>Entonces, si dos analistas leen distinto el mismo
+    pasaje, esa diferencia no es ruido alrededor de un valor verdadero que habría que despejar:
+    forma parte de aquello que se está estudiando. El circuito de evaluación del sistema, que mide el
+    acuerdo entre anotadores humanos antes de medir el acierto del modelo, está construido sobre esa
+    premisa.</p>
+
+    <h2 id="niveles"><span class="num">2</span>Qué se puede observar</h2>
+
+    <p>Los procesos discursivos se dejan distinguir en tres niveles. El primero son las operaciones
+    de producción: los procesos cognitivos, sociales y culturales que dan origen a un discurso, que
+    ningún observador ve directamente. El segundo son las configuraciones materiales: los textos,
+    los enunciados, las marcas disponibles para el análisis. El tercero son los efectos, las
+    reorganizaciones que esas configuraciones producen al ser reconocidas.</p>
+
+    <p>EmoParse trabaja sobre el segundo nivel y, a partir de él, formula hipótesis sobre el tercero.
+    No accede al primero y no supone acceder. Cuando el sistema informa que un colectivo está
+    indignado, está informando que ciertas marcas de la superficie del texto habilitan esa lectura,
+    y deja las marcas a la vista.</p>
+
+    <h2 id="simulacro"><span class="num">3</span>El simulacro de emoción</h2>
+
+    <p>La unidad de trabajo del sistema es el <span class="term">simulacro de emoción</span>: la
+    forma esquemática que adquiere la reconstrucción de una emoción cuando alguien la efectúa a partir
+    de un texto. Tiene la forma de un conjunto de posiciones articuladas entre sí. Hay quien
+    experimenta la emoción, hay un tipo de emoción, hay algo que la desencadena, puede haber algo que
+    la transporte, algo que la evalúe y algo que intente modificarla; y hay un repertorio de marcas
+    que sostienen todo eso.</p>
+
+    <p>Esa estructura interna es la que vuelve el análisis instrumentable. Cada posición del esquema
+    puede interrogarse por separado, con sus propias instrucciones y sus propios criterios de
+    control. El recorrido de etapas del programa es la traducción de ese esquema a una secuencia de
+    tareas.</p>
+
+    <figure>
+      <div class="marco">
+        <img src="assets/img/02-simulacro.png" alt="Esquema del simulacro de emoción: en el centro la emoción y su experienciador; alrededor, la fuente que la desencadena, el mediador que la transporta, los verificadores que la evalúan y el operador que la modifica; debajo, las marcas del texto que sostienen cada posición.">
+      </div>
+      <figcaption><span class="fnum">Figura 2.</span> Las posiciones del simulacro. Cada una se
+      resuelve en un paso distinto del análisis y cada una conserva la marca que la sostiene.</figcaption>
+    </figure>
+
+    <h3>Las posiciones</h3>
+
+    <dl class="defs">
+      <dt>Experienciador</dt>
+      <dd>El actor al que se le atribuye el proceso afectivo. Una emoción tiene siempre uno solo: si
+      dos actores sienten lo mismo, el sistema desdobla la emoción en dos, cada una con su
+      experienciador, porque cada uno puede sentirla en un grado distinto de realización.</dd>
+
+      <dt>Fuente</dt>
+      <dd>Aquello que la origina. A diferencia del experienciador, puede combinar entidades sin
+      multiplicarse: «libertarios, radicales y macristas» desencadena una sola indignación con tres
+      referentes resueltos juntos.</dd>
+
+      <dt>Mediador</dt>
+      <dd>Aquello que la vehiculiza entre su origen y quien la siente: el propio discurso del orador,
+      una voz citada, un documento, un objeto, un espacio, una acción. Cuando el vínculo es directo,
+      queda marcado como ausente.</dd>
+
+      <dt>Verificadores</dt>
+      <dd>Las operaciones por las que el discurso evalúa la emoción. Una evalúa su adecuación a una
+      norma, para legitimarla («está bien indignarse por esto») o para rechazarla («no deberías estar
+      triste por eso»). La otra evalúa su autenticidad o la veracidad de su causa («no parecías
+      enojado», «lo que en realidad te molesta es otra cosa»).</dd>
+
+      <dt>Operador de modificación</dt>
+      <dd>La operación dirigida a actuar sobre la emoción de alguien: argumentar a favor o en contra
+      de ella, proyectar un horizonte afectivo deseable, buscar activarla o bloquearla.</dd>
+
+      <dt>Polaridad</dt>
+      <dd>Si la emoción se predica afirmada o negada. Decir que un actor «no siente miedo» inscribe
+      el miedo en el discurso, con efectos distintos de los de una afirmación directa, y por eso se
+      registra aparte.</dd>
+    </dl>
+
+    <h2 id="marca"><span class="num">4</span>La marca y lo que localiza</h2>
+
+    <p>Las marcas que el análisis identifica no son la emoción. La <span class="term">localizan</span>:
+    al ser reconocidas, dan lugar a un efecto de sentido afectivamente cualificado. La distinción fija
+    qué puede aspirar a detectar un procedimiento automático, que son marcas y configuraciones, y qué
+    solo puede reconstruir a partir de ellas.</p>
+
+    <p>El sistema registra por separado, para cada emoción, el referente inferido y su marca literal.
+    En «nosotros sabemos lo que sufrimos», el experienciador inferido puede ser «los argentinos» y la
+    marca es «nosotros». Ese doble registro permite después corregir la inferencia sin perder el
+    anclaje, y buscar en el corpus por una cosa o por la otra.</p>
+
+    <p>De qué manera una emoción está sostenida en el texto también se clasifica, en ocho tipos: por
+    un sustantivo, por un adjetivo, por un verbo psicológico, por un indicador cognitivo, por un
+    indicador de comportamiento, por un indicador de valoración, por la descripción de una situación,
+    o por una situación que el discurso plantea para inducir la emoción en quien escucha. La
+    clasificación obliga a justificar cada emoción por su sostén concreto, y de ella se deriva de
+    manera automática el <span class="term">modo de semiotización</span>: una emoción está
+    <em>dicha</em> cuando se la nombra, <em>mostrada</em> cuando se la deja ver por indicios y
+    <em>sostenida</em> cuando surge de la descripción de una situación.<a class="nref" href="#n1" id="r1">1</a></p>
+
+    <h2 id="grillas"><span class="num">5</span>Grillas explícitas</h2>
+
+    <p>Parte de los campos toman su valor de una lista cerrada. La foria admite cuatro valores,
+    el modo de existencia cuatro, el aspecto seis. Esas listas se declaran de antemano y el modelo de
+    lenguaje no puede devolver nada fuera de ellas: la restricción se aplica sobre la generación
+    misma, palabra por palabra, así que una salida inválida resulta imposible antes que
+    improbable.<a class="nref" href="#n2" id="r2">2</a></p>
+
+    <p>Así, la grilla categorial con la que el sistema lee
+    queda explícita, versionada y discutible. Un clasificador entrenado sobre ejemplos anotados
+    también tiene una grilla, pero sedimentada de manera implícita en sus parámetros, y ahí no se la
+    puede leer ni objetar. Acá se la puede abrir en un archivo de texto, discutirla y modificarla, y
+    la modificación queda registrada junto a los resultados que produjo.</p>
+
+    <div class="nota">
+      <span class="rotulo">Dónde viven las categorías</span>
+      <p>Las listas de emociones, los rasgos semánticos de los actores, las reglas de coherencia y las
+      indicaciones de lectura que reciben los modelos están en la carpeta <code>knowledge/</code> del
+      repositorio, en archivos de texto legibles. Quien analice un corpus de literatura fantástica
+      puede habilitar actores con rasgos distintos, como «animal», «deidad» o «espacio», sin escribir
+      una línea de código.</p>
+    </div>
+
+    <h2 id="genero"><span class="num">6</span>Género y tipo de discurso</h2>
+
+    <p>Un <span class="term">género</span> es un tipo relativamente estable de enunciado, con
+    regularidades temáticas, de estilo y de composición, sedimentadas históricamente. En EmoParse se
+    traduce en una ficha que declara cómo varía el análisis para esa clase de texto: en qué unidades
+    se corta, qué posiciones de destinatario son válidas, qué instrucciones se usan.</p>
+
+    <p>El sistema incorpora dos géneros y admite agregar otros. En el <code>discurso_presidencial</code>
+    el corte es por frase y las posiciones de destinatario son tres, tomadas del análisis del discurso
+    político: aquel que comparte las creencias del enunciador y recibe el refuerzo, aquel indeciso al
+    que se busca persuadir, y el adversario con quien se polemiza. En el género <code>tuit</code> el
+    corte es por post y las posiciones dependen del tipo de discurso que se identifique en cada
+    caso.</p>
+
+    <p>Analizar posts con la grilla de un discurso presidencial impondría condiciones de lectura
+    ajenas al material. Esa es la razón de que el género sea un parámetro declarado y no un supuesto
+    del programa.</p>
+
+    <h2 id="procedencia"><span class="num">7</span>Procedencia</h2>
+
+    <p>Las nociones reunidas provienen de la semiótica narrativa y de las pasiones, de la semiótica
+    tensiva, de la teoría de las operaciones enunciativas, de la propuesta semiótica y comunicacional
+    de Eliseo Verón, de la retórica y los estudios de la argumentación, de la teoría del actor-red,
+    de las propuestas sobre género y tipo de discurso, de los estudios sobre audiencias en redes y de
+    la filosofía de la individuación.</p>
+
+    <p>El <a href="glosario.html">glosario</a> reúne cada categoría con su procedencia, su sentido
+    dentro del sistema y la forma en que se volvió computable. El desarrollo extenso del enfoque y de
+    la prueba del sistema está en
+    <a href="https://github.com/alexdcolman/EmoParse/blob/main/docs/other/EMOPARSE_HACIA_LA_AUTOMATIZACION_DEL_ANALISIS_DE_EMOCIONES_DISCURSIVAS_CON_IA_GENERATIVA.pdf">este trabajo</a>,
+    y la fundamentación de las tipologías de destinatario para el dominio digital, en
+    <a href="https://github.com/alexdcolman/EmoParse/blob/main/docs/other/tipologia_destinatarios_tuits_fundamentacion.md">este otro</a>.</p>
+
+    <div class="notas">
+      <h2>Notas</h2>
+      <ol>
+        <li id="n1">La derivación es automática: las tres primeras configuraciones dan una emoción
+        dicha; las tres siguientes, mostrada; las dos últimas, sostenida. Así, la forma en que el texto
+        sostiene la emoción y el modo en que la significa no pueden contradecirse. <a href="#r1">↩</a></li>
+        <li id="n2">Un modelo de lenguaje produce texto eligiendo una palabra por vez entre todas las
+        posibles. La restricción actúa sobre esa elección: en el punto donde el campo espera un valor
+        de foria, las únicas continuaciones habilitadas son las cuatro de la lista. <a href="#r2">↩</a></li>
+      </ol>
+    </div>
+
+  </div>
+  </main>
+
+  <footer class="pie">
+    <div>
+      <h2>Proyecto</h2>
+      <p>EmoParse se desarrolla en el marco de una investigación sobre análisis automático de
+      emociones en discursos.</p>
+      <p><a href="https://github.com/alexdcolman/EmoParse">github.com/alexdcolman/EmoParse</a></p>
+    </div>
+    <div>
+      <h2>Autoría</h2>
+      <p><a href="https://independent.academia.edu/AlexColman1">Alex Colman</a></p>
+      <p>alexdcolman@gmail.com</p>
+    </div>
+    <div>
+      <h2>Licencia</h2>
+      <p>MIT. Si se usa en una publicación, una referencia al repositorio ayuda a sostener
+      el proyecto.</p>
+    </div>
+  </footer>
+
+</div>
+<script src="assets/js/figuras.js"></script>
+</body>
+</html>

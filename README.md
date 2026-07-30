@@ -1,17 +1,21 @@
 # EmoParse
 
-> Análisis de emociones en discursos con LLMs locales.
+> Análisis de emociones en discursos con modelos de lenguaje locales.
 
-EmoParse procesa corpus de discursos y devuelve, para cada frase, una caracterización semiótica de las emociones que la atraviesan: qué actor las experimenta, en qué modo de existencia, con qué foria, dominancia, intensidad, duración, temporalidad histórica y aspecto gramatical, y cuál es la fuente que la desencadena. Opcionalmente, realiza un análisis actancial de cada emoción (mediador, verificadores normativo y observacional, operador de modificación y polaridad —afirmación/negación de la emoción—) y homogeneiza actores y emociones para habilitar el análisis agregado del corpus.
+EmoParse procesa corpus de discursos y devuelve, para cada frase, una caracterización semiótica de las emociones que la atraviesan: qué actor las experimenta, en qué modo de existencia, con qué foria (la orientación entre lo agradable y lo desagradable), dominancia, intensidad, duración, temporalidad histórica y aspecto gramatical, y cuál es la fuente que la desencadena. Opcionalmente realiza un análisis actancial de cada emoción (mediador, verificadores normativo y observacional, operador de modificación y polaridad) y homogeneiza actores y emociones para habilitar el análisis agregado del corpus.
 
-Además del discurso tradicional (discursos presidenciales, políticos, institucionales), EmoParse analiza **discurso nativo digital**: el género `tuit` trata cada post como enunciado compuesto (texto + hashtags + menciones + emojis + tecnografismos + imágenes), preserva la estructura conversacional (hilos, citas, reposts) y agrega análisis de redes de interacción con acoplamiento emocional. Ver [Género tuit](#género-tuit-discurso-nativo-digital).
+Además del discurso tradicional, EmoParse analiza **discurso nativo digital**: el género `tuit` trata cada post como enunciado compuesto (texto + hashtags + menciones + emojis + tecnografismos + imágenes), preserva la estructura conversacional y agrega análisis de redes de interacción con acoplamiento emocional. Ver [Género tuit](#género-tuit-discurso-nativo-digital).
 
 Está pensado para investigadores en lingüística, semiótica, ciencias del lenguaje y análisis del discurso que necesitan procesar corpus extensos sin renunciar a la trazabilidad ni al marco teórico.
 
-- **Reproducible**: una base SQLite por run, versionado fino de prompts y ontologías, seed fija.
+- **Reproducible**: una base de resultados por corrida, versionado fino de prompts y ontologías, semilla fija.
 - **Trazable**: cada emoción detectada lleva su justificación textual y queda enlazada a la frase original.
-- **Local-first**: corre con modelos GGUF locales (llama.cpp) o vía LM Studio. La arquitectura admite además backends de API (OpenAI, Anthropic, etc.) — ver la documentación.
-- **Extensible**: pipeline organizado como DAG declarativo; sumar géneros, sources de scraping o agentes es código aislado.
+- **Local-first**: corre con modelos GGUF locales (llama.cpp) o vía LM Studio, sin enviar el corpus a ningún servicio externo. La arquitectura admite además backends de API.
+- **Extensible**: el pipeline (la cadena de etapas del análisis) está organizado como un grafo declarativo; sumar géneros, fuentes de adquisición o agentes es código aislado.
+
+![Curva emocional de un discurso: cada emoción ubicada en el punto donde aparece, coloreada por foria](docs/img/readme/curva-emocional.png)
+
+*Curva emocional de un discurso, con las emociones ordenadas por foria dominante.*
 
 ---
 
@@ -23,7 +27,7 @@ Está pensado para investigadores en lingüística, semiótica, ciencias del len
 
 - Python 3.11+
 - git
-- GPU recomendada (NVIDIA con CUDA, AMD con ROCm) para correr modelos GGUF localmente.
+- GPU recomendada (la placa de video, que acelera mucho el análisis; NVIDIA con CUDA, AMD con ROCm). Sin ella el programa funciona, más lento.
 
 ---
 
@@ -41,7 +45,7 @@ source .venv/bin/activate   # Linux/macOS
 pip install -e ".[llamacpp,ui,scraping]"
 ```
 
-Los extras disponibles son `llamacpp`, `lmstudio`, `ui`, `nlp`, `scraping`, `scraping_selenium`, `bluesky` (adquisición de posts vía AT Protocol; Mastodon no requiere extra), `techno` (parsing de emojis con secuencias ZWJ), `network` (análisis de redes), `embeddings` (agrupamiento semántico de textos vía sentence-transformers), `analytics` (DuckDB sobre la SQLite del run), `agents`, `data`, `utils`, `dev` y `all`. Ver el detalle en la documentación.
+Los extras disponibles son `llamacpp`, `lmstudio`, `ui`, `nlp`, `scraping`, `scraping_selenium`, `bluesky` (adquisición de posts vía AT Protocol; Mastodon no requiere extra), `techno` (parsing de emojis con secuencias compuestas), `network` (análisis de redes), `embeddings` (agrupamiento semántico de textos), `analytics`, `agents`, `data`, `utils`, `dev` y `all`. Ver el detalle en la documentación.
 
 La etapa `modalidad` usa spaCy (extra `nlp`) y un modelo en español; instalalo una vez con:
 
@@ -70,7 +74,7 @@ emoparse run \
   --run-id mi_run
 
 # 4. Explorar resultados
-streamlit run src/emoparse/app/__main__.py
+emoparse app
 ```
 
 El input mínimo es un CSV con columnas `codigo` (identificador único) y `contenido` (texto). EmoParse también incluye un scraper para Casa Rosada:
@@ -86,60 +90,57 @@ emoparse scrape --source casarosada \
 ## Comandos disponibles
 
 ```
-emoparse app         Abre la aplicación de Streamlit para revisión y visualización
+emoparse app         Abre el dashboard de revisión y visualización
 emoparse run         Ejecuta el pipeline completo
 emoparse scrape      Scrapea discursos desde una source registrada
 emoparse acquire     Adquiere posts (Bluesky, Mastodon, dumps JSONL/CSV) a un corpus incremental
-emoparse follows     Adquiere el grafo de seguimiento entre las cuentas del corpus (grafo 'follow')
+emoparse follows     Adquiere el grafo de seguimiento entre las cuentas del corpus
 emoparse network     Construye y analiza las redes de un run (interacción, similitud, semántica)
 emoparse eval        Evaluación de validez: golden sets, acuerdo inter-anotador, controles
 emoparse status      Resumen pending/failed/completed por stage
 emoparse inspect     Estado completo de un discurso particular
-emoparse retry       Limpia errores para reintentar (modo legacy o policy YAML)
-emoparse validate    Corre los domain validators sobre las emociones
-emoparse modalidad   Clasifica la modalidad referencial de los vínculos (NLP-only)
-emoparse semas       Mantenimiento de semas de referentes canónicos (reset)
-emoparse judge       Resumen de veredictos del LLM-as-judge
+emoparse retry       Limpia errores para reintentar
+emoparse validate    Corre los validadores semióticos sobre las emociones
+emoparse modalidad   Clasifica la modalidad referencial de los vínculos (sin LLM)
+emoparse semas       Mantenimiento de semas de referentes canónicos
+emoparse judge       Resumen de veredictos del segundo modelo
 emoparse metrics     Métricas persistidas por stage
-emoparse stats       Estadísticas del cache LLM
+emoparse stats       Estadísticas del cache
 emoparse export      Exporta las tablas a CSV
 ```
 
-Todos aceptan `--help`. Ejemplo:
-
-```bash
-emoparse run --help
-```
+Todos aceptan `--help`.
 
 ---
 
 ## Foco de análisis, referentes y deixis
 
-Por defecto `emoparse run` detecta emociones de todos los experienciadores. Para acotar el análisis a ciertos roles, `run` acepta `--enunciador`, `--enunciatarios` y `--actores` (combinables): si se pasa alguno, solo se analizan las emociones de esos experienciadores, en ambos pases de detección.
+Por defecto `emoparse run` detecta emociones de todos los experienciadores. Para acotar el análisis a ciertos roles, `run` acepta `--enunciador`, `--enunciatarios` y `--actores` (combinables).
 
-Las marcas discursivas de actores, experienciadores y fuentes se agrupan en una base de menciones y se vinculan a **referentes canónicos**. El agrupamiento es automático (correferencia léxica conservadora) y los canónicos se construyen descartando artículos y prefiriendo la inferencia dominante del LLM. La revisión humana —agrupar, aceptar, reasignar, mergear canónicos, dar de alta/baja, asignar semas— vive en la tab **Referentes** del dashboard. Una emoción nunca agrupa dos o más experienciadores: si más de un actor la experimenta, se desdobla en una emoción por experienciador, cada una con su propio modo de existencia (el enunciador puede sentirla como realizada y proyectarla al auditorio como potencial). El desdoblamiento opera en tres niveles: en los prompts, como respaldo determinista al materializar las emociones —donde resuelve las anáforas posesivas ("Carlitos y su círculo cercano" → dos referentes) y fija el referente por emoción cuando la marca compartida no los distingue, sin pisar la revisión humana—, y en la revisión. La **fuente**, en cambio, puede combinar entidades sin multiplicar simulacros: "libertarios, radicales y macristas" desencadena una sola indignación, con sus tres referentes resueltos juntos. Esa resolución —un experienciador, una o más fuentes— vive en un solo módulo que comparten el pipeline, el dashboard y el export, de modo que ninguna vista muestre dos referentes donde el modelo de datos define uno. Los campos de inferencia que devuelve el modelo se sanean antes de persistir: una sola categoría por campo, sin sinónimos, enumeraciones ni restos tipográficos, y las etiquetas de rol enunciativo ("el enunciador") se resuelven al referente que ocupa esa posición.
+Las marcas discursivas de actores, experienciadores y fuentes se agrupan en una base de menciones y se vinculan a **referentes canónicos** (la unidad bajo la cual convergen las distintas expresiones que remiten a lo mismo: "el presidente", "Milei", "el jefe de Estado"). El agrupamiento es automático y conservador (correferencia léxica, inferencia dominante del modelo, deixis de 1ª persona y match contra una base de referentes conocidos), de modo que es preferible que queden casi-duplicados sin unir antes que fusionar dos referentes distintos. La revisión humana (agrupar, aceptar, reasignar, mergear, asignar semas) vive en la tab **Referentes**.
 
-Para revisar a escala, la tab **Referentes** incluye **acciones masivas** (aceptar/rechazar en lote filtrando por estado, modalidad, función —con selección negativa "no es actor"— y referentes a incluir/excluir) y **fusiones sugeridas**: un detector escalable de referentes casi-duplicados (blocking + similitud léxica, y opcionalmente semántica por embeddings de spaCy) que propone grupos para fusionar con revisión humana, sin pasar toda la base por un LLM.
+Una emoción nunca agrupa dos o más experienciadores: si más de un actor la experimenta, se desdobla en una emoción por experienciador, cada una con su propio modo de existencia. La **fuente**, en cambio, puede combinar entidades sin multiplicar simulacros: "libertarios, radicales y macristas" desencadena una sola indignación con sus tres referentes resueltos juntos. Esa resolución vive en un único módulo que comparten el pipeline, el dashboard y el export.
 
-La etapa `enunciation` resuelve el enunciador antes del análisis principal: en géneros clásicos, un sub-paso con prompt mínimo (`enunciator_id`, configurable con un modelo chico) devuelve su denominación normalizada ("el presidente Javier Milei" → "Javier Milei"); en el género `tuit` el enunciador es la cuenta autora del post, sin inferencia. Con el enunciador fijado, el prompt principal solo identifica enunciatarios, auditorio y colectivos de identificación, siempre como referentes concretos y nunca como etiquetas de rol; los roles con que se tipa a cada enunciatario dependen del tipo de discurso que resolvió `metadata` (la destinación propia del tipo más las posiciones transversales del dispositivo). En los destinatarios que se ordenan alrededor de creencias y valores (pro-, para- y contradestinatario) esto se refuerza con un filtro: se descarta la audiencia nombrada solo por el dispositivo ("seguidores de la cuenta", "los usuarios") sin una posición que la califique, porque ya se registra como auditorio y audiencia ambiente. Una base persistida (`knowledge/enunciacion_kb.json`) acumula el repertorio conocido de cada enunciador —se promueve desde la tab **Enunciación**— y entra como contexto en corridas futuras, con libertad del modelo para proponer identificaciones nuevas.
+Para revisar a escala, la tab **Referentes** incluye **acciones masivas** (aceptar/rechazar en lote filtrando por estado, modalidad, función y referentes) y **fusiones sugeridas**: un detector de casi-duplicados por bloques y similitud léxica, opcionalmente semántica, que propone grupos para fusionar con revisión humana, sin pasar toda la base por un modelo de lenguaje.
 
-La etapa opcional `deixis` (se corre con `--stages …,deixis`, luego de `enunciation` y `emotions`) resuelve las marcas deícticas de 1ª y 2ª persona ("yo", "nosotros", "veamos"…) a los referentes concretos del discurso: el **enunciador**, el **auditorio** (destinatario directo) o los **colectivos de identificación** del enunciador, todos identificados por `enunciation`. La asignación puede ser múltiple (p. ej. "nosotros" → el enunciador y su colectivo). Sus sugerencias se revisan en la tab **Deixis**, que las inscribe en la marca sin decidir por sí sola: como una marca pertenece a toda la unidad, qué referente rige cada simulacro se decide **por emoción y por rol**, entre reemplazar el que estaba o añadir el nuevo (añadir desdobla la emoción si es el experienciador, y suma si es la fuente). La tab muestra los simulacros donde interviene la marca para elegir sobre cada uno, con selector de modo de existencia —una emoción atribuida al auditorio se propone como potencial— y permite eliminar los que sobren.
+![Tab Referentes con el panel de fusiones sugeridas](docs/img/readme/tab-referentes.png)
 
-La etapa opcional `modalidad` clasifica **cómo** cada marca refiere a su referente, en dos ejes: la **modalidad referencial** —`designacion` (lo nombra/categoriza: "Javier Milei", "el presidente"), `referencia_gramatical` (deixis/morfología: "yo", "he defendido") o `identificacion_inferencial` (se identifica por la actitud/valores: "ellos son la casta corrupta" identifica al enunciador)— y la **naturaleza** del referente (persona, colectivo, institución, objeto/proceso). Es un **híbrido NLP+LLM**: un pre-pass con spaCy resuelve los casos claros y el LLM interviene solo en los ambiguos. Así se puede **aceptar** un vínculo (sin perder el experienciador) y a la vez **separar** las designaciones para estudiar la construcción de objetos de discurso. Se corre con LLM vía `emoparse run --stages …,modalidad`, o **NLP-only** post-hoc con `emoparse modalidad --db <db>` (requiere spaCy y un modelo ES, p. ej. `python -m spacy download es_core_news_md`). En la tab **Referentes** cada marca muestra su modalidad/naturaleza, se puede filtrar por modalidad y corregirla a mano.
+La etapa `enunciation` resuelve el enunciador antes del análisis principal: en géneros clásicos, un sub-paso con prompt mínimo devuelve su denominación normalizada ("el presidente Javier Milei" → "Javier Milei"); en el género `tuit` el enunciador es la cuenta autora del post, sin inferencia. Con el enunciador fijado, el prompt principal identifica enunciatarios, auditorio y colectivos de identificación, siempre como referentes concretos y nunca como etiquetas de rol. Una base persistida (`knowledge/enunciacion_kb.json`) acumula el repertorio conocido de cada enunciador y entra como contexto en corridas futuras, con libertad del modelo para proponer identificaciones nuevas.
 
-Cuando una frase tiene **varias emociones que comparten la marca de experienciador**, la tab **Referentes** permite **atribuir el experienciador —o la fuente— por emoción**: al pasar el cursor por la frase de una marca se ven sus emociones con experienciador, tipo, **modo de existencia** y fuente, y se puede fijar el experienciador (o la fuente) de una emoción puntual sin arrastrar las demás (p. ej. atribuir la *indignación* a un referente y dejar el *miedo* en otro). La atribución por emoción prima sobre la resolución por marca; en el caso del experienciador, además fuerza el recálculo downstream de esa emoción. Atribuir varios experienciadores desdobla la emoción; varias fuentes conviven en el mismo simulacro.
+La etapa opcional `deixis` resuelve las marcas de 1ª y 2ª persona ("yo", "nosotros", "veamos") a los referentes concretos identificados por `enunciation`, con asignación posiblemente múltiple. Sus sugerencias se revisan en la tab **Deixis**, que las inscribe en la marca sin decidir por sí sola: como una marca pertenece a toda la unidad, qué referente rige cada simulacro se decide por emoción y por rol.
 
-El dashboard incluye además tabs de **Búsqueda** (por texto o por selección de emoción/actor/experienciador/fuente, con contexto de frases), **Co-ocurrencia** de emociones (por frase, y por hilo o por hashtag en corpus de posts) y **Simulacros** (reconstrucción de cada emoción con sus funciones actanciales, filtrable por actantes, semas y texto).
+La etapa opcional `modalidad` clasifica **cómo** cada marca refiere a su referente: `designacion` (lo nombra: "Javier Milei", "el presidente"), `referencia_gramatical` (deixis o morfología: "yo", "he defendido") o `identificacion_inferencial` (lo identifica por la actitud o los valores que expresa). Es un híbrido: un pre-pass con spaCy resuelve los casos claros y el modelo interviene solo en los ambiguos. Así se puede aceptar un vínculo sin perder el experienciador y a la vez filtrar las designaciones para estudiar la construcción de objetos de discurso.
+
+El dashboard incluye además tabs de **Búsqueda** (por texto o por selección de emoción/actor/experienciador/fuente), **Co-ocurrencia** de emociones y **Simulacros** (reconstrucción de cada emoción con sus funciones actanciales).
 
 ---
 
-
 ## Género tuit (discurso nativo digital)
 
-El género `tuit` adapta el marco a posts de redes sociales, donde el texto es un **tecnodiscurso**: los hashtags, menciones, emojis, alargamientos y mayúsculas no son ruido a limpiar sino materia enunciativa a analizar.
+El género `tuit` adapta el marco a posts de redes sociales, donde el texto es un **tecnodiscurso**: los hashtags, menciones, emojis, alargamientos y mayúsculas son materia enunciativa a analizar. El principio del subsistema es anotar sin borrar: el texto nunca se altera y cada elemento se extrae con sus offsets a una tabla aparte.
 
 ```bash
-# 1. Adquirir un corpus (Bluesky o Mastodon; también importa dumps JSONL o CSV ajenos)
+# 1. Adquirir un corpus (Bluesky o Mastodon; también importa dumps JSONL o CSV)
 emoparse acquire --source bluesky --query "#tarifazo" --lang es \
     --max 500 --out data/tarifazo.jsonl
 
@@ -147,30 +148,37 @@ emoparse acquire --source bluesky --query "#tarifazo" --lang es \
 emoparse run --config config.yaml --genre tuit \
     --input data/tarifazo.jsonl --run-id tarifazo01
 
-# 3. Redes de interacción (reply, mention, rt, qt, co-ocurrencia de hashtags)
+# 3. Redes de interacción
 emoparse network --db runs/tarifazo01.sqlite --export-dir exports/red
 ```
 
 Qué agrega el género respecto del pipeline clásico:
 
-- **`technoparse`** (determinista, sin LLM): extrae hashtags (con función sintáctica integrada/pospuesta), @menciones (que siembran referentes canónicos con vínculo aceptado por designación), URLs, emojis y tecnografismos, con offsets, sin alterar el texto. Los @handles alimentan directamente la base de referentes.
-- **Contexto conversacional**: cada post se analiza junto al post que abrió la conversación y a los posts a los que responde (con el padre inmediato marcado), además del post que cita, como contexto de desambiguación y no como fuente de emociones. El root fija de qué se habla cuando las respuestas son elípticas, a costo de un solo post cualquiera sea la profundidad del hilo. Los hilos se reconstruyen en la ingesta.
-- **`reframing`**: clasifica la operación de las citas y reposts con comentario (adhesión / ironía-distancia / denuncia / difusión neutra) y el estatuto de las emociones citadas (asumidas / semiotizadas), para no atribuirle a quien denuncia la euforia que exhibe.
-- **`emoji_affect`** (híbrida): un léxico curado resuelve los emojis inequívocos sin LLM; los ambiguos (😂 ¿risa o burla?) se desambiguan en contexto.
-- **`hashtag_semiotics`**: analiza el funcionamiento de cada hashtag en cada post donde aparece (tópico / afiliación-consigna / evaluativo / irónico / campaña, con posibilidad de proponer funciones nuevas), con su acoplamiento y la foria de ese uso; las funciones ya identificadas del mismo hashtag entran como contexto creciente entre batches, y la caracterización a nivel corpus se deriva por agregación (función dominante o mixta más la distribución completa).
-- **`tecno_usage`**: caracteriza el uso pragmático de cada @mención (interpelar, confrontar, exponer, citar, agradecer, convocar, marcar afiliación), de cada tecnografismo (énfasis, grito, ironía, celebración, risa, saturación expresiva, marca identitaria, etiqueta temática, reticencia/sugerencia, incredulidad/asombro) y de cada URL (fuente/prueba, autopromoción, convocatoria a la acción, enlace temático) en el contexto de su post.
-- **Enunciación anclada al dispositivo**: el enunciador es la cuenta autora del post (funciona igual con corpus seudonimizados: el alias es estable por cuenta) y el auditorio se construye de forma determinista, sin inferencia: los seguidores de la cuenta, un auditorio por cada hashtag presente y un destinatario directo por cada cuenta mencionada. La etapa `metadata` clasifica el tipo de discurso sobre un vocabulario cerrado del género (político, periodístico-informativo, institucional, humor/meme, personal-cotidiano, promocional, otro), restringido por el schema.
-- **`vision_describe`** (multimodal, opcional): describe las imágenes adjuntas con un modelo de visión (llama-server con `--mmproj`) y esa descripción entra como contexto del análisis emocional; el post se analiza como enunciado compuesto.
-- **Roles enunciativos por tipo de discurso**: dos posiciones transversales del dispositivo —destinatario mencionado (interpelación técnica vía @) y audiencia ambiente (el público del archivo buscable)— se cruzan con la destinación propia de cada tipo de discurso: pro/para/contradestinatario (Verón) en el político; lector-ciudadano / instancia-blanco / fuente-referente (Charaudeau) en el periodístico-informativo; y tríadas análogas en el institucional, el humor/meme, el personal-cotidiano y el promocional. La etapa `metadata` resuelve el tipo y `enunciation` ofrece en el prompt solo los roles de ese tipo (con indicadores lingüísticos orientativos) y descarta los ajenos.
-- **Redes**: `emoparse network` construye los grafos de interacción (reply, mención, RT, cita, co-hashtag), calcula métricas (PageRank, grados, intermediación), comunidades (Louvain, seed fija) y opcionalmente cliques de vínculos recíprocos, los acopla al análisis emocional (perfiles fóricos por comunidad, matrices de transición fórica padre→respuesta, y con `--flujo` el contagio por tipo de emoción y la transición fórica partida intra/inter comunidad) y exporta GEXF para Gephi. Con `--similitud` agrupa los simulacros emocionales por parecido entre sus componentes (agrupamiento narrativo) y con `--semantico` agrupa los posts por contenido (extra `embeddings`); ambos análisis valen para cualquier género, así que la tab Red y estos agrupamientos también sirven para corpus de discursos, no solo de posts. `emoparse follows` adquiere aparte el grafo de seguimiento entre las cuentas del corpus y lo deja medido como un grafo más.
-- **Dashboard**: cuando el run contiene posts, aparecen las tabs 🧵 Hilos (árbol conversacional con foria por post), 🕸 Red, #️⃣ Hashtags (distribución de funciones por hashtag y drill-down por uso) y ✳ Tecno (usos en contexto de menciones, tecnografismos y links, y frases por emoji). La tab 🕸 Red aparece también en corpus de discursos si se corrieron los agrupamientos de similitud o semántico. Una sección **⚙ Ejecutar**, hermana de Resultados, arma los comandos de CLI desde controles para copiar y pegar (no ejecuta: el pipeline corre en CLI); además, la curva emocional se ve por defecto como evolución de la conversación pública (por hashtag o por hilo), la co-ocurrencia y la timeline se filtran por hilo o hashtag, y la revisión muestra cada post con sus tecnolingüísticos y su media.
+- **`technoparse`** (determinista, sin modelo): extrae hashtags, @menciones, URLs, emojis y tecnografismos con offsets. Cada @handle siembra un referente canónico con vínculo aceptado, poblando la base de menciones antes de cualquier inferencia.
+- **Contexto conversacional**: cada post se analiza junto al post que abrió la conversación y a los que responde, como contexto de desambiguación y no como fuente de emociones. Los hilos se reconstruyen en la ingesta.
+- **`reframing`**: clasifica la operación de citas y reposts con comentario (adhesión / ironía-distancia / denuncia / difusión neutra) y el estatuto de las emociones citadas (asumidas / semiotizadas), para no atribuirle a quien denuncia la euforia que exhibe.
+- **`emoji_affect`**: un léxico curado resuelve los emojis inequívocos sin modelo; los ambiguos (😂 ¿risa o burla?) se desambiguan en contexto.
+- **`hashtag_semiotics`**: analiza el funcionamiento de cada hashtag en cada post donde aparece (tópico / afiliación-consigna / evaluativo / irónico / campaña), con su acoplamiento y la foria de ese uso; la caracterización a nivel corpus se deriva por agregación.
+- **`tecno_usage`**: caracteriza el uso pragmático de cada @mención (interpelar, confrontar, exponer, citar, agradecer, convocar, marcar afiliación), de cada tecnografismo (énfasis, grito, ironía, celebración, rótulo temático, reticencia) y de cada URL (fuente/prueba, autopromoción, convocatoria, enlace temático).
+- **Enunciación anclada al dispositivo**: el enunciador es la cuenta autora y el auditorio se construye de forma determinista (seguidores, un auditorio por hashtag, un destinatario por mención). Los roles enunciativos dependen del tipo de discurso que resuelve `metadata`: pro/para/contradestinatario (Verón) en el político, lector-ciudadano / instancia-blanco / fuente-referente (Charaudeau) en el periodístico, y tríadas análogas en institucional, humor/meme, personal-cotidiano y promocional. A ellos se suman dos posiciones transversales del dispositivo: destinatario mencionado y audiencia ambiente.
+- **`vision_describe`** (opcional): describe las imágenes adjuntas con un modelo de visión y esa descripción entra como contexto del análisis emocional.
 - **Ontología ampliada**: emociones del discurso político en redes (burla, hartazgo, vergüenza ajena, diversión) restringidas por género sobre una base compartida.
+
+![Tab Hilos: el árbol conversacional con la foria de cada post](docs/img/readme/tab-hilos.png)
+
+**Redes.** `emoparse network` construye los grafos de interacción (reply, mención, RT, cita, co-hashtag), calcula métricas por nodo y comunidades (con semilla fija, reproducible), los acopla al análisis emocional y exporta a GEXF para Gephi. El acoplamiento incluye perfiles fóricos por comunidad, matrices de transición fórica padre→respuesta y, con `--flujo`, el contagio por tipo de emoción y la transición partida intra/inter comunidad. Con `--similitud` agrupa los simulacros por parecido entre sus componentes y con `--semantico` agrupa los posts por contenido; ambos valen para cualquier género, así que también sirven para corpus de discursos. `emoparse follows` adquiere aparte el grafo de seguimiento entre las cuentas del corpus.
+
+![Tab Red: comunidades de interacción con su perfil emocional](docs/img/readme/tab-red.png)
+
+**Dashboard.** Cuando el run contiene posts aparecen las tabs 🧵 Hilos (árbol conversacional con foria por post), 🕸 Red, #️⃣ Hashtags (distribución de funciones y drill-down por uso) y ✳ Tecno (usos en contexto de menciones, tecnografismos y links, y frases por emoji). Una sección **⚙ Ejecutar** arma los comandos de CLI desde controles, para copiar y pegar. Las tabs generales se adaptan: la curva emocional se ve por defecto como evolución de la conversación pública, la co-ocurrencia y la timeline se filtran por hilo o hashtag, y la revisión muestra cada post con sus tecnolingüísticos y su media.
 
 La adquisición respeta los términos de cada plataforma e incluye seudonimización opcional (`--pseudonymize`) con alias estables que preservan la estructura de hilos y redes. Ver `src/emoparse/acquisition/README.md` para las consideraciones éticas.
 
+---
+
 ## Evaluación de validez
 
-`emoparse eval` implementa el circuito de validación: exportar una muestra estratificada para **anotación humana a ciegas** (`--make-sample`), calcular el **acuerdo inter-anotador** con alpha de Krippendorff (`--agreement`, implementación propia verificada contra los valores publicados), construir un **golden set** de regresión y comparar cada run contra él (`--golden`: precisión/recall/F1 de detección + accuracy por dimensión), y medir la **sobre-detección** sobre corpus de control sin carga emocional (`--control`). El manual de anotación vive en `evals/manual_anotacion.md`; el protocolo convierte cada cambio de prompt u ontología en un experimento medible.
+`emoparse eval` implementa el circuito de validación: exportar una muestra estratificada para **anotación humana a ciegas** (`--make-sample`), calcular el **acuerdo inter-anotador** con alpha de Krippendorff (`--agreement`, implementación propia verificada contra los valores publicados), construir un **golden set** de regresión y comparar cada run contra él (`--golden`: precisión/recall/F1 de detección más accuracy por dimensión), y medir la **sobre-detección** sobre corpus de control sin carga emocional (`--control`). El manual de anotación vive en `evals/manual_anotacion.md`; el protocolo convierte cada cambio de prompt u ontología en un experimento medible.
 
 ---
 
