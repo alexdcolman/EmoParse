@@ -83,7 +83,18 @@
         <tr><td><code>characterizer</code></td><td>emoción</td><td>Foria, dominancia, intensidad, duración, atribución, temporalidad y aspecto.</td><td class="dato">activa</td></tr>
         <tr><td><code>actants</code></td><td>emoción</td><td>Mediador, verificadores, operador de modificación y polaridad.</td><td class="dato">opcional</td></tr>
         <tr><td><code>judge</code></td><td>emoción</td><td>Un segundo modelo revisa la reconstrucción y propone correcciones acotadas.</td><td class="dato">opcional</td></tr>
-        <tr><td><code>semas</code></td><td>referente</td><td>Los rasgos semánticos de cada referente, tomados de un vocabulario curado.</td><td class="dato">activa</td></tr>
+        <tr>
+          <td><code>semas</code></td>
+          <td>referente</td>
+          <td>Los rasgos semánticos de cada referente, tomados de un
+            <a href="https://github.com/alexdcolman/EmoParse/blob/main/knowledge/semas.json"
+              target="_blank"
+              rel="noopener noreferrer">
+              vocabulario curado
+            </a>.
+          </td>
+          <td class="dato">activa</td>
+        </tr>
       </tbody>
     </table>
     </div>
@@ -114,11 +125,11 @@
     <p>El cortador de frases contempla las abreviaturas del español, junta oraciones muy cortas y
     parte las muy largas por punto y coma o por coma. Una emoción que solo se reconoce en la
     continuidad de varias frases puede perderse en una lectura frase por frase, y esa es la carencia
-    que la segunda lectura viene a cubrir.</p>
+    que la segunda lectura intenta cubrir.</p>
 
     <h2 id="escena"><span class="num">3</span>Quién habla y a quiénes</h2>
 
-    <p>Antes de buscar emociones, el sistema reconstruye la situación de habla, porque sin ella un
+    <p>Antes de buscar emociones, el sistema reconstruye la situación de enunciación, porque sin ella un
     «nosotros» no tiene a quién remitir y una emoción atribuida al público no se distingue de una
     atribuida a quien habla.</p>
 
@@ -263,14 +274,14 @@
         <tr><td class="dato">V01</td><td>Una emoción presentada como posible no puede tener a quien habla como quien la siente.</td></tr>
         <tr><td class="dato">V02</td><td>Una fuente sin identificar junto a una intensidad alta indica tensión en la lectura.</td></tr>
         <tr><td class="dato">V04</td><td>Una emoción sin orientación de valor no puede tener intensidad alta.</td></tr>
-        <tr><td class="dato">V06</td><td>Una emoción apenas virtual y sin orientación de valor es contradictoria.</td></tr>
+        <tr><td class="dato">V06</td><td>Una emoción virtual y sin orientación de valor es contradictoria.</td></tr>
         <tr><td class="dato">V09</td><td>La misma emoción del mismo actor aparece dos veces en la misma unidad.</td></tr>
         <tr><td class="dato">V11</td><td>La emoción detectada no figura en la lista de categorías, o viola sus restricciones.</td></tr>
       </tbody>
     </table>
     </div>
 
-    <p>El alcance del segundo modelo está acotado a propósito. Corrige quién siente la emoción, de
+    <p>El alcance del segundo modelo está acotado adrede. Corrige quién siente la emoción, de
     qué tipo es, qué la desencadena, en qué grado se realiza, cuándo ocurre y su configuración
     relacional. Deja sin tocar la foria, la dominancia, la intensidad, la duración y la
     atribución.<a class="nref" href="#n1" id="r1">1</a></p>
@@ -315,12 +326,20 @@
       <h2>Notas</h2>
       <ol>
         <li id="n1">La razón es teórica. En las dimensiones donde el abanico de lecturas admisibles es
-        amplio, pedirle a un segundo modelo que corrija al primero reproduce un sesgo conocido: el
+        amplio, pedirle a un segundo modelo que corrija al primero reproduce un sesgo conocido, denominado
+        <a href="https://aclanthology.org/2025.findings-acl.1323/"
+          target="_blank"
+          rel="noopener noreferrer"><em>anchoring</em></a>: el
         juicio se desplaza hacia el valor que se le presentó de antemano, sin que haya un criterio más
         firme para dirimir entre lecturas igualmente aceptables. La corrección se reserva para los
         casos donde tiene sentido exigir acierto, como una atribución equivocada por discurso
         referido, una ironía no reconocida o una polaridad invertida. <a href="#r1">↩</a></li>
-        <li id="n2">La medida es el alfa de Krippendorff. La implementación es propia, sin
+        <li id="n2">La medida es el
+        <a href="https://en.wikipedia.org/wiki/Krippendorff%27s_alpha"
+          target="_blank"
+          rel="noopener noreferrer">
+          alfa de Krippendorff
+        </a>. La implementación es propia, sin
         dependencias externas, admite datos faltantes y está verificada contra los valores publicados
         del ejemplo canónico. <a href="#r2">↩</a></li>
       </ol>

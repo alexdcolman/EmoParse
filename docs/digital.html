@@ -57,7 +57,7 @@
 
     <p class="entradilla">Un post de red social es un enunciado que existe dentro de un dispositivo.
     Sus etiquetas, menciones, emojis y mayúsculas sostenidas son materia del análisis, y la plataforma
-    misma define buena parte de la situación de habla. El género <code>tuit</code> trabaja con esas
+    misma define buena parte de la situación de enunciación. El género <code>tuit</code> trabaja con esas
     condiciones en lugar de limpiarlas.</p>
 
     <div class="specimen">
@@ -162,10 +162,15 @@
     <h2 id="emojis"><span class="num">5</span>Emojis y etiquetas</h2>
 
     <p>Un emoji no porta un afecto fijo. El sistema parte de los valores típicos de cada uno, que
-    están en una lista curada, pero decide siempre por el contexto: una carcajada sobre una desgracia
+    están en una
+    <a href="https://github.com/alexdcolman/EmoParse/blob/main/knowledge/emoji_afecto.json"
+      target="_blank"
+      rel="noopener noreferrer">
+      lista curada
+    </a>, pero decide siempre por el contexto: una carcajada sobre una desgracia
     ajena celebrada es burla del lado desagradable, y sobre una anécdota propia es risa del lado
     agradable. La ironía invierte los valores, y un emoji meramente ilustrativo, una calabaza junto a
-    una receta, no aporta afecto alguno. La repetición intensifica sin cambiar el tipo.</p>
+    una receta, no aporta ningún afecto. La repetición intensifica sin cambiar el tipo.</p>
 
     <p>Los emojis inequívocos se resuelven con la lista, sin consumir tiempo de modelo. Solo los
     ambiguos van al análisis en contexto.</p>
@@ -236,7 +241,7 @@
     <h2 id="redes"><span class="num">8</span>Las redes entre cuentas</h2>
 
     <p>El análisis de redes corre después del análisis emocional y no usa modelos de lenguaje. Su
-    costo está en las consultas a la plataforma, no en cómputo local.</p>
+    costo solo reside en las consultas a la plataforma.</p>
 
     <h3>Los grafos</h3>
 
@@ -268,13 +273,13 @@
 
     <p>Un análisis adicional mide el contagio por tipo de emoción, es decir cuánto se replica cada
     tipo en las respuestas por encima de lo que su frecuencia haría esperar,<a class="nref" href="#n3" id="r3">3</a>
-    y parte la matriz en dos: lo que ocurre puertas adentro de una comunidad y lo que ocurre en el
+    y parte la matriz en dos: lo que pasa puertas adentro de una comunidad y lo que pasa en el
     cruce entre comunidades.</p>
 
     <h3>Agrupar por parecido</h3>
 
     <p>Dos agrupamientos más no dependen de que el corpus sea de posts, así que también sirven para
-    corpus de discursos. Uno agrupa las emociones reconstruidas por parecido entre sus componentes:
+    corpus de discursos tradicionales. Uno agrupa las emociones reconstruidas por parecido entre sus componentes:
     mismo tipo de experienciador, mismo tipo de emoción, misma clase de fuente. Permite encontrar qué
     fragmentos del corpus cuentan, en ese sentido, la misma historia emocional. El otro agrupa los
     textos por parecido de contenido.<a class="nref" href="#n4" id="r4">4</a></p>

@@ -53,9 +53,9 @@
 
     <h1>El enfoque</h1>
 
-    <p class="entradilla">Las categorías con las que EmoParse lee no salen de una taxonomía de
+    <p class="entradilla">Las categorías que usa EmoParse para hacer las inferencias no salen de una taxonomía de
     emociones básicas ni de un modelo entrenado sobre juicios ajenos. Salen de un conjunto de
-    tradiciones del análisis del discurso, traducidas a campos, listas de valores y pasos de un
+    tradiciones del análisis del discurso, la lingüística, la semiótica y la retórica, traducidas a campos, listas de valores y pasos de un
     procedimiento.</p>
 
     <h2 id="efecto"><span class="num">1</span>La emoción como efecto de sentido</h2>
@@ -76,11 +76,19 @@
     afectivas opuestas según dónde circule. Esa divergencia integra el fenómeno, y por eso el sistema
     la mide en lugar de suprimirla.</p>
 
-    <p>Entonces, si dos analistas leen distinto el mismo
-    pasaje, esa diferencia no es ruido alrededor de un valor verdadero que habría que despejar:
-    forma parte de aquello que se está estudiando. El circuito de evaluación del sistema, que mide el
-    acuerdo entre anotadores humanos antes de medir el acierto del modelo, está construido sobre esa
-    premisa.</p>
+    <p>
+      Entonces, si dos analistas leen distinto el mismo
+      pasaje, esa
+      <a href="https://ojs.aaai.org/index.php/AAAI/article/view/25840"
+        target="_blank"
+        rel="noopener noreferrer">
+        diferencia no es ruido alrededor de un valor verdadero que habría que despejar:
+        forma parte de aquello que se está estudiando
+      </a>.
+      El circuito de evaluación del sistema, que mide el
+      acuerdo entre anotadores humanos antes de medir el acierto del modelo, está construido sobre esa
+      premisa.
+    </p>
 
     <h2 id="niveles"><span class="num">2</span>Qué se puede observar</h2>
 
@@ -91,7 +99,7 @@
     reorganizaciones que esas configuraciones producen al ser reconocidas.</p>
 
     <p>EmoParse trabaja sobre el segundo nivel y, a partir de él, formula hipótesis sobre el tercero.
-    No accede al primero y no supone acceder. Cuando el sistema informa que un colectivo está
+    No accede al primero y no supone ese acceso. Cuando el sistema informa que un colectivo está
     indignado, está informando que ciertas marcas de la superficie del texto habilitan esa lectura,
     y deja las marcas a la vista.</p>
 
@@ -184,7 +192,7 @@
     queda explícita, versionada y discutible. Un clasificador entrenado sobre ejemplos anotados
     también tiene una grilla, pero sedimentada de manera implícita en sus parámetros, y ahí no se la
     puede leer ni objetar. Acá se la puede abrir en un archivo de texto, discutirla y modificarla, y
-    la modificación queda registrada junto a los resultados que produjo.</p>
+    la modificación queda registrada junto con los resultados que produjo.</p>
 
     <div class="nota">
       <span class="rotulo">Dónde viven las categorías</span>
@@ -197,17 +205,35 @@
 
     <h2 id="genero"><span class="num">6</span>Género y tipo de discurso</h2>
 
-    <p>Un <span class="term">género</span> es un tipo relativamente estable de enunciado, con
-    regularidades temáticas, de estilo y de composición, sedimentadas históricamente. En EmoParse se
-    traduce en una ficha que declara cómo varía el análisis para esa clase de texto: en qué unidades
-    se corta, qué posiciones de destinatario son válidas, qué instrucciones se usan.</p>
+    <p>
+      Un <span class="term">
+        <a href="https://es.wikipedia.org/wiki/G%C3%A9nero_discursivo"
+          target="_blank"
+          rel="noopener noreferrer">
+          género
+        </a>
+      </span> es un tipo relativamente estable de enunciado, con
+      regularidades temáticas, de estilo y de composición, sedimentadas históricamente. En EmoParse se
+      traduce en una ficha que declara cómo varía el análisis para esa clase de texto: en qué unidades
+      se corta, qué posiciones de destinatario son válidas, qué instrucciones se usan.
+    </p>
 
     <p>El sistema incorpora dos géneros y admite agregar otros. En el <code>discurso_presidencial</code>
-    el corte es por frase y las posiciones de destinatario son tres, tomadas del análisis del discurso
-    político: aquel que comparte las creencias del enunciador y recibe el refuerzo, aquel indeciso al
+    (equivalente, en su estructura, a muchos otros discursos políticos tradicionales), el corte es por
+    frase y las posiciones de destinatario son tres, tomadas del
+    <a href="https://semioticaderedes-carlon.com/wp-content/uploads/2018/04/Veron-Eliseo-La-palabra-adversativa-observaciones-sobre-enunciaci%C3%B3n-pol%C3%ADtica..pdf"
+      target="_blank"
+      rel="noopener noreferrer">
+      análisis del discurso político
+    </a>: aquel que comparte las creencias del enunciador y recibe el refuerzo, aquel indeciso al
     que se busca persuadir, y el adversario con quien se polemiza. En el género <code>tuit</code> el
-    corte es por post y las posiciones dependen del tipo de discurso que se identifique en cada
-    caso.</p>
+    corte es por post y las posiciones dependen del
+    <a href="https://github.com/alexdcolman/EmoParse/blob/main/docs/other/tipologia_destinatarios_tuits_fundamentacion.md"
+      target="_blank"
+      rel="noopener noreferrer">
+      tipo de discurso
+    </a>
+    que se identifique en cada caso.</p>
 
     <p>Analizar posts con la grilla de un discurso presidencial impondría condiciones de lectura
     ajenas al material. Esa es la razón de que el género sea un parámetro declarado y no un supuesto
@@ -219,7 +245,7 @@
     tensiva, de la teoría de las operaciones enunciativas, de la propuesta semiótica y comunicacional
     de Eliseo Verón, de la retórica y los estudios de la argumentación, de la teoría del actor-red,
     de las propuestas sobre género y tipo de discurso, de los estudios sobre audiencias en redes y de
-    la filosofía de la individuación.</p>
+    la filosofía de la individuación de Simondon.</p>
 
     <p>El <a href="glosario.html">glosario</a> reúne cada categoría con su procedencia, su sentido
     dentro del sistema y la forma en que se volvió computable. El desarrollo extenso del enfoque y de

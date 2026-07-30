@@ -49,11 +49,11 @@
   <main class="cuerpo" id="principal">
   <div class="contenido">
 
-    <h1>Leer un discurso por sus emociones, sin perder de vista el texto</h1>
+    <h1>Leer las emociones de un discurso sin perder de vista el texto</h1>
 
-    <p class="entradilla">EmoParse recorre un conjunto de textos y reconstruye, tramo por tramo, las
-    emociones que ese tramo pone en juego: quién la siente, qué la desencadena, con qué orientación
-    y con qué intensidad. Cada lectura queda atada a las palabras exactas que la habilitan.</p>
+    <p class="entradilla">EmoParse recorre un conjunto de textos y (re)construye, tramo por tramo, las
+    emociones que ese tramo pone en juego: quién las siente, qué las desencadena, con qué orientación
+    y con qué intensidad. Cada lectura queda vinculada a las palabras exactas que la habilitan.</p>
 
     <div class="specimen animado">
       <p class="fuente-texto">Los <span class="marca exp">argentinos de bien<span class="etq">experienciador</span></span>
@@ -89,7 +89,7 @@
     <p class="marginal">Toda salida del sistema conserva el fragmento literal que la justifica. Sin ese
     fragmento, la lectura no se registra.</p>
 
-    <p>Esa correspondencia entre un fragmento del texto y una lectura sostiene el programa entero.
+    <p>Esa correspondencia entre un fragmento del texto y una lectura sostiene todo el programa.
     El sistema no informa que en el discurso «hay indignación»: informa que cierto adjetivo, atribuido
     a cierto colectivo y referido a cierto adversario, admite ser leído como indignación, y deja a la
     vista las tres piezas para que quien analiza pueda revisarlas, corregirlas o descartarlas.</p>
@@ -97,10 +97,10 @@
     <h2 id="que-hace"><span class="num">1</span>Qué hace</h2>
 
     <p>El punto de partida es un conjunto de textos: discursos presidenciales, comunicados,
-    declaraciones, posts de redes sociales. El sistema los corta en unidades de lectura, y sobre cada
-    unidad realiza una serie de pasos encadenados. Primero reconstruye la situación de habla: quién
+    declaraciones, posts de redes sociales, etc. El sistema los corta en unidades de lectura, y sobre cada
+    unidad realiza una serie de operaciones encadenadas. Primero reconstruye la situación de enunciación: quién
     habla, a quiénes se dirige, con qué colectivos se identifica. Después detecta las emociones,
-    identifica a los actores involucrados y caracteriza cada emoción en un conjunto de dimensiones
+    identifica a los actores involucrados y caracteriza cada emoción según un conjunto de dimensiones
     fijas. El resultado se guarda en un archivo de resultados propio de esa corrida, y se explora en
     una aplicación de escritorio con gráficos y tablas.</p>
 
@@ -109,7 +109,7 @@
     diferencia respecto del uso habitual. Corren en la computadora de quien analiza, sin conexión con
     ningún servicio externo, así que el corpus no sale de esa máquina. Y no responden en prosa libre:
     cada paso les exige devolver una ficha con campos fijos, cuyos valores posibles están declarados
-    de antemano.</p>
+    previamente.</p>
 
     <figure>
       <div class="marco">
@@ -219,8 +219,7 @@
 
       <dt>Toda lectura queda anclada al texto</dt>
       <dd>Ninguna emoción se registra sin el fragmento que la justifica, y ese fragmento queda
-      enlazado a la unidad de la que salió. Las cifras agregadas del tablero pueden abrirse hasta
-      llegar a la frase concreta que las produjo.</dd>
+      enlazado a la unidad de la que salió.</dd>
 
       <dt>Todo corre en la máquina de quien analiza</dt>
       <dd>Los modelos se descargan una vez y trabajan sin conexión. Para corpus sensibles, o sujetos
@@ -236,7 +235,7 @@
     <h2 id="limites"><span class="num">4</span>Qué queda afuera</h2>
 
     <p>El sistema trabaja sobre lo que el texto muestra. Una emoción registrada es una hipótesis
-    sobre cómo puede leerse una configuración de palabras, y vale como tal. Nada de lo que produce
+    sobre cómo puede leerse una configuración de marcas discursivas. Nada de lo que produce
     autoriza una afirmación sobre el estado mental de quien escribió o pronunció el texto.</p>
 
     <ul>
@@ -247,7 +246,7 @@
       localmente.</li>
       <li>La revisión humana es parte del método. El sistema propone; la unificación de referentes,
       la resolución de ambigüedades y la corrección de atribuciones quedan en manos de quien analiza,
-      con herramientas para hacerlo a escala.</li>
+      con herramientas para hacerlo fácilmente y a escala.</li>
     </ul>
 
     <h2 id="seguir"><span class="num">5</span>Por dónde seguir</h2>
@@ -285,10 +284,18 @@
     <div class="notas">
       <h2>Notas</h2>
       <ol>
-        <li id="n1">Las cuatro categorías provienen de la semiótica tensiva, donde la foria nombra la
-        orientación de valor mínima que organiza un universo de sentido. <em>Ambifórico</em> designa la
-        coexistencia de las dos orientaciones en una misma emoción; <em>afórico</em>, la ausencia de
-        orientación marcada. <a href="#r1">↩</a></li>
+        <li id="n1">
+          Las cuatro categorías provienen de la
+          <a href="https://www.signosemio.com/pages/fontanille/tensive-model.php"
+            target="_blank"
+            rel="noopener noreferrer">
+            semiótica tensiva
+          </a>,
+          donde la foria nombra la orientación de valor mínima que organiza un universo de sentido.
+          <em>Ambifórico</em> designa la coexistencia de las dos orientaciones en una misma emoción;
+          <em>afórico</em>, la ausencia de orientación marcada.
+          <a href="#r1">↩</a>
+        </li>
       </ol>
     </div>
 
