@@ -125,7 +125,7 @@ def _render_resumen_actores(
         .head(top_act)
     )
     st.markdown(
-        f"<p style='font-size:0.78rem;color:#5a5d6e;'>Top {top_act} actores</p>",
+        f"<p style='font-size:0.78rem;color:var(--dim);'>Top {top_act} actores</p>",
         unsafe_allow_html=True,
     )
     st.dataframe(resumen, use_container_width=True, height=280, hide_index=True)

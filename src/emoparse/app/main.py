@@ -30,7 +30,7 @@ from emoparse.app.components import (
     tab_tabla,
 )
 from emoparse.app import data
-from emoparse.app.styles import CSS
+from emoparse.app.styles import CSS, FORIA_LEGEND
 
 
 #: Directorio donde se almacenan los runs (.sqlite).
@@ -49,6 +49,9 @@ def main() -> None:
         initial_sidebar_state="expanded",
     )
     st.markdown(CSS, unsafe_allow_html=True)
+    # Leyenda fórica: fija en el vértice inferior izquierdo, semitransparente
+    # y sin capturar el puntero, así acompaña a cualquier tab sin taparla.
+    st.markdown(FORIA_LEGEND, unsafe_allow_html=True)
 
     # Fuerza el sidebar siempre visible: oculta el botón de colapso nativo
     # de Streamlit (el chevron) y el backdrop que lo tapa en mobile.
@@ -105,11 +108,11 @@ def main() -> None:
 
     st.markdown("# Resultados")
     st.markdown(
-        "<p style='color:#8a8799;margin-top:-0.5rem;'>"
+        "<p style='color:var(--text-dim);margin-top:-0.5rem;'>"
         "Explorá los outputs del run seleccionado.</p>",
         unsafe_allow_html=True,
     )
-    st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
+    _render_runbar(db_path)
 
     labels = [
         "📈 Curva emocional",
@@ -135,7 +138,7 @@ def main() -> None:
         labels.append("🕸 Red")
     idx_red = n_fijas if hay_red else None
     if corpus_posts:
-        labels += ["🧵 Hilos", "#️⃣ Hashtags", "✳ Tecno"]
+        labels += ["🧵 Hilos y citas", "#️⃣ Hashtags", "✳ Tecno"]
 
     tabs = st.tabs(labels)
     (tab_curva_, tab_act, tab_tab, tab_comp, tab_busq, tab_corr, tab_sim,
@@ -185,6 +188,57 @@ def main() -> None:
             tab_hashtags.render(db_path)
         with tab_tec:
             tab_tecno.render(db_path)
+
+
+def _render_runbar(db_path: Path) -> None:
+    """Barra de contexto del run, visible desde cualquier tab.
+
+    El selector vive en el sidebar, que se ignora una vez que se está
+    leyendo un gráfico: esta barra recuerda qué corpus se está mirando y de
+    qué tamaño, sin volver a buscarlo.
+    """
+    try:
+        stats = data.get_run_stats(db_path)
+    except Exception:  # pragma: no cover — defensa contra DB corrupta
+        return
+    campos = [
+        ("run", str(stats.get("run_id") or db_path.stem), True),
+        ("discursos", f"{stats.get('n_discursos', 0)}", False),
+        ("frases", f"{stats.get('n_frases', 0)}", False),
+        ("emociones", f"{stats.get('n_emociones', 0)}", False),
+    ]
+    if data.has_posts(db_path):
+        campos.insert(1, ("corpus", "posts", False))
+    pendientes, errores = _resumen_stages(db_path)
+    partes = [
+        f"<span>{etiqueta} "
+        f"<b class='{'ep-runbar-id' if destacado else ''}'>{valor}</b></span>"
+        for etiqueta, valor, destacado in campos
+    ]
+    if errores:
+        partes.append(f"<span class='badge badge-err'>{errores} con error</span>")
+    elif pendientes:
+        partes.append(f"<span class='badge badge-warn'>{pendientes} pendientes</span>")
+    else:
+        partes.append("<span class='badge badge-ok'>sin pendientes</span>")
+    st.markdown(
+        "<div class='ep-runbar'>"
+        + "<span class='ep-runbar-sep'>·</span>".join(partes)
+        + "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _resumen_stages(db_path: Path) -> tuple[int, int]:
+    """(pendientes, errores) de las stages que sí corrieron en el run."""
+    try:
+        statuses = data.get_stage_statuses(db_path)
+    except Exception:  # pragma: no cover
+        return (0, 0)
+    return (
+        sum(s.pending for s in statuses if s.ejecutada),
+        sum(s.failed for s in statuses),
+    )
 
 
 if __name__ == "__main__":

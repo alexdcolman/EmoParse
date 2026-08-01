@@ -18,17 +18,7 @@ import streamlit as st
 from emoparse.app import data as data_layer
 from emoparse.app._knowledge import semas_list
 from emoparse.app.components import _emofilter
-from emoparse.viz import charts
-
-
-#: Iconos de foria usados en la visualización de chips.
-_FORIA_ICONS: dict[str, str] = {
-    "eufórico":      "↑",
-    "disfórico":     "↓",
-    "afórico":       "–",
-    "ambifórico":    "↕",
-    "indeterminado": "?",
-}
+from emoparse.viz import charts, foria as foria_viz
 
 
 def render(db_path: Path) -> None:
@@ -214,24 +204,25 @@ def _render_chips(df_sel: pd.DataFrame, *, usar_llm: bool = False) -> None:
         modo = str(row.get("modo_existencia", "") or "")
         foria = str(row.get("foria", "") or "")
         pos = row.get("frase_idx", "—")
-        color = charts.emo_color(emo)
-        ficon = _FORIA_ICONS.get(foria, "")
+        color = charts.emo_color(emo, foria)
+        ficon = foria_viz.icono(foria)
 
         fte_badge = (
             f"<span class='badge badge-dim' style='font-size:0.64rem;"
-            f"color:#6ec89a;border-color:#6ec89a40;'>← {fte}</span>"
+            f"color:var(--ok);border-color:var(--ok)40;'>← {fte}</span>"
             if fte and fte != "—" else ""
         )
 
-        r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
         chips_html.append(
             f"<div style='display:flex;align-items:center;gap:0.6rem;"
-            f"padding:0.3rem 0.6rem;border-bottom:1px solid #1a1c22;'>"
+            f"padding:0.3rem 0.6rem;border-bottom:1px solid var(--border-soft);'>"
             f"<span style='font-family:DM Mono,monospace;font-size:0.68rem;"
-            f"color:#3a3d4e;min-width:2.4rem;'>#{pos}</span>"
-            f"<span class='emo-chip' style='background:rgba({r},{g},{b},0.15);"
-            f"color:{color};border-color:{color}40;'>{emo}</span>"
-            f"<span style='font-size:0.76rem;color:#8a8799;'>{exp}</span>"
+            f"color:var(--border-2);min-width:2.4rem;'>#{pos}</span>"
+            f"<span class='emo-chip' style='"
+            f"background:{foria_viz.rgba(color, 0.15)};"
+            f"color:{color};border-color:{foria_viz.rgba(color, 0.28)};'>"
+            f"{emo}</span>"
+            f"<span style='font-size:0.76rem;color:var(--text-dim);'>{exp}</span>"
             f"{fte_badge}"
             f"<span class='badge badge-dim' style='font-size:0.66rem;'>{modo}</span>"
             f"<span style='color:{color};margin-left:auto;font-size:0.82rem;'>{ficon}</span>"

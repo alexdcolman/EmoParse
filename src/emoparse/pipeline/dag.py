@@ -148,10 +148,16 @@ EMOPARSE_DAG = StageDAG(
         # nativo digital (genre.technoparse=True). Sin dependientes duros:
         # anota tecnolingüísticos que las stages LLM consumen si están.
         StageNode("technoparse", deps=()),
-        # Reframing clasifica citas/reposts desde `posts`: no depende de
-        # otras stages, pero corre temprano para estar disponible como
-        # contexto de las stages LLM posteriores.
-        StageNode("reframing", deps=()),
+        # Reframing clasifica citas/reposts desde `posts`: puede correr sola.
+        # Cuando hay emociones materializadas, las del post citado entran al
+        # prompt (el agente juzga su estatuto en vez de reinferirlas) y, si
+        # además corrió characterizer, con su foria. Ambas son blandas: la
+        # stage funciona sin ellas, solo con menos evidencia.
+        StageNode(
+            "reframing",
+            deps=(),
+            soft_deps=("explode_emotions", "characterizer"),
+        ),
         # Ambas consumen `tecno_entidades`.
         StageNode("emoji_affect", deps=("technoparse",)),
         StageNode("hashtag_semiotics", deps=("technoparse",)),
@@ -176,7 +182,9 @@ EMOPARSE_DAG = StageDAG(
         StageNode("normalize_emotions", deps=("explode_emotions",)),
         StageNode("characterizer", deps=("normalize_emotions",)),
         StageNode("actants", deps=("explode_emotions",)),
-        StageNode("judge", deps=("characterizer",)),
+        # El juez consume la operación de reframing como contexto: blanda,
+        # porque corrige igual sin ella.
+        StageNode("judge", deps=("characterizer",), soft_deps=("reframing",)),
         StageNode("semas", deps=("explode_emotions",)),
     ]
 )

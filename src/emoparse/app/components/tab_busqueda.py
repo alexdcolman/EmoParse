@@ -17,6 +17,7 @@ import streamlit as st
 
 from emoparse.app import data as data_layer
 from emoparse.app._textmatch import matches, normalize, parse_query
+from emoparse.app import styles
 
 _KIND_LABEL = {
     "emocion": "Emoción",
@@ -69,7 +70,7 @@ def _render_text_search(db_path, frases, by_key, brief_map) -> None:
         + (f" · {counts.get('fuentes', 0)} fuentes" if counts else "")
     )
     st.markdown(
-        f"<p style='color:#8a8799;font-size:0.9rem;'>{resumen}</p>",
+        f"<p style='color:var(--text-dim);font-size:0.9rem;'>{resumen}</p>",
         unsafe_allow_html=True,
     )
     if not hits:
@@ -103,7 +104,7 @@ def _render_selection_search(db_path, by_key, brief_map) -> None:
         return
     keys = data_layer.frases_for_selection(db_path, kind, value)
     st.markdown(
-        f"<p style='color:#8a8799;font-size:0.9rem;'><b>{len(keys)}</b> frases.</p>",
+        f"<p style='color:var(--text-dim);font-size:0.9rem;'><b>{len(keys)}</b> frases.</p>",
         unsafe_allow_html=True,
     )
     for c, u in keys[:_MAX_RESULTS]:
@@ -127,18 +128,18 @@ def _render_hit(codigo, unit_idx, frase, by_key, brief_map=None) -> None:
     with st.container(border=True):
         st.markdown(
             f"<span style='font-family:DM Mono,monospace;font-size:0.72rem;"
-            f"color:#5a5d6e;'>{html.escape(_compress_codigo(codigo))} · u{unit_idx}"
+            f"color:var(--dim);'>{html.escape(_compress_codigo(codigo))} · u{unit_idx}"
             f"</span>",
             unsafe_allow_html=True,
         )
         ctx = ""
         if prev:
-            ctx += (f"<div style='color:#5a5d6e;font-size:0.8rem;line-height:1.5;'>"
+            ctx += (f"<div style='color:var(--dim);font-size:0.8rem;line-height:1.5;'>"
                     f"… {html.escape(prev)}</div>")
-        ctx += (f"<div style='color:#e8e4dc;font-size:0.9rem;line-height:1.6;"
+        ctx += (f"<div style='color:var(--text);font-size:0.9rem;line-height:1.6;"
                 f"margin:0.15rem 0;'>{html.escape(str(frase))}</div>")
         if nxt:
-            ctx += (f"<div style='color:#5a5d6e;font-size:0.8rem;line-height:1.5;'>"
+            ctx += (f"<div style='color:var(--dim);font-size:0.8rem;line-height:1.5;'>"
                     f"{html.escape(nxt)} …</div>")
         st.markdown(ctx, unsafe_allow_html=True)
         _render_emociones((brief_map or {}).get((codigo, unit_idx)))
@@ -156,11 +157,12 @@ def _render_emociones(emos) -> None:
         fte = html.escape(str(em.get("fuente", "") or "—"))
         rows += (
             f"<div style='font-size:0.78rem;line-height:1.6;margin-top:0.2rem;'>"
-            f"<span style='color:#b08ad0;font-weight:600;'>{emo}</span>"
-            f"<span style='color:#5a5d6e;'> · exp:</span> "
-            f"<span style='color:#7c9ec8;'>{exp}</span>"
-            f"<span style='color:#5a5d6e;'> · fuente:</span> "
-            f"<span style='color:#6ec89a;'>{fte}</span></div>"
+            f"<span style='color:{styles.var('rol-emocion')};"
+            f"font-weight:600;'>{emo}</span>"
+            f"<span style='color:var(--dim);'> · exp:</span> "
+            f"<span style='color:{styles.var('rol-experienciador')};'>{exp}</span>"
+            f"<span style='color:var(--dim);'> · fuente:</span> "
+            f"<span style='color:{styles.var('rol-fuente')};'>{fte}</span></div>"
         )
     if rows:
         st.markdown(

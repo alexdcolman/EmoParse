@@ -5,7 +5,9 @@
 #
 #  Solo recibe los usos que el léxico (knowledge/emoji_afecto.json) marca
 #  como ambiguos o no cubre: los inequívocos se resuelven sin LLM en la
-#  stage. Cada fila: `emoji`, `frase` (texto completo de la unidad) y el
+#  stage. La unidad es la racha (ocurrencias contiguas del mismo emoji), no
+#  la ocurrencia. Cada fila: `emoji`, `repeticiones` (largo de la racha),
+#  `frase` (texto de la unidad con la racha ya delimitada por la stage) y el
 #  `prior` del léxico si existe. El output agrega la columna `afecto` (JSON).
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -70,9 +72,11 @@ class EmojiAffectAgent(BaseBatchAgent[ListaEmojiAfectoBatchSchema]):
         for i, (_, row) in enumerate(batch.iterrows()):
             prior = str(row.get("prior") or "").strip()
             linea_prior = f"\nPRIOR DEL LÉXICO: {prior}" if prior else ""
+            n = int(row.get("repeticiones") or 1)
+            repeticion = f" (×{n})" if n > 1 else ""
             bloques.append(
                 f"UNIDAD [{i}]:\n"
-                f"EMOJI: {row.get('emoji', '')}\n"
+                f"EMOJI: {row.get('emoji', '')}{repeticion}\n"
                 f"POST: {row.get('frase', '')}{linea_prior}"
             )
         return prompts.render_user(unidades_block="\n\n".join(bloques))

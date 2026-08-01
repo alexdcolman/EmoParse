@@ -16,15 +16,15 @@ from emoparse.app import _knowledge
 
 _SIN_CANONICO = "— sin canónico —"
 _STATUS = {
-    "accepted": ("✓", "#6ec89a"),
-    "rejected": ("✗", "#c86e6e"),
-    "proposed": ("◷", "#c8a96e"),
+    "accepted": ("✓", "var(--ok)"),
+    "rejected": ("✗", "var(--danger)"),
+    "proposed": ("◷", "var(--accent)"),
 }
 _FN_COLOR = {
-    "actor": "#7c9ec8",
-    "experienciador": "#b08ad0",
-    "fuente": "#c8a96e",
-    "circunstante": "#8a8799",
+    "actor": "var(--accent2)",
+    "experienciador": "var(--rol-emocion)",
+    "fuente": "var(--accent)",
+    "circunstante": "var(--text-dim)",
 }
 #: Modalidad referencial: etiqueta corta + color.
 _MOD_LABEL = {
@@ -32,10 +32,11 @@ _MOD_LABEL = {
     "referencia_gramatical": "ref. gramatical",
     "identificacion_inferencial": "ident. inferencial",
 }
+#: Token de paleta por modalidad referencial (el valor vive en `app.styles`).
 _MOD_COLOR = {
-    "designacion": "#6ec89a",
-    "referencia_gramatical": "#7c9ec8",
-    "identificacion_inferencial": "#c88a8a",
+    "designacion": "var(--mod-designacion)",
+    "referencia_gramatical": "var(--mod-referencia_gramatical)",
+    "identificacion_inferencial": "var(--mod-identificacion_inferencial)",
 }
 _MOD_OPCIONES = ["designacion", "referencia_gramatical", "identificacion_inferencial"]
 
@@ -200,7 +201,7 @@ def render(db_path: Path) -> None:
     iniciales = sorted({_initial_of(c) for c, _ in items if c is not None})
     if iniciales:
         st.markdown(
-            "<p style='color:#5a5d6e;font-size:0.72rem;margin:0.3rem 0 0.1rem;'>"
+            "<p style='color:var(--dim);font-size:0.72rem;margin:0.3rem 0 0.1rem;'>"
             "Índice</p>", unsafe_allow_html=True,
         )
         fichas = ["Todos", *iniciales]
@@ -245,7 +246,7 @@ def render(db_path: Path) -> None:
 
     # ── Navegador prev / select / next ────────────────────────────────────────
     st.markdown(
-        f"<p style='color:#5a5d6e;font-size:0.78rem;margin:0.5rem 0 0.2rem;'>"
+        f"<p style='color:var(--dim);font-size:0.78rem;margin:0.5rem 0 0.2rem;'>"
         f"{len(items)} referentes</p>",
         unsafe_allow_html=True,
     )
@@ -336,7 +337,7 @@ def _render_bulk_panel(
         pairs = st.session_state.get(_BULK_PAIRS_KEY, [])
         n = len(pairs)
         st.markdown(
-            f"<span style='color:#c2bdb4;'>Coincidencias: <b>{n}</b> "
+            f"<span style='color:var(--text-soft);'>Coincidencias: <b>{n}</b> "
             f"vínculo(s).</span>", unsafe_allow_html=True,
         )
         if n:
@@ -492,10 +493,10 @@ def _render_referente(
 
     st.markdown(
         f"<div style='margin:0.6rem 0 0.4rem;padding:0.4rem 0;"
-        f"border-bottom:1px solid #2a2c34;'>"
+        f"border-bottom:1px solid var(--border-2);'>"
         f"<span style='font-family:DM Mono,monospace;font-size:1.0rem;"
-        f"color:#e8e4dc;font-weight:600;'>{html.escape(str(titulo))}</span>"
-        f"<span style='color:#5a5d6e;font-size:0.78rem;'> · "
+        f"color:var(--text);font-weight:600;'>{html.escape(str(titulo))}</span>"
+        f"<span style='color:var(--dim);font-size:0.78rem;'> · "
         f"{n_marks} marca(s)</span></div>",
         unsafe_allow_html=True,
     )
@@ -548,7 +549,7 @@ def _render_referente(
         with pp2:
             lo, hi = page * per + 1, min((page + 1) * per, total)
             st.markdown(
-                f"<p style='text-align:center;color:#5a5d6e;font-size:0.8rem;'>"
+                f"<p style='text-align:center;color:var(--dim);font-size:0.8rem;'>"
                 f"marcas {lo}–{hi} de {total} · página {page + 1}/{n_pages}</p>",
                 unsafe_allow_html=True,
             )
@@ -573,7 +574,7 @@ def _render_kb_panel(
 
         # ── Edición de campos KB (un solo Guardar) ────────────────────────────
         st.markdown(
-            "<span style='font-size:0.78rem;color:#8a8799;'>display_name</span>",
+            "<span style='font-size:0.78rem;color:var(--text-dim);'>display_name</span>",
             unsafe_allow_html=True,
         )
         new_display = st.text_input(
@@ -585,7 +586,7 @@ def _render_kb_panel(
         ).strip()
 
         st.markdown(
-            "<span style='font-size:0.78rem;color:#8a8799;'>tipo</span>",
+            "<span style='font-size:0.78rem;color:var(--text-dim);'>tipo</span>",
             unsafe_allow_html=True,
         )
         new_tipo = st.text_input(
@@ -597,7 +598,7 @@ def _render_kb_panel(
         ).strip()
 
         st.markdown(
-            "<span style='font-size:0.78rem;color:#8a8799;'>notas</span>",
+            "<span style='font-size:0.78rem;color:var(--text-dim);'>notas</span>",
             unsafe_allow_html=True,
         )
         new_notas = st.text_area(
@@ -622,7 +623,7 @@ def _render_kb_panel(
 
         # ── Renombrar canonical_id ────────────────────────────────────────────
         st.markdown(
-            "<span style='font-size:0.78rem;color:#8a8799;'>"
+            "<span style='font-size:0.78rem;color:var(--text-dim);'>"
             "Renombrar canonical_id (actualiza DB + KB)</span>",
             unsafe_allow_html=True,
         )
@@ -654,7 +655,7 @@ def _render_kb_panel(
 
         # ── Mergear con otro canónico ─────────────────────────────────────────
         st.markdown(
-            "<span style='font-size:0.78rem;color:#8a8799;'>"
+            "<span style='font-size:0.78rem;color:var(--text-dim);'>"
             "Mergear dentro de otro canónico (quedás en el destino)</span>",
             unsafe_allow_html=True,
         )
@@ -692,7 +693,7 @@ def _render_kb_panel(
 
         # ── Eliminar canónico ─────────────────────────────────────────────────
         st.markdown(
-            "<span style='font-size:0.78rem;color:#c86e6e;'>"
+            "<span style='font-size:0.78rem;color:var(--danger);'>"
             "Eliminar canónico (quita todos sus vínculos de la DB y lo borra de la KB)</span>",
             unsafe_allow_html=True,
         )
@@ -704,7 +705,7 @@ def _render_kb_panel(
             st.rerun()
 
 
-_SEMA_COLOR = {"accepted": "#6ec89a", "proposed": "#c8a96e", "rejected": "#c86e6e"}
+_SEMA_COLOR = {"accepted": "var(--ok)", "proposed": "var(--accent)", "rejected": "var(--danger)"}
 
 
 def _render_semas_panel(db_path: Path, canonical_id: str) -> None:
@@ -785,7 +786,7 @@ def _render_sema_dim(
     muted: bool = False,
 ) -> None:
     """Fila de una dimensión: su nombre + los semas asignados (con quitar)."""
-    dcol = "#5a5d6e" if muted else "#8a8799"
+    dcol = "var(--dim)" if muted else "var(--text-dim)"
     st.markdown(
         f"<span style='font-size:0.72rem;color:{dcol};"
         f"font-family:DM Mono,monospace;'>{html.escape(dim)}</span>",
@@ -793,7 +794,7 @@ def _render_sema_dim(
     )
     if not records:
         st.markdown(
-            "<span style='font-size:0.78rem;color:#3f4250;'>— sin asignar —</span>",
+            "<span style='font-size:0.78rem;color:var(--border-2);'>— sin asignar —</span>",
             unsafe_allow_html=True,
         )
         return
@@ -801,12 +802,12 @@ def _render_sema_dim(
         sema = str(s["sema"])
         status = str(s.get("status") or "")
         origin = str(s.get("origin") or "")
-        color = _SEMA_COLOR.get(status, "#8a8799")
+        color = _SEMA_COLOR.get(status, "var(--text-dim)")
         c1, c2 = st.columns([5, 1])
         c1.markdown(
             f"<span style='font-size:0.82rem;color:{color};'>"
             f"{html.escape(sema)}</span>"
-            f"<span style='color:#5a5d6e;font-size:0.7rem;'> · {status}"
+            f"<span style='color:var(--dim);font-size:0.7rem;'> · {status}"
             f" · {html.escape(origin)}</span>",
             unsafe_allow_html=True,
         )
@@ -859,16 +860,16 @@ def _render_marca_card(
     if isinstance(mod_origin, float) and pd.isna(mod_origin):
         mod_origin = None
 
-    icon, color = _STATUS.get(status, ("", "#8a8799"))
+    icon, color = _STATUS.get(status, ("", "var(--text-dim)"))
     func_badges = "".join(
-        f"<span style='font-size:0.68rem;color:{_FN_COLOR.get(f, '#8a8799')};"
-        f"border:1px solid {_FN_COLOR.get(f, '#8a8799')}33;border-radius:4px;"
+        f"<span style='font-size:0.68rem;color:{_FN_COLOR.get(f, 'var(--text-dim)')};"
+        f"border:1px solid {_FN_COLOR.get(f, 'var(--text-dim)')}33;border-radius:4px;"
         f"padding:1px 6px;margin-right:4px;'>{html.escape(f)}</span>"
         for f in funciones
     )
     mod_badge = ""
     if modalidad:
-        mcol = _MOD_COLOR.get(modalidad, "#8a8799")
+        mcol = _MOD_COLOR.get(modalidad, "var(--text-dim)")
         mlbl = _MOD_LABEL.get(modalidad, str(modalidad))
         nat_txt = f" · {html.escape(str(naturaleza))}" if naturaleza else ""
         orig_txt = {"human": " ✎", "llm": " ᴸᴸᴹ", "nlp": " ᴺᴸᴾ"}.get(
@@ -898,7 +899,7 @@ def _render_marca_card(
             texto = "Emociones de la frase:\n" + "\n".join(lineas)
             tip_attr = " title=\"" + html.escape(texto, quote=True).replace("\n", "&#10;") + "\""
             tip_hint = (
-                "<span style='color:#5a5d6e;font-size:0.7rem;margin-left:6px;'>"
+                "<span style='color:var(--dim);font-size:0.7rem;margin-left:6px;'>"
                 "🛈 emociones</span>"
             )
 
@@ -907,16 +908,16 @@ def _render_marca_card(
             f"<div style='display:flex;justify-content:space-between;"
             f"align-items:baseline;gap:0.6rem;flex-wrap:wrap;'>"
             f"<div><span style='font-weight:700;font-size:0.95rem;"
-            f"color:#e8e4dc;'>{html.escape(marca)}</span> "
-            f"<span style='color:#5a5d6e;font-size:0.72rem;"
+            f"color:var(--text);'>{html.escape(marca)}</span> "
+            f"<span style='color:var(--dim);font-size:0.72rem;"
             f"font-family:DM Mono,monospace;'>{html.escape(codigo)}·u{unit}</span>"
             f"</div>"
             f"<div style='display:flex;align-items:center;'>{mod_badge}{func_badges}"
             f"<span style='color:{color};font-size:0.72rem;'>{icon} {status}"
             f" · {html.escape(origin)}</span>{tip_hint}</div></div>"
             f"<div{tip_attr} style='margin-top:0.45rem;padding:0.5rem 0.7rem;"
-            f"background:#15171c;border-radius:6px;font-size:0.86rem;"
-            f"line-height:1.55;color:#c2bdb4;"
+            f"background:var(--surface-sunken);border-radius:6px;font-size:0.86rem;"
+            f"line-height:1.55;color:var(--text-soft);"
             f"{'cursor:help;' if tip_attr else ''}'>{_highlight(frase, marca)}</div>",
             unsafe_allow_html=True,
         )
@@ -1019,7 +1020,7 @@ def _render_marca_card(
                             f"<span style='font-size:0.8rem;'>{marca_txt}#{eidx} · "
                             f"<b>{html.escape(str(b['emocion']))}</b> "
                             f"({html.escape(str(b['modo']))})</span><br>"
-                            f"<span style='color:#8a8799;font-size:0.72rem;'>"
+                            f"<span style='color:var(--text-dim);font-size:0.72rem;'>"
                             f"exp actual: {html.escape(str(b['experienciador']))}</span>",
                             unsafe_allow_html=True,
                         )
@@ -1102,7 +1103,7 @@ def _render_marca_card(
                             f"<span style='font-size:0.8rem;'>{marca_txt}#{eidx} · "
                             f"<b>{html.escape(str(b['emocion']))}</b> "
                             f"({html.escape(str(b['modo']))})</span><br>"
-                            f"<span style='color:#8a8799;font-size:0.72rem;'>"
+                            f"<span style='color:var(--text-dim);font-size:0.72rem;'>"
                             f"fuente actual: {html.escape(str(b['fuente']))}</span>",
                             unsafe_allow_html=True,
                         )
@@ -1143,7 +1144,7 @@ def _render_marca_card(
 
 def _highlight(frase: str, marca: str) -> str:
     if not frase:
-        return "<span style='color:#5a5d6e;'>(frase no disponible)</span>"
+        return "<span style='color:var(--dim);'>(frase no disponible)</span>"
     f = html.escape(frase)
     m = html.escape(marca)
     if not m:
@@ -1153,7 +1154,7 @@ def _highlight(frase: str, marca: str) -> str:
         return f
     return (
         f[:idx]
-        + "<mark style='background:#3a3320;color:#f0d890;padding:0 2px;"
+        + "<mark style='background:var(--accent-dark);color:var(--accent-bright);padding:0 2px;"
         f"border-radius:3px;'>{f[idx:idx + len(m)]}</mark>"
         + f[idx + len(m):]
     )

@@ -26,7 +26,7 @@ _PAGE = 10
 _ROL_LABEL = {"experienciador": "exp", "fuente": "fte"}
 
 #: Color por rol, consistente con la tab Simulacros.
-_ROL_COLOR = {"experienciador": "#7c9ec8", "fuente": "#6ec89a"}
+_ROL_COLOR = {"experienciador": "var(--accent2)", "fuente": "var(--ok)"}
 
 _TIPO_LABEL = {
     "enunciador": "enunciador",
@@ -58,9 +58,9 @@ _MODO_SUGERIDO = {"auditorio": "potencial"}
 #: Estado de un referente frente a los simulacros de su unidad. Lo que importa
 #: no es el estado del vínculo sino si ya rige algún simulacro: inscribir la
 #: marca en un referente no decide nada por sí solo.
-_SIN_APLICAR = ("sin aplicar", "#c8a96e")
-_DESCARTADO = ("descartado", "#c86e6e")
-_APLICADO_COLOR = "#6ec89a"
+_SIN_APLICAR = ("sin aplicar", "var(--accent)")
+_DESCARTADO = ("descartado", "var(--danger)")
+_APLICADO_COLOR = "var(--ok)"
 
 
 def _pretty(canonical_id: str) -> str:
@@ -115,9 +115,9 @@ def render(db_path: Path) -> None:
         return
 
     st.markdown(
-        f"<p style='color:#8a8799;font-size:0.9rem;'>Se encontraron "
+        f"<p style='color:var(--text-dim);font-size:0.9rem;'>Se encontraron "
         f"<b>{len(sugerencias)}</b> marcas deícticas "
-        f"<span style='color:#5a5d6e;'>(un referente empieza a regir cuando "
+        f"<span style='color:var(--dim);'>(un referente empieza a regir cuando "
         f"lo aplicás a un simulacro: reemplazando el que estaba o sumándose a "
         f"él).</span></p>",
         unsafe_allow_html=True,
@@ -139,7 +139,7 @@ def render(db_path: Path) -> None:
             st.rerun()
     with p2:
         st.markdown(
-            f"<p style='text-align:center;color:#5a5d6e;font-size:0.8rem;'>"
+            f"<p style='text-align:center;color:var(--dim);font-size:0.8rem;'>"
             f"página {page + 1} de {n_pages}</p>",
             unsafe_allow_html=True,
         )
@@ -164,19 +164,19 @@ def _render_sugerencia(
     funcs = "/".join(sug["funciones"]) or "—"
     with st.container(border=True):
         st.markdown(
-            f"<span style='font-size:1rem;color:#e8e4dc;'><b>"
+            f"<span style='font-size:1rem;color:var(--text);'><b>"
             f"{html.escape(str(sug['marca']))}</b></span> "
-            f"<span style='font-size:0.72rem;color:#b08ad0;'>{html.escape(funcs)}</span> "
+            f"<span style='font-size:0.72rem;color:var(--rol-emocion);'>{html.escape(funcs)}</span> "
             f"<span style='font-family:DM Mono,monospace;font-size:0.7rem;"
-            f"color:#5a5d6e;'> · {html.escape(str(sug['codigo']))}·u{sug['unit_idx']}"
+            f"color:var(--dim);'> · {html.escape(str(sug['codigo']))}·u{sug['unit_idx']}"
             f"</span>",
             unsafe_allow_html=True,
         )
         if str(sug["frase"]).strip():
             st.markdown(
                 f"<div style='margin:0.3rem 0 0.5rem;padding:0.45rem 0.7rem;"
-                f"background:#15171c;border-radius:6px;font-size:0.84rem;"
-                f"line-height:1.55;color:#c2bdb4;'>"
+                f"background:var(--surface-sunken);border-radius:6px;font-size:0.84rem;"
+                f"line-height:1.55;color:var(--text-soft);'>"
                 f"{html.escape(str(sug['frase']))}</div>",
                 unsafe_allow_html=True,
             )
@@ -234,11 +234,11 @@ def _render_simulacros(
     # son los de la frase entera: por eso pueden verse salteados.
     resto = len(briefs) - len(aplicables)
     detalle = (
-        f" <span style='color:#5a5d6e;'>· {len(aplicables)} de {len(briefs)} "
+        f" <span style='color:var(--dim);'>· {len(aplicables)} de {len(briefs)} "
         f"de la unidad; el resto no usa esta marca</span>" if resto else ""
     )
     st.markdown(
-        f"<div style='color:#8a8799;font-size:0.78rem;margin:0.55rem 0 0.2rem;'>"
+        f"<div style='color:var(--text-dim);font-size:0.78rem;margin:0.55rem 0 0.2rem;'>"
         f"Simulacros donde interviene «{html.escape(str(sug['marca']))}»"
         f"{detalle}</div>",
         unsafe_allow_html=True,
@@ -278,11 +278,11 @@ def _render_simulacro(
     c_enc, c_del = st.columns([6, 1])
     with c_enc:
         st.markdown(
-            f"<div style='margin-top:0.4rem;font-size:0.8rem;color:#c2bdb4;'>"
-            f"<span style='font-family:DM Mono,monospace;color:#5a5d6e;'>"
-            f"#{eidx}</span> <b style='color:#b08ad0;'>"
+            f"<div style='margin-top:0.4rem;font-size:0.8rem;color:var(--text-soft);'>"
+            f"<span style='font-family:DM Mono,monospace;color:var(--dim);'>"
+            f"#{eidx}</span> <b style='color:var(--rol-emocion);'>"
             f"{html.escape(str(brief['emocion']))}</b> "
-            f"<span style='color:#5a5d6e;'>"
+            f"<span style='color:var(--dim);'>"
             f"({html.escape(str(brief['modo']))})</span></div>",
             unsafe_allow_html=True,
         )
@@ -301,13 +301,13 @@ def _render_simulacro(
         c_lbl, c_rep, c_add = st.columns([5, 1, 1])
         with c_lbl:
             flecha = (
-                f" <span style='color:#5a5d6e;'>← marca «"
+                f" <span style='color:var(--dim);'>← marca «"
                 f"{html.escape(str(sug['marca']))}»</span>" if marcado else ""
             )
             st.markdown(
                 f"<div style='padding-top:0.3rem;font-size:0.78rem;'>"
                 f"<span style='color:{_ROL_COLOR[rol]};'>{_ROL_LABEL[rol]}</span> "
-                f"<span style='color:#e8e4dc;'>{html.escape(actual)}</span>"
+                f"<span style='color:var(--text);'>{html.escape(actual)}</span>"
                 f"{flecha}</div>",
                 unsafe_allow_html=True,
             )
@@ -454,11 +454,11 @@ def _render_referente(
     with c_lbl:
         st.markdown(
             f"<div style='padding-top:0.35rem;'>"
-            f"<b style='color:#e8e4dc;'>{html.escape(_pretty(cid))}</b> "
-            f"<span style='color:#7c9ec8;font-size:0.78rem;'>({html.escape(tipo)})</span>"
+            f"<b style='color:var(--text);'>{html.escape(_pretty(cid))}</b> "
+            f"<span style='color:var(--accent2);font-size:0.78rem;'>({html.escape(tipo)})</span>"
             f"<span style='color:{badge_col};font-size:0.7rem;'> · {badge_txt}</span>"
             f"<br><span style='font-family:DM Mono,monospace;font-size:0.68rem;"
-            f"color:#5a5d6e;'>{html.escape(cid)}</span></div>",
+            f"color:var(--dim);'>{html.escape(cid)}</span></div>",
             unsafe_allow_html=True,
         )
     with c_ok:

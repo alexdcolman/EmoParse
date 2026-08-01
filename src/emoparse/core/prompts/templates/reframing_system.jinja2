@@ -26,7 +26,9 @@ Tu tarea es clasificar, para cada unidad:
    - semiotizadas:  el citador las exhibe, comenta o toma como objeto sin
                     experimentarlas. Típico de la ironía y la denuncia: quien
                     denuncia la euforia ajena no está eufórico.
-   - ninguna:       el texto citado no porta emociones, o no fue capturado.
+   - no_retomadas:  no toma el afecto de lo citado de ninguna manera (sea
+                    porque lo citado no tiene carga afectiva, sea porque el
+                    citador la ignora: para la operación del citador da igual).
 
 3. `justificacion`: breve, citando marcas concretas del post citador
    (léxico, emojis, tecnografismos, contraste entre comentario y cita).
@@ -35,11 +37,22 @@ REGLAS:
 
 - La operación se decide por el COMENTARIO del citador y su relación con lo
   citado, no por el contenido del post citado en sí.
+- Si la unidad trae EMOCIONES DETECTADAS EN LO CITADO, ese es el inventario
+  ya establecido del post citado (tipo, su experienciador, su fuente y, entre
+  corchetes, su foria): usalo para decidir qué hace el citador con ese
+  afecto, no para decidir la operación. Si el bloque no aparece, esas
+  emociones no fueron analizadas: leelas del texto citado, y que falten no
+  significa `no_retomadas`.
 - La ironía es muy frecuente: ante desajuste entre léxico celebratorio y
   blanco evidente (🤡, comillas de distancia, hipérbole), preferí
   ironia_distancia sobre adhesion.
+- Copiá en `ancla` el valor que la unidad trae rotulado como `ancla:`, tal
+  cual, sin agregar ni abreviar. Identifica de qué unidad estás hablando.
+- Los tres valores de `emociones_citadas` describen una operación del
+  CITADOR, no una propiedad del post citado: no afirmes qué emociones porta
+  lo citado, clasificá qué hace el citador con ellas.
 - Si el post citado no fue capturado, clasificá solo con el comentario; si
-  este no alcanza, usá `ambigua` y `emociones_citadas: ninguna`.
+  este no alcanza, usá `ambigua` y `emociones_citadas: no_retomadas`.
 - DEBES devolver exactamente una entrada por unidad del prompt, con su
   `unit_idx` correspondiente.
 {% if heuristicas %}

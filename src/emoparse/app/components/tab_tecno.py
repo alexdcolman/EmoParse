@@ -2,7 +2,8 @@
 #  emoparse.app.components.tab_tecno
 #
 #  Tab Tecno: distribución de tecnolingüísticos, uso en contexto de menciones,
-#  tecnografismos y links, y afecto de emojis con drill-down a frases.
+#  tecnografismos y links, y afecto de emojis por racha con drill-down a
+#  frases.
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from pathlib import Path
 import streamlit as st
 
 from emoparse.app import data
+from emoparse.viz import foria as foria_viz
 
 
 def render(db_path: Path) -> None:
@@ -29,12 +31,21 @@ def render(db_path: Path) -> None:
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("##### Por tipo")
-        st.dataframe(
+        por_tipo = (
             df.groupby("tipo", as_index=False)
             .agg(entidades=("n", "sum"), distintos=("valor_norm", "count"))
-            .sort_values("entidades", ascending=False),
+            .sort_values("entidades", ascending=False)
+        )
+        st.dataframe(
+            por_tipo,
             use_container_width=True,
             hide_index=True,
+            column_config={
+                "entidades": st.column_config.ProgressColumn(
+                    "entidades", format="%d", min_value=0,
+                    max_value=int(por_tipo["entidades"].max() or 1),
+                ),
+            },
         )
     with col2:
         tipo = st.selectbox("Detalle de tipo", sorted(df["tipo"].unique()))
@@ -143,7 +154,17 @@ def _render_uso_seccion(sub, titulo: str, prefijo: str, key: str) -> None:
             .size().rename(columns={"size": "usos"})
             .sort_values("usos", ascending=False)
         )
-    st.dataframe(resumen, use_container_width=True, hide_index=True)
+    st.dataframe(
+        resumen,
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "usos": st.column_config.ProgressColumn(
+                "usos", format="%d", min_value=0,
+                max_value=int(resumen["usos"].max() or 1),
+            ),
+        },
+    )
 
     valores = [
         f"{prefijo}{v}" for v in sub["valor_norm"].value_counts().index
@@ -158,14 +179,14 @@ def _render_uso_seccion(sub, titulo: str, prefijo: str, key: str) -> None:
     fila = sub[sub["valor_norm"].astype(str) == objetivo]
     for _, r in fila.head(40).iterrows():
         st.markdown(
-            f"<div style='border-left:3px solid #6ec89a;padding:0.3rem 0.7rem;"
-            f"margin-bottom:0.35rem;background:#15171c;border-radius:0 6px 6px 0;"
+            f"<div style='border-left:3px solid var(--ok);padding:0.3rem 0.7rem;"
+            f"margin-bottom:0.35rem;background:var(--surface-sunken);border-radius:0 6px 6px 0;"
             f"font-size:0.82rem;line-height:1.5;'>"
-            f"<span style='color:#6ec89a;font-weight:600;'>{html.escape(str(r['uso']))}"
-            f"</span><span style='color:#5a5d6e;'> · {html.escape(str(r['codigo']))}"
-            f"</span><br><span style='color:#c2bdb4;'>{html.escape(str(r['frase'] or ''))}"
+            f"<span style='color:var(--ok);font-weight:600;'>{html.escape(str(r['uso']))}"
+            f"</span><span style='color:var(--dim);'> · {html.escape(str(r['codigo']))}"
+            f"</span><br><span style='color:var(--text-soft);'>{html.escape(str(r['frase'] or ''))}"
             f"</span>"
-            + (f"<br><span style='color:#5a5d6e;font-style:italic;font-size:0.74rem;'>"
+            + (f"<br><span style='color:var(--dim);font-style:italic;font-size:0.74rem;'>"
                f"{html.escape(str(r['uso_justificacion']))}</span>"
                if r.get("uso_justificacion") else "")
             + "</div>",
@@ -174,27 +195,43 @@ def _render_uso_seccion(sub, titulo: str, prefijo: str, key: str) -> None:
 
 
 def _render_emojis(db_path: Path) -> None:
-    """Afecto de emojis, con las frases de cada emoji al seleccionarlo."""
+    """Afecto de emojis por racha, con las frases de cada emoji al elegirlo.
+
+    La unidad que se lista es la racha, no la pulsación: 🤣🤣🤣 aparece una
+    vez, marcado ×3, porque es un solo gesto intensificado.
+    """
     st.markdown("##### Afecto de emojis")
     df_emojis = data.get_emojis_con_afecto(db_path)
     if df_emojis.empty:
         return
-    resueltos = df_emojis[df_emojis["candidato"].notna()]
+    rachas = df_emojis[df_emojis["primario"]]
+    resueltos = rachas[rachas["candidato"].notna()]
     st.caption(
-        f"{len(resueltos)} de {len(df_emojis)} usos con afecto resuelto "
+        f"{len(resueltos)} de {len(rachas)} rachas con afecto resuelto "
         f"({int((resueltos['origin'] == 'lexico').sum())} por léxico, "
-        f"{int((resueltos['origin'] == 'llm').sum())} por LLM en contexto)."
+        f"{int((resueltos['origin'] == 'llm').sum())} por LLM en contexto) "
+        f"sobre {len(df_emojis)} ocurrencias del corpus."
     )
     if resueltos.empty:
         return
-    st.dataframe(
+    resumen = (
         resueltos.groupby(["emoji", "candidato", "foria"], as_index=False)
-        .size()
-        .rename(columns={"size": "usos"})
-        .sort_values("usos", ascending=False)
-        .head(60),
+        .agg(rachas=("emoji", "size"), ocurrencias=("repeticiones", "sum"))
+        .sort_values("rachas", ascending=False)
+        .head(60)
+    )
+    st.dataframe(
+        resumen,
         use_container_width=True,
         hide_index=True,
+        column_config={
+            # Rachas y ocurrencias miden cosas distintas (gestos vs
+            # pulsaciones): la barra va sobre las rachas, que es la unidad.
+            "rachas": st.column_config.ProgressColumn(
+                "rachas", format="%d", min_value=0,
+                max_value=int(resumen["rachas"].max() or 1),
+            ),
+        },
     )
 
     emojis = resueltos["emoji"].value_counts().index.tolist()
@@ -203,22 +240,66 @@ def _render_emojis(db_path: Path) -> None:
     if sel == "(elegir)":
         return
     df_fr = data.get_frases_con_emoji(db_path, sel)
+    df_fr = df_fr[df_fr["primario"]] if not df_fr.empty else df_fr
     if df_fr.empty:
         st.info("Sin frases para ese emoji.")
         return
     for _, r in df_fr.head(40).iterrows():
-        afecto = str(r.get("candidato") or "—")
-        foria = str(r.get("foria") or "")
-        st.markdown(
-            f"<div style='border-left:3px solid #c8a96e;padding:0.3rem 0.7rem;"
-            f"margin-bottom:0.35rem;background:#15171c;border-radius:0 6px 6px 0;"
-            f"font-size:0.82rem;line-height:1.5;'>"
-            f"<span style='color:#c8a96e;font-weight:600;'>{html.escape(sel)} "
-            f"{html.escape(afecto)}</span>"
-            + (f"<span style='color:#5a5d6e;'> · {html.escape(foria)}</span>"
-               if foria else "")
-            + f"<span style='color:#5a5d6e;'> · {html.escape(str(r['codigo']))}</span>"
-            f"<br><span style='color:#c2bdb4;'>{html.escape(str(r['frase'] or ''))}"
-            f"</span></div>",
-            unsafe_allow_html=True,
-        )
+        _render_uso_emoji(sel, r)
+
+
+def _render_uso_emoji(emoji: str, r) -> None:
+    """Una racha: emoji con su multiplicador, afecto y frase con la racha
+    resaltada en el punto exacto donde se usó."""
+    color = foria_viz.color(r.get("foria"))
+    n = int(r.get("repeticiones") or 1)
+    multiplicador = (
+        f"<span class='badge badge-dim' style='font-size:0.66rem;'>×{n} · "
+        f"{html.escape(str(r.get('intensidad') or ''))}</span>" if n > 1 else ""
+    )
+    st.markdown(
+        f"<div class='ep-post' style='border-left-color:{color};'>"
+        f"<div class='ep-post-head'>"
+        f"<span style='font-size:1rem;'>{html.escape(emoji)}</span>"
+        f"<span style='color:{color};font-weight:600;'>"
+        f"{html.escape(str(r.get('candidato') or '—'))}</span>"
+        f"{_chip_foria_emoji(r.get('foria'), color)}"
+        f"{multiplicador}"
+        f"<span>{html.escape(str(r['codigo']))}</span>"
+        f"</div>"
+        f"<div class='ep-post-texto'>{_resaltar_racha(r)}</div>"
+        + (f"<div class='ep-justif'>"
+           f"{html.escape(str(r['justificacion']))}</div>"
+           if r.get("justificacion") else "")
+        + "</div>",
+        unsafe_allow_html=True,
+    )
+
+
+def _chip_foria_emoji(foria, color: str) -> str:
+    """Chip de foria del uso, con la misma paleta que el resto del dashboard."""
+    return (
+        f"<span class='ep-foria' style='color:{color};border-color:{color};"
+        f"background:{foria_viz.rgba(color, 0.15)};'>"
+        f"{foria_viz.icono(foria)} {foria_viz.etiqueta(foria)}</span>"
+    )
+
+
+def _resaltar_racha(r) -> str:
+    """Frase con la racha analizada marcada, si se conocen sus offsets.
+
+    Sin la marca, un post con dos rachas del mismo emoji muestra dos veces
+    el mismo texto y no se sabe a cuál de las dos refiere cada inferencia.
+    """
+    frase = str(r.get("frase") or "")
+    inicio, fin = r.get("inicio_racha"), r.get("fin_racha")
+    if inicio is None or fin is None or not 0 <= inicio < fin <= len(frase):
+        return html.escape(frase)
+    return (
+        html.escape(frase[:int(inicio)])
+        + "<mark style='background:rgba(200,169,110,0.28);color:inherit;"
+        "border-radius:3px;padding:0 2px;'>"
+        + html.escape(frase[int(inicio):int(fin)])
+        + "</mark>"
+        + html.escape(frase[int(fin):])
+    )

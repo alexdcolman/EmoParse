@@ -321,8 +321,52 @@ def _int_or_none(value: Any) -> int | None:
         return None
 
 
+def cita_embebida(raw: Any) -> dict[str, str] | None:
+    """Texto y autor del post citado, tal como el citador los trae en `raw`.
+
+    Un quote incluye en su propio payload una copia del post que cita. Cuando
+    ese post no fue muestreado —lo habitual: se cita a una cuenta que no está
+    en el corpus— esa copia es la única evidencia de qué se citó, y sin ella
+    la operación de redocumentación se clasifica a ciegas.
+
+    No convierte al citado en una unidad del corpus: es contexto del citador,
+    no un discurso propio, y por eso no tiene emociones ni foria. Devuelve
+    None si el embed no trae el registro (citas bloqueadas o borradas) o si
+    la fuente no lo vuelca en `raw`.
+    """
+    if not isinstance(raw, dict):
+        return None
+    embed = raw.get("embed")
+    record = embed.get("record") if isinstance(embed, dict) else None
+    if not isinstance(record, dict):
+        return None
+    # `recordWithMedia` anida el registro citado un nivel más adentro.
+    if "value" not in record and isinstance(record.get("record"), dict):
+        record = record["record"]
+    value = record.get("value")
+    if not isinstance(value, dict):
+        return None
+    texto = str(value.get("text") or "").strip()
+    if not texto:
+        return None
+    autor = record.get("author")
+    handle = (
+        str(autor.get("handle") or "").lstrip("@")
+        if isinstance(autor, dict) else ""
+    )
+    return {
+        "texto": texto,
+        "autor_handle": handle or "?",
+        "uri": str(record.get("uri") or ""),
+    }
+
+
 def _row_to_post(row: Any) -> dict[str, Any]:
-    """Convierte una fila SQLite a dict con JSON parseado."""
+    """Convierte una fila SQLite a dict con JSON parseado.
+
+    Agrega `cita_embebida`: la copia del post citado que viaja en el payload
+    del citador, para los citados que no están en el corpus.
+    """
     d = dict(row)
     for field in ("metricas", "raw"):
         raw = d.get(field)
@@ -331,4 +375,5 @@ def _row_to_post(row: Any) -> dict[str, Any]:
                 d[field] = json.loads(raw)
             except json.JSONDecodeError:
                 pass
+    d["cita_embebida"] = cita_embebida(d.get("raw"))
     return d

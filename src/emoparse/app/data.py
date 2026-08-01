@@ -19,7 +19,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from contextlib import contextmanager
-from collections.abc import Iterator
+from collections.abc import Iterable, Iterator
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -33,6 +33,7 @@ from loguru import logger
 #: `detect_types=PARSE_DECLTYPES` al leer timestamps persistidos por
 #: la capa de storage.
 import emoparse.storage.db  # noqa: F401  (side-effect import)
+from emoparse.storage.posts import cita_embebida
 
 #: Importado desde el runner para mantener una única fuente de verdad
 #: sobre el orden y definición de stages.
@@ -1653,13 +1654,7 @@ def get_posts_de_hilo(db_path: Path, conversacion_id: str) -> pd.DataFrame:
         forias = _foria_dominante_map(conn)
     if not rows:
         return pd.DataFrame()
-    records = []
-    for row in rows:
-        rec = {k: row[k] for k in row.keys() if k not in ("metricas", "raw")}
-        rec["foria_dominante"] = forias.get(str(row["post_id"]))
-        rec["reframing"] = _parse_json(row["reframing_payload"])
-        records.append(rec)
-    return pd.DataFrame(records)
+    return pd.DataFrame([_post_record(r, forias) for r in rows])
 
 
 def _foria_dominante_map(conn: sqlite3.Connection) -> dict[str, str]:
@@ -1686,6 +1681,121 @@ def _foria_dominante_map(conn: sqlite3.Connection) -> dict[str, str]:
     }
 
 
+def get_posts_citadores(db_path: Path) -> pd.DataFrame:
+    """Posts que citan o repostean, con su reframing y el post citado.
+
+    Es el alcance de la stage `reframing` (citas y reposts con comentario)
+    más los reposts puros, que no se clasifican pero sí registran
+    circulación. Se lee del corpus entero y no de un hilo: una cita no crea
+    conversación, así que la mayoría de estos posts no aparece en `hilos`.
+    """
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                "SELECT p.*, q.texto AS citado_texto, "
+                "q.autor_handle AS citado_autor, q.fecha AS citado_fecha "
+                "FROM posts p "
+                "LEFT JOIN posts q "
+                "  ON q.post_id = COALESCE(p.cita_a, p.reposteo_a) "
+                "WHERE p.cita_a IS NOT NULL OR p.reposteo_a IS NOT NULL "
+                "ORDER BY p.fecha, p.post_id"
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return pd.DataFrame()
+        forias = _foria_dominante_map(conn)
+    if not rows:
+        return pd.DataFrame()
+    return pd.DataFrame([_post_record(row, forias) for row in rows])
+
+
+def get_posts_por_id(
+    db_path: Path, post_ids: Iterable[str],
+) -> dict[str, dict[str, Any]]:
+    """Posts por id, en una sola consulta (para embeber los citados)."""
+    ids = sorted({str(p) for p in post_ids if p})
+    if not ids:
+        return {}
+    marcas = ",".join("?" * len(ids))
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                f"SELECT * FROM posts WHERE post_id IN ({marcas})", ids
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return {}
+        forias = _foria_dominante_map(conn)
+    return {str(r["post_id"]): _post_record(r, forias) for r in rows}
+
+
+def get_emociones_de_posts(
+    db_path: Path,
+    codigos: Iterable[str],
+    max_por_post: int = 6,
+) -> dict[str, list[dict[str, Any]]]:
+    """Emociones materializadas de un conjunto de discursos, en breve.
+
+    Para reponer en el dashboard las emociones del post citado cuando ese
+    post es unidad del corpus. Prefiere los canónicos (revisados o resueltos
+    por referencia) sobre la inferencia cruda, igual que el bloque que
+    `reframing` recibe en el prompt, para que la tab y el agente hablen de
+    lo mismo.
+    """
+    ids = sorted({str(c) for c in codigos if c})
+    if not ids:
+        return {}
+    marcas = ",".join("?" * len(ids))
+    out: dict[str, list[dict[str, Any]]] = {}
+    with _ro_connect(db_path) as conn:
+        try:
+            rows = conn.execute(
+                f"SELECT * FROM emociones WHERE codigo IN ({marcas}) "
+                "ORDER BY codigo, frase_idx, emocion_idx",
+                ids,
+            ).fetchall()
+        except sqlite3.OperationalError:
+            return {}
+    for r in rows:
+        d = dict(r)
+        destino = out.setdefault(str(d["codigo"]), [])
+        if len(destino) >= max_por_post:
+            continue
+        caracterizacion = _parse_json(d.get("caracterizacion_payload")) or {}
+        destino.append({
+            "tipo": (
+                d.get("tipo_emocion_canonico") or d.get("tipo_emocion") or "?"
+            ),
+            "experienciador": (
+                d.get("experienciador_canonico")
+                or d.get("experienciador") or "?"
+            ),
+            "fuente": (
+                d.get("fuente_canonico") or d.get("fuente_inferencia") or ""
+            ),
+            "foria": caracterizacion.get("foria"),
+        })
+    return out
+
+
+def _post_record(row: sqlite3.Row, forias: dict[str, str]) -> dict[str, Any]:
+    """Fila de `posts` → dict con foria dominante, reframing y cita embebida.
+
+    `raw` no viaja al dashboard (es el payload completo de la fuente), pero sí
+    lo único que hace falta de él: la copia del post citado, para los citados
+    que no están en el corpus.
+    """
+    claves = row.keys()
+    rec = {k: row[k] for k in claves if k not in ("metricas", "raw")}
+    rec["foria_dominante"] = forias.get(str(row["post_id"]))
+    rec["reframing"] = (
+        _parse_json(row["reframing_payload"])
+        if "reframing_payload" in claves else None
+    )
+    rec["cita_embebida"] = (
+        cita_embebida(_parse_json(row["raw"])) if "raw" in claves else None
+    )
+    return rec
+
+
 def get_tecno_resumen(db_path: Path) -> pd.DataFrame:
     """Conteo de tecno-entidades por tipo y valor normalizado."""
     with _ro_connect(db_path) as conn:
@@ -1702,7 +1812,14 @@ def get_tecno_resumen(db_path: Path) -> pd.DataFrame:
 
 
 def get_emojis_con_afecto(db_path: Path) -> pd.DataFrame:
-    """Usos de emoji con su afecto resuelto (léxico o LLM)."""
+    """Usos de emoji con su afecto resuelto (léxico o LLM).
+
+    Devuelve una fila por ocurrencia, pero con el bloque de repetición
+    desplegado: `primario` marca la que representa a su racha (🤣🤣🤣 es un
+    gesto, no tres) y `repeticiones`/`intensidad` la caracterizan. Las
+    lecturas que cuentan gestos filtran por `primario`; las que cuentan
+    pulsaciones, no.
+    """
     with _ro_connect(db_path) as conn:
         try:
             rows = conn.execute(
@@ -1711,18 +1828,39 @@ def get_emojis_con_afecto(db_path: Path) -> pd.DataFrame:
             ).fetchall()
         except sqlite3.OperationalError:
             return pd.DataFrame()
-    records = []
-    for row in rows:
-        extra = _parse_json(row["extra"]) or {}
-        afecto = extra.get("afecto") if isinstance(extra, dict) else None
-        records.append({
+    return pd.DataFrame([
+        {
             "codigo": row["codigo"],
+            "unit_idx": row["unit_idx"],
             "emoji": row["valor"],
-            "candidato": (afecto or {}).get("candidato"),
-            "foria": (afecto or {}).get("foria"),
-            "origin": (afecto or {}).get("origin"),
-        })
-    return pd.DataFrame(records)
+            **_afecto_record(_parse_json(row["extra"])),
+        }
+        for row in rows
+    ])
+
+
+def _afecto_record(extra: Any) -> dict[str, Any]:
+    """Afecto y repetición de un uso de emoji, desde su columna `extra`.
+
+    Los usos anteriores a la agrupación por rachas no tienen bloque
+    `repeticion`: cuentan como racha de uno, que es lo que eran.
+    """
+    extra = extra if isinstance(extra, dict) else {}
+    afecto = extra.get("afecto")
+    afecto = afecto if isinstance(afecto, dict) else {}
+    rep = extra.get("repeticion")
+    rep = rep if isinstance(rep, dict) else {}
+    return {
+        "candidato": afecto.get("candidato"),
+        "foria": afecto.get("foria"),
+        "origin": afecto.get("origin"),
+        "justificacion": afecto.get("justificacion"),
+        "repeticiones": int(rep.get("n", 1)),
+        "primario": bool(rep.get("primario", True)),
+        "intensidad": rep.get("intensidad", "simple"),
+        "inicio_racha": rep.get("inicio"),
+        "fin_racha": rep.get("fin"),
+    }
 
 
 def get_hashtags_analizados(db_path: Path) -> pd.DataFrame:
@@ -1906,7 +2044,7 @@ def get_tecno_usos(db_path: Path) -> pd.DataFrame:
 
 
 def get_frases_con_emoji(db_path: Path, emoji: str) -> pd.DataFrame:
-    """Frases donde aparece un emoji, con su afecto resuelto por uso."""
+    """Frases donde aparece un emoji, con su afecto resuelto por racha."""
     with _ro_connect(db_path) as conn:
         try:
             rows = conn.execute(
@@ -1920,20 +2058,15 @@ def get_frases_con_emoji(db_path: Path, emoji: str) -> pd.DataFrame:
             ).fetchall()
         except sqlite3.OperationalError:
             return pd.DataFrame()
-    records = []
-    for r in rows:
-        extra = _parse_json(r["extra"]) or {}
-        afecto = extra.get("afecto") if isinstance(extra, dict) else None
-        afecto = afecto if isinstance(afecto, dict) else {}
-        records.append({
+    return pd.DataFrame([
+        {
             "codigo": r["codigo"],
             "unit_idx": r["unit_idx"],
             "frase": r["frase"],
-            "candidato": afecto.get("candidato"),
-            "foria": afecto.get("foria"),
-            "origin": afecto.get("origin"),
-        })
-    return pd.DataFrame(records)
+            **_afecto_record(_parse_json(r["extra"])),
+        }
+        for r in rows
+    ])
 
 
 def get_tecno_of_unit(

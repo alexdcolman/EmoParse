@@ -30,6 +30,12 @@ from emoparse.pipeline.deixis import (
     resolver_rol_enunciativo,
 )
 from emoparse.pipeline.emoji_lexicon import resolve_emoji_afecto
+from emoparse.pipeline.emoji_rachas import (
+    Racha,
+    agrupar_rachas,
+    marcar_racha,
+    payload_repeticion,
+)
 from emoparse.pipeline.modalidad_nlp import ModalidadNLP
 from emoparse.pipeline.technoparse import (
     TecnoEntidad,
@@ -1324,6 +1330,7 @@ class ReframingStage(Stage):
         agent_version: str | None = None,
         retry_config: RetryConfig | None = None,
         genre: Genre | None = None,
+        emociones_provider: Callable[[str], str | None] | None = None,
     ) -> None:
         super().__init__()
         self._backend = backend
@@ -1332,6 +1339,9 @@ class ReframingStage(Stage):
         self._version = agent_version
         self._retry_config = retry_config
         self._genre = genre
+        # Emociones ya detectadas en el post citado. Opcional: si las stages
+        # de emociones no corrieron, el agente vuelve a leerlas del texto.
+        self._emociones = emociones_provider
 
     def run_pending(self) -> int:
         """Procesa los posts citadores pendientes."""
@@ -1348,18 +1358,40 @@ class ReframingStage(Stage):
             citado = (
                 self._p_repo.get_post(str(citado_id)) if citado_id else None
             )
+            # Si el citado no fue muestreado, el propio citador trae una copia
+            # de lo que cita: sin esto, la mayoría de las citas se clasifican
+            # con el texto citado en blanco.
+            embebido = post.get("cita_embebida")
+            if citado is not None:
+                evidencia = "en_corpus"
+                texto_citado = str(citado.get("texto") or "")
+                autor_citado = str(citado.get("autor_handle") or "?")
+            elif isinstance(embebido, dict):
+                evidencia = "embebida"
+                texto_citado = embebido["texto"]
+                autor_citado = embebido["autor_handle"]
+            else:
+                evidencia = "ausente"
+                texto_citado = "(no capturado)"
+                autor_citado = "?"
+            # Las emociones solo existen para lo que es unidad del corpus: una
+            # copia embebida no pasó por la stage `emotions`.
+            emociones_citadas = ""
+            if citado is not None and self._emociones is not None:
+                emociones_citadas = self._emociones(str(citado["post_id"])) or ""
             rows.append({
                 "codigo": str(post["post_id"]),
                 "unit_idx": 0,
                 "texto": str(post.get("texto") or ""),
                 "autor": str(post.get("autor_handle") or "?"),
                 "operatoria": "cita" if post.get("cita_a") else "repost_comentado",
-                "texto_citado": (
-                    str(citado.get("texto")) if citado else "(no capturado)"
-                ),
-                "autor_citado": (
-                    str(citado.get("autor_handle")) if citado else "?"
-                ),
+                "texto_citado": texto_citado,
+                "autor_citado": autor_citado,
+                "emociones_citadas": emociones_citadas,
+                # Sobre qué se clasificó, dicho por el código y no inferido:
+                # el análisis puede filtrar o ponderar por calidad de
+                # evidencia en vez de tratar todas las citas por igual.
+                "evidencia_citada": evidencia,
             })
 
         logger.info(
@@ -1389,11 +1421,19 @@ class ReframingStage(Stage):
             raw = row.get("reframing")
             payload = _parse_json_cell(raw)
             if payload is None:
-                self._p_repo.set_reframing_error(
-                    post_id, "Backend error (ver logs del agente)"
+                # El agente deja el motivo en su columna reservada cuando
+                # rechaza un batch: sin esto el estado del run dice "backend
+                # error" para cualquier causa y no se sabe qué reintentar.
+                motivo = str(
+                    row.get(agent.ERROR_COLUMN)
+                    or "Backend error (ver logs del agente)"
                 )
+                self._p_repo.set_reframing_error(post_id, motivo)
                 self.metrics.record_item_failed()
                 continue
+            payload["evidencia_citada"] = str(
+                row.get("evidencia_citada") or "ausente"
+            )
             self._p_repo.set_reframing(post_id, payload, version=self._version)
             total_ok += 1
             self.metrics.record_item_ok()
@@ -1443,53 +1483,84 @@ class EmojiAffectStage(Stage):
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
 
+        # La unidad de análisis es la racha, no la ocurrencia: 🤣🤣🤣 es un
+        # gesto intensificado y se resuelve una vez. Dos rachas del mismo
+        # emoji en el mismo post siguen siendo dos usos independientes.
+        rachas = agrupar_rachas(pendientes)
+        logger.info(
+            f"[Stage:{self.NAME}] {len(pendientes)} uso(s) en "
+            f"{len(rachas)} racha(s)."
+        )
+
         resueltos = 0
-        ambiguos: list[dict[str, Any]] = []
-        self.progress.start(len(pendientes), "emojis")
-        for uso in pendientes:
+        ambiguas: list[Racha] = []
+        # El progreso mide rachas (el trabajo real); las métricas siguen
+        # contando entidades, que es la unidad del estado del run.
+        self.progress.start(len(rachas), "rachas de emoji")
+        for racha in rachas:
             self.progress.advance()
-            afecto = resolve_emoji_afecto(self._lexicon, str(uso["valor"]))
-            if afecto is not None:
-                self._t_repo.set_afecto(int(uso["id"]), afecto)
-                resueltos += 1
-                self.metrics.record_item_ok()
-            else:
-                ambiguos.append(uso)
+            afecto = resolve_emoji_afecto(self._lexicon, racha.emoji)
+            if afecto is None:
+                ambiguas.append(racha)
+                continue
+            resueltos += self._persistir(racha, afecto)
+        self.progress.finish()
 
         logger.info(
-            f"[Stage:{self.NAME}] Léxico: {resueltos} resueltos, "
-            f"{len(ambiguos)} ambiguos."
+            f"[Stage:{self.NAME}] Léxico: {resueltos} uso(s) resueltos, "
+            f"{len(ambiguas)} racha(s) ambigua(s)."
         )
-        if not ambiguos:
+        if not ambiguas:
             return resueltos
         if self._backend is None:
             logger.info(
-                f"[Stage:{self.NAME}] Sin backend configurado: los ambiguos "
+                f"[Stage:{self.NAME}] Sin backend configurado: las ambiguas "
                 "quedan sin resolver (léxico-only)."
             )
             return resueltos
 
-        self.progress.finish()
-        resueltos += self._resolver_con_llm(ambiguos)
+        resueltos += self._resolver_con_llm(ambiguas)
         return resueltos
 
-    def _resolver_con_llm(self, usos: list[dict[str, Any]]) -> int:
-        """Desambigua en contexto con el agente batch."""
+    def _persistir(self, racha: Racha, afecto: dict[str, Any]) -> int:
+        """Anota el afecto de la racha en cada una de sus ocurrencias."""
+        for orden, uso in enumerate(racha.usos):
+            self._t_repo.set_extra_keys(int(uso["id"]), {
+                "afecto": afecto,
+                "repeticion": payload_repeticion(racha, orden),
+            })
+            self.metrics.record_item_ok()
+        return racha.n
+
+    def _marcar_error(self, racha: Racha, motivo: str) -> None:
+        """Registra el motivo del fallo en cada ocurrencia de la racha."""
+        for uso in racha.usos:
+            if motivo:
+                self._t_repo.set_extra_key(
+                    int(uso["id"]), "afecto_error", motivo[:300]
+                )
+            self.metrics.record_item_failed()
+
+    def _resolver_con_llm(self, rachas: list[Racha]) -> int:
+        """Desambigua en contexto con el agente batch, una fila por racha."""
         from emoparse.agents.emoji_affect import EmojiAffectAgent
 
         rows = []
-        for uso in usos:
-            prior = self._lexicon.get(str(uso["valor"]))
+        for idx, racha in enumerate(rachas):
+            prior = self._lexicon.get(racha.emoji)
             prior_str = ""
             if isinstance(prior, dict):
                 cands = "/".join(prior.get("candidatos", []))
                 prior_str = f"candidatos: {cands}; foria: {prior.get('foria')}"
             rows.append({
-                "codigo": str(uso["codigo"]),
-                "unit_idx": int(uso["unit_idx"]),
-                "entidad_id": int(uso["id"]),
-                "emoji": str(uso["valor"]),
-                "frase": str(uso.get("frase") or ""),
+                "codigo": racha.codigo,
+                "unit_idx": racha.unit_idx,
+                "racha_idx": idx,
+                "emoji": racha.emoji,
+                "repeticiones": racha.n,
+                # El post va con la racha delimitada: sin la marca, dos usos
+                # del mismo emoji en el mismo post son unidades idénticas.
+                "frase": marcar_racha(racha.frase, racha.inicio, racha.fin),
                 "prior": prior_str,
             })
         agent = EmojiAffectAgent(
@@ -1498,38 +1569,32 @@ class EmojiAffectStage(Stage):
             retry_config=self._retry_config,
             genre=self._genre,
         )
-        self.progress.start(len(rows), "emojis ambiguos")
+        self.progress.start(len(rows), "rachas ambiguas")
         agent.on_progress = self.progress.advance
         try:
             df_out = agent.run(pd.DataFrame(rows))
         except Exception as e:
             logger.error(f"[Stage:{self.NAME}] Error inesperado: {e}")
-            for _ in rows:
-                self.metrics.record_item_failed()
+            for racha in rachas:
+                self._marcar_error(racha, str(e))
             return 0
         finally:
             self.progress.finish()
 
         ok = 0
         for _, row in df_out.iterrows():
+            racha = rachas[int(row["racha_idx"])]
             payload = _parse_json_cell(row.get("afecto"))
             if payload is None:
                 # Un batch rechazado deja el motivo en la fila: se persiste
                 # junto a la entidad para que el estado del run lo cuente
                 # como error y no como algo que nunca se intentó.
-                motivo = row.get(agent.ERROR_COLUMN)
-                if motivo:
-                    self._t_repo.set_extra_key(
-                        int(row["entidad_id"]), "afecto_error", str(motivo)[:300]
-                    )
-                self.metrics.record_item_failed()
+                self._marcar_error(racha, str(row.get(agent.ERROR_COLUMN) or ""))
                 continue
             payload["origin"] = "llm"
             payload["version"] = self._version
-            self._t_repo.set_afecto(int(row["entidad_id"]), payload)
-            ok += 1
-            self.metrics.record_item_ok()
-        logger.info(f"[Stage:{self.NAME}] LLM: {ok} resueltos.")
+            ok += self._persistir(racha, payload)
+        logger.info(f"[Stage:{self.NAME}] LLM: {ok} uso(s) resueltos.")
         return ok
 
 

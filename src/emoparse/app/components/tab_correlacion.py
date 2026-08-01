@@ -18,6 +18,9 @@ import plotly.graph_objects as go
 import streamlit as st
 
 from emoparse.app import data as data_layer
+from emoparse.app import styles
+from emoparse.viz import foria as foria_viz
+from emoparse.viz.theme import ACCENT, SURFACE, base_layout
 
 
 #: Etiquetas y descripciones de la unidad de copresencia.
@@ -102,7 +105,7 @@ def render(db_path: Path) -> None:
         return
 
     st.markdown(
-        f"<p style='color:#8a8799;font-size:0.85rem;'>"
+        f"<p style='color:var(--text-dim);font-size:0.85rem;'>"
         f"{n_multi} {unidad_n} con copresencia · "
         f"{len(pair_counts)} pares distintos.</p>",
         unsafe_allow_html=True,
@@ -226,19 +229,24 @@ def _render_matrix(assoc: pd.DataFrame, counts_m: pd.DataFrame) -> None:
         z=assoc.values, x=assoc.columns.tolist(), y=assoc.index.tolist(),
         text=text.values.tolist(), texttemplate="%{text}",
         textfont=dict(size=9),
-        colorscale="Magma", zmin=0, zmax=1, showscale=True,
+        # La asociación es intensidad, no foria: escala monocroma sobre el
+        # acento, para no sugerir una lectura fórica donde no la hay. Los
+        # colores van literales porque plotly no resuelve variables CSS: el
+        # tema los expone como constantes para eso.
+        colorscale=[
+            [0.0, SURFACE], [0.35, "#3d3a30"],
+            [0.7, "#8a7548"], [1.0, ACCENT],
+        ], zmin=0, zmax=1, showscale=True,
         colorbar=dict(title="asociación", tickfont=dict(size=9)),
         hovertemplate="<b>%{y}</b> × <b>%{x}</b><br>frases juntas: %{text}"
                       "<br>asociación: %{z:.0%}<extra></extra>",
     ))
-    fig.update_layout(
-        paper_bgcolor="#0e0f13", plot_bgcolor="#16181f",
-        font=dict(family="DM Mono, monospace", color="#8a8799", size=10),
+    fig.update_layout(**base_layout(
         height=max(360, len(assoc) * 26 + 140),
         margin=dict(l=10, r=10, t=10, b=10),
-        xaxis=dict(tickangle=-45, gridcolor="#252730"),
-        yaxis=dict(gridcolor="#252730", autorange="reversed"),
-    )
+        xaxis=dict(tickangle=-45),
+        yaxis=dict(autorange="reversed"),
+    ))
     st.plotly_chart(fig, use_container_width=True)
 
 
@@ -261,8 +269,8 @@ def _render_frase_analisis(df: pd.DataFrame, codigo: str, frase_idx: int) -> Non
     with st.container(border=True):
         st.markdown(
             f"<span style='font-family:DM Mono,monospace;font-size:0.72rem;"
-            f"color:#5a5d6e;'>{html.escape(str(codigo))} · u{frase_idx}</span>"
-            f"<div style='color:#e8e4dc;font-size:0.9rem;line-height:1.6;"
+            f"color:var(--dim);'>{html.escape(str(codigo))} · u{frase_idx}</span>"
+            f"<div style='color:var(--text);font-size:0.9rem;line-height:1.6;"
             f"margin:0.15rem 0;'>{html.escape(frase)}</div>",
             unsafe_allow_html=True,
         )
@@ -275,15 +283,18 @@ def _render_frase_analisis(df: pd.DataFrame, codigo: str, frase_idx: int) -> Non
                 val = str(row.get(col, "") or "").strip()
                 if val:
                     extras += (
-                        f"<span style='color:#5a5d6e;'> · {label}:</span> "
-                        f"<span style='color:#c2bdb4;'>{html.escape(val)}</span>"
+                        f"<span style='color:var(--dim);'> · {label}:</span> "
+                        f"<span style='color:var(--text-soft);'>"
+                        f"{html.escape(val)}</span>"
                     )
             st.markdown(
                 f"<div style='font-size:0.78rem;line-height:1.7;margin-top:0.2rem;'>"
-                f"<span style='color:#b08ad0;font-weight:600;'>{emo}</span>"
-                f"<span style='color:#5a5d6e;'> · exp:</span> "
-                f"<span style='color:#7c9ec8;'>{exp}</span>"
-                f"<span style='color:#5a5d6e;'> · fuente:</span> "
-                f"<span style='color:#6ec89a;'>{fte}</span>{extras}</div>",
+                f"<span style='color:{styles.var('rol-emocion')};"
+                f"font-weight:600;'>{emo}</span>"
+                f"<span style='color:var(--dim);'> · exp:</span> "
+                f"<span style='color:{styles.var('rol-experienciador')};'>{exp}</span>"
+                f"<span style='color:var(--dim);'> · fuente:</span> "
+                f"<span style='color:{styles.var('rol-fuente')};'>{fte}</span>"
+                f"{extras}</div>",
                 unsafe_allow_html=True,
             )

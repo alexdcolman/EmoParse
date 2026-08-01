@@ -227,6 +227,14 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
     #: lee para persistir el error y no la escribe como resultado.
     ERROR_COLUMN: ClassVar[str] = "_agente_error"
 
+    #: Qué hacer ante un ancla que no coincide. Ver `_anchor`.
+
+    #: En False (por defecto) el desajuste se registra y el item se aplica
+    #: igual: el ancla depende de que el modelo sepa producirla, y una
+    #: verificación no comprobada no puede bloquear el pipeline. Se pone en
+    #: True cuando el log muestra que el modelo la produce bien.
+    ANCHOR_STRICT: ClassVar[bool] = False
+
     def __init__(
         self,
         backend: LLMBackend,
@@ -239,6 +247,23 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
         self._system = self._build_system()
 
     # ── Métodos que las subclases deben implementar ──────────────────────────
+
+    def _anchor(self, row: pd.Series) -> str | None:
+        """Valor que el modelo debe repetir en `ancla` para esta fila.
+
+        Habilita la verificación de correspondencia entre la respuesta y la
+        unidad: `unit_idx` garantiza que el modelo numeró bien, no que haya
+        escrito sobre la unidad que numeró. Devolver None (el default)
+        desactiva la verificación, para los agentes cuyo schema no declara
+        `ancla`.
+
+        **Debe ser único dentro del batch**, o no distingue nada: si dos
+        unidades comparten ancla —dos posts de la misma cuenta, por ejemplo—
+        el cruce entre ellas pasa inadvertido. El mismo valor tiene que
+        aparecer en el prompt que arma `_build_user`, así que conviene que
+        este método sea la única fuente de ambos.
+        """
+        return None
 
     @abstractmethod
     def _build_system(self) -> str:
@@ -395,58 +420,135 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
     # ── Helper: validación de cobertura del batch response ───────────────────
 
     def _apply_batch_items(
-            self,
-            items: list[BaseModel],
-            unit_idx_to_row: dict[int, pd.Series],
-            row_outputs: dict[int, dict[str, Any]],
-            batch_size: int,
-        ) -> None:
-            """Aplica los items del batch response sobre `row_outputs`.
+        self,
+        items: list[BaseModel],
+        unit_idx_to_row: dict[int, pd.Series],
+        row_outputs: dict[int, dict[str, Any]],
+        batch_size: int,
+    ) -> None:
+        """Aplica los items del batch response sobre `row_outputs`.
 
-            - unit_idx == {0..N-1} → biyección correcta: asignar por unit_idx
-                (equivale a posición si vino en orden).
-            - unit_idx == {1..N}   → off-by-one (el modelo 1-indexó): asignar por
-                posición (el contenido está en orden; solo corrió la etiqueta).
-            - cualquier otra cosa   → batch no confiable: no se adivina. Las filas
-                quedan en None → re-pending → las reintenta `emoparse retry`.
-            """
-            idxs = [getattr(it, "unit_idx", None) for it in items]
-            all_int = len(idxs) == batch_size and all(isinstance(x, int) for x in idxs)
-            perfect = all_int and sorted(idxs) == list(range(batch_size))
-            off_by_one = all_int and sorted(idxs) == list(range(1, batch_size + 1))
+        Cada item se asigna a su fila por el `unit_idx` que él mismo declara,
+        nunca por la posición en que el modelo lo listó: el orden de la
+        respuesta no es información, y tratarlo como tal reordena el batch y
+        produce atribuciones cruzadas (la clasificación de una unidad escrita
+        sobre otra), que es un error indetectable aguas abajo.
 
-            if perfect:
-                for item in items:
-                    j = item.unit_idx  # type: ignore[attr-defined]
-                    row_outputs[j].update(
-                        self._map_item_to_columns(item, unit_idx_to_row[j])
-                    )
-                return
+        - `unit_idx == {0..N-1}` → biyección esperada: se asigna por `unit_idx`.
+        - `unit_idx == {1..N}`   → el modelo 1-indexó: se corrige la etiqueta
+          (`unit_idx - 1`), que sigue siendo asignar por índice declarado.
+        - cualquier otra cosa    → batch no confiable. No se adivina: las filas
+          quedan en None → re-pending → las reintenta `emoparse retry`.
 
-            if off_by_one:
-                logger.debug(
-                    f"[{self.NAME}] unit_idx 1-indexado ({idxs}); asigno por posición."
-                )
-                for i, item in enumerate(items):
-                    row_outputs[i].update(
-                        self._map_item_to_columns(item, unit_idx_to_row[i])
-                    )
-                return
+        Si el agente implementa `_anchor`, además se verifica que cada item
+        repita el ancla de su fila. Con `ANCHOR_STRICT`, un solo desajuste
+        rechaza el batch entero: el cruce de contenidos es una permutación,
+        así que si una unidad está mal atribuida las demás no son confiables.
+        """
+        idxs = [getattr(it, "unit_idx", None) for it in items]
+        all_int = len(idxs) == batch_size and all(
+            isinstance(x, int) for x in idxs
+        )
+        perfect = all_int and sorted(idxs) == list(range(batch_size))
+        off_by_one = all_int and sorted(idxs) == list(range(1, batch_size + 1))
 
-            # No confiable (duplicados / huecos / fuera de rango / cantidad rara).
-            motivo = (
-                f"batch rechazado: unit_idx no confiable (recibidos={idxs}, "
-                f"batch_size={batch_size})"
+        if perfect:
+            pares = [(int(it.unit_idx), it) for it in items]  # type: ignore[attr-defined]
+        elif off_by_one:
+            logger.debug(
+                f"[{self.NAME}] unit_idx 1-indexado ({idxs}); corrijo la "
+                "etiqueta y asigno por índice declarado."
             )
-            logger.error(
-                "[{}] batch RECHAZADO: unit_idx no confiable | recibidos={} | "
-                "batch_size={}. Filas quedan en None para reintento.",
+            pares = [(int(it.unit_idx) - 1, it) for it in items]  # type: ignore[attr-defined]
+        else:
+            self._rechazar_batch(
+                row_outputs,
+                f"unit_idx no confiable (recibidos={idxs}, "
+                f"batch_size={batch_size})",
+            )
+            return
+
+        anclas = {
+            j: _normalizar_ancla(self._anchor(row))
+            for j, row in unit_idx_to_row.items()
+        }
+        presentes = [a for a in anclas.values() if a]
+        if presentes and len(set(presentes)) < len(presentes):
+            # Sin unicidad el ancla no distingue unidades: decirlo es mejor
+            # que verificar de mentira y dar por buena una atribución cruzada.
+            logger.warning(
+                "[{}] anclas repetidas en el batch ({}): la verificación de "
+                "correspondencia queda sin efecto para esas unidades.",
                 self.NAME,
-                idxs,
-                batch_size,
+                sorted(presentes),
             )
-            # Sin esta marca el rechazo no deja rastro en la DB: las filas
-            # vuelven a pendiente y el estado del run informa cero errores
-            # aunque el log haya gritado. La stage decide si la persiste.
-            for salida in row_outputs.values():
-                salida[self.ERROR_COLUMN] = motivo
+        desajustes = [
+            (j, anclas[j], _normalizar_ancla(getattr(item, "ancla", None)))
+            for j, item in pares
+            if not _anclas_coinciden(
+                anclas[j], _normalizar_ancla(getattr(item, "ancla", None))
+            )
+        ]
+        if desajustes:
+            detalle = "; ".join(
+                f"unidad {j}: esperaba '{esp}', recibí '{rec}'"
+                for j, esp, rec in desajustes
+            )
+            if self.ANCHOR_STRICT:
+                self._rechazar_batch(
+                    row_outputs,
+                    f"ancla no coincide ({detalle})",
+                )
+                return
+            # Sin modo estricto el desajuste se informa pero no frena: puede
+            # ser que el modelo no esté produciendo el ancla, no que haya
+            # cruzado los contenidos, y no hay cómo distinguirlo desde acá.
+            logger.warning(
+                "[{}] ancla no coincide ({}). Se aplica igual: revisá el "
+                "detalle antes de activar ANCHOR_STRICT.",
+                self.NAME,
+                detalle,
+            )
+
+        for j, item in pares:
+            row_outputs[j].update(
+                self._map_item_to_columns(item, unit_idx_to_row[j])
+            )
+
+    def _rechazar_batch(
+        self, row_outputs: dict[int, dict[str, Any]], motivo: str,
+    ) -> None:
+        """Descarta el batch entero dejando rastro en las filas y en el log."""
+        logger.error(
+            "[{}] batch RECHAZADO: {}. Las filas quedan sin resolver para "
+            "reintento.",
+            self.NAME,
+            motivo,
+        )
+        # Sin esta marca el rechazo no deja rastro en la DB: las filas vuelven
+        # a pendiente y el estado del run informa cero errores aunque el log
+        # haya gritado. La stage decide si la persiste.
+        for salida in row_outputs.values():
+            salida[self.ERROR_COLUMN] = f"batch rechazado: {motivo}"
+
+
+def _anclas_coinciden(esperada: str, recibida: str) -> bool:
+    """Compara dos anclas normalizadas, tolerando abreviaciones del modelo.
+
+    Si falta cualquiera de los dos lados no hay verificación posible, y
+    tratar eso como cruce sería inventar un error.
+    """
+    if not esperada or not recibida:
+        return True
+    return (
+        esperada == recibida
+        or esperada in recibida
+        or recibida in esperada
+    )
+
+
+def _normalizar_ancla(valor: Any) -> str:
+    """Normaliza un ancla para compararla (sin @, sin caso, sin espacios)."""
+    if valor is None:
+        return ""
+    return str(valor).strip().lstrip("@").casefold()

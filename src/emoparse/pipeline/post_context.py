@@ -15,12 +15,16 @@
 #    léxico o la etapa emoji_affect lo resolvieron.
 #  - Emociones del hilo: las emociones que el pase 1 ya detectó en los
 #    posts padre, como contexto del pase 2 en géneros conversacionales.
+#  - Emociones detectadas: el inventario ya materializado de un discurso,
+#    con su experienciador y su fuente, que `reframing` usa para juzgar el
+#    estatuto de las emociones del post citado sin tener que reinferirlas.
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
 
 from typing import Any, Callable
 
+from emoparse.storage.emociones import EmocionesRepository
 from emoparse.storage.frases import FrasesRepository
 from emoparse.storage.hilos import HilosRepository
 from emoparse.storage.posts import PostsRepository
@@ -38,6 +42,10 @@ _MAX_PARTICIPANT_POSTS = 2
 
 #: Máximo de caracteres por intervención de participante mencionado.
 _PARTICIPANT_POST_CHARS = 200
+
+#: Máximo de emociones listadas del discurso citado. El inventario entra en
+#: prompts batcheados: sin tope, un post muy anotado infla el batch entero.
+_MAX_EMOCIONES = 6
 
 
 def make_hilo_context_provider(
@@ -435,6 +443,43 @@ def _dominio(uri: str) -> str:
     return u.removeprefix("www.")
 
 
+def make_emociones_detectadas_provider(
+    emociones_repo: EmocionesRepository,
+    max_emociones: int = _MAX_EMOCIONES,
+) -> Callable[[str], str | None]:
+    """Provider codigo → emociones ya materializadas del discurso (o None).
+
+    Lo consume `reframing` sobre el post CITADO: el agente tiene que juzgar
+    si el citador asume o semiotiza las emociones de lo citado, y hoy las
+    reinfiere del texto crudo, sin la ontología ni las heurísticas del
+    género que sí tuvo la stage `emotions`. Con el inventario ya hecho, la
+    tarea vuelve a ser una sola: el estatuto.
+
+    El experienciador es lo que decide `asumidas` vs `semiotizadas` (una
+    emoción cuyo experienciador era un tercero no se "asume" del mismo modo
+    que la del propio autor citado), así que va siempre. La foria se suma
+    solo si `characterizer` corrió: es dependencia blanda, el bloque se
+    arma igual sin ella.
+    """
+
+    def provider(codigo: str) -> str | None:
+        try:
+            emociones = emociones_repo.list_emociones_of_discurso(codigo)
+        except Exception:
+            return None
+        if not emociones:
+            return None
+        partes = [
+            _format_emocion_detectada(e) for e in emociones[:max_emociones]
+        ]
+        restantes = len(emociones) - len(partes)
+        if restantes > 0:
+            partes.append(f"(+{restantes} más)")
+        return " · ".join(partes)
+
+    return provider
+
+
 def make_reframing_context_provider(
     posts_repo: PostsRepository,
 ) -> Callable[[str], str | None]:
@@ -522,6 +567,50 @@ def _format_post_emociones(
     if not partes:
         return None
     return f"[post padre @{post.get('autor_handle', '?')}] " + "; ".join(partes)
+
+
+def _format_emocion_detectada(emocion: dict[str, Any]) -> str:
+    """Una emoción materializada, compacta: 'tipo (exp: X ← fuente) [foria]'.
+
+    Prefiere los canónicos (revisados o resueltos por referencia) sobre la
+    inferencia cruda: sin eso, al prompt le llegan deícticos sueltos como
+    "él", que no informan nada.
+    """
+    tipo = (
+        emocion.get("tipo_emocion_canonico")
+        or emocion.get("tipo_emocion")
+        or "?"
+    )
+    exp = (
+        emocion.get("experienciador_canonico")
+        or emocion.get("experienciador")
+        or "?"
+    )
+    fuente = (
+        emocion.get("fuente_canonico")
+        or emocion.get("fuente_inferencia")
+        or ""
+    )
+    linea = f"{tipo} (exp: {exp}"
+    if fuente:
+        linea += f" ← {fuente}"
+    linea += ")"
+    foria = _foria_de(emocion.get("caracterizacion_payload"))
+    return f"{linea} [{foria}]" if foria else linea
+
+
+def _foria_de(payload: Any) -> str:
+    """Foria de una emoción caracterizada ('' si `characterizer` no corrió)."""
+    import json as _json
+
+    if isinstance(payload, str) and payload:
+        try:
+            payload = _json.loads(payload)
+        except _json.JSONDecodeError:
+            return ""
+    if not isinstance(payload, dict):
+        return ""
+    return str(payload.get("foria") or "")
 
 
 def _format_entidad(e: dict[str, Any], lexicon: dict[str, Any]) -> str:

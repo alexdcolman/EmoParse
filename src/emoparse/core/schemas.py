@@ -1118,7 +1118,15 @@ OperacionReframing = Literal[
     "ambigua",
 ]
 
-EmocionesCitadasReframing = Literal["asumidas", "semiotizadas", "ninguna"]
+#: Qué hace el CITADOR con el afecto que pone a circular. Los tres valores
+#: son participios de una operación suya, no descripciones del post citado:
+#: el citador está en el corpus, el citado puede no estarlo, y afirmar que
+#: "el texto citado no porta emociones" exigiría haberlo analizado.
+EmocionesCitadasReframing = Literal[
+    "asumidas",
+    "semiotizadas",
+    "no_retomadas",
+]
 
 
 class ReframingSchema(StrictBase):
@@ -1132,11 +1140,12 @@ class ReframingSchema(StrictBase):
                     "(la posición no es determinable).",
     )
     emociones_citadas: EmocionesCitadasReframing = Field(  # type: ignore[valid-type]
-        description="Estatuto de las emociones expresadas en el texto CITADO "
-                    "respecto del autor CITADOR: asumidas (el citador las "
-                    "hace propias, las experimenta), semiotizadas (las "
-                    "exhibe o comenta sin experimentarlas), ninguna (el "
-                    "texto citado no porta emociones o no fue capturado).",
+        description="Qué hace el CITADOR con el afecto de lo que cita: "
+                    "asumidas (lo habla como propio, lo experimenta), "
+                    "semiotizadas (lo exhibe o comenta como objeto, sin "
+                    "experimentarlo), no_retomadas (no lo toma de ninguna "
+                    "manera). Se clasifica la operación del citador, no el "
+                    "inventario emocional del citado.",
     )
     justificacion: str = Field(
         description="Justificación breve citando marcas concretas del post "
@@ -1149,6 +1158,14 @@ class ReframingBatchItemSchema(StrictBase):
     """Un ítem del batch de reframing."""
     unit_idx: int = Field(
         description="Índice 0-based de la unidad en el batch.",
+    )
+    # Va antes de la clasificación a propósito: obliga al modelo a
+    # comprometerse con la identidad de la unidad antes de escribir sobre
+    # ella, y le permite al pipeline detectar que escribió sobre otra.
+    ancla: str = Field(
+        description="Handle del POST CITADOR de esta unidad, copiado literal "
+                    "del prompt (sin @). Debe corresponder a la unidad que "
+                    "indica unit_idx.",
     )
     reframing: ReframingSchema = Field(
         description="Clasificación de la operación de recontextualización.",

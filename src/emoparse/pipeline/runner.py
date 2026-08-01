@@ -552,12 +552,21 @@ class PipelineRunner:
 
         if name == "reframing":
             backend = self._get_backend(name)
+            # Emociones ya materializadas del post citado. Es enriquecimiento,
+            # no requisito: si explode_emotions no corrió, el provider no
+            # encuentra nada y el agente lee el texto citado como hasta ahora.
+            from emoparse.pipeline.post_context import (
+                make_emociones_detectadas_provider,
+            )
             return ReframingStage(
                 backend, self._p_repo,
                 heuristicas=self._load_heuristics_safe("heuristicas/reframing.md"),
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
+                emociones_provider=make_emociones_detectadas_provider(
+                    self._e_repo
+                ),
             )
 
         if name == "emoji_affect":

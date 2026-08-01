@@ -14,15 +14,12 @@ from typing import Any
 import pandas as pd
 import plotly.graph_objects as go
 
-#: Colores por foria, consistentes en todas las tabs de tecnodiscurso.
-FORIA_COLORS: dict[str, str] = {
-    "euforico": "#2e9e6b",
-    "disforico": "#d1495b",
-    "aforico": "#8a8799",
-    "ambiforico": "#c9a227",
-    "indeterminado": "#5b5870",
-    None: "#3a3750",  # type: ignore[dict-item]
-}
+from emoparse.viz import foria
+from emoparse.viz.theme import BORDER, DIM, base_layout, titulo
+
+#: Reexport de la paleta fórica canónica (definida en `viz.foria`), que las
+#: tabs de tecnodiscurso ya importaban desde acá.
+FORIA_COLORS = foria.FORIA_COLORS
 
 
 def fig_red(
@@ -94,14 +91,14 @@ def fig_red(
                and not pd.isna(comunidad) else "")
         )
         colores.append(
-            _color_comunidad(comunidad) if comunidad is not None else "#5b5870"
+            _color_comunidad(comunidad) if comunidad is not None else DIM
         )
         tamanios.append(8 + 60 * math.sqrt(pagerank))
 
     fig = go.Figure()
     fig.add_trace(go.Scatter(
         x=edge_x, y=edge_y, mode="lines",
-        line=dict(width=0.5, color="#3a3750"),
+        line=dict(width=0.5, color=BORDER),
         hoverinfo="none", showlegend=False,
     ))
     fig.add_trace(go.Scatter(
@@ -109,11 +106,10 @@ def fig_red(
         marker=dict(size=tamanios, color=colores, line=dict(width=0)),
         text=textos, hoverinfo="text", showlegend=False,
     ))
-    fig.update_layout(
-        template="plotly_dark",
+    fig.update_layout(**base_layout(
         xaxis=dict(visible=False), yaxis=dict(visible=False),
         margin=dict(l=10, r=10, t=10, b=10), height=620,
-    )
+    ))
     return fig
 
 
@@ -123,16 +119,20 @@ def fig_matriz_forica(matrix: pd.DataFrame) -> go.Figure:
         z=matrix.values,
         x=list(matrix.columns),
         y=list(matrix.index),
-        colorscale="Purples",
+        colorscale=[
+            [0.0, "#16181f"],
+            [0.5, foria.FORIA_COLORS["ambiforico"]],
+            [1.0, foria.FORIA_COLORS["disforico"]],
+        ],
         text=matrix.values,
         texttemplate="%{text}",
     ))
-    fig.update_layout(
-        template="plotly_dark",
+    fig.update_layout(**base_layout(
+        title=titulo("Transición fórica padre → respuesta"),
         xaxis_title="foria de la respuesta",
         yaxis_title="foria del post padre",
-        margin=dict(l=10, r=10, t=30, b=10), height=420,
-    )
+        margin=dict(l=10, r=10, t=40, b=10), height=420,
+    ))
     return fig
 
 
@@ -140,27 +140,24 @@ def fig_perfil_forico(perfil: pd.DataFrame) -> go.Figure:
     """Barras apiladas con la composición fórica de cada comunidad."""
     if perfil.empty:
         return _fig_vacia("Sin perfil emocional por comunidad.")
-    forias = [
-        f for f in FORIA_COLORS
-        if isinstance(f, str) and f in perfil.columns
-    ]
+    forias = [f for f in foria.FORIA_ORDEN if f in perfil.columns]
     agg = perfil.groupby("comunidad")[forias].sum().sort_index()
     etiquetas = [f"comunidad {c}" for c in agg.index]
 
     fig = go.Figure()
     for f in forias:
         fig.add_trace(go.Bar(
-            x=agg[f], y=etiquetas, name=f, orientation="h",
-            marker_color=FORIA_COLORS[f],
+            x=agg[f], y=etiquetas, name=foria.etiqueta(f), orientation="h",
+            marker_color=foria.FORIA_COLORS[f],
             hovertemplate="%{y}<br>" + f + ": %{x}<extra></extra>",
         ))
-    fig.update_layout(
-        template="plotly_dark", barmode="stack",
+    fig.update_layout(**base_layout(
+        barmode="stack",
         margin=dict(l=10, r=10, t=10, b=10),
         height=max(260, 44 * len(agg)),
         xaxis_title="emociones",
-        legend=dict(orientation="h", y=-0.2),
-    )
+        legend=dict(orientation="h", y=-0.2, font=dict(size=10)),
+    ))
     return fig
 
 
@@ -169,10 +166,7 @@ def fig_hashtags_top(df: pd.DataFrame, top: int = 25) -> go.Figure:
     if df.empty:
         return _fig_vacia("Sin hashtags en el corpus.")
     head = df.head(top).iloc[::-1]
-    colores = [
-        FORIA_COLORS.get(f, FORIA_COLORS["indeterminado"])
-        for f in head["foria_entorno"]
-    ]
+    colores = [foria.color(f) for f in head["foria_entorno"]]
     fig = go.Figure(go.Bar(
         x=head["n_usos"], y=["#" + v for v in head["valor_norm"]],
         orientation="h", marker_color=colores,
@@ -180,12 +174,11 @@ def fig_hashtags_top(df: pd.DataFrame, top: int = 25) -> go.Figure:
         hovertemplate="%{y}: %{x} usos<br>función: %{customdata[0]}"
                       "<br>%{customdata[1]}<extra></extra>",
     ))
-    fig.update_layout(
-        template="plotly_dark",
+    fig.update_layout(**base_layout(
         margin=dict(l=10, r=10, t=10, b=10),
         height=max(300, 22 * len(head)),
         xaxis_title="usos",
-    )
+    ))
     return fig
 
 
@@ -198,14 +191,13 @@ def _color_comunidad(comunidad: Any) -> str:
     try:
         return paleta[int(comunidad) % len(paleta)]
     except (TypeError, ValueError):
-        return "#5b5870"
+        return DIM
 
 
 def _fig_vacia(mensaje: str) -> go.Figure:
     fig = go.Figure()
-    fig.add_annotation(text=mensaje, showarrow=False, font=dict(color="#8a8799"))
-    fig.update_layout(
-        template="plotly_dark",
+    fig.add_annotation(text=mensaje, showarrow=False, font=dict(color=DIM))
+    fig.update_layout(**base_layout(
         xaxis=dict(visible=False), yaxis=dict(visible=False), height=240,
-    )
+    ))
     return fig

@@ -18,6 +18,7 @@ import streamlit as st
 
 from emoparse.app import data as data_layer
 from emoparse.app import _knowledge
+from emoparse.app import styles
 from emoparse.app._textmatch import matches, normalize, parse_query
 
 #: Opciones tipadas de actantes, tomadas del esquema como fuente de verdad.
@@ -45,24 +46,31 @@ _ACTANTE_LABEL = {
     "operador_modificacion": "Operador de modificación",
 }
 
-#: Color por rol del simulacro, usado en selectores y resultados para que cada
-#: función se distinga de un vistazo.
-_ROLE_COLOR = {
-    "experienciador": "#7c9ec8",
-    "emocion": "#b08ad0",
-    "fuente": "#6ec89a",
-    "mediador": "#c8a96e",
-    "verificador_normativo": "#d28aa8",
-    "verificador_observacional": "#8ac6d0",
-    "operador_modificacion": "#cf8f6e",
+#: Token de paleta por rol del simulacro. El valor concreto vive en
+#: `app.styles`, de modo que el mismo rol se ve igual acá, en Búsqueda y en
+#: Co-ocurrencia sin que las tres tabs repitan el color.
+_ROLE_TOKEN = {
+    "experienciador": "rol-experienciador",
+    "emocion": "rol-emocion",
+    "fuente": "rol-fuente",
+    "mediador": "rol-mediador",
+    "verificador_normativo": "rol-verif-normativo",
+    "verificador_observacional": "rol-verif-observacional",
+    "operador_modificacion": "rol-opmod",
 }
+
+
+def _color(role: str) -> str:
+    """Color del rol (gris si el rol no está tipificado)."""
+    token = _ROLE_TOKEN.get(role)
+    return styles.var(token) if token else "var(--text-dim)"
 
 
 def _lbl(text: str, role: str) -> str:
     """Etiqueta coloreada por rol para los selectores."""
     return (
         f"<span style='font-size:0.78rem;font-weight:600;"
-        f"color:{_ROLE_COLOR.get(role, '#8a8799')};'>{text}</span>"
+        f"color:{_color(role)};'>{text}</span>"
     )
 
 
@@ -107,7 +115,7 @@ def render(db_path: Path) -> None:
         )
     with c2:
         st.markdown(
-            "<span style='font-size:0.78rem;color:#8a8799;'>Semas</span>",
+            "<span style='font-size:0.78rem;color:var(--text-dim);'>Semas</span>",
             unsafe_allow_html=True,
         )
         sc1, sc2 = st.columns(2)
@@ -126,7 +134,7 @@ def render(db_path: Path) -> None:
             )
 
     st.markdown(
-        "<span style='font-size:0.78rem;color:#8a8799;'>Actantes</span>",
+        "<span style='font-size:0.78rem;color:var(--text-dim);'>Actantes</span>",
         unsafe_allow_html=True,
     )
     acol = st.columns(4)
@@ -169,7 +177,7 @@ def render(db_path: Path) -> None:
 
     res = df[mask].reset_index(drop=True)
     st.markdown(
-        f"<p style='color:#8a8799;font-size:0.85rem;'>{len(res)} simulacro(s) "
+        f"<p style='color:var(--text-dim);font-size:0.85rem;'>{len(res)} simulacro(s) "
         f"de {len(df)} emociones.</p>",
         unsafe_allow_html=True,
     )
@@ -194,7 +202,7 @@ def render(db_path: Path) -> None:
             st.rerun()
     with p2:
         st.markdown(
-            f"<p style='text-align:center;color:#5a5d6e;font-size:0.8rem;'>"
+            f"<p style='text-align:center;color:var(--dim);font-size:0.8rem;'>"
             f"página {page + 1} de {n_pages}</p>",
             unsafe_allow_html=True,
         )
@@ -203,11 +211,14 @@ def render(db_path: Path) -> None:
         _render_simulacro(row)
 
 
-def _chip(label: str, value: str, color: str) -> str:
+def _chip(label: str, value: str, role: str) -> str:
+    """Chip de un actante, coloreado por su rol."""
     if not value or value == "ausente":
         return ""
+    token = _ROLE_TOKEN.get(role, "rol-emocion")
     return (
-        f"<span style='font-size:0.7rem;color:{color};border:1px solid {color}44;"
+        f"<span style='font-size:0.7rem;color:{styles.var(token)};"
+        f"border:1px solid {styles.var_soft(token)};"
         f"border-radius:5px;padding:1px 7px;margin:2px 4px 2px 0;display:inline-block;'>"
         f"{html.escape(label)}: {html.escape(str(value))}</span>"
     )
@@ -221,39 +232,39 @@ def _render_simulacro(row: pd.Series) -> None:
     with st.container(border=True):
         st.markdown(
             f"<div style='font-size:0.95rem;'>"
-            f"<b style='color:{_ROLE_COLOR['experienciador']};'>{html.escape(str(exp))}</b> "
-            f"<span style='color:{_ROLE_COLOR['emocion']};font-weight:600;'>"
+            f"<b style='color:{_color('experienciador')};'>{html.escape(str(exp))}</b> "
+            f"<span style='color:{_color('emocion')};font-weight:600;'>"
             f"{html.escape(str(emo))}</span> "
-            f"<span style='color:#5a5d6e;'>←</span> "
-            f"<b style='color:{_ROLE_COLOR['fuente']};'>{html.escape(str(fte))}</b></div>"
-            f"<div style='font-size:0.72rem;color:#5a5d6e;"
+            f"<span style='color:var(--dim);'>←</span> "
+            f"<b style='color:{_color('fuente')};'>{html.escape(str(fte))}</b></div>"
+            f"<div style='font-size:0.72rem;color:var(--dim);"
             f"font-family:DM Mono,monospace;margin-top:0.15rem;'>"
             f"{html.escape(str(row['codigo']))}·u{row['frase_idx']}·e{row['emocion_idx']}"
             f"</div>",
             unsafe_allow_html=True,
         )
         chips = (
-            _chip("mediador", row["mediador"], _ROLE_COLOR["mediador"])
+            _chip("mediador", row["mediador"], "mediador")
             + _chip("v.normativo", row["verificador_normativo"],
-                    _ROLE_COLOR["verificador_normativo"])
+                    "verificador_normativo")
             + _chip("v.observacional", row["verificador_observacional"],
-                    _ROLE_COLOR["verificador_observacional"])
+                    "verificador_observacional")
             + _chip("op.modificación", row["operador_modificacion"],
-                    _ROLE_COLOR["operador_modificacion"])
+                    "operador_modificacion")
         )
         exp_s = ", ".join(row["experienciador_semas"])
         fte_s = ", ".join(row["fuente_semas"])
         if exp_s:
-            chips += _chip("exp.semas", exp_s, _ROLE_COLOR["experienciador"])
+            chips += _chip("exp.semas", exp_s, "experienciador")
         if fte_s:
-            chips += _chip("fte.semas", fte_s, _ROLE_COLOR["fuente"])
+            chips += _chip("fte.semas", fte_s, "fuente")
         if chips:
             st.markdown(f"<div style='margin-top:0.35rem;'>{chips}</div>",
                         unsafe_allow_html=True)
         if str(row["frase"]).strip():
             st.markdown(
                 f"<div style='margin-top:0.4rem;padding:0.45rem 0.7rem;"
-                f"background:#15171c;border-radius:6px;font-size:0.84rem;"
-                f"line-height:1.5;color:#c2bdb4;'>{html.escape(str(row['frase']))}</div>",
+                f"background:var(--surface-sunken);border-radius:6px;font-size:0.84rem;"
+                f"line-height:1.5;color:var(--text-soft);'>{html.escape(str(row['frase']))}</div>",
                 unsafe_allow_html=True,
             )

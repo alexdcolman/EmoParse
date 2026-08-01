@@ -110,13 +110,23 @@ class TecnoRepository:
         self, entidad_id: int, key: str, value: Any
     ) -> None:
         """Registra un valor bajo una clave del `extra` de una entidad."""
+        self.set_extra_keys(entidad_id, {key: value})
+
+    def set_extra_keys(
+        self, entidad_id: int, valores: dict[str, Any]
+    ) -> None:
+        """Registra varias claves del `extra` en una sola lectura-escritura.
+
+        Las stages que anotan más de un bloque por entidad (afecto y su
+        repetición, por ejemplo) evitan así un round-trip por clave.
+        """
         row = self._db.execute(
             "SELECT extra FROM tecno_entidades WHERE id = ?", (entidad_id,)
         ).fetchone()
         if row is None:
             return
         extra = _parse_extra(row["extra"])
-        extra[key] = value
+        extra.update(valores)
         with self._db.transaction() as cur:
             cur.execute(
                 "UPDATE tecno_entidades SET extra = ? WHERE id = ?",

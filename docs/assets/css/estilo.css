@@ -27,7 +27,7 @@
   /* Eje de foria — pareja divergente de la tradición de visualización científica */
   --euforico:      #2c6e63;
   --disforico:     #a6412c;
-  --amboforico:    #9a7a2e;
+  --ambiforico:    #9a7a2e;
   --aforico:       #7c7f79;
 
   /* Tipografía */
@@ -565,7 +565,7 @@ figcaption .fnum {
 }
 .f-euf { background: var(--euforico); }
 .f-dis { background: var(--disforico); }
-.f-amb { background: var(--amboforico); }
+.f-amb { background: var(--ambiforico); }
 .f-afo { background: var(--aforico); }
 
 /* ---------------------------------------------------------------- avisos -- */

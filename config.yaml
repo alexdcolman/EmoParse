@@ -229,9 +229,9 @@ paths:
 
 versions:
   knowledge: v12
-  prompt:    v42
+  prompt:    v45
   ontology:  v26
-  schema:    v33
+  schema:    v36
 
 logging:
   level: INFO

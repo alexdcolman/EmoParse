@@ -26,7 +26,7 @@ def render(db_path: Path) -> None:
     """
     st.markdown("### Estado del run")
     st.markdown(
-        "<p style='color:#8a8799;font-size:0.88rem;'>"
+        "<p style='color:var(--text-dim);font-size:0.88rem;'>"
         "Vista read-only. El porcentaje se calcula sobre las unidades que "
         "la stage alcanza: lo marcado <code>n/a</code> queda afuera "
         "(un post sin cita no tiene reframing). Para reintentar errores, "
@@ -45,19 +45,19 @@ def render(db_path: Path) -> None:
     sin_correr = [s.stage for s in statuses if not s.ejecutada]
     if total_failed == 0 and total_pending == 0:
         st.markdown("""
-        <div class='ep-card' style='border-left:3px solid #6ec89a;'>
-            <p style='margin:0;color:#6ec89a;font-family:"DM Mono",monospace;font-size:0.85rem;'>
+        <div class='ep-card' style='border-left:3px solid var(--ok);'>
+            <p style='margin:0;color:var(--ok);font-family:"DM Mono",monospace;font-size:0.85rem;'>
                 ✓ Run completo. Todas las stages procesadas sin errores.
             </p>
         </div>
         """, unsafe_allow_html=True)
     else:
         st.markdown(f"""
-        <div class='ep-card' style='border-left:3px solid {"#c86e6e" if total_failed else "#c8a96e"};'>
+        <div class='ep-card' style='border-left:3px solid {"var(--danger)" if total_failed else "var(--accent)"};'>
             <p style='margin:0;font-family:"DM Mono",monospace;font-size:0.85rem;'>
-                <span style='color:#c86e6e;'>{total_failed} errores</span>
-                <span style='color:#5a5d6e;'> · </span>
-                <span style='color:#c8a96e;'>{total_pending} pendientes</span>
+                <span style='color:var(--danger);'>{total_failed} errores</span>
+                <span style='color:var(--dim);'> · </span>
+                <span style='color:var(--accent);'>{total_pending} pendientes</span>
             </p>
         </div>
         """, unsafe_allow_html=True)
@@ -66,7 +66,7 @@ def render(db_path: Path) -> None:
 
     if sin_correr:
         st.markdown(
-            "<p style='color:#5a5d6e;font-size:0.8rem;margin:0 0 0.6rem;'>"
+            "<p style='color:var(--dim);font-size:0.8rem;margin:0 0 0.6rem;'>"
             "Stages que no corrieron en este run: "
             f"{', '.join(sin_correr)}."
             "</p>",
@@ -97,8 +97,8 @@ def _render_stage_row(s: data_layer.StageStatus) -> None:
         )
         st.markdown(f"""
         <div style='display:flex;align-items:center;justify-content:space-between;
-                    padding:0.5rem 0.8rem;border-bottom:1px solid #1a1c22;font-size:0.85rem;'>
-            <span style='color:#5a5d6e;font-family:DM Mono,monospace;'>{s.stage}{detalle}</span>
+                    padding:0.5rem 0.8rem;border-bottom:1px solid var(--border-soft);font-size:0.85rem;'>
+            <span style='color:var(--dim);font-family:DM Mono,monospace;'>{s.stage}{detalle}</span>
             <span class='badge badge-dim'>{etiqueta}</span>
         </div>
         """, unsafe_allow_html=True)
@@ -108,22 +108,22 @@ def _render_stage_row(s: data_layer.StageStatus) -> None:
     # Lo que quedó fuera del alcance de la stage se muestra aparte: no es
     # trabajo pendiente y no entra en el porcentaje.
     na_html = (
-        f"<span style='color:#5a5d6e;font-family:DM Mono,monospace;font-size:0.78rem;'>"
+        f"<span style='color:var(--dim);font-family:DM Mono,monospace;font-size:0.78rem;'>"
         f"— {s.no_aplica} n/a</span>"
         if s.no_aplica else ""
     )
     summary_html = (
         f"<div style='display:flex;align-items:center;gap:0.8rem;font-size:0.85rem;'>"
-        f"<span style='font-family:DM Mono,monospace;color:#e8e4dc;min-width:9rem;'>{s.stage}</span>"
+        f"<span style='font-family:DM Mono,monospace;color:var(--text);min-width:9rem;'>{s.stage}</span>"
         f"<span class='badge {_pct_badge(pct)}'>{pct}%</span>"
-        f"<span style='color:#6ec89a;font-family:DM Mono,monospace;font-size:0.78rem;'>"
+        f"<span style='color:var(--ok);font-family:DM Mono,monospace;font-size:0.78rem;'>"
         f"✓ {s.completed}</span>"
-        f"<span style='color:#c8a96e;font-family:DM Mono,monospace;font-size:0.78rem;'>"
+        f"<span style='color:var(--accent);font-family:DM Mono,monospace;font-size:0.78rem;'>"
         f"⏳ {s.pending}</span>"
-        f"<span style='color:#c86e6e;font-family:DM Mono,monospace;font-size:0.78rem;'>"
+        f"<span style='color:var(--danger);font-family:DM Mono,monospace;font-size:0.78rem;'>"
         f"✗ {s.failed}</span>"
         f"{na_html}"
-        f"<span style='color:#5a5d6e;font-size:0.74rem;'>{s.unidad}</span>"
+        f"<span style='color:var(--dim);font-size:0.74rem;'>{s.unidad}</span>"
         f"</div>"
     )
 
@@ -131,25 +131,25 @@ def _render_stage_row(s: data_layer.StageStatus) -> None:
         with st.expander("", expanded=False):
             st.markdown(summary_html, unsafe_allow_html=True)
             st.markdown(
-                "<p style='margin:0.6rem 0 0.3rem;font-size:0.78rem;color:#8a8799;'>"
+                "<p style='margin:0.6rem 0 0.3rem;font-size:0.78rem;color:var(--text-dim);'>"
                 f"Discursos con error (primeros {len(s.failed_codigos)}):"
                 "</p>",
                 unsafe_allow_html=True,
             )
             codigos_html = " ".join(
-                f"<code style='font-size:0.72rem;color:#c86e6e;margin-right:0.4rem;'>{c}</code>"
+                f"<code style='font-size:0.72rem;color:var(--danger);margin-right:0.4rem;'>{c}</code>"
                 for c in s.failed_codigos
             )
             st.markdown(f"<div>{codigos_html}</div>", unsafe_allow_html=True)
             st.markdown(
-                "<p style='margin:0.6rem 0 0;font-size:0.75rem;color:#5a5d6e;'>"
+                "<p style='margin:0.6rem 0 0;font-size:0.75rem;color:var(--dim);'>"
                 f"Reintentar: <code>emoparse retry --stage {s.stage}</code>"
                 "</p>",
                 unsafe_allow_html=True,
             )
     else:
         st.markdown(
-            f"<div style='padding:0.5rem 0.8rem;border-bottom:1px solid #1a1c22;'>"
+            f"<div style='padding:0.5rem 0.8rem;border-bottom:1px solid var(--border-soft);'>"
             f"{summary_html}</div>",
             unsafe_allow_html=True,
         )

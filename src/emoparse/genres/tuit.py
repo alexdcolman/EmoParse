@@ -175,7 +175,7 @@ def get_genre() -> Genre:
             "characterizer": 1,
             "actants": 1,
             "judge": 1,
-            "reframing": 2,
+            "reframing": 1,
             "emoji_affect": 6,
             "hashtag_semiotics": 6,
             "tecno_usage": 3,

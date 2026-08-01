@@ -66,7 +66,7 @@ def render(db_path: Path) -> None:
     df_filtered = _apply_filters(df, level)
 
     st.markdown(
-        f"<p style='font-size:0.8rem;color:#5a5d6e;'>{len(df_filtered)} filas</p>",
+        f"<p style='font-size:0.8rem;color:var(--dim);'>{len(df_filtered)} filas</p>",
         unsafe_allow_html=True,
     )
     st.dataframe(df_filtered, use_container_width=True, height=480)

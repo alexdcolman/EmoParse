@@ -47,14 +47,14 @@ def render(db_path: Path) -> None:
 
     if data["titulo"]:
         st.markdown(
-            f"<div style='font-size:1rem;color:#e8e4dc;font-weight:600;"
+            f"<div style='font-size:1rem;color:var(--text);font-weight:600;"
             f"margin-bottom:0.2rem;'>{html.escape(data['titulo'])}</div>",
             unsafe_allow_html=True,
         )
     if data["resumen"]:
         with st.expander("Resumen global", expanded=False):
             st.markdown(
-                f"<div style='font-size:0.86rem;line-height:1.6;color:#c2bdb4;'>"
+                f"<div style='font-size:0.86rem;line-height:1.6;color:var(--text-soft);'>"
                 f"{html.escape(data['resumen'])}</div>",
                 unsafe_allow_html=True,
             )

@@ -13,6 +13,19 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+from emoparse.viz import foria
+from emoparse.viz.theme import (
+    ACCENT,
+    ACCENT2,
+    BG,
+    BORDER,
+    FONT,
+    SURFACE,
+    TEXT,
+    TEXT_DIM,
+    base_layout as _base_layout,
+)
+
 
 def _fold(s: object) -> str:
     """minúsculas sin acentos, para comparar valores de vocabulario de forma robusta."""
@@ -30,125 +43,49 @@ def _short_codigo(codigo: object, keep: int = 24) -> str:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-#  Constantes de estilo
+#  Paleta
+#
+#  El chrome (fondo, bordes, tipografía) viene de `viz.theme`; el color del
+#  dato, de `viz.foria`. Los nombres se reexportan porque las tabs ya los
+#  importaban desde acá.
 # ══════════════════════════════════════════════════════════════════════════════
 
-BG       = "#0e0f13"
-SURFACE  = "#16181f"
-BORDER   = "#252730"
-ACCENT   = "#c8a96e"
-ACCENT2  = "#7c9ec8"
-TEXT_DIM = "#8a8799"
-TEXT     = "#e8e4dc"
-FONT     = "DM Mono, monospace"
-
-
-#: Mapping emoción → color. Match parcial (substring) dentro de _emo_color.
-EMOTION_COLORS: dict[str, str] = {
-    "miedo":         "#7c9ec8",
-    "indignación":   "#c86e6e",
-    "ira":           "#c86e6e",
-    "enojo":         "#c86e6e",
-    "alegría":       "#c8a96e",
-    "felicidad":     "#c8a96e",
-    "orgullo":       "#e8c87a",
-    "tristeza":      "#8a8799",
-    "melancolía":    "#8a8799",
-    "esperanza":     "#6ec89a",
-    "optimismo":     "#6ec89a",
-    "vergüenza":     "#9e7cc8",
-    "culpa":         "#9e7cc8",
-    "preocupación":  "#7caec8",
-    "angustia":      "#7c8ec8",
-    "amor":          "#c87ca0",
-    "gratitud":      "#7cc8b8",
-    "desprecio":     "#a87c5e",
-    "desconfianza":  "#a8a07c",
-    "neutro":        "#3a3d4e",
-}
-
-FORIA_COLORS: dict[str, str] = {
-    "eufórico":      "#6ec89a",
-    "disfórico":     "#c86e6e",
-    "afórico":       "#5a5d6e",
-    "ambifórico":    "#c8a96e",
-    "indeterminado": "#3a3d4e",
-}
+#: Reexport de la paleta fórica: las tabs que ya importaban colores desde acá
+#: siguen encontrándolos, pero la definición vive en `viz.foria`.
+FORIA_COLORS = foria.FORIA_COLORS
 
 INTENSIDAD_ORDER = ["muy baja", "baja", "media", "alta", "muy alta"]
 
 
-def emo_color(emocion: str) -> str:
-    """Color de una emoción por substring match."""
-    if not emocion:
-        return EMOTION_COLORS["neutro"]
-    emo_lower = str(emocion).lower()
-    for key, color in EMOTION_COLORS.items():
-        if key in emo_lower:
-            return color
-    return ACCENT2
+def emo_color(emocion: str, foria_valor: object = None) -> str:
+    """Color de una emoción: un tono estable de su foria.
 
-
-#: Orden de grupos fóricos para el ordenamiento de emociones. No es un
-#: continuo: solo agrupa por una propiedad ya analizada de cada emoción.
-_FORIA_ORDEN: tuple[str, ...] = ("euforico", "ambiforico", "aforico", "disforico")
+    Sin `foria_valor` cae al color del dato ausente. Las figuras de este
+    módulo resuelven la foria dominante por emoción con `_colores` y no
+    llaman a esta función; queda para los llamadores que colorean un solo
+    ítem del que ya conocen la foria (chips de la UI).
+    """
+    return foria.color_emocion(emocion, foria_valor)
 
 
 def orden_emociones(df: pd.DataFrame, emo_col: str = "tipo_emocion") -> list[str]:
-    """Orden de las emociones presentes, informado por su foria dominante.
+    """Orden de las emociones presentes, informado por su foria dominante."""
+    return foria.orden_emociones(df, emo_col=emo_col)
 
-    Agrupa por la foria dominante observada de cada emoción en el propio
-    DataFrame (eufórico → ambifórico → afórico → disfórico → sin foria) y
-    ordena alfabéticamente dentro de cada grupo. Sin columna `foria`, cae a
-    orden alfabético.
-    """
-    if df.empty or emo_col not in df.columns:
-        return []
-    emos = [e for e in df[emo_col].dropna().unique() if str(e).strip()]
-    if "foria" not in df.columns:
-        return sorted(emos, key=lambda e: _fold(str(e)))
-    rank = {f: i for i, f in enumerate(_FORIA_ORDEN)}
-    dom: dict[str, str] = {}
-    for e in emos:
-        serie = df.loc[df[emo_col] == e, "foria"].dropna().map(_fold)
-        serie = serie[serie != ""]
-        dom[e] = str(serie.mode().iloc[0]) if not serie.empty else ""
-    return sorted(
-        emos,
-        key=lambda e: (rank.get(dom.get(e, ""), len(_FORIA_ORDEN)), _fold(str(e))),
-    )
+
+def _colores(df: pd.DataFrame, emo_col: str = "tipo_emocion") -> dict[str, str]:
+    """Mapa emoción → color para una figura, según la foria observada."""
+    return foria.mapa_colores(df, emo_col=emo_col)
+
+
+def _color_de(mapa: dict[str, str], emocion: object) -> str:
+    """Color de una emoción dentro del mapa de la figura (gris si falta)."""
+    return mapa.get(str(emocion), foria.FORIA_COLORS[None])
 
 
 def _texto_marcador(color: str) -> str:
     """Color de texto legible sobre un marcador del color dado."""
-    try:
-        r, g, b = int(color[1:3], 16), int(color[3:5], 16), int(color[5:7], 16)
-    except (ValueError, IndexError):
-        return "#ffffff"
-    luminancia = 0.299 * r + 0.587 * g + 0.114 * b
-    return "#0e0f13" if luminancia > 150 else "#ffffff"
-
-
-def _base_layout(**kwargs) -> dict:
-    """Layout base compartido por todas las figuras."""
-    base = dict(
-        paper_bgcolor=BG,
-        plot_bgcolor=SURFACE,
-        font=dict(family=FONT, color=TEXT_DIM, size=11),
-        xaxis=dict(gridcolor=BORDER, zerolinecolor=BORDER),
-        yaxis=dict(gridcolor=BORDER, zerolinecolor=BORDER),
-        legend=dict(
-            bgcolor=SURFACE, bordercolor=BORDER, borderwidth=1,
-            font=dict(size=10),
-        ),
-        margin=dict(l=10, r=10, t=40, b=10),
-        hoverlabel=dict(
-            bgcolor=SURFACE, bordercolor=BORDER,
-            font=dict(family=FONT, size=11),
-        ),
-    )
-    base.update(kwargs)
-    return base
+    return foria.texto_sobre(color)
 
 
 def _resolve_posicion(df: pd.DataFrame) -> pd.DataFrame:
@@ -267,11 +204,12 @@ def curva_emocional(
 
     emociones = orden_emociones(df_sel)
     numeros = {e: i + 1 for i, e in enumerate(emociones)}
+    colores = _colores(df_sel)
     fig = go.Figure()
 
     for emo in emociones:
         df_emo = df_sel[df_sel["tipo_emocion"] == emo]
-        color = emo_color(emo)
+        color = _color_de(colores, emo)
         hover_text = _curva_hover(
             df_emo, emo, text_col=text_col, actor_col=actor_col,
             fuente_col=fuente_col, relativa=posicion_relativa,
@@ -336,6 +274,7 @@ def curva_emocional_comparada(
 
     emociones_globales = orden_emociones(df_all)
     numeros = {e: i + 1 for i, e in enumerate(emociones_globales)}
+    colores = _colores(df_all)
     seen_emos: set[str] = set()
 
     for row_idx, codigo in enumerate(codigos, start=1):
@@ -349,7 +288,7 @@ def curva_emocional_comparada(
             df_emo = df_sel[df_sel["tipo_emocion"] == emo]
             if df_emo.empty:
                 continue
-            color = emo_color(emo)
+            color = _color_de(colores, emo)
             hover = _curva_hover(
                 df_emo, emo, text_col=text_col, actor_col=actor_col,
                 fuente_col=fuente_col, relativa=posicion_relativa,
@@ -376,21 +315,14 @@ def curva_emocional_comparada(
                 row=row_idx, col=1,
             )
 
-    fig.update_layout(
-        paper_bgcolor=BG, plot_bgcolor=SURFACE,
-        font=dict(family=FONT, color=TEXT_DIM, size=11),
+    fig.update_layout(**_base_layout(
         title=dict(
             text=f"Curva emocional comparada · {len(codigos)} discursos",
             font=dict(color=ACCENT, size=13),
         ),
         height=max(280, 240 * n + 60),
         margin=dict(l=10, r=10, t=60, b=10),
-        legend=dict(
-            bgcolor=SURFACE, bordercolor=BORDER, borderwidth=1,
-            font=dict(size=10),
-        ),
-        hoverlabel=dict(bgcolor=SURFACE, bordercolor=BORDER, font=dict(family=FONT, size=11)),
-    )
+    ))
     xtitle = "Posición relativa (%)" if posicion_relativa else "Posición"
     fig.update_xaxes(gridcolor=BORDER, zerolinecolor=BORDER, title_text=xtitle)
     fig.update_yaxes(
@@ -431,7 +363,8 @@ def distribucion_emociones(
         )
     else:
         counts = counts.sort_values("n")
-    colors = [emo_color(e) for e in counts["emocion"]]
+    colores = _colores(df_f, emo_col=por)
+    colors = [_color_de(colores, e) for e in counts["emocion"]]
 
     fig = go.Figure(go.Bar(
         x=counts["n"], y=counts["emocion"], orientation="h",
@@ -470,6 +403,10 @@ def heatmap_actor_emocion(
     top_emo = df["tipo_emocion"].value_counts().head(top_emociones).index.tolist()
     if not top_act or not top_emo:
         return _empty_figure("Sin datos suficientes")
+    # Las columnas se ordenan por foria (no por frecuencia): el heatmap se lee
+    # de eufórico a disfórico, igual que el resto de las figuras.
+    orden = [e for e in orden_emociones(df) if e in top_emo]
+    top_emo = orden + [e for e in top_emo if e not in orden]
 
     df_f = df[df[actor_col].isin(top_act) & df["tipo_emocion"].isin(top_emo)]
     pivot = (
@@ -540,8 +477,9 @@ def perfil_comparado(
     fig = go.Figure()
     labels = [_short_codigo(c) for c in pivot.index]
     full = list(pivot.index)
+    colores = _colores(df_f)
     for emocion in pivot.columns:
-        color = emo_color(emocion)
+        color = _color_de(colores, emocion)
         vals = pivot[emocion].tolist()
         fmt = [f"{v:.1%}" if normalize else str(int(v)) for v in vals]
         fig.add_trace(go.Bar(
@@ -598,6 +536,7 @@ def trayectoria_comparada(
         return _empty_figure("Sin posición de frases")
 
     fig = go.Figure()
+    colores = _colores(df_f)
     all_emociones: set[str] = set()
 
     for codigo in codigos:
@@ -623,7 +562,7 @@ def trayectoria_comparada(
         ys = [b[1] for b in bins_data]
 
         for i in range(len(xs) - 1):
-            color = emo_color(ys[i])
+            color = _color_de(colores, ys[i])
             fig.add_trace(go.Scatter(
                 x=[xs[i], xs[i + 1]], y=[ys[i], ys[i + 1]],
                 mode="lines",
@@ -636,7 +575,7 @@ def trayectoria_comparada(
             text=[str(int(x)) for x in xs], textposition="top center",
             textfont=dict(size=8, color=TEXT_DIM),
             marker=dict(
-                color=[emo_color(e) for e in ys], size=12,
+                color=[_color_de(colores, e) for e in ys], size=12,
                 line=dict(color=BORDER, width=1),
             ),
             hovertemplate=f"<b>{codigo}</b><br>Segmento %{{x:.0f}}<br>Emoción: %{{y}}<extra></extra>",
@@ -809,6 +748,15 @@ def scatter_foria_intensidad(
             ),
         ))
 
+    # Bandas fóricas de fondo: el eje X es la foria, así que el color de la
+    # zona la nombra sin depender de leer el tick.
+    for x0, x1, clave in (
+        (-1.5, -0.5, "disforico"), (-0.5, 0.5, "aforico"), (0.5, 1.5, "euforico"),
+    ):
+        fig.add_vrect(
+            x0=x0, x1=x1, layer="below", line_width=0,
+            fillcolor=foria.rgba(foria.FORIA_COLORS[clave], 0.10),
+        )
     fig.add_vline(x=0, line=dict(color=BORDER, width=1, dash="dot"))
     fig.add_hline(y=3, line=dict(color=BORDER, width=1, dash="dot"))
 
@@ -880,9 +828,10 @@ def timeline_corpus(
         return _empty_figure("Sin datos para el timeline")
 
     df_plot = pd.DataFrame(puntos).sort_values("fecha")
+    colores = _colores(fechas)
 
     if emocion:
-        color = emo_color(emocion)
+        color = _color_de(colores, emocion)
         fig = go.Figure(go.Scatter(
             x=df_plot["fecha"], y=df_plot["prop"],
             mode="lines+markers",
@@ -906,7 +855,7 @@ def timeline_corpus(
                 x=df_emo["fecha"], y=df_emo["prop"],
                 mode="markers", name=emo,
                 marker=dict(
-                    color=emo_color(emo), size=10,
+                    color=_color_de(colores, emo), size=10,
                     line=dict(color=BORDER, width=1),
                 ),
                 text=df_emo["titulo"],

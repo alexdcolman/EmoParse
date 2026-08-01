@@ -70,7 +70,7 @@ def render(db_path: Path) -> None:
     with subtab_radar:
         if len(seleccionados) > 5:
             st.markdown(
-                "<p style='font-size:0.78rem;color:#c8a96e;'>"
+                "<p style='font-size:0.78rem;color:var(--accent);'>"
                 "Con más de 5 discursos el radar pierde legibilidad. "
                 "Considerá reducir la selección.</p>",
                 unsafe_allow_html=True,

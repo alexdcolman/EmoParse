@@ -24,7 +24,7 @@ def render(db_path: Path) -> None:
     """Renderiza el constructor de comandos."""
     st.markdown("# Ejecutar")
     st.markdown(
-        "<p style='color:#8a8799;margin-top:-0.5rem;'>"
+        "<p style='color:var(--text-dim);margin-top:-0.5rem;'>"
         "Armá el comando y copialo a tu terminal. Esta sección no ejecuta "
         "nada: el pipeline corre en CLI, que es lo robusto para un proceso "
         "largo con GPU.</p>",

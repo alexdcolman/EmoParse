@@ -15,6 +15,7 @@ from typing import Any
 import streamlit as st
 
 from emoparse.app import data as data_layer
+from emoparse.app import styles
 from emoparse.app.revision_overlay import (
     OverlayCorruptError,
     RevisionOverlay,
@@ -121,12 +122,12 @@ def render(db_path: Path) -> None:
     st.markdown(
         """<style>
         .ep-el{font-size:0.78rem;line-height:1.32;margin:0.05rem 0;}
-        .ep-el .sec{color:#5a5d6e;font-size:0.66rem;}
-        .ep-el .chip{color:#6ec89a;font-size:0.66rem;}
-        .ep-el .just{display:block;color:#5a5d6e;font-size:0.66rem;
+        .ep-el .sec{color:var(--dim);font-size:0.66rem;}
+        .ep-el .chip{color:var(--ok);font-size:0.66rem;}
+        .ep-el .just{display:block;color:var(--dim);font-size:0.66rem;
                      line-height:1.25;margin-top:0.05rem;font-style:italic;}
         .ep-sec-h{margin:0.5rem 0 0.15rem;font-size:0.68rem;letter-spacing:0.06em;
-                  text-transform:uppercase;color:#7c7a89;border-top:1px solid #23252c;
+                  text-transform:uppercase;color:var(--text-dim);border-top:1px solid var(--border-soft);
                   padding-top:0.25rem;}
         div[data-testid="stButton"] button{padding:0 0.35rem;min-height:1.5rem;
             line-height:1.2;font-size:0.72rem;}
@@ -311,7 +312,7 @@ def _render_header(ov: RevisionOverlay, codigo: str, header: dict[str, Any]) -> 
         f"<div class='ep-card ep-card-accent'>"
         f"<p style='margin:0;font-family:var(--font-serif);font-size:1.2rem;"
         f"color:var(--accent);'>{_esc(titulo)}</p>"
-        f"<p style='margin:0.2rem 0 0;color:#8a8799;font-size:0.82rem;"
+        f"<p style='margin:0.2rem 0 0;color:var(--text-dim);font-size:0.82rem;"
         f"font-family:DM Mono,monospace;'>{_esc(codigo)}"
         + (f" · {_esc(header.get('fecha'))}" if header.get("fecha") else "")
         + (f" · enunciatarios: {_esc(enun_str)}" if enun_str else "")
@@ -412,9 +413,9 @@ def _render_frase(
 
     st.markdown(
         f"<div style='margin:0.9rem 0 0.3rem;padding:0.55rem 0.75rem;"
-        f"background:#15171c;border-left:3px solid var(--accent);border-radius:6px;"
-        f"font-size:0.95rem;line-height:1.6;color:#d8d3ca;'>"
-        f"<span style='color:#5a5d6e;font-family:DM Mono,monospace;font-size:0.76rem;'>"
+        f"background:var(--surface-sunken);border-left:3px solid var(--accent);border-radius:6px;"
+        f"font-size:0.95rem;line-height:1.6;color:var(--text);'>"
+        f"<span style='color:var(--dim);font-family:DM Mono,monospace;font-size:0.76rem;'>"
         f"#{unit_idx}</span>&nbsp; {_esc(frase)}</div>",
         unsafe_allow_html=True,
     )
@@ -448,18 +449,18 @@ def _render_frase(
         _render_add_emocion(ov, codigo, unit_idx)
 
     st.markdown(
-        "<div style='border-bottom:1px solid #1a1c22;margin:0.5rem 0;'></div>",
+        "<div style='border-bottom:1px solid var(--border-soft);margin:0.5rem 0;'></div>",
         unsafe_allow_html=True,
     )
 
 
-#: Color por tipo de tecnolingüístico (chips bajo el post en Revisión).
-_TECNO_COLORS: dict[str, str] = {
-    "hashtag": "#7c9ec8",
-    "mencion": "#6ec89a",
-    "emoji": "#c8a96e",
-    "url": "#8a8799",
-    "tecnografismo": "#d28aa8",
+#: Token de paleta por tipo de tecnolingüístico (chips bajo el post).
+_TECNO_TOKENS: dict[str, str] = {
+    "hashtag": "tecno-hashtag",
+    "mencion": "tecno-mencion",
+    "emoji": "tecno-emoji",
+    "url": "tecno-url",
+    "tecnografismo": "tecno-tecnografismo",
 }
 
 
@@ -473,7 +474,8 @@ def _render_tecno_chips(tecno: list[dict[str, Any]]) -> None:
     chips: list[str] = []
     for e in tecno:
         tipo = str(e.get("tipo") or "")
-        color = _TECNO_COLORS.get(tipo, "#8a8799")
+        token = _TECNO_TOKENS.get(tipo, "tecno-url")
+        color = styles.var(token)
         extra = e.get("extra") or {}
         detalle = ""
         title = ""
@@ -495,10 +497,10 @@ def _render_tecno_chips(tecno: list[dict[str, Any]]) -> None:
         chips.append(
             f"<span title='{_esc(title)}' style='display:inline-block;"
             f"font-size:0.68rem;font-family:DM Mono,monospace;color:{color};"
-            f"border:1px solid {color}44;border-radius:5px;"
+            f"border:1px solid {styles.var_soft(token)};border-radius:5px;"
             f"padding:1px 7px;margin:2px 4px 2px 0;'>"
             f"{_esc(valor)}"
-            + (f" <span style='color:#5a5d6e;'>· {_esc(detalle)}</span>"
+            + (f" <span style='color:var(--dim);'>· {_esc(detalle)}</span>"
                if detalle else "")
             + "</span>"
         )
@@ -533,10 +535,10 @@ def _render_media(media: list[dict[str, Any]]) -> None:
             desc = str(payload.get("descripcion") or "").strip()
             ocr = str(m.get("ocr_text") or "").strip()
             st.markdown(
-                f"<div style='font-size:0.78rem;color:#8a8799;line-height:1.5;'>"
+                f"<div style='font-size:0.78rem;color:var(--text-dim);line-height:1.5;'>"
                 f"<span class='badge badge-dim'>{_esc(tipo_img)}</span> "
                 f"{_esc(desc) if desc else '(sin descripción generada)'}"
-                + (f"<br><span style='color:#5a5d6e;'>texto en imagen: "
+                + (f"<br><span style='color:var(--dim);'>texto en imagen: "
                    f"{_esc(ocr[:160])}</span>" if ocr else "")
                 + "</div>",
                 unsafe_allow_html=True,
@@ -579,7 +581,7 @@ def _render_actores(
         canon = link.get("actor_canonico")
         resuelto = link.get("resuelto_por")
         badge = (
-            " <span style='color:#7c9ec8;font-size:0.7rem;'>[deixis]</span>"
+            " <span style='color:var(--accent2);font-size:0.7rem;'>[deixis]</span>"
             if resuelto == "deixis_enunciador" else ""
         )
         is_removed = key in removed
@@ -588,7 +590,7 @@ def _render_actores(
         with c1:
             st.markdown(
                 f"<span style='{style}font-size:0.86rem;'>{_esc(mencion)}"
-                f"<span style='color:#5a5d6e;'> → </span>"
+                f"<span style='color:var(--dim);'> → </span>"
                 f"<code>{_esc(_canon_label(canon, kb_disp)) if canon else '∅'}</code>{badge}</span>",
                 unsafe_allow_html=True,
             )
@@ -607,9 +609,9 @@ def _render_actores(
         c1, c2 = st.columns([5, 1])
         with c1:
             st.markdown(
-                f"<span style='font-size:0.86rem;color:#6ec89a;'>+ "
+                f"<span style='font-size:0.86rem;color:var(--ok);'>+ "
                 f"{_esc(a.get('actor_mencionado'))}"
-                f"<span style='color:#5a5d6e;'> → </span>"
+                f"<span style='color:var(--dim);'> → </span>"
                 f"<code>{_esc(_canon_label(a.get('actor_canonico'), kb_disp))}</code></span>",
                 unsafe_allow_html=True,
             )
@@ -714,7 +716,7 @@ def _render_emocion_card(
         conf = "✓ " if confirmado.get("_emocion") else ""
         st.markdown(
             f"<div style='font-size:0.92rem;margin-bottom:0.1rem;'>"
-            f"<span style='color:#5a5d6e;font-family:DM Mono,monospace;"
+            f"<span style='color:var(--dim);font-family:DM Mono,monospace;"
             f"font-size:0.72rem;'>#{eidx}</span> "
             f"<span style='color:var(--accent);font-weight:600;'>{_esc(conf)}"
             f"{_esc(tipo)}</span></div>",
@@ -724,11 +726,11 @@ def _render_emocion_card(
             coh = juicio.get("coherente")
             n_sug = len(juicio.get("sugerencias") or [])
             if coh is True:
-                jtxt, jcol = "✓ juez: correcto", "#6ec89a"
+                jtxt, jcol = "✓ juez: correcto", "var(--ok)"
             elif coh is False:
-                jtxt, jcol = "⚠ juez: revisar", "#c9a86a"
+                jtxt, jcol = "⚠ juez: revisar", "var(--accent)"
             else:
-                jtxt, jcol = "juez: —", "#5a5d6e"
+                jtxt, jcol = "juez: —", "var(--dim)"
             if n_sug:
                 jtxt += f" · {n_sug} sug."
             st.markdown(
@@ -905,8 +907,8 @@ def _element(
     cv, cb = st.columns([13, 1], gap="small")
     with cv:
         st.markdown(
-            f"<div class='ep-el'><b style='color:#8a8799;'>{_esc(label)}:</b> "
-            f"<span style='color:#e0dccf;'>{_esc(main)}</span>{chip}{sec}"
+            f"<div class='ep-el'><b style='color:var(--text-dim);'>{_esc(label)}:</b> "
+            f"<span style='color:var(--text);'>{_esc(main)}</span>{chip}{sec}"
             f"{just_html}</div>",
             unsafe_allow_html=True,
         )
@@ -976,7 +978,7 @@ def _render_suggestion(
     base = f"sug_{codigo}_{unit_idx}_{eidx}_{campo}"
     if state in ("accepted", "rejected"):
         icon = "🟢 aceptada" if state == "accepted" else "⚪ rechazada"
-        col = "#6ec89a" if state == "accepted" else "#8a8799"
+        col = "var(--ok)" if state == "accepted" else "var(--text-dim)"
         cs1, cs2 = st.columns([4, 1])
         with cs1:
             st.markdown(
@@ -990,7 +992,7 @@ def _render_suggestion(
                 st.rerun()
         return
     st.markdown(
-        f"<div style='font-size:0.7rem;color:#c9a86a;margin:0 0 0.1rem 0.4rem;'>"
+        f"<div style='font-size:0.7rem;color:var(--accent);margin:0 0 0.1rem 0.4rem;'>"
         f"💡 juez sugiere <b>{_esc(valor)}</b>"
         + (f" — {_esc(just)}" if just else "")
         + "</div>",
@@ -1015,7 +1017,7 @@ def _render_new_emociones(ov: RevisionOverlay, codigo: str, unit_idx: int) -> No
         c1, c2 = st.columns([5, 1])
         with c1:
             st.markdown(
-                f"<span style='font-size:0.85rem;color:#6ec89a;'>+ emoción nueva: "
+                f"<span style='font-size:0.85rem;color:var(--ok);'>+ emoción nueva: "
                 f"{_esc(em.get('tipo_emocion'))} · {_esc(em.get('experienciador'))}"
                 f"</span>",
                 unsafe_allow_html=True,

@@ -20,22 +20,22 @@ def render(runs_dir: Path) -> Path | None:
     """
     st.sidebar.markdown("""
     <div style='padding: 1.2rem 0.5rem 1rem;'>
-        <div style='font-family:"DM Serif Display",serif; font-size:1.5rem; color:#c8a96e; letter-spacing:-0.02em;'>
+        <div style='font-family:"DM Serif Display",serif; font-size:1.5rem; color:var(--accent); letter-spacing:-0.02em;'>
             🧭 EmoParse
         </div>
-        <div style='font-family:"DM Mono",monospace; font-size:0.7rem; color:#5a5d6e; margin-top:0.1rem;'>
-            v0.6.4 · análisis discursivo
+        <div style='font-family:"DM Mono",monospace; font-size:0.7rem; color:var(--dim); margin-top:0.1rem;'>
+            v0.6.5 · análisis discursivo
         </div>
     </div>
-    <hr style='border-color:#252730; margin: 0 0 1rem;'>
+    <hr style='border-color:var(--border); margin: 0 0 1rem;'>
     """, unsafe_allow_html=True)
 
     runs = data_layer.list_runs(runs_dir)
     if not runs:
         st.sidebar.markdown(f"""
-        <div class='ep-card' style='border-left:3px solid #c86e6e;'>
-            <p style='margin:0;font-size:0.85rem;color:#c86e6e;'>Sin runs.</p>
-            <p style='margin:0.4rem 0 0;font-size:0.78rem;color:#8a8799;'>
+        <div class='ep-card' style='border-left:3px solid var(--danger);'>
+            <p style='margin:0;font-size:0.85rem;color:var(--danger);'>Sin runs.</p>
+            <p style='margin:0.4rem 0 0;font-size:0.78rem;color:var(--text-dim);'>
                 Ejecutá <code>emoparse run</code> para crear un run en
                 <code>{runs_dir}/</code>.
             </p>
@@ -52,7 +52,7 @@ def render(runs_dir: Path) -> Path | None:
         key="emoparse_run_selector",
     )
 
-    st.sidebar.markdown("<hr style='border-color:#252730; margin: 1rem 0;'>", unsafe_allow_html=True)
+    st.sidebar.markdown("<hr style='border-color:var(--border); margin: 1rem 0;'>", unsafe_allow_html=True)
 
     _render_run_stats(selected.path)
     return selected.path
@@ -86,8 +86,8 @@ def _render_run_stats(db_path: Path) -> None:
 
     st.sidebar.markdown(f"""
     <div class='ep-card ep-card-accent' style='padding:0.9rem 1rem;'>
-        <div style='font-family:"DM Mono",monospace;font-size:0.7rem;color:#5a5d6e;'>RUN</div>
-        <div style='font-family:"DM Mono",monospace;font-size:0.85rem;color:#e8e4dc;
+        <div style='font-family:"DM Mono",monospace;font-size:0.7rem;color:var(--dim);'>RUN</div>
+        <div style='font-family:"DM Mono",monospace;font-size:0.85rem;color:var(--text);
                     word-break:break-all;line-height:1.3;margin-top:0.2rem;'>
             {stats.get("run_id") or "—"}
         </div>
@@ -126,14 +126,14 @@ def _render_run_stats(db_path: Path) -> None:
     rows = "".join(
         f"<div style='display:flex;justify-content:space-between;"
         f"font-size:0.75rem;padding:0.15rem 0;'>"
-        f"<span style='color:#5a5d6e;'>{name}</span>"
-        f"<span style='font-family:DM Mono,monospace;color:#8a8799;'>{val or '—'}</span>"
+        f"<span style='color:var(--dim);'>{name}</span>"
+        f"<span style='font-family:DM Mono,monospace;color:var(--text-dim);'>{val or '—'}</span>"
         f"</div>"
         for name, val in versions
     )
     st.sidebar.markdown(f"""
     <div style='margin-top:0.4rem;'>
-        <div style='font-size:0.7rem;color:#5a5d6e;font-family:DM Mono,monospace;
+        <div style='font-size:0.7rem;color:var(--dim);font-family:DM Mono,monospace;
                     text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;'>
             VERSIONS
         </div>
@@ -144,8 +144,8 @@ def _render_run_stats(db_path: Path) -> None:
     if stats.get("notes"):
         st.sidebar.markdown(f"""
         <details style='margin-top:0.8rem;'>
-            <summary style='font-size:0.75rem;color:#8a8799;cursor:pointer;'>Notas</summary>
-            <pre style='font-size:0.75rem;color:#8a8799;white-space:pre-wrap;
+            <summary style='font-size:0.75rem;color:var(--text-dim);cursor:pointer;'>Notas</summary>
+            <pre style='font-size:0.75rem;color:var(--text-dim);white-space:pre-wrap;
                         margin-top:0.4rem;'>{stats["notes"]}</pre>
         </details>
         """, unsafe_allow_html=True)

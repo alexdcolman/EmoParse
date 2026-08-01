@@ -1,4 +1,4 @@
-# EmoParse
+# EmoParse v0.6.5
 
 > Análisis de emociones en discursos con modelos de lenguaje locales.
 
@@ -19,7 +19,7 @@ Está pensado para investigadores en lingüística, semiótica, ciencias del len
 
 ---
 
-> 📖 **[Documentación completa →](https://alexdcolman.github.io/EmoParse/)**
+> 📖 **[Documentación completa (v0.6.4) →](https://alexdcolman.github.io/EmoParse/)**
 
 ---
 
@@ -156,8 +156,8 @@ Qué agrega el género respecto del pipeline clásico:
 
 - **`technoparse`** (determinista, sin modelo): extrae hashtags, @menciones, URLs, emojis y tecnografismos con offsets. Cada @handle siembra un referente canónico con vínculo aceptado, poblando la base de menciones antes de cualquier inferencia.
 - **Contexto conversacional**: cada post se analiza junto al post que abrió la conversación y a los que responde, como contexto de desambiguación y no como fuente de emociones. Los hilos se reconstruyen en la ingesta.
-- **`reframing`**: clasifica la operación de citas y reposts con comentario (adhesión / ironía-distancia / denuncia / difusión neutra) y el estatuto de las emociones citadas (asumidas / semiotizadas), para no atribuirle a quien denuncia la euforia que exhibe.
-- **`emoji_affect`**: un léxico curado resuelve los emojis inequívocos sin modelo; los ambiguos (😂 ¿risa o burla?) se desambiguan en contexto.
+- **`reframing`**: clasifica la operación de citas y reposts con comentario (adhesión / ironía-distancia / denuncia / difusión neutra) y qué hace el citador con el afecto que pone a circular (lo asume, lo semiotiza o no lo retoma), para no atribuirle a quien denuncia la euforia que exhibe. Lo clasificado es siempre una operación del citador, que sí está en el corpus, y no una propiedad del citado, que puede no estarlo. Cuando el citado ya fue analizado, recibe su inventario emocional en lugar de reinferirlo; cuando no está en el corpus, lee la copia que el propio citador trae en su payload. Cada clasificación registra sobre qué evidencia se hizo. Corre con una unidad por llamada al modelo, no en lotes.
+- **`emoji_affect`**: un léxico curado resuelve los emojis inequívocos sin modelo; los ambiguos (😂 ¿risa o burla?) se desambiguan en contexto. La unidad es la racha, no la pulsación: 🤣🤣🤣 es un gesto intensificado y se resuelve una vez, mientras que dos apariciones separadas del mismo emoji son usos distintos y se resuelven por separado.
 - **`hashtag_semiotics`**: analiza el funcionamiento de cada hashtag en cada post donde aparece (tópico / afiliación-consigna / evaluativo / irónico / campaña), con su acoplamiento y la foria de ese uso; la caracterización a nivel corpus se deriva por agregación.
 - **`tecno_usage`**: caracteriza el uso pragmático de cada @mención (interpelar, confrontar, exponer, citar, agradecer, convocar, marcar afiliación), de cada tecnografismo (énfasis, grito, ironía, celebración, rótulo temático, reticencia) y de cada URL (fuente/prueba, autopromoción, convocatoria, enlace temático).
 - **Enunciación anclada al dispositivo**: el enunciador es la cuenta autora y el auditorio se construye de forma determinista (seguidores, un auditorio por hashtag, un destinatario por mención). Los roles enunciativos dependen del tipo de discurso que resuelve `metadata`: pro/para/contradestinatario (Verón) en el político, lector-ciudadano / instancia-blanco / fuente-referente (Charaudeau) en el periodístico, y tríadas análogas en institucional, humor/meme, personal-cotidiano y promocional. A ellos se suman dos posiciones transversales del dispositivo: destinatario mencionado y audiencia ambiente.
@@ -170,7 +170,7 @@ Qué agrega el género respecto del pipeline clásico:
 
 ![Tab Red: comunidades de interacción con su perfil emocional](docs/img/readme/tab-red.png)
 
-**Dashboard.** Cuando el run contiene posts aparecen las tabs 🧵 Hilos (árbol conversacional con foria por post), 🕸 Red, #️⃣ Hashtags (distribución de funciones y drill-down por uso) y ✳ Tecno (usos en contexto de menciones, tecnografismos y links, y frases por emoji). Una sección **⚙ Ejecutar** arma los comandos de CLI desde controles, para copiar y pegar. Las tabs generales se adaptan: la curva emocional se ve por defecto como evolución de la conversación pública, la co-ocurrencia y la timeline se filtran por hilo o hashtag, y la revisión muestra cada post con sus tecnolingüísticos y su media.
+**Dashboard.** Cuando el run contiene posts aparecen las tabs 🧵 Hilos y citas (el árbol conversacional con la foria de cada post y el citado embebido, más una vista de todas las citas y reposts del corpus con su operación de redocumentación), 🕸 Red, #️⃣ Hashtags (distribución de funciones y drill-down por uso) y ✳ Tecno (usos en contexto de menciones, tecnografismos y links, y frases por emoji). Una sección **⚙ Ejecutar** arma los comandos de CLI desde controles, para copiar y pegar. Las tabs generales se adaptan: la curva emocional se ve por defecto como evolución de la conversación pública, la co-ocurrencia y la timeline se filtran por hilo o hashtag, y la revisión muestra cada post con sus tecnolingüísticos y su media. En todo el dashboard el color codifica la foria (verde petróleo eufórica, rojo ladrillo disfórica, ocre ambifórica, gris oliva afórica), con una leyenda fija que lo recuerda.
 
 La adquisición respeta los términos de cada plataforma e incluye seudonimización opcional (`--pseudonymize`) con alias estables que preservan la estructura de hilos y redes. Ver `src/emoparse/acquisition/README.md` para las consideraciones éticas.
 
