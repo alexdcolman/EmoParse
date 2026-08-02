@@ -195,16 +195,27 @@ La adquisición respeta los términos de cada plataforma e incluye seudonimizaci
 
 ## Desarrollo y pruebas
 
-La suite ordinaria no requiere GPU, red ni un modelo real. Los contratos permanentes y el andamio
-se ejecutan por separado:
+La suite ordinaria no requiere GPU, red ni un modelo real. Los contratos permanentes bloquean la
+integración; el andamio se ejecuta y se informa sin bloquear cambios internos deliberados.
 
 ```bash
+python -m pip install -e ".[dev,scraping]"
+
+ruff check src tests scripts
+ruff format --check src tests scripts
+mypy
+
 python -m pytest tests/contrato -q
 python -m pytest tests/andamio -q
 python -m pytest -m "not llm" -q
+python scripts/gen_cli_reference.py --check
 ```
 
-Las integraciones con backends reales son opt-in y se documentan en
+El alcance inicial de mypy está declarado en `tool.mypy.files` dentro de `pyproject.toml`. Se amplía
+solo cuando los archivos incorporados quedan limpios en modo estricto.
+
+GitHub Actions repite lint, tipado, contratos en Python 3.11 y 3.12, documentación generada y
+construcción del wheel. Las integraciones con backends reales son opt-in y se documentan en
 `tests/integracion_llm/README.md`.
 
 ---

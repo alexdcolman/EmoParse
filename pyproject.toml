@@ -148,8 +148,10 @@ dev = [
     "pytest-cov>=5,<6",
     "pytest-mock>=3.14,<4",
 
-    "ruff>=0.11",
-    "mypy>=1.13",
+    "ruff>=0.16,<0.17",
+    "mypy>=2.3,<2.4",
+    "types-PyYAML>=6.0.12,<7",
+    "build>=1.2,<2",
 ]
 
 # ── Instalación completa ─────────────────────────────────────────────────────
@@ -233,22 +235,34 @@ filterwarnings = [
 line-length = 100
 target-version = "py311"
 src = ["src", "tests"]
+extend-exclude = [
+    ".build",
+    ".dev",
+    "evals/.old",
+]
 
 [tool.ruff.lint]
 select = [
     "E",
-    "W",
     "F",
     "I",
-    "B",
     "UP",
-    "SIM",
-    "RUF",
+    "B",
 ]
 
+# Línea de base de v0.7.0. Se excluyen reglas que exigen decisiones
+# semánticas o refactors fuera del alcance de la normalización mecánica.
 ignore = [
     "E501",
+    "E402",
+    "F841",
+    "UP031",
+    "B007",
     "B008",
+    "B017",
+    "B023",
+    "B027",
+    "B905",
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -257,14 +271,32 @@ ignore = [
     "F841",
 ]
 
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+skip-magic-trailing-comma = false
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  Mypy
 # ══════════════════════════════════════════════════════════════════════════════
 
 [tool.mypy]
-python_version = "3.11"
+python_version = "3.12"
 
 strict = true
+follow_imports = "silent"
+files = [
+    "src/emoparse/version.py",
+    "src/emoparse/config",
+    "src/emoparse/core/text.py",
+    "src/emoparse/core/grammar.py",
+    "src/emoparse/core/backend/exceptions.py",
+    "src/emoparse/core/backend/retry.py",
+    "src/emoparse/domain/validators/base.py",
+    "src/emoparse/genres/base.py",
+    "src/emoparse/genres/presentation.py",
+]
 
 warn_unused_ignores = true
 warn_return_any = true
@@ -273,7 +305,22 @@ plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
 module = [
+    "altair.*",
+    "atproto.*",
+    "bs4.*",
+    "diskcache.*",
+    "duckdb.*",
+    "emoji.*",
     "llama_cpp.*",
     "loguru.*",
+    "networkx.*",
+    "openai.*",
+    "plotly.*",
+    "scipy.*",
+    "selenium.*",
+    "sentence_transformers.*",
+    "spacy.*",
+    "streamlit.*",
+    "webdriver_manager.*",
 ]
 ignore_missing_imports = true
