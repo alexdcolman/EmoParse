@@ -98,6 +98,12 @@ from emoparse.storage.simulacros import (
     _resolve_marca_canonicos,
     _unpack_json_dict,
 )
+from emoparse.storage.simulacros import (
+    get_emociones as get_emociones,
+)
+from emoparse.storage.simulacros import (
+    get_emociones_enriched as get_emociones_enriched,
+)
 
 #: Re-export: el estado por stage lo calcula `pipeline.status`, que es la
 #: fuente única del criterio de conteo (la comparte el subcomando `status`).

@@ -33,9 +33,18 @@ El formato sigue los principios de Keep a Changelog y el proyecto usa versionado
 - `FakeBackend`, fábricas derivadas de schemas y fixtures aisladas para pruebas sin GPU ni red.
 - Contratos automatizados para CLI, DAG, gramática estructurada, persistencia, exportaciones y
   documentación generada.
+- Integración continua con Ruff, mypy, contratos en Python 3.11/3.12, documentación generada y
+  construcción del wheel.
+- Línea de base progresiva de lint y tipado: Ruff bloquea errores de sintaxis, imports y reglas
+  seguras; mypy estricto cubre una frontera explícita de archivos ya limpios y se ampliará por módulos.
+- `.git-blame-ignore-revs` para excluir del análisis de autoría el formateo mecánico inicial.
 
 ### Corregido
 
+- Los reexports públicos `get_emociones` y `get_emociones_enriched` de la capa del dashboard se declaran explícitamente para que Ruff no los elimine como imports sin uso.
+- La configuración inicial de lint ya no trata sugerencias de simplificación como errores de CI.
+- El gate inicial de mypy usa Python 3.12 y una frontera explícita de archivos ya limpios; la deuda
+  detectada en schemas, validators y backends queda registrada para adopción gradual.
 - La importación general del CLI ya no requiere `beautifulsoup4` ni `lxml` hasta que se utiliza el
   scraper de Casa Rosada.
 - Los errores de apertura o commit de una transacción SQLite ya no pueden quedar ocultos por un

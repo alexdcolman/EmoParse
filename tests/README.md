@@ -27,6 +27,11 @@ reformularse como propiedad estable o eliminarse.
 ## Comandos
 
 ```bash
+# Calidad estática
+ruff check src tests scripts
+ruff format --check src tests scripts
+mypy  # usa la frontera declarada en tool.mypy.files
+
 # Contratos obligatorios
 python -m pytest tests/contrato -q
 
@@ -43,3 +48,8 @@ python -m pytest --collect-only -q
 La integración estructurada con un modelo real se documenta en
 `tests/integracion_llm/README.md`. Solo se ejecuta cuando se definen explícitamente la configuración
 y el alias del modelo.
+
+## Integración continua
+
+GitHub Actions ejecuta los contratos en Python 3.11 y 3.12. El andamio corre con resultado
+informativo y no bloquea. Las pruebas LLM, el scraping real y la GPU quedan fuera del workflow.
