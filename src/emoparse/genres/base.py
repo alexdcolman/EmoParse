@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Callable, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 #: Unidad de chunking que el género quiere consumir.
@@ -30,6 +30,11 @@ StageName = Literal[
     "metadata",
     "enunciation",
     "technoparse",
+    "reframing",
+    "emoji_affect",
+    "hashtag_semiotics",
+    "vision_describe",
+    "tecno_usage",
     "actors",
     "emotions",
     "emotions_pass2",
@@ -44,9 +49,57 @@ StageName = Literal[
 ]
 
 
+class GenreContextBlock(BaseModel):
+    """Bloque de metadata de género que puede llegar a los prompts.
+
+    El género declara qué campos del modelo de metadata componen el bloque y
+    cuánto contexto puede consumir cada stage. El render y el recorte son
+    genéricos: sumar un género nuevo no requiere modificar agentes ni stages.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: str = Field(
+        description="Identificador estable del bloque, en snake_case.",
+        pattern=r"^[a-z][a-z0-9_]*$",
+    )
+    title: str = Field(
+        description="Título breve y legible que encabeza el bloque.",
+        min_length=1,
+    )
+    fields: tuple[str, ...] = Field(
+        description="Campos del input_metadata_model incluidos, en orden.",
+        min_length=1,
+    )
+    stage_token_budgets: dict[StageName, int] = Field(
+        description="Presupuesto aproximado de tokens por stage consumidora.",
+        min_length=1,
+    )
+
+    @model_validator(mode="after")
+    def validate_declaration(self) -> "GenreContextBlock":
+        """Comprueba unicidad de campos y presupuestos positivos."""
+        if len(set(self.fields)) != len(self.fields):
+            raise ValueError(f"El bloque '{self.name}' contiene campos repetidos")
+        invalid = {
+            stage: budget
+            for stage, budget in self.stage_token_budgets.items()
+            if budget < 1
+        }
+        if invalid:
+            raise ValueError(
+                f"El bloque '{self.name}' tiene presupuestos inválidos: {invalid}"
+            )
+        return self
+
+
 class Genre(BaseModel):
     """Descriptor declarativo de un género de discurso."""
-    model_config = ConfigDict(extra="forbid", frozen=True)
+    model_config = ConfigDict(
+        extra="forbid",
+        frozen=True,
+        arbitrary_types_allowed=True,
+    )
 
     genre_id: str = Field(
         description="Identificador único, snake_case. Se usa en CLI "
@@ -55,6 +108,27 @@ class Genre(BaseModel):
     )
     display_name: str = Field(
         description="Nombre legible (aparece en logs y en stats).",
+    )
+
+    # ── Metadata propia del input ────────────────────────────────────────────
+    input_metadata_model: type[BaseModel] | None = Field(
+        default=None,
+        exclude=True,
+        description="Modelo Pydantic que valida la metadata propia del género "
+                    "en el borde de ingesta. Se excluye de model_dump porque "
+                    "es una clase de runtime, no configuración serializable.",
+    )
+    input_metadata_display: dict[str, str] = Field(
+        default_factory=dict,
+        description="Etiquetas legibles para los campos declarados por "
+                    "input_metadata_model. Permiten que interfaces y exports "
+                    "los presenten sin ramas específicas por género.",
+    )
+    context_blocks: tuple[GenreContextBlock, ...] = Field(
+        default=(),
+        description="Bloques de contexto construidos desde la metadata del "
+                    "input. Cada bloque declara sus campos y el presupuesto "
+                    "por stage; el pipeline los renderiza sin ramas por género.",
     )
 
     # ── Unidad de chunking ───────────────────────────────────────────────────
@@ -227,6 +301,44 @@ class Genre(BaseModel):
                     "sin repetir las comunes. Si el archivo no existe, la "
                     "stage corre solo con las base.",
     )
+
+    @model_validator(mode="after")
+    def validate_input_metadata_declaration(self) -> "Genre":
+        """Comprueba que las etiquetas refieran a campos del modelo tipado."""
+        if self.input_metadata_model is None:
+            if self.input_metadata_display or self.context_blocks:
+                raise ValueError(
+                    "input_metadata_display y context_blocks requieren "
+                    "input_metadata_model"
+                )
+            return self
+
+        declared = set(self.input_metadata_model.model_fields)
+        unknown = set(self.input_metadata_display) - declared
+        if unknown:
+            raise ValueError(
+                "input_metadata_display contiene campos no declarados: "
+                f"{sorted(unknown)}"
+            )
+
+        block_names = [block.name for block in self.context_blocks]
+        if len(set(block_names)) != len(block_names):
+            raise ValueError("context_blocks contiene nombres repetidos")
+
+        for block in self.context_blocks:
+            undeclared = set(block.fields) - declared
+            if undeclared:
+                raise ValueError(
+                    f"El bloque '{block.name}' usa campos no declarados: "
+                    f"{sorted(undeclared)}"
+                )
+            without_label = set(block.fields) - set(self.input_metadata_display)
+            if without_label:
+                raise ValueError(
+                    f"El bloque '{block.name}' usa campos sin etiqueta en "
+                    f"input_metadata_display: {sorted(without_label)}"
+                )
+        return self
 
     # ── Helpers de resolución de roles ───────────────────────────────────────
     def roles_para_tipo(self, tipo_discurso: str | None) -> tuple[str, ...]:

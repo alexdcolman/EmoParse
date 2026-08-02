@@ -110,6 +110,8 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         return prompts.render_system(
             heuristicas=self._heuristicas,
             colectivos=self._colectivos_str or None,
+            reglas_enunciador=_reglas_enunciador_genero(self._genre),
+            reglas_auditorio=_reglas_auditorio_genero(self._genre),
             template=template,
         )
 
@@ -130,6 +132,7 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
             adjuntos=_opt_cell(row, "adjuntos") or None,
             roles_block=roles_block or None,
             contexto_hilo=_opt_cell(row, "contexto_hilo") or None,
+            contexto_genero=_opt_cell(row, "contexto_genero") or None,
         )
 
     def _map_to_columns(
@@ -313,6 +316,7 @@ class EnunciatorIdAgent(BaseAgent[EnunciadorSchema]):
             codigo=str(row["codigo"]),
             resumen=_resolve_resumen(row),
             fragmentos=_extract_fragments(row),
+            contexto_genero=_opt_cell(row, "contexto_genero") or None,
         )
 
     def _map_to_columns(
@@ -324,6 +328,27 @@ class EnunciatorIdAgent(BaseAgent[EnunciadorSchema]):
             "enunciador_fijado": parsed.actor,
             "enunciador_fijado_justificacion": parsed.justificacion,
         }
+
+
+def _reglas_enunciador_genero(genre: Genre | None) -> str | None:
+    """Reglas compuestas desde el descriptor, sin seleccionar por genre_id."""
+    if genre is None or not genre.enunciador_from_handle:
+        return None
+    return (
+        "- El enunciador viene ya identificado en el mensaje del usuario. "
+        "Devolvelo exactamente como aparece en `enunciador`, sin "
+        "reidentificarlo ni reformularlo."
+    )
+
+
+def _reglas_auditorio_genero(genre: Genre | None) -> str | None:
+    """Reglas de auditorio derivadas de su modo de resolución declarado."""
+    if genre is None or not genre.auditorio_predeterminado:
+        return None
+    return (
+        "- El auditorio se completa de forma determinista desde el "
+        "dispositivo. No lo infieras: devolvé una lista vacía en `auditorio`."
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════

@@ -95,14 +95,25 @@ class Database:
     def transaction(self) -> Iterator[sqlite3.Cursor]:
         """Context manager para transacciones explícitas con BEGIN IMMEDIATE."""
         conn = self._get_connection()
+        cur: sqlite3.Cursor | None = None
         try:
             conn.execute("BEGIN IMMEDIATE")
             cur = conn.cursor()
             yield cur
             conn.execute("COMMIT")
         except Exception:
-            conn.execute("ROLLBACK")
+            if conn.in_transaction:
+                try:
+                    conn.execute("ROLLBACK")
+                except sqlite3.Error as rollback_error:
+                    logger.warning(
+                        "[Database] Falló el rollback posterior a un error: {}",
+                        rollback_error,
+                    )
             raise
+        finally:
+            if cur is not None:
+                cur.close()
 
     # ── Operaciones de schema ───────────────────────────────────────────────
 

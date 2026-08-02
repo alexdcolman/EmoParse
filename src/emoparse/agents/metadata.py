@@ -72,8 +72,9 @@ class MetadataAgent(BaseAgent[MetadatosSchema]):
             retry_config: Política opcional de reintentos.
             genre: Configuración opcional de género discursivo. Si declara
                 `tipos_discurso`, restringe el schema de `tipo_discurso` a
-                ese vocabulario cerrado y puede sustituir el template del
-                system prompt vía `prompt_overrides`.
+                ese vocabulario cerrado. Un reemplazo completo del template
+                queda reservado para cambios excepcionales de organización o
+                contrato.
         """
         # Debe inicializarse antes de super().__init__ porque la base
         # construye el system prompt durante el init.
@@ -124,6 +125,7 @@ class MetadataAgent(BaseAgent[MetadatosSchema]):
             bio=_opt(row, "autor_bio"),
             adjuntos=_opt(row, "adjuntos"),
             contexto_hilo=_opt(row, "contexto_hilo"),
+            contexto_genero=_opt(row, "contexto_genero"),
         )
 
     def _map_to_columns(

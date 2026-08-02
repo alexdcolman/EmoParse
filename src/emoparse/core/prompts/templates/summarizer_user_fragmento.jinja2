@@ -1,4 +1,8 @@
 Resumí el siguiente fragmento en 2-3 oraciones.
 
-FRAGMENTO:
+{% if contexto_genero %}CONTEXTO DE GÉNERO (sitúa la lectura; no agregues al resumen datos que el
+fragmento no sostenga):
+{{ contexto_genero }}
+
+{% endif %}FRAGMENTO:
 {{ fragmento }}

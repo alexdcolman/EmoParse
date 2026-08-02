@@ -41,7 +41,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--source",
         required=True,
         choices=sorted(SOURCES.keys()),
-        help="Fuente a scrapear (ej. casarosada).",
+        help="Fuente registrada a scrapear.",
     )
     p.add_argument(
         "--output",

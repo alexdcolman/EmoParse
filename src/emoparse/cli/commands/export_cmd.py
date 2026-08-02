@@ -35,9 +35,10 @@ def handle(args: argparse.Namespace) -> int:
         return 1
 
     print(f"Export completado → {output_dir.resolve()}")
-    print(f"  discursos.csv : {counts['discursos']} filas")
-    print(f"  frases.csv    : {counts['frases']} filas")
-    print(f"  emociones.csv : {counts['emociones']} filas")
+    print(f"  discursos.csv       : {counts['discursos']} filas")
+    print(f"  metadata_genero.csv : {counts['metadata_genero']} filas")
+    print(f"  frases.csv          : {counts['frases']} filas")
+    print(f"  emociones.csv       : {counts['emociones']} filas")
 
     return 0
 
@@ -46,12 +47,16 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     """Registra `export` como subcomando en el CLI principal."""
     p = subparsers.add_parser(
         "export",
-        help="Exporta los resultados del run a CSVs (discursos, frases, emociones).",
+        help=(
+            "Exporta los resultados del run a CSVs, incluida la metadata "
+            "de género declarada."
+        ),
         description=(
-            "Genera tres CSVs en el directorio de salida: discursos.csv, "
-            "frases.csv, emociones.csv. Los payloads de stages a nivel "
-            "discurso se flatten a columnas; los de frases se preservan "
-            "como JSON strings."
+            "Genera cuatro CSVs en el directorio de salida: discursos.csv, "
+            "metadata_genero.csv, frases.csv y emociones.csv. La metadata "
+            "propia del género se exporta en formato largo, con etiquetas y "
+            "presencia por campo. Los payloads de stages a nivel discurso se "
+            "flatten a columnas; los de frases se preservan como JSON strings."
         ),
     )
     p.add_argument("--db", required=True, help="Path al .sqlite del run.")

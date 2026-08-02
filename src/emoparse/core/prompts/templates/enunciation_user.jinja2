@@ -14,6 +14,11 @@ CONTEXTO DEL HILO (conversación a la que pertenece el post; solo para
 desambiguar la destinación, NO es fuente de enunciatarios):
 {{ contexto_hilo }}
 {% endif %}
+{% if contexto_genero %}
+CONTEXTO DE GÉNERO (sitúa la escena editorial o institucional; sirve para
+desambiguar, pero no crea enunciatarios ni colectivos sin evidencia textual):
+{{ contexto_genero }}
+{% endif %}
 {% if bio %}
 BIO DE LA CUENTA AUTORA (contexto de quién enuncia; no implica colectivos
 de identificación ni roles por sí sola):

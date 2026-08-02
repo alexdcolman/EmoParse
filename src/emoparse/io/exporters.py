@@ -14,6 +14,11 @@ from typing import Any
 from loguru import logger
 
 from emoparse.core.schemas import semiosis_from_config
+from emoparse.genres.presentation import (
+    GenrePresentation,
+    presentation_from_config,
+    presented_metadata,
+)
 from emoparse.storage.db import Database
 from emoparse.storage.referencia import (
     marca_canonicos_index,
@@ -30,6 +35,28 @@ def _json_or_empty(raw: str | None) -> Any:
         return json.loads(raw)
     except (json.JSONDecodeError, TypeError):
         return None
+
+
+def _csv_value(value: Any) -> str:
+    """Serializa un valor de input sin depender de ``repr`` de Python."""
+    if value is None:
+        return ""
+    if isinstance(value, tuple):
+        value = list(value)
+    elif isinstance(value, set):
+        value = sorted(value, key=str)
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, default=str)
+    return str(value)
+
+
+def _run_genre_presentation(db: Database) -> GenrePresentation | None:
+    """Lee el snapshot de presentación persistido con el run."""
+    if not db.table_exists("runs"):
+        return None
+    row = db.execute("SELECT config FROM runs LIMIT 1").fetchone()
+    config = _json_or_empty(row["config"]) if row is not None else None
+    return presentation_from_config(config)
 
 
 def _flat(value: Any, prefix: str, result: dict[str, str]) -> None:
@@ -120,7 +147,7 @@ def export_discursos_csv(db: Database, output_path: Path) -> int:
         record["codigo"] = str(row["codigo"] or "")
         for k, v in input_data.items():
             if k not in _DISCURSO_INPUT_COLS:
-                record[f"input__{k}"] = str(v) if v is not None else ""
+                record[f"input__{k}"] = _csv_value(v)
 
         for stage in _DISCURSO_STAGES:
             payload = _json_or_empty(row[f"{stage}_payload"])
@@ -145,6 +172,67 @@ def export_discursos_csv(db: Database, output_path: Path) -> int:
             writer.writerow({k: rec.get(k, "") for k in all_keys})
 
     logger.info(f"[export_discursos_csv] {len(records)} filas → {output_path}")
+    return len(records)
+
+
+# ── Export metadata de género ─────────────────────────────────────────────────
+
+_METADATA_GENERO_FIELDS = (
+    "codigo",
+    "genero",
+    "genero_nombre",
+    "campo",
+    "etiqueta",
+    "valor",
+    "presente",
+)
+
+
+def export_metadata_genero_csv(db: Database, output_path: Path) -> int:
+    """Exporta la metadata declarada por el género en formato largo.
+
+    Una fila representa un campo de un discurso. Se incluyen también los
+    valores ausentes para que la cobertura pueda medirse sin conocer de
+    antemano el schema de cada género.
+    """
+    presentation = _run_genre_presentation(db)
+    rows = db.execute(
+        "SELECT codigo, input FROM discursos ORDER BY codigo"
+    ).fetchall()
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    records: list[dict[str, str]] = []
+    if presentation is not None:
+        for row in rows:
+            payload = _json_or_empty(row["input"]) or {}
+            for item in presented_metadata(
+                presentation, payload, include_missing=True
+            ):
+                records.append(
+                    {
+                        "codigo": str(row["codigo"] or ""),
+                        "genero": presentation.genre_id,
+                        "genero_nombre": presentation.display_name,
+                        "campo": item["field"],
+                        "etiqueta": item["label"],
+                        "valor": _csv_value(item["value"]),
+                        "presente": "1" if item["present"] else "0",
+                    }
+                )
+
+    with output_path.open("w", newline="", encoding="utf-8") as file:
+        writer = csv.DictWriter(file, fieldnames=_METADATA_GENERO_FIELDS)
+        writer.writeheader()
+        writer.writerows(records)
+
+    if presentation is None:
+        logger.info(
+            "[export_metadata_genero_csv] El run no contiene una declaración "
+            "de presentación de género; se escribió un archivo sin filas."
+        )
+    logger.info(
+        f"[export_metadata_genero_csv] {len(records)} filas → {output_path}"
+    )
     return len(records)
 
 
@@ -365,7 +453,10 @@ def export_full_run(db: Database, output_dir: Path) -> dict[str, int]:
     """Corre los exporters y devuelve conteos."""
     output_dir.mkdir(parents=True, exist_ok=True)
     return {
-        "discursos":    export_discursos_csv(db, output_dir / "discursos.csv"),
-        "frases":       export_frases_csv(db, output_dir / "frases.csv"),
-        "emociones":    export_emociones_csv(db, output_dir / "emociones.csv"),
+        "discursos": export_discursos_csv(db, output_dir / "discursos.csv"),
+        "metadata_genero": export_metadata_genero_csv(
+            db, output_dir / "metadata_genero.csv"
+        ),
+        "frases": export_frases_csv(db, output_dir / "frases.csv"),
+        "emociones": export_emociones_csv(db, output_dir / "emociones.csv"),
     }

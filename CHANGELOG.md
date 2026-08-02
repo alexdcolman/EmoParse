@@ -13,18 +13,75 @@ El formato sigue los principios de Keep a Changelog y el proyecto usa versionado
 - `CHANGELOG.md` como registro público acumulativo.
 - Guía interna de prueba piloto hacia v1.0.0.
 - Estrategia documental y de pruebas para futuras versiones.
+- Pruebas de regresión para transacciones SQLite, carga opcional del scraper y aliases de
+  compatibilidad.
+- Fuente `pagina12` para construir localmente corpus de artículos recientes desde el sitemap del
+  medio, conservando metadata editorial.
+- Género built-in `articulo_periodistico`, con chunking por párrafo, roles enunciativos propios y
+  tipos periodísticos cerrados.
+- Declaración y validación Pydantic de metadata de input específica por género.
+- Bloques declarativos de contexto de género, con campos etiquetados y presupuesto aproximado por stage.
+- Composición genérica de metadata de género en `summarizer`, `metadata`, `enunciation` y `emotions`.
+- Interfaz común `ContextBlockProvider` para contexto dinámico de hilo, tecnolingüísticos, media,
+  reframing y emociones materializadas, con alcance y presupuesto declarados.
+- Guía pública de puntos de extensión para géneros y metadata propia.
+- Snapshot de presentación del género persistido con cada run, independiente de la disponibilidad
+  posterior del plugin.
+- Presentación genérica de metadata de input en las tabs Revisión y Tabla.
+- `metadata_genero.csv` en formato largo, con presencia explícita por campo para medir cobertura.
+- Suite estable separada en contratos permanentes, pruebas de andamio e integraciones LLM opt-in.
+- `FakeBackend`, fábricas derivadas de schemas y fixtures aisladas para pruebas sin GPU ni red.
+- Contratos automatizados para CLI, DAG, gramática estructurada, persistencia, exportaciones y
+  documentación generada.
+
+### Corregido
+
+- La importación general del CLI ya no requiere `beautifulsoup4` ni `lxml` hasta que se utiliza el
+  scraper de Casa Rosada.
+- Los errores de apertura o commit de una transacción SQLite ya no pueden quedar ocultos por un
+  error secundario de rollback; los cursores transaccionales se cierran explícitamente.
+- `modalidad` vuelve a ser opt-in en el pipeline default, en acuerdo con su contrato documentado y
+  con el carácter opcional del extra `nlp`.
+- Las tablas de la referencia HTML del CLI aprovechan el margen derecho disponible y mantienen
+  legibles las columnas de opción, valor y default.
+- El adapter de Página/12 ya no termina silenciosamente con cero resultados cuando el sitemap no
+  expone URLs de artículos: utiliza como respaldo los feeds RSS oficiales y admite las URLs
+  históricas basadas en identificador numérico.
+- El cuerpo de las notas de Página/12 se recupera desde `Fusion.globalContent` cuando Arc XP no lo
+  renderiza como párrafos en el HTML inicial.
 
 ### Cambiado
 
 - Reorganización de la documentación interna de continuidad bajo `.dev/`.
 - Separación entre pendientes activos, implementaciones realizadas y documentación histórica.
 - Adaptación de las instrucciones de desarrollo de `.assistant/` a EmoParse.
+- `emoparse.core.backend.grammar` delega en la implementación canónica de
+  `emoparse.core.grammar`.
+- Los módulos históricos de `emoparse.scraping` delegan en `emoparse.acquisition` y conservan sus
+  imports compatibles.
+- El system prompt base de `metadata` es neutral respecto del campo discursivo y utiliza el
+  vocabulario cerrado declarado por el género cuando corresponde.
+- `tuit` compone `metadata` y `enunciation` sobre los templates base; las reglas específicas se
+  aportan mediante heurísticas y propiedades declarativas del género, sin duplicar el system
+  prompt completo.
+- Los valores estructurados de metadata de input se serializan como JSON válido en
+  `discursos.csv` y en las descargas de la tab Tabla.
+- La reanudación de un run sincroniza únicamente la sección reservada `_emoparse` de su config y
+  conserva el config original del usuario.
 
 ### Documentación
 
-- Registro explícito de que el sitio HTML de v0.6.4 debe sincronizarse antes de publicar la próxima
-  versión minor.
+- Sitio HTML sincronizado con v0.6.5: pipeline completo, etapas digitales, backends, selección
+  parcial y fuentes de adquisición vigentes.
+- Ayuda de `run --stages` derivada del DAG canónico y referencia de comandos actualizada.
+- Nuevo diagrama de dependencias para las veinte stages actuales.
 - Incorporación de la actualización de tutoriales como requisito de cada versión minor o major.
+- Auditorías técnica, de estilo y documental de la línea de base v0.6.5.
+- Clasificación de la suite histórica para recuperación selectiva, sin usar contratos retirados como
+  compuerta de aceptación.
+- Validación local del corpus piloto: 24 artículos de Página/12 extraídos e ingeridos sin fallos.
+- Registro explícito de la auditoría futura de campos editoriales por sitio, incluida la cobertura
+  nula de `volanta` en la muestra piloto, antes de generalizar el scraper periodístico.
 
 ## [v0.6.5] — línea de base
 

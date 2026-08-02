@@ -8,11 +8,13 @@ from __future__ import annotations
 
 from emoparse.acquisition.base import SourceAdapter
 from emoparse.acquisition.sources.casarosada import CasaRosadaAdapter
+from emoparse.acquisition.sources.pagina12 import Pagina12Adapter
 
 
 #: Registro de adapters por source_id.
 SOURCES: dict[str, type[SourceAdapter]] = {
     CasaRosadaAdapter.source_id: CasaRosadaAdapter,
+    Pagina12Adapter.source_id: Pagina12Adapter,
 }
 
 

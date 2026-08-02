@@ -1,1 +1,285 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1140" viewBox="0 0 1000 1140"><defs><marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9" fill="none" stroke="#55584f" stroke-width="1.8"/></marker><marker id="af" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9" fill="none" stroke="#5b7181" stroke-width="1.8"/></marker></defs><rect width="1000" height="1140" fill="#fcfcfa"/><text x="40.0" y="46.0" font-family="IBM Plex Mono, serif" font-size="13" fill="#2e4551" text-anchor="start" letter-spacing="0.12em">FIGURA 3</text><text x="40.0" y="80.0" font-family="Spectral SemiBold, serif" font-size="25" fill="#191a18" text-anchor="start">Dependencias entre etapas</text><text x="40.0" y="106.0" font-family="IBM Plex Sans Condensed, serif" font-size="16" fill="#55584f" text-anchor="start">Qué tiene que estar resuelto antes de que cada etapa pueda correr.</text><line x1="40.0" y1="126.0" x2="960.0" y2="126.0" stroke="#191a18" stroke-width="1.8"/><path d="M500,218.0 L500,246.0" fill="none" stroke="#55584f" stroke-width="1.4"/><path d="M496.36,237.81 L500.00,246.00 L503.64,237.81" fill="none" stroke="#55584f" stroke-width="1.638" stroke-linecap="round" stroke-linejoin="round"/><path d="M500,326.0 L500,358.0" fill="none" stroke="#55584f" stroke-width="1.4"/><path d="M496.36,349.81 L500.00,358.00 L503.64,349.81" fill="none" stroke="#55584f" stroke-width="1.638" stroke-linecap="round" stroke-linejoin="round"/><path d="M135,218.0 C135,400 135,400 396.0,400" fill="none" stroke="#55584f" stroke-width="1.4"/><path d="M387.81,403.64 L396.00,400.00 L387.81,396.36" fill="none" stroke="#55584f" stroke-width="1.638" stroke-linecap="round" stroke-linejoin="round"/><path d="M135,326.0 C135,400 135,400 396.0,400" fill="none" stroke="#55584f" stroke-width="1.4"/><path d="M387.81,403.64 L396.00,400.00 L387.81,396.36" fill="none" stroke="#55584f" stroke-width="1.638" stroke-linecap="round" stroke-linejoin="round"/><path d="M600.0,400 L761.0,400" fill="none" stroke="#5b7181" stroke-width="1.4" stroke-dasharray="5 4"/><path d="M752.81,403.64 L761.00,400.00 L752.81,396.36" fill="none" stroke="#5b7181" stroke-width="1.638" stroke-linecap="round" stroke-linejoin="round"/><path d="M500,438.0 L500,470.0" fill="none" stroke="#55584f" stroke-width="1.4"/><path d="M496.36,461.81 L500.00,470.00 L503.64,461.81" fill="none" stroke="#55584f" stroke-width="1.638" stroke-linecap="round" stroke-linejoin="round"/><path d="M400.0,512 L239.0,512" fill="none" stroke="#5b7181" stroke-width="1.4" stroke-dasharray="5 4"/><path d="M247.19,508.36 L239.00,512.00 L247.19,515.64" fill="none" stroke="#5b7181" stroke-width="1.638" stroke-linecap="round" stroke-linejoin="round"/><path d="M600.0,512 L761.0,512" fill="none" stroke="#5b7181" stroke-width="1.4" stroke-dasharray="5 4"/><path d="M752.81,515.64 L761.00,512.00 L752.81,508.36" fill="none" stroke="#5b7181" stroke-width="1.638" stroke-linecap="round" stroke-linejoin="round"/><path d="M865,550.0 L865,582.0" fill="none" stroke="#5b7181" stroke-width="1.4" stroke-dasharray="5 4"/><path d="M861.36,573.81 L865.00,582.00 L868.64,573.81" fill="none" stroke="#5b7181" stroke-width="1.638" stroke-linecap="round" stroke-linejoin="round"/><path d="M500,550.0 L500,582.0" fill="none" stroke="#55584f" stroke-width="1.4"/><path d="M496.36,573.81 L500.00,582.00 L503.64,573.81" fill="none" stroke="#55584f" stroke-width="1.638" stroke-linecap="round" stroke-linejoin="round"/><path d="M500,662.0 L500,694.0" fill="none" stroke="#55584f" stroke-width="1.4"/><path d="M496.36,685.81 L500.00,694.00 L503.64,685.81" fill="none" stroke="#55584f" stroke-width="1.638" stroke-linecap="round" stroke-linejoin="round"/><path d="M500,774.0 L500,806.0" fill="none" stroke="#5b7181" stroke-width="1.4" stroke-dasharray="5 4"/><path d="M496.36,797.81 L500.00,806.00 L503.64,797.81" fill="none" stroke="#5b7181" stroke-width="1.638" stroke-linecap="round" stroke-linejoin="round"/><path d="M500,774.0 C500,848 500,848 761.0,848" fill="none" stroke="#5b7181" stroke-width="1.4" stroke-dasharray="5 4"/><path d="M752.81,851.64 L761.00,848.00 L752.81,844.36" fill="none" stroke="#5b7181" stroke-width="1.638" stroke-linecap="round" stroke-linejoin="round"/><rect x="40.0" y="147.0" width="190.0" height="66.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3"/><line x1="40.0" y1="147.0" x2="230.0" y2="147.0" stroke="#2e4551" stroke-width="3"/><text x="135.0" y="179.0" font-family="IBM Plex Mono, serif" font-size="14.5" fill="#191a18" text-anchor="middle">summarizer</text><text x="135.0" y="200.0" font-family="IBM Plex Sans Condensed, serif" font-size="14" fill="#7e8179" text-anchor="middle">discurso</text><rect x="405.0" y="147.0" width="190.0" height="66.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3"/><line x1="405.0" y1="147.0" x2="595.0" y2="147.0" stroke="#2e4551" stroke-width="3"/><text x="500.0" y="179.0" font-family="IBM Plex Mono, serif" font-size="14.5" fill="#191a18" text-anchor="middle">metadata</text><text x="500.0" y="200.0" font-family="IBM Plex Sans Condensed, serif" font-size="14" fill="#7e8179" text-anchor="middle">discurso</text><rect x="405.0" y="255.0" width="190.0" height="66.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3"/><line x1="405.0" y1="255.0" x2="595.0" y2="255.0" stroke="#2e4551" stroke-width="3"/><text x="500.0" y="287.0" font-family="IBM Plex Mono, serif" font-size="14.5" fill="#191a18" text-anchor="middle">enunciation</text><text x="500.0" y="308.0" font-family="IBM Plex Sans Condensed, serif" font-size="14" fill="#7e8179" text-anchor="middle">discurso</text><rect x="40.0" y="255.0" width="190.0" height="66.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3"/><line x1="40.0" y1="255.0" x2="230.0" y2="255.0" stroke="#2e4551" stroke-width="3"/><text x="135.0" y="287.0" font-family="IBM Plex Mono, serif" font-size="14.5" fill="#191a18" text-anchor="middle">actors</text><text x="135.0" y="308.0" font-family="IBM Plex Sans Condensed, serif" font-size="14" fill="#7e8179" text-anchor="middle">unidad</text><rect x="405.0" y="367.0" width="190.0" height="66.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3"/><line x1="405.0" y1="367.0" x2="595.0" y2="367.0" stroke="#2e4551" stroke-width="3"/><text x="500.0" y="399.0" font-family="IBM Plex Mono, serif" font-size="14.5" fill="#191a18" text-anchor="middle">emotions</text><text x="500.0" y="420.0" font-family="IBM Plex Sans Condensed, serif" font-size="14" fill="#7e8179" text-anchor="middle">unidad</text><rect x="770.0" y="367.0" width="190.0" height="66.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3" stroke-dasharray="4 3"/><text x="865.0" y="399.0" font-family="IBM Plex Mono, serif" font-size="14.5" fill="#191a18" text-anchor="middle">emotions_pass2</text><text x="865.0" y="420.0" font-family="IBM Plex Sans Condensed, serif" font-size="14" fill="#7e8179" text-anchor="middle">unidad</text><rect x="405.0" y="479.0" width="190.0" height="66.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3"/><line x1="405.0" y1="479.0" x2="595.0" y2="479.0" stroke="#2e4551" stroke-width="3"/><text x="500.0" y="511.0" font-family="IBM Plex Mono, serif" font-size="14.5" fill="#191a18" text-anchor="middle">explode_emotions</text><text x="500.0" y="532.0" font-family="IBM Plex Sans Condensed, serif" font-size="14" fill="#7e8179" text-anchor="middle">emoción</text><rect x="40.0" y="479.0" width="190.0" height="66.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3" stroke-dasharray="4 3"/><text x="135.0" y="511.0" font-family="IBM Plex Mono, serif" font-size="14.5" fill="#191a18" text-anchor="middle">semas</text><text x="135.0" y="532.0" font-family="IBM Plex Sans Condensed, serif" font-size="14" fill="#7e8179" text-anchor="middle">referente</text><rect x="770.0" y="479.0" width="190.0" height="66.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3" stroke-dasharray="4 3"/><text x="865.0" y="511.0" font-family="IBM Plex Mono, serif" font-size="14.5" fill="#191a18" text-anchor="middle">deixis</text><text x="865.0" y="532.0" font-family="IBM Plex Sans Condensed, serif" font-size="14" fill="#7e8179" text-anchor="middle">marca</text><rect x="770.0" y="591.0" width="190.0" height="66.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3" stroke-dasharray="4 3"/><text x="865.0" y="623.0" font-family="IBM Plex Mono, serif" font-size="14.5" fill="#191a18" text-anchor="middle">modalidad</text><text x="865.0" y="644.0" font-family="IBM Plex Sans Condensed, serif" font-size="14" fill="#7e8179" text-anchor="middle">vínculo</text><rect x="405.0" y="591.0" width="190.0" height="66.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3"/><line x1="405.0" y1="591.0" x2="595.0" y2="591.0" stroke="#2e4551" stroke-width="3"/><text x="500.0" y="623.0" font-family="IBM Plex Mono, serif" font-size="14.5" fill="#191a18" text-anchor="middle">normalize_emotions</text><text x="500.0" y="644.0" font-family="IBM Plex Sans Condensed, serif" font-size="14" fill="#7e8179" text-anchor="middle">emoción</text><rect x="405.0" y="703.0" width="190.0" height="66.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3"/><line x1="405.0" y1="703.0" x2="595.0" y2="703.0" stroke="#2e4551" stroke-width="3"/><text x="500.0" y="735.0" font-family="IBM Plex Mono, serif" font-size="14.5" fill="#191a18" text-anchor="middle">characterizer</text><text x="500.0" y="756.0" font-family="IBM Plex Sans Condensed, serif" font-size="14" fill="#7e8179" text-anchor="middle">emoción</text><rect x="405.0" y="815.0" width="190.0" height="66.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3" stroke-dasharray="4 3"/><text x="500.0" y="847.0" font-family="IBM Plex Mono, serif" font-size="14.5" fill="#191a18" text-anchor="middle">actants</text><text x="500.0" y="868.0" font-family="IBM Plex Sans Condensed, serif" font-size="14" fill="#7e8179" text-anchor="middle">emoción</text><rect x="770.0" y="815.0" width="190.0" height="66.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3" stroke-dasharray="4 3"/><text x="865.0" y="847.0" font-family="IBM Plex Mono, serif" font-size="14.5" fill="#191a18" text-anchor="middle">judge</text><text x="865.0" y="868.0" font-family="IBM Plex Sans Condensed, serif" font-size="14" fill="#7e8179" text-anchor="middle">emoción</text><line x1="40.0" y1="938.0" x2="960.0" y2="938.0" stroke="#c9ccc5" stroke-width="1.3"/><rect x="40.0" y="955.0" width="36.0" height="22.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3"/><line x1="40.0" y1="955.0" x2="76.0" y2="955.0" stroke="#2e4551" stroke-width="3"/><text x="88.0" y="972.0" font-family="IBM Plex Sans Condensed, serif" font-size="15.5" fill="#55584f" text-anchor="start">activa por defecto</text><rect x="300.0" y="955.0" width="36.0" height="22.0" fill="#fcfcfa" stroke="#c9ccc5" stroke-width="1.3" stroke-dasharray="4 3"/><text x="348.0" y="972.0" font-family="IBM Plex Sans Condensed, serif" font-size="15.5" fill="#55584f" text-anchor="start">opcional, se activa al pedirla</text><text x="40.0" y="1012.0" font-family="IBM Plex Sans Condensed, serif" font-size="15" fill="#7e8179" text-anchor="start">El nivel indica sobre qué trabaja cada etapa: el discurso completo, la unidad de lectura,</text><text x="40.0" y="1034.0" font-family="IBM Plex Sans Condensed, serif" font-size="15" fill="#7e8179" text-anchor="start">cada emoción ya detectada, o cada marca y referente del corpus.</text></svg>
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+ "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Generated by graphviz version 2.42.4 (0)
+ -->
+<!-- Title: EmoParseStages Pages: 1 -->
+<svg width="1226pt" height="809pt"
+ viewBox="0.00 0.00 1226.40 809.40" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+<g id="graph0" class="graph" transform="scale(1 1) rotate(0) translate(25.2 784.2)">
+<title>EmoParseStages</title>
+<polygon fill="#fcfcfa" stroke="transparent" points="-25.2,25.2 -25.2,-784.2 1201.2,-784.2 1201.2,25.2 -25.2,25.2"/>
+<text text-anchor="middle" x="257.5" y="-735.8" font-family="Spectral" font-size="24.00" fill="#191a18">Dependencias entre las etapas de EmoParse</text>
+<!-- summarizer&#45;&gt;metadata -->
+<g id="edge4" class="edge">
+<title>summarizer&#45;&gt;metadata</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M634,-679.72C634,-679.72 634,-647.25 634,-647.25"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="634,-640.05 637.24,-647.25 634.18,-643.65 634.18,-647.25 634,-647.25 633.83,-647.25 633.83,-643.65 630.76,-647.25 634,-640.05 634,-640.05"/>
+</g>
+<!-- metadata&#45;&gt;enunciation -->
+<g id="edge5" class="edge">
+<title>metadata&#45;&gt;enunciation</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M634,-594.72C634,-594.72 634,-562.25 634,-562.25"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="634,-555.05 637.24,-562.25 634.18,-558.65 634.18,-562.25 634,-562.25 633.83,-562.25 633.83,-558.65 630.76,-562.25 634,-555.05 634,-555.05"/>
+</g>
+<!-- enunciation&#45;&gt;emotions -->
+<g id="edge7" class="edge">
+<title>enunciation&#45;&gt;emotions</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M680,-509.72C680,-509.72 680,-477.25 680,-477.25"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="680,-470.05 683.24,-477.25 680.18,-473.65 680.18,-477.25 680,-477.25 679.83,-477.25 679.83,-473.65 676.76,-477.25 680,-470.05 680,-470.05"/>
+</g>
+<!-- enunciation&#45;&gt;actors -->
+<g id="edge6" class="edge">
+<title>enunciation&#45;&gt;actors</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M588,-509.72C588,-509.72 588,-477.25 588,-477.25"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="588,-470.05 591.24,-477.25 588.18,-473.65 588.18,-477.25 588,-477.25 587.83,-477.25 587.83,-473.65 584.76,-477.25 588,-470.05 588,-470.05"/>
+</g>
+<!-- emotions&#45;&gt;explode_emotions -->
+<g id="edge9" class="edge">
+<title>emotions&#45;&gt;explode_emotions</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M772,-424.72C772,-424.72 772,-392.25 772,-392.25"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="772,-385.05 775.24,-392.25 772.18,-388.65 772.18,-392.25 772,-392.25 771.83,-392.25 771.83,-388.65 768.76,-392.25 772,-385.05 772,-385.05"/>
+</g>
+<!-- emotions&#45;&gt;emotions_pass2 -->
+<g id="edge8" class="edge">
+<title>emotions&#45;&gt;emotions_pass2</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M680,-424.72C680,-424.72 680,-392.25 680,-392.25"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="680,-385.05 683.24,-392.25 680.18,-388.65 680.18,-392.25 680,-392.25 679.83,-392.25 679.83,-388.65 676.76,-392.25 680,-385.05 680,-385.05"/>
+</g>
+<!-- explode_emotions&#45;&gt;normalize_emotions -->
+<g id="edge12" class="edge">
+<title>explode_emotions&#45;&gt;normalize_emotions</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M790,-339.72C790,-339.72 790,-307.25 790,-307.25"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="790,-300.05 793.24,-307.25 790.18,-303.65 790.18,-307.25 790,-307.25 789.83,-307.25 789.83,-303.65 786.76,-307.25 790,-300.05 790,-300.05"/>
+</g>
+<!-- explode_emotions&#45;&gt;semas -->
+<g id="edge16" class="edge">
+<title>explode_emotions&#45;&gt;semas</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M900.06,-370C981.42,-370 1094,-370 1094,-370 1094,-370 1094,-307.57 1094,-307.57"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="1094,-300.37 1097.24,-307.57 1094.18,-303.97 1094.18,-307.57 1094,-307.57 1093.83,-307.57 1093.83,-303.97 1090.76,-307.57 1094,-300.37 1094,-300.37"/>
+</g>
+<!-- explode_emotions&#45;&gt;deixis -->
+<g id="edge10" class="edge">
+<title>explode_emotions&#45;&gt;deixis</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M754,-339.59C754,-332.26 754,-326 754,-326 754,-326 404,-326 404,-326 404,-326 404,-307.25 404,-307.25"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="404,-300.05 407.24,-307.25 404.18,-303.65 404.18,-307.25 404,-307.25 403.83,-307.25 403.83,-303.65 400.76,-307.25 404,-300.05 404,-300.05"/>
+</g>
+<!-- explode_emotions&#45;&gt;modalidad -->
+<g id="edge11" class="edge">
+<title>explode_emotions&#45;&gt;modalidad</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M772,-339.78C772,-326.77 772,-313 772,-313 772,-313 588,-313 588,-313 588,-313 588,-307.38 588,-307.38"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="588,-300.18 591.24,-307.38 588.18,-303.78 588.18,-307.38 588,-307.38 587.83,-307.38 587.83,-303.78 584.76,-307.38 588,-300.18 588,-300.18"/>
+</g>
+<!-- explode_emotions&#45;&gt;reframing -->
+<g id="edge18" class="edge">
+<title>explode_emotions&#45;&gt;reframing</title>
+<path fill="none" stroke="#5b7181" stroke-width="1.35" stroke-dasharray="5,2" d="M900.04,-355C949.11,-355 1002,-355 1002,-355 1002,-355 1002,-137.54 1002,-137.54"/>
+<polygon fill="#5b7181" stroke="#5b7181" stroke-width="1.35" points="1002,-130.34 1005.24,-137.54 1002.18,-133.94 1002.18,-137.54 1002,-137.54 1001.83,-137.54 1001.83,-133.94 998.76,-137.54 1002,-130.34 1002,-130.34"/>
+</g>
+<!-- explode_emotions&#45;&gt;actants -->
+<g id="edge15" class="edge">
+<title>explode_emotions&#45;&gt;actants</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M864,-339.72C864,-339.72 864,-307.25 864,-307.25"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="864,-300.05 867.24,-307.25 864.18,-303.65 864.18,-307.25 864,-307.25 863.83,-307.25 863.83,-303.65 860.76,-307.25 864,-300.05 864,-300.05"/>
+</g>
+<!-- normalize_emotions&#45;&gt;characterizer -->
+<g id="edge13" class="edge">
+<title>normalize_emotions&#45;&gt;characterizer</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M726,-254.59C726,-229.26 726,-192 726,-192 726,-192 820.76,-192 820.76,-192"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="827.96,-192 820.76,-195.24 824.36,-192.18 820.76,-192.18 820.76,-192 820.76,-191.83 824.36,-191.83 820.76,-188.76 827.96,-192 827.96,-192"/>
+</g>
+<!-- normalize_emotions&#45;&gt;actants -->
+<!-- characterizer&#45;&gt;reframing -->
+<g id="edge19" class="edge">
+<title>characterizer&#45;&gt;reframing</title>
+<path fill="none" stroke="#5b7181" stroke-width="1.35" stroke-dasharray="5,2" d="M966.5,-169.72C966.5,-169.72 966.5,-137.25 966.5,-137.25"/>
+<polygon fill="#5b7181" stroke="#5b7181" stroke-width="1.35" points="966.5,-130.05 969.74,-137.25 966.68,-133.65 966.68,-137.25 966.5,-137.25 966.33,-137.25 966.33,-133.65 963.26,-137.25 966.5,-130.05 966.5,-130.05"/>
+</g>
+<!-- characterizer&#45;&gt;judge -->
+<g id="edge14" class="edge">
+<title>characterizer&#45;&gt;judge</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M912.5,-169.93C912.5,-169.93 912.5,-52.37 912.5,-52.37"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="912.5,-45.17 915.74,-52.37 912.68,-48.77 912.68,-52.37 912.5,-52.37 912.33,-52.37 912.33,-48.77 909.26,-52.37 912.5,-45.17 912.5,-45.17"/>
+</g>
+<!-- technoparse&#45;&gt;emoji_affect -->
+<g id="edge1" class="edge">
+<title>technoparse&#45;&gt;emoji_affect</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M183.96,-702C134.89,-702 82,-702 82,-702 82,-702 82,-647.34 82,-647.34"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="82,-640.14 85.24,-647.34 82.18,-643.74 82.18,-647.34 82,-647.34 81.83,-647.34 81.83,-643.74 78.76,-647.34 82,-640.14 82,-640.14"/>
+</g>
+<!-- technoparse&#45;&gt;hashtag_semiotics -->
+<g id="edge2" class="edge">
+<title>technoparse&#45;&gt;hashtag_semiotics</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M266,-679.72C266,-679.72 266,-647.25 266,-647.25"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="266,-640.05 269.24,-647.25 266.18,-643.65 266.18,-647.25 266,-647.25 265.83,-647.25 265.83,-643.65 262.76,-647.25 266,-640.05 266,-640.05"/>
+</g>
+<!-- technoparse&#45;&gt;tecno_usage -->
+<g id="edge3" class="edge">
+<title>technoparse&#45;&gt;tecno_usage</title>
+<path fill="none" stroke="#55584f" stroke-width="1.35" d="M348.15,-695C354.2,-695 358,-695 358,-695 358,-695 358,-625 358,-625 358,-625 360.65,-625 360.65,-625"/>
+<polygon fill="#55584f" stroke="#55584f" stroke-width="1.35" points="367.85,-625 360.65,-628.24 364.25,-625.18 360.65,-625.18 360.65,-625 360.65,-624.83 364.25,-624.83 360.65,-621.76 367.85,-625 367.85,-625"/>
+</g>
+<!-- technoparse&#45;&gt;vision_describe -->
+<!-- emoji_affect&#45;&gt;hashtag_semiotics -->
+<!-- hashtag_semiotics&#45;&gt;tecno_usage -->
+<!-- tecno_usage&#45;&gt;metadata -->
+<!-- vision_describe&#45;&gt;summarizer -->
+<!-- actors&#45;&gt;emotions -->
+<g id="edge17" class="edge">
+<title>actors&#45;&gt;emotions</title>
+<path fill="none" stroke="#5b7181" stroke-width="1.35" stroke-dasharray="5,2" d="M624.04,-455C624.04,-455 636.75,-455 636.75,-455"/>
+<polygon fill="#5b7181" stroke="#5b7181" stroke-width="1.35" points="643.95,-455 636.75,-458.24 640.35,-455.18 636.75,-455.18 636.75,-455 636.75,-454.83 640.35,-454.83 636.75,-451.76 643.95,-455 643.95,-455"/>
+</g>
+<!-- actors&#45;&gt;emotions -->
+<!-- emotions_pass2&#45;&gt;explode_emotions -->
+<!-- deixis&#45;&gt;modalidad -->
+<!-- modalidad&#45;&gt;normalize_emotions -->
+<!-- reframing&#45;&gt;judge -->
+<g id="edge20" class="edge">
+<title>reframing&#45;&gt;judge</title>
+<path fill="none" stroke="#5b7181" stroke-width="1.35" stroke-dasharray="5,2" d="M994.5,-84.72C994.5,-84.72 994.5,-52.25 994.5,-52.25"/>
+<polygon fill="#5b7181" stroke="#5b7181" stroke-width="1.35" points="994.5,-45.05 997.74,-52.25 994.68,-48.65 994.68,-52.25 994.5,-52.25 994.33,-52.25 994.33,-48.65 991.26,-52.25 994.5,-45.05 994.5,-45.05"/>
+</g>
+<!-- actants&#45;&gt;semas -->
+<!-- summarizer -->
+<g id="node1" class="node">
+<title>summarizer</title>
+<polygon fill="#fcfcfa" stroke="#2e4551" stroke-width="2.2" points="716,-725 552,-725 552,-680 716,-680 716,-725"/>
+<text text-anchor="middle" x="634" y="-706.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">summarizer</text>
+<text text-anchor="middle" x="634" y="-692.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">discurso · activa</text>
+</g>
+<!-- metadata -->
+<g id="node2" class="node">
+<title>metadata</title>
+<polygon fill="#fcfcfa" stroke="#2e4551" stroke-width="2.2" points="716,-640 552,-640 552,-595 716,-595 716,-640"/>
+<text text-anchor="middle" x="634" y="-621.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">metadata</text>
+<text text-anchor="middle" x="634" y="-607.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">discurso · activa</text>
+</g>
+<!-- enunciation -->
+<g id="node3" class="node">
+<title>enunciation</title>
+<polygon fill="#fcfcfa" stroke="#2e4551" stroke-width="2.2" points="716,-555 552,-555 552,-510 716,-510 716,-555"/>
+<text text-anchor="middle" x="634" y="-536.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">enunciation</text>
+<text text-anchor="middle" x="634" y="-522.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">discurso · activa</text>
+</g>
+<!-- emotions -->
+<g id="node4" class="node">
+<title>emotions</title>
+<polygon fill="#fcfcfa" stroke="#2e4551" stroke-width="2.2" points="808,-470 644,-470 644,-425 808,-425 808,-470"/>
+<text text-anchor="middle" x="726" y="-451.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">emotions</text>
+<text text-anchor="middle" x="726" y="-437.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">unidad · activa</text>
+</g>
+<!-- explode_emotions -->
+<g id="node5" class="node">
+<title>explode_emotions</title>
+<polygon fill="#fcfcfa" stroke="#2e4551" stroke-width="2.2" points="900,-385 736,-385 736,-340 900,-340 900,-385"/>
+<text text-anchor="middle" x="818" y="-366.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">explode_emotions</text>
+<text text-anchor="middle" x="818" y="-352.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">emoción · activa</text>
+</g>
+<!-- normalize_emotions -->
+<g id="node6" class="node">
+<title>normalize_emotions</title>
+<polygon fill="#fcfcfa" stroke="#2e4551" stroke-width="2.2" points="808,-300 644,-300 644,-255 808,-255 808,-300"/>
+<text text-anchor="middle" x="726" y="-281.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">normalize_emotions</text>
+<text text-anchor="middle" x="726" y="-267.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">emoción · activa</text>
+</g>
+<!-- characterizer -->
+<g id="node7" class="node">
+<title>characterizer</title>
+<polygon fill="#fcfcfa" stroke="#2e4551" stroke-width="2.2" points="992,-215 828,-215 828,-170 992,-170 992,-215"/>
+<text text-anchor="middle" x="910" y="-196.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">characterizer</text>
+<text text-anchor="middle" x="910" y="-182.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">emoción · activa</text>
+</g>
+<!-- semas -->
+<g id="node8" class="node">
+<title>semas</title>
+<polygon fill="#fcfcfa" stroke="#2e4551" stroke-width="2.2" points="1176,-300 1012,-300 1012,-255 1176,-255 1176,-300"/>
+<text text-anchor="middle" x="1094" y="-281.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">semas</text>
+<text text-anchor="middle" x="1094" y="-267.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">referente · activa</text>
+</g>
+<!-- technoparse -->
+<g id="node9" class="node">
+<title>technoparse</title>
+<polygon fill="#f1f4f5" stroke="#5b7181" stroke-width="2.2" points="348,-725 184,-725 184,-680 348,-680 348,-725"/>
+<text text-anchor="middle" x="266" y="-706.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">technoparse</text>
+<text text-anchor="middle" x="266" y="-692.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">post · por género</text>
+</g>
+<!-- emoji_affect -->
+<g id="node10" class="node">
+<title>emoji_affect</title>
+<polygon fill="#f1f4f5" stroke="#5b7181" stroke-width="2.2" points="164,-640 0,-640 0,-595 164,-595 164,-640"/>
+<text text-anchor="middle" x="82" y="-621.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">emoji_affect</text>
+<text text-anchor="middle" x="82" y="-607.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">emoji · por género</text>
+</g>
+<!-- hashtag_semiotics -->
+<g id="node11" class="node">
+<title>hashtag_semiotics</title>
+<polygon fill="#fcfcfa" stroke="#7e8179" stroke-width="1.4" stroke-dasharray="5,2" points="348,-640 184,-640 184,-595 348,-595 348,-640"/>
+<text text-anchor="middle" x="266" y="-621.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">hashtag_semiotics</text>
+<text text-anchor="middle" x="266" y="-607.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">etiqueta · opcional</text>
+</g>
+<!-- tecno_usage -->
+<g id="node12" class="node">
+<title>tecno_usage</title>
+<polygon fill="#fcfcfa" stroke="#7e8179" stroke-width="1.4" stroke-dasharray="5,2" points="532,-640 368,-640 368,-595 532,-595 532,-640"/>
+<text text-anchor="middle" x="450" y="-621.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">tecno_usage</text>
+<text text-anchor="middle" x="450" y="-607.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">marca digital · opcional</text>
+</g>
+<!-- vision_describe -->
+<g id="node13" class="node">
+<title>vision_describe</title>
+<polygon fill="#fcfcfa" stroke="#7e8179" stroke-width="1.4" stroke-dasharray="5,2" points="532,-725 368,-725 368,-680 532,-680 532,-725"/>
+<text text-anchor="middle" x="450" y="-706.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">vision_describe</text>
+<text text-anchor="middle" x="450" y="-692.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">imagen · opcional</text>
+</g>
+<!-- actors -->
+<g id="node14" class="node">
+<title>actors</title>
+<polygon fill="#fcfcfa" stroke="#7e8179" stroke-width="1.4" stroke-dasharray="5,2" points="624,-470 460,-470 460,-425 624,-425 624,-470"/>
+<text text-anchor="middle" x="542" y="-451.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">actors</text>
+<text text-anchor="middle" x="542" y="-437.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">unidad · opcional</text>
+</g>
+<!-- emotions_pass2 -->
+<g id="node15" class="node">
+<title>emotions_pass2</title>
+<polygon fill="#fcfcfa" stroke="#7e8179" stroke-width="1.4" stroke-dasharray="5,2" points="716,-385 552,-385 552,-340 716,-340 716,-385"/>
+<text text-anchor="middle" x="634" y="-366.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">emotions_pass2</text>
+<text text-anchor="middle" x="634" y="-352.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">unidad · opcional</text>
+</g>
+<!-- deixis -->
+<g id="node16" class="node">
+<title>deixis</title>
+<polygon fill="#fcfcfa" stroke="#7e8179" stroke-width="1.4" stroke-dasharray="5,2" points="440,-300 276,-300 276,-255 440,-255 440,-300"/>
+<text text-anchor="middle" x="358" y="-281.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">deixis</text>
+<text text-anchor="middle" x="358" y="-267.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">marca · opcional</text>
+</g>
+<!-- modalidad -->
+<g id="node17" class="node">
+<title>modalidad</title>
+<polygon fill="#fcfcfa" stroke="#7e8179" stroke-width="1.4" stroke-dasharray="5,2" points="624,-300 460,-300 460,-255 624,-255 624,-300"/>
+<text text-anchor="middle" x="542" y="-281.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">modalidad</text>
+<text text-anchor="middle" x="542" y="-267.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">vínculo · opcional</text>
+</g>
+<!-- reframing -->
+<g id="node18" class="node">
+<title>reframing</title>
+<polygon fill="#fcfcfa" stroke="#7e8179" stroke-width="1.4" stroke-dasharray="5,2" points="1105,-130 941,-130 941,-85 1105,-85 1105,-130"/>
+<text text-anchor="middle" x="1023" y="-111.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">reframing</text>
+<text text-anchor="middle" x="1023" y="-97.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">cita/repost · opcional</text>
+</g>
+<!-- actants -->
+<g id="node19" class="node">
+<title>actants</title>
+<polygon fill="#fcfcfa" stroke="#7e8179" stroke-width="1.4" stroke-dasharray="5,2" points="992,-300 828,-300 828,-255 992,-255 992,-300"/>
+<text text-anchor="middle" x="910" y="-281.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">actants</text>
+<text text-anchor="middle" x="910" y="-267.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">emoción · opcional</text>
+</g>
+<!-- judge -->
+<g id="node20" class="node">
+<title>judge</title>
+<polygon fill="#fcfcfa" stroke="#7e8179" stroke-width="1.4" stroke-dasharray="5,2" points="1048,-45 884,-45 884,0 1048,0 1048,-45"/>
+<text text-anchor="middle" x="966" y="-26.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">judge</text>
+<text text-anchor="middle" x="966" y="-12.5" font-family="IBM Plex Mono" font-size="12.50" fill="#191a18">emoción · opcional</text>
+</g>
+</g>
+</svg>

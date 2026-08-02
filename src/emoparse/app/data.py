@@ -38,6 +38,11 @@ from emoparse.storage.posts import cita_embebida
 #: Importado desde el runner para mantener una única fuente de verdad
 #: sobre el orden y definición de stages.
 from emoparse.pipeline.runner import STAGE_ORDER
+from emoparse.genres.presentation import (
+    GenrePresentation,
+    presentation_from_config,
+    presented_metadata,
+)
 
 #: El estado por stage lo resuelve el pipeline, que es quien sabe el alcance
 #: de cada una; acá solo se reexpone para las tabs.
@@ -226,6 +231,36 @@ def get_run_stats(db_path: Path) -> dict[str, Any]:
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  Presentación del género persistida con el run
+# ══════════════════════════════════════════════════════════════════════════════
+
+def _genre_presentation_from_conn(
+    conn: sqlite3.Connection,
+) -> GenrePresentation | None:
+    """Lee el snapshot de género sin depender del registry instalado."""
+    row = conn.execute("SELECT config FROM runs LIMIT 1").fetchone()
+    config = _parse_json(row["config"]) if row is not None else None
+    return presentation_from_config(config)
+
+
+def get_genre_presentation(db_path: Path) -> GenrePresentation | None:
+    """Devuelve el descriptor de presentación guardado en el run."""
+    with _ro_connect(db_path) as conn:
+        return _genre_presentation_from_conn(conn)
+
+
+def get_input_metadata_display(db_path: Path) -> dict[str, str]:
+    """Mapea columnas de input del dashboard a sus etiquetas declaradas."""
+    presentation = get_genre_presentation(db_path)
+    if presentation is None:
+        return {}
+    return {
+        f"input__{field.name}": field.label
+        for field in presentation.input_metadata
+    }
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  Discursos: un row por discurso, payloads desplegados
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -350,11 +385,13 @@ def get_discurso_header(db_path: Path, codigo: str) -> dict[str, Any]:
             "FROM discursos WHERE codigo = ?",
             (codigo,),
         ).fetchone()
+        presentation = _genre_presentation_from_conn(conn)
     if row is None:
         return {}
     inp = _parse_json(row["input"]) or {}
     meta = _parse_json(row["metadata_payload"]) or {}
     enun = _parse_json(row["enunciation_payload"]) or {}
+    input_metadata = presented_metadata(presentation, inp)
     lugar_parts = [
         meta.get(k) for k in ("ciudad", "provincia", "pais")
         if meta.get(k) and str(meta.get(k)).lower() != "no identificado"
@@ -367,6 +404,11 @@ def get_discurso_header(db_path: Path, codigo: str) -> dict[str, Any]:
         "lugar": ", ".join(str(p) for p in lugar_parts) if lugar_parts else None,
         "enunciador": enun.get("enunciador"),
         "enunciatarios": enun.get("enunciatarios"),
+        "genre_id": presentation.genre_id if presentation else None,
+        "genre_display_name": (
+            presentation.display_name if presentation else None
+        ),
+        "input_metadata": input_metadata,
     }
 
 

@@ -172,7 +172,7 @@ def _html_tabla(acciones: list[argparse.Action]) -> list[str]:
     if not acciones:
         return ['    <p class="marginal">Sin opciones propias.</p>']
     filas = [
-        '    <div class="tabla-caja">',
+        '    <div class="tabla-caja tabla-comandos">',
         "    <table>",
         "      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th>"
         "<th>Qué hace</th></tr></thead>",

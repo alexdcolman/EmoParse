@@ -24,8 +24,9 @@ Carga la config, ingesta los discursos del input, y ejecuta todas las stages hab
 | `--input, -i` | INPUT | requerido | Path al CSV/JSON de discursos. |
 | `--run-id` | RUN_ID | requerido | Identificador único del run. |
 | `--db` | DB |  | Path al .sqlite del run. Default: <runs_dir>/<run_id>.sqlite. |
-| `--stages` | STAGES |  | Lista comma-separated de stages a correr (subset de summarizer,metadata,enunciation,actors,emotions,emotions_pass2,explode_emotions,deixis,modalidad,normalize_emotions,characterizer,actants,judge,semas). Default: las stages por default (opt-in: emotions_pass2, deixis, modalidad, actants, judge). |
+| `--stages` | STAGES |  | Lista comma-separated de stages a correr. Válidas: technoparse,emoji_affect,hashtag_semiotics,tecno_usage,vision_describe,summarizer,metadata,enunciation,actors,emotions,emotions_pass2,explode_emotions,deixis,modalidad,normalize_emotions,characterizer,reframing,actants,judge,semas. Si se omite, se usan las stages por default; el género puede sumar etapas propias. Un --stages explícito se respeta tal como fue escrito y debe incluir las dependencias duras. |
 | `--genre` | GENRE |  | ID del género de discurso a aplicar. Default: 'discurso_presidencial'. Los géneros disponibles dependen de los entry-points 'emoparse.genres' instalados. El género determina los roles enunciativos válidos, la unidad de chunking (frase/parrafo/documento), y opcionalmente overrides de modelos y batch_sizes. |
+| `--select` | ARCHIVO.YAML |  | Archivo YAML que acota qué unidades del input se analizan, según los campos que el propio input trae (fuente, autor, fecha, tipo, idioma, o cualquier columna presente). En corpus de posts se guarda el corpus técnico completo; lo que se acota es qué se analiza. Ver data/ejemplos/seleccion.yaml. |
 | `--enunciador` |  |  | Acota la detección de emociones (ambos pases) a las del enunciador. Combinable con --enunciatarios y --actores (se unen). Si no se pasa ninguna de las tres, se analizan todos los experienciadores. |
 | `--enunciatarios` |  |  | Acota la detección de emociones (ambos pases) a las de los enunciatarios. |
 | `--actores` |  |  | Acota la detección de emociones (ambos pases) a las de otros actores (distintos del enunciador y los enunciatarios). |
@@ -109,7 +110,7 @@ Read-only por default (no ejecuta nada sin flags). Con --reset, borra todos los 
 
 ## `emoparse export`
 
-Genera tres CSVs en el directorio de salida: discursos.csv, frases.csv, emociones.csv. Los payloads de stages a nivel discurso se flatten a columnas; los de frases se preservan como JSON strings.
+Genera cuatro CSVs en el directorio de salida: discursos.csv, metadata_genero.csv, frases.csv y emociones.csv. La metadata propia del género se exporta en formato largo, con etiquetas y presencia por campo. Los payloads de stages a nivel discurso se flatten a columnas; los de frases se preservan como JSON strings.
 
 | Opción | Valor | Default | Qué hace |
 |---|---|---|---|
@@ -134,7 +135,7 @@ Scrapea discursos de una fuente registrada. Modo append incremental: se puede in
 
 | Opción | Valor | Default | Qué hace |
 |---|---|---|---|
-| `--source` | casarosada | requerido | Fuente a scrapear (ej. casarosada). |
+| `--source` | casarosada \| pagina12 | requerido | Fuente registrada a scrapear. |
 | `--output` | OUTPUT | requerido | CSV de salida. Se crea si no existe; append si ya existe. |
 | `--max` | MAX |  | Máximo de discursos a extraer en esta corrida. None = sin tope. |
 | `--from` | YYYY-MM-DD |  | Solo discursos con fecha >= esta. Best-effort si la fuente no expone fechas en el listado. |

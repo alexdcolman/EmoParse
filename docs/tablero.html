@@ -18,7 +18,7 @@
   <header class="masthead">
     <h1 class="titulo"><a href="index.html">EmoParse</a></h1>
     <p class="bajada">Análisis semiótico de emociones en discursos</p>
-    <p class="sello"><span>v0.6.4</span><span>Beta</span><span>Licencia MIT</span></p>
+    <p class="sello"><span>v0.6.5</span><span>Beta</span><span>Licencia MIT</span></p>
   </header>
 
   <nav class="nav" aria-label="Navegación del sitio">
@@ -106,7 +106,9 @@
     <h3>Tabla</h3>
 
     <p>Exploración tabular con filtros encadenados a tres niveles, incluidas las columnas del
-    análisis relacional. Exporta lo filtrado a un archivo de planilla.</p>
+    análisis relacional. En el nivel de discursos, los campos propios del género aparecen con las
+    etiquetas que declara su plugin, sin perder los nombres estables del archivo exportado. Exporta
+    lo filtrado a un archivo de planilla.</p>
 
     <h3>Búsqueda</h3>
 
@@ -156,12 +158,15 @@
 
     <h3>Revisión</h3>
 
-    <p>Lectura unidad por unidad, paginada, con las emociones en tarjetas al costado. Cada elemento
-    muestra como valor principal el referente ya unificado y, en cuerpo menor, la inferencia original
-    del modelo y la marca del texto. La edición aparece vacía y solo al pulsar su botón, de modo que
-    una corrección sea siempre un acto deliberado. Si se corrió la segunda lectura por otro modelo,
-    sus sugerencias aparecen al lado de cada elemento para aceptarlas o rechazarlas, con un filtro
-    para ver únicamente lo que quedó sin resolver.</p>
+    <p>Lectura unidad por unidad, paginada, con las emociones en tarjetas al costado. La cabecera
+    presenta también los datos propios del género que estaban disponibles en el corpus —por ejemplo,
+    sección, autoría o epígrafe en una nota periodística— a partir de la declaración del plugin y sin
+    campos fijos por tipo de corpus. Cada elemento muestra como valor principal el referente ya
+    unificado y, en cuerpo menor, la inferencia original del modelo y la marca del texto. La edición
+    aparece vacía y solo al pulsar su botón, de modo que una corrección sea siempre un acto
+    deliberado. Si se corrió la segunda lectura por otro modelo, sus sugerencias aparecen al lado de
+    cada elemento para aceptarlas o rechazarlas, con un filtro para ver únicamente lo que quedó sin
+    resolver.</p>
 
     <figure>
       <div class="marco">

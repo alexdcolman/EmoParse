@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import html
+import json
 from pathlib import Path
 from typing import Any
 
@@ -63,6 +64,52 @@ _ACTANTE_KEYS = (
 
 def _esc(s: Any) -> str:
     return html.escape(str(s)) if s is not None else ""
+
+
+def _metadata_value_text(value: Any) -> str:
+    """Representa metadata tipada de forma legible y estable."""
+    if isinstance(value, (list, tuple, set)):
+        return "; ".join(str(item) for item in value if str(item).strip())
+    if isinstance(value, dict):
+        return json.dumps(value, ensure_ascii=False, default=str)
+    return "" if value is None else str(value)
+
+
+def _render_input_metadata(header: dict[str, Any]) -> None:
+    """Muestra los campos declarados por el género sin ramas específicas."""
+    items = header.get("input_metadata")
+    if not isinstance(items, list) or not items:
+        return
+
+    rows: list[str] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        label = _esc(item.get("label"))
+        value = _esc(_metadata_value_text(item.get("value")))
+        if not label or not value:
+            continue
+        rows.append(
+            "<dt style='margin:0;color:var(--text-dim);font-size:0.78rem;'>"
+            f"{label}</dt>"
+            "<dd style='margin:0;color:var(--text);font-size:0.86rem;"
+            f"overflow-wrap:anywhere;'>{value}</dd>"
+        )
+    if not rows:
+        return
+
+    genre_name = _esc(header.get("genre_display_name"))
+    suffix = f" · {genre_name}" if genre_name else ""
+    st.markdown(
+        "<div class='ep-card'>"
+        "<p style='margin:0 0 0.55rem;color:var(--accent);font-size:0.82rem;"
+        f"font-weight:600;'>Datos propios del género{suffix}</p>"
+        "<dl style='display:grid;grid-template-columns:minmax(7rem,0.3fr) 1fr;"
+        "gap:0.35rem 0.8rem;margin:0;'>"
+        + "".join(rows)
+        + "</dl></div>",
+        unsafe_allow_html=True,
+    )
 
 
 def _join_canon(v: Any) -> str:
@@ -319,6 +366,8 @@ def _render_header(ov: RevisionOverlay, codigo: str, header: dict[str, Any]) -> 
         + "</p></div>",
         unsafe_allow_html=True,
     )
+
+    _render_input_metadata(header)
 
     if _toggle("Editar cabecera (tipo, lugar, enunciador)", f"rev_hdr_{codigo}"):
         for field, label in (

@@ -10,7 +10,9 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+from typing import Any
 
 import pandas as pd
 import streamlit as st
@@ -69,7 +71,13 @@ def render(db_path: Path) -> None:
         f"<p style='font-size:0.8rem;color:var(--dim);'>{len(df_filtered)} filas</p>",
         unsafe_allow_html=True,
     )
-    st.dataframe(df_filtered, use_container_width=True, height=480)
+    metadata_labels = (
+        data_layer.get_input_metadata_display(db_path)
+        if level == "discursos"
+        else {}
+    )
+    display_df = _rename_metadata_columns(df_filtered, metadata_labels)
+    st.dataframe(display_df, use_container_width=True, height=480)
 
     st.download_button(
         f"⬇ Exportar {level}.csv",
@@ -142,6 +150,47 @@ def _apply_filters(df: pd.DataFrame, level: str) -> pd.DataFrame:
     return out
 
 
+def _rename_metadata_columns(
+    df: pd.DataFrame,
+    labels: dict[str, str],
+) -> pd.DataFrame:
+    """Aplica etiquetas legibles sin alterar los nombres del CSV exportado."""
+    if not labels:
+        return df
+
+    used = {str(column) for column in df.columns if column not in labels}
+    rename: dict[str, str] = {}
+    for column, label in labels.items():
+        if column not in df.columns:
+            continue
+        candidate = label
+        if candidate in used:
+            candidate = f"{label} (input)"
+        suffix = 2
+        unique = candidate
+        while unique in used:
+            unique = f"{candidate} {suffix}"
+            suffix += 1
+        rename[column] = unique
+        used.add(unique)
+    return df.rename(columns=rename)
+
+
+def _csv_cell(value: Any) -> Any:
+    """Serializa contenedores con JSON en vez de ``repr`` de Python."""
+    if isinstance(value, tuple):
+        value = list(value)
+    elif isinstance(value, set):
+        value = sorted(value, key=str)
+    if isinstance(value, (dict, list)):
+        return json.dumps(value, ensure_ascii=False, default=str)
+    return value
+
+
 def _df_to_csv_bytes(df: pd.DataFrame) -> bytes:
     """Exporta CSV en UTF-8 con BOM para compatibilidad con Excel."""
-    return df.to_csv(index=False).encode("utf-8-sig")
+    safe = df.copy()
+    for column in safe.columns:
+        if safe[column].dtype == "object":
+            safe[column] = safe[column].map(_csv_cell)
+    return safe.to_csv(index=False).encode("utf-8-sig")

@@ -61,6 +61,12 @@ que YA detectás en la unidad. No agregues emociones que la unidad no exprese.
 
 {{ resumen }}
 {% endif %}
+{% if contexto_genero %}
+CONTEXTO DE GÉNERO (solo para desambiguar la lectura; no es fuente autónoma
+de emociones ni autoriza a agregarlas si la unidad no las porta):
+
+{{ contexto_genero }}
+{% endif %}
 CONTEXTO GLOBAL DEL DISCURSO:
 
   Título:     {{ titulo }}

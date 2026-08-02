@@ -27,20 +27,29 @@ SYSTEM_GLOBAL = (
 )
 
 
-def render_user_fragmento(fragmento: str) -> str:
-    """USER del primer paso: resumir un fragmento del discurso."""
-    return render("summarizer_user_fragmento", fragmento=fragmento)
+def render_user_fragmento(
+    fragmento: str,
+    contexto_genero: str | None = None,
+) -> str:
+    """USER del primer paso, con contexto de género opcional."""
+    return render(
+        "summarizer_user_fragmento",
+        fragmento=fragmento,
+        contexto_genero=contexto_genero,
+    )
 
 
 def render_user_global(
     titulo: str,
     fecha: str,
     resumenes_parciales: str,
+    contexto_genero: str | None = None,
 ) -> str:
-    """USER del segundo paso: integrar parciales en un resumen global."""
+    """USER del segundo paso, con contexto de género opcional."""
     return render(
         "summarizer_user_global",
         titulo=titulo,
         fecha=fecha,
         resumenes_parciales=resumenes_parciales,
+        contexto_genero=contexto_genero,
     )

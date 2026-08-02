@@ -468,6 +468,31 @@ td code, th code { font-size: .82em; }
 
 td.dato { font-family: var(--mono); font-size: .78rem; white-space: nowrap; }
 
+
+/* Las tablas de referencia del CLI necesitan más ancho que la columna de
+   lectura. En pantallas amplias ocupan el margen derecho disponible; en
+   pantallas angostas conservan desplazamiento horizontal. */
+.tabla-comandos table { min-width: 58rem; }
+
+.tabla-comandos th:first-child,
+.tabla-comandos td:first-child {
+  min-width: 11rem;
+  white-space: nowrap;
+}
+
+.tabla-comandos th:nth-child(2),
+.tabla-comandos td:nth-child(2) { min-width: 8.5rem; }
+
+.tabla-comandos th:nth-child(3),
+.tabla-comandos td:nth-child(3) { min-width: 12rem; }
+
+.tabla-comandos td:nth-child(2) code,
+.tabla-comandos td:nth-child(3) code { overflow-wrap: anywhere; }
+
+@media (min-width: 1040px) { .tabla-comandos { margin-right: -8rem; } }
+@media (min-width: 1180px) { .tabla-comandos { margin-right: -16rem; } }
+@media (min-width: 1280px) { .tabla-comandos { margin-right: -22rem; } }
+
 /* --------------------------------------------------------------- figuras -- */
 /* Los diagramas necesitan más ancho que la columna de lectura, así que la
    figura se extiende sobre el margen derecho, y se puede abrir aparte en

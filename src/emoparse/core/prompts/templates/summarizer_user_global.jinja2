@@ -1,7 +1,11 @@
 TÍTULO DEL DISCURSO: {{ titulo }}
 FECHA: {{ fecha }}
 
-RESÚMENES PARCIALES:
+{% if contexto_genero %}CONTEXTO DE GÉNERO (sitúa la pieza; no reemplaza la evidencia de los
+resúmenes parciales):
+{{ contexto_genero }}
+
+{% endif %}RESÚMENES PARCIALES:
 {{ resumenes_parciales }}
 
 Generá un resumen global de 4-6 oraciones que:

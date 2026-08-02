@@ -18,7 +18,7 @@
   <header class="masthead">
     <h1 class="titulo"><a href="index.html">EmoParse</a></h1>
     <p class="bajada">Análisis semiótico de emociones en discursos</p>
-    <p class="sello"><span>v0.6.4</span><span>Beta</span><span>Licencia MIT</span></p>
+    <p class="sello"><span>v0.6.5</span><span>Beta</span><span>Licencia MIT</span></p>
   </header>
 
   <nav class="nav" aria-label="Navegación del sitio">
@@ -98,8 +98,8 @@
 
     <h2 id="extraccion"><span class="num">2</span>Qué se extrae</h2>
 
-    <p>Un primer paso recorre cada post y separa sus elementos, sin usar ningún modelo de lenguaje y
-    sin alterar el texto original.</p>
+    <p>Un primer paso, <code>technoparse</code>, recorre cada post y separa sus elementos, sin usar
+    ningún modelo de lenguaje y sin alterar el texto original.</p>
 
     <div class="tabla-caja">
     <table>
@@ -151,9 +151,9 @@
 
     <h2 id="reencuadre"><span class="num">4</span>Citar y repostear</h2>
 
-    <p>Cuando un post retoma otro, hace algo con él. Un paso clasifica esa operación mirando el
-    comentario de quien cita y su relación con lo citado: puede haber adhesión, ironía que toma
-    distancia, denuncia, o difusión sin toma de posición.</p>
+    <p>Cuando un post retoma otro, hace algo con él. La etapa <code>reframing</code> clasifica esa
+    operación mirando el comentario de quien cita y su relación con lo citado: puede haber adhesión,
+    ironía que toma distancia, denuncia, o difusión sin toma de posición.</p>
 
     <p>Por separado se registra el estatuto de las emociones que aparecen en lo citado. Pueden estar
     asumidas, cuando quien cita las hace propias, o exhibidas sin experimentarlas, que es el caso
@@ -173,12 +173,13 @@
     agradable. La ironía invierte los valores, y un emoji meramente ilustrativo, una calabaza junto a
     una receta, no aporta ningún afecto. La repetición intensifica sin cambiar el tipo.</p>
 
-    <p>Los emojis inequívocos se resuelven con la lista, sin consumir tiempo de modelo. Solo los
-    ambiguos van al análisis en contexto.</p>
+    <p>La etapa <code>emoji_affect</code> resuelve los emojis inequívocos con la lista, sin consumir
+    tiempo de modelo. Solo los ambiguos van al análisis en contexto.</p>
 
     <p>Las etiquetas funcionan a la vez como segmento del enunciado y como operador de indexación:
-    proyectan el post hacia un archivo buscable y pueden construir comunión alrededor de valores. Su
-    funcionamiento cambia de un post a otro, así que se caracterizan en cada uso, no en general.</p>
+    proyectan el post hacia un archivo buscable y pueden construir comunión alrededor de valores. La
+    etapa <code>hashtag_semiotics</code> las caracteriza en cada uso, porque su funcionamiento cambia
+    de un post a otro.</p>
 
     <div class="tabla-caja">
     <table>
@@ -209,9 +210,9 @@
 
     <h2 id="usos"><span class="num">6</span>Para qué se usa cada marca</h2>
 
-    <p>Ni el tipo de elemento ni su posición en la oración deciden su función. Un paso caracteriza el
-    uso de cada mención, cada tecnografismo y cada enlace dentro del post donde aparece, y cita el
-    post para justificarlo.</p>
+    <p>Ni el tipo de elemento ni su posición en la oración deciden su función. La etapa
+    <code>tecno_usage</code> caracteriza el uso de cada mención, cada tecnografismo y cada enlace
+    dentro del post donde aparece, y cita el post para justificarlo.</p>
 
     <ul>
       <li>Una mención puede interpelar, confrontar, exponer a la cuenta ante terceros, citarla,
@@ -234,10 +235,11 @@
 
     <h2 id="imagenes"><span class="num">7</span>Las imágenes</h2>
 
-    <p>Un paso opcional describe las imágenes adjuntas: qué muestran, qué texto se lee en ellas, de
-    qué tipo son, si se trata de una plantilla de meme o de una captura de otro post. Esa descripción
-    entra después como contexto del análisis emocional, así que el post se analiza como un enunciado
-    compuesto de texto e imagen. Requiere un modelo capaz de leer imágenes, que se configura aparte.</p>
+    <p>La etapa opcional <code>vision_describe</code> describe las imágenes adjuntas: qué muestran,
+    qué texto se lee en ellas, de qué tipo son, si se trata de una plantilla de meme o de una captura de
+    otro post. Esa descripción entra después como contexto del análisis emocional, así que el post se
+    analiza como un enunciado compuesto de texto e imagen. Requiere un modelo capaz de leer imágenes,
+    que se configura aparte.</p>
 
     <h2 id="redes"><span class="num">8</span>Las redes entre cuentas</h2>
 

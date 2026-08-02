@@ -1,5 +1,5 @@
 # ══════════════════════════════════════════════════════════════════════════════
-#  EmoParse v0.6.1 — Project metadata
+#  EmoParse v0.6.5 — Project metadata
 # ══════════════════════════════════════════════════════════════════════════════
 
 [build-system]
@@ -166,9 +166,11 @@ emoparse = "emoparse.cli:main"
 # Los géneros listados acá son los que vienen con el propio paquete:
 #   - discurso_presidencial: built-in canónico (default si no se pasa --genre).
 #   - tuit: built-in para posts de redes sociales (discurso nativo digital).
+#   - articulo_periodistico: built-in para notas periodísticas en español.
 [project.entry-points."emoparse.genres"]
 discurso_presidencial = "emoparse.genres.discurso_presidencial:get_genre"
 tuit = "emoparse.genres.tuit:get_genre"
+articulo_periodistico = "emoparse.genres.articulo_periodistico:get_genre"
 
 [project.urls]
 Repository = "https://github.com/alexdcolman/emoparse"
@@ -208,8 +210,11 @@ addopts = [
 
 markers = [
     "unit: tests rápidos sin red ni GPU",
-    "integration: requieren backend real",
+    "contract: contratos públicos e invariantes permanentes",
+    "scaffold: andamio de piezas todavía migrables; no bloquea merges",
+    "integration: integración entre subsistemas o dependencias opcionales",
     "slow: tests > 5s",
+    "llm: requiere un backend LLM real configurado explícitamente",
 ]
 
 filterwarnings = [

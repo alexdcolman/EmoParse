@@ -8,10 +8,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 from loguru import logger
+from pydantic import ValidationError
+
+if TYPE_CHECKING:
+    from emoparse.genres.base import Genre
 
 
 class InputError(ValueError):
@@ -22,8 +26,12 @@ class InputError(ValueError):
 REQUIRED_COLUMNS: tuple[str, ...] = ("codigo", "contenido")
 
 
-def load_discursos(path: Path | str) -> pd.DataFrame:
-    """Carga discursos desde CSV o JSON y devuelve DataFrame validado."""
+def load_discursos(
+    path: Path | str,
+    *,
+    genre: "Genre | None" = None,
+) -> pd.DataFrame:
+    """Carga discursos y valida la metadata declarada por el género."""
     p = Path(path).expanduser().resolve()
     if not p.is_file():
         raise InputError(f"Archivo input no encontrado: {p}")
@@ -44,6 +52,7 @@ def load_discursos(path: Path | str) -> pd.DataFrame:
     _validate_no_empty_codigo(df, p)
     _validate_unique_codigos(df, p)
     _validate_no_empty_content(df, p)
+    _validate_genre_metadata(df, p, genre)
 
     logger.info(
         f"[Inputs] Cargados {len(df)} discursos desde {p.name} "
@@ -168,3 +177,64 @@ def _validate_no_empty_content(df: pd.DataFrame, path: Path) -> None:
             f"Códigos: {codigos_vacios[:5]}"
             + ("..." if n_empty > 5 else "")
         )
+
+
+def _validate_genre_metadata(
+    df: pd.DataFrame,
+    path: Path,
+    genre: "Genre | None",
+) -> None:
+    """Valida y normaliza la metadata propia del género, si fue declarada."""
+    if genre is None or genre.input_metadata_model is None:
+        return
+
+    model = genre.input_metadata_model
+    fields = tuple(model.model_fields)
+    normalized_rows: list[dict[str, Any]] = []
+    errors: list[str] = []
+
+    for row_index, row in df.iterrows():
+        payload = {
+            field: _none_if_na(row[field])
+            for field in fields
+            if field in df.columns
+        }
+        try:
+            validated = model.model_validate(payload)
+        except ValidationError as e:
+            codigo = str(row.get("codigo", row_index))
+            detail = "; ".join(
+                f"{'.'.join(str(part) for part in error['loc'])}: {error['msg']}"
+                for error in e.errors(include_url=False)
+            )
+            errors.append(f"{codigo}: {detail}")
+            if len(errors) >= 5:
+                break
+        else:
+            normalized_rows.append(validated.model_dump(mode="python"))
+
+    if errors:
+        raise InputError(
+            f"En {path}, la metadata del género '{genre.genre_id}' no es válida: "
+            + " | ".join(errors)
+        )
+
+    for field in fields:
+        df[field] = [row[field] for row in normalized_rows]
+
+    logger.info(
+        f"[Inputs] Metadata de género validada: {genre.genre_id} "
+        f"({', '.join(fields)})."
+    )
+
+
+def _none_if_na(value: Any) -> Any:
+    """Convierte escalares NA de pandas en None sin tocar listas ni tuplas."""
+    if value is None:
+        return None
+    try:
+        missing = pd.isna(value)
+        return None if bool(missing) else value
+    except (TypeError, ValueError):
+        return value
+

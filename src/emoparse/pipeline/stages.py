@@ -64,6 +64,7 @@ from emoparse.agents.semas import SemasAgent
 from emoparse.core.backend.base import LLMBackend
 from emoparse.core.backend.retry import RetryConfig
 from emoparse.genres.base import Genre
+from emoparse.pipeline.genre_context import GenreContextProvider
 from emoparse.pipeline.progress import ProgressReporter
 from emoparse.knowledge.normalization import build_emotion_alias_lookup
 from emoparse.storage.discursos import DiscursosRepository
@@ -229,6 +230,25 @@ class SummarizerStage(_DiscursoStage):
     NAME = "summarizer"
     STAGE_KEY = "summarizer"
 
+    def __init__(
+        self,
+        agent: Any,
+        discursos_repo: DiscursosRepository,
+        agent_version: str | None = None,
+        genre_context_provider: GenreContextProvider | None = None,
+    ) -> None:
+        super().__init__(agent, discursos_repo, agent_version=agent_version)
+        self._genre_context = genre_context_provider
+
+    def _augment_input(
+        self, codigo: str, row_dict: dict[str, Any]
+    ) -> dict[str, Any]:
+        return _inject_genre_context(
+            row_dict,
+            stage="summarizer",
+            provider=self._genre_context,
+        )
+
     def _extract_payload(self, row: pd.Series) -> dict[str, Any] | None:
         """Payload con resumen_global y resumen_fragmentos."""
         if pd.isna(row.get("resumen_global")) and pd.isna(row.get("resumen_fragmentos")):
@@ -251,11 +271,13 @@ class MetadataStage(_DiscursoStage):
         posts_repo: Any | None = None,
         embed_context_provider: Any | None = None,
         hilo_context_provider: Any | None = None,
+        genre_context_provider: GenreContextProvider | None = None,
     ) -> None:
         super().__init__(agent, discursos_repo, agent_version=agent_version)
         self._posts_repo = posts_repo
         self._embed_ctx = embed_context_provider
         self._hilo_ctx = hilo_context_provider
+        self._genre_context = genre_context_provider
 
     def _augment_input(
         self, codigo: str, row_dict: dict[str, Any]
@@ -263,7 +285,12 @@ class MetadataStage(_DiscursoStage):
         row_dict = _contexto_cuenta(
             codigo, row_dict, self._posts_repo, self._embed_ctx
         )
-        return _inject_contexto_hilo(codigo, row_dict, self._hilo_ctx)
+        row_dict = _inject_contexto_hilo(codigo, row_dict, self._hilo_ctx)
+        return _inject_genre_context(
+            row_dict,
+            stage="metadata",
+            provider=self._genre_context,
+        )
 
     def _extract_payload(self, row: pd.Series) -> dict[str, Any] | None:
         """Payload con tipo_discurso y lugar."""
@@ -309,6 +336,7 @@ class EnunciationStage(_DiscursoStage):
         embed_context_provider: Any | None = None,
         hilo_context_provider: Any | None = None,
         enunciator_release: Any | None = None,
+        genre_context_provider: GenreContextProvider | None = None,
     ) -> None:
         super().__init__(agent, discursos_repo, agent_version=agent_version)
         self._enunciator_agent = enunciator_agent
@@ -318,6 +346,7 @@ class EnunciationStage(_DiscursoStage):
         self._embed_ctx = embed_context_provider
         self._hilo_ctx = hilo_context_provider
         self._enunciator_release = enunciator_release
+        self._genre_context = genre_context_provider
 
     def run_pending(self) -> int:
         """Procesa en dos fases para no sostener dos modelos en VRAM.
@@ -394,7 +423,12 @@ class EnunciationStage(_DiscursoStage):
         row_dict = _contexto_cuenta(
             codigo, row_dict, self._posts_repo, self._embed_ctx
         )
-        return _inject_contexto_hilo(codigo, row_dict, self._hilo_ctx)
+        row_dict = _inject_contexto_hilo(codigo, row_dict, self._hilo_ctx)
+        return _inject_genre_context(
+            row_dict,
+            stage="enunciation",
+            provider=self._genre_context,
+        )
 
     def _resolver_enunciador(
         self, codigo: str, row_dict: dict[str, Any]
@@ -573,6 +607,21 @@ def _inject_contexto_hilo(
         contexto = None
     if contexto:
         row_dict["contexto_hilo"] = contexto
+    return row_dict
+
+
+def _inject_genre_context(
+    row_dict: dict[str, Any],
+    *,
+    stage: Literal["summarizer", "metadata", "enunciation"],
+    provider: GenreContextProvider | None,
+) -> dict[str, Any]:
+    """Suma bloques declarados por el género para una stage de discurso."""
+    if provider is None:
+        return row_dict
+    contexto = provider.render(stage, row_dict)
+    if contexto:
+        row_dict["contexto_genero"] = contexto
     return row_dict
 
 
@@ -881,6 +930,7 @@ class EmotionsStage(_FraseStage):
         hilo_context_provider: Callable[[str], str | None] | None = None,
         tecno_context_provider: Callable[[str, int], str | None] | None = None,
         media_context_provider: Callable[[str], str | None] | None = None,
+        genre_context_provider: GenreContextProvider | None = None,
     ) -> None:
         super().__init__(backend, discursos_repo, frases_repo, agent_version, retry_config, genre)
         self._ontologia = ontologia
@@ -894,6 +944,7 @@ class EmotionsStage(_FraseStage):
         self._hilo_ctx = hilo_context_provider
         self._tecno_ctx = tecno_context_provider
         self._media_ctx = media_context_provider
+        self._genre_context = genre_context_provider
 
     def _build_agent(
         self, input_data: dict[str, Any], codigo: str
@@ -902,6 +953,11 @@ class EmotionsStage(_FraseStage):
         meta = self._d_repo.get_payload(codigo, "metadata") or {}
         enun = self._d_repo.get_payload(codigo, "enunciation") or {}
         summ = self._d_repo.get_payload(codigo, "summarizer") or {}
+        contexto_genero = (
+            self._genre_context.render("emotions", input_data)
+            if self._genre_context is not None
+            else None
+        )
         return EmotionsAgent(
             self._backend,
             ontologia=self._ontologia,
@@ -913,6 +969,7 @@ class EmotionsStage(_FraseStage):
             enunciatarios=_format_enunciatarios(enun.get("enunciatarios")),
             auditorio=_format_enunciatarios(enun.get("auditorio")),
             resumen=_resumen_global(summ),
+            contexto_genero=contexto_genero or "",
             emotion_scope=self._emotion_scope,
             retry_config=self._retry_config,
             genre=self._genre,

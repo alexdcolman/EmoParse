@@ -10,8 +10,8 @@ Está pensado para investigadores en lingüística, semiótica, ciencias del len
 
 - **Reproducible**: una base de resultados por corrida, versionado fino de prompts y ontologías, semilla fija.
 - **Trazable**: cada emoción detectada lleva su justificación textual y queda enlazada a la frase original.
-- **Local-first**: corre con modelos GGUF locales (llama.cpp) o vía LM Studio, sin enviar el corpus a ningún servicio externo. La arquitectura admite además backends de API.
-- **Extensible**: el pipeline (la cadena de etapas del análisis) está organizado como un grafo declarativo; sumar géneros, fuentes de adquisición o agentes es código aislado.
+- **Local-first**: corre con modelos GGUF locales, dentro del proceso con llama.cpp o mediante `llama-server`, y también vía LM Studio, sin enviar el corpus a servicios externos. La arquitectura admite además backends de API.
+- **Extensible**: el pipeline (la cadena de etapas del análisis) está organizado como un grafo declarativo; sumar géneros, fuentes de adquisición o agentes es código aislado. El mapa de declaraciones y límites está en [`docs/puntos_de_extension.md`](docs/puntos_de_extension.md).
 
 ![Curva emocional de un discurso: cada emoción ubicada en el punto donde aparece, coloreada por foria](docs/img/readme/curva-emocional.png)
 
@@ -19,7 +19,7 @@ Está pensado para investigadores en lingüística, semiótica, ciencias del len
 
 ---
 
-> 📖 **[Documentación completa (v0.6.4) →](https://alexdcolman.github.io/EmoParse/)**
+> 📖 **[Documentación completa (v0.6.5) →](https://alexdcolman.github.io/EmoParse/)**
 
 ---
 
@@ -100,7 +100,7 @@ emoparse run --config config.yaml --input data/discursos.csv \
 emoparse app         Abre el dashboard de revisión y visualización
 emoparse run         Ejecuta el pipeline completo
 emoparse scrape      Scrapea discursos desde una source registrada
-emoparse acquire     Adquiere posts (Bluesky, Mastodon, dumps JSONL/CSV) a un corpus incremental
+emoparse acquire     Adquiere posts (Bluesky, Mastodon, X API, dumps JSONL/CSV) a un corpus incremental
 emoparse follows     Adquiere el grafo de seguimiento entre las cuentas del corpus
 emoparse network     Construye y analiza las redes de un run (interacción, similitud, semántica)
 emoparse eval        Evaluación de validez: golden sets, acuerdo inter-anotador, controles
@@ -117,6 +117,8 @@ emoparse export      Exporta las tablas a CSV
 ```
 
 Todos aceptan `--help`. La referencia completa, con todas las opciones de cada comando, está en [`docs/comandos.md`](docs/comandos.md) y en la página **Comandos** del sitio; se genera desde el propio CLI con `python scripts/gen_cli_reference.py`.
+
+`emoparse export` genera `discursos.csv`, `metadata_genero.csv`, `frases.csv` y `emociones.csv`. La metadata propia de cada género se conserva en `discursos.csv` con nombres estables y también se ofrece en formato largo, con etiquetas y presencia por campo, dentro de `metadata_genero.csv`.
 
 Las flags globales `-v` / `-q` regulan el detalle en consola. Además, cada corrida escribe su propio log en `logs/`, siempre en nivel DEBUG, con rotación; `--log-dir` cambia el destino y `--no-log-file` lo desactiva.
 
@@ -149,7 +151,7 @@ El dashboard incluye además tabs de **Búsqueda** (por texto o por selección d
 El género `tuit` adapta el marco a posts de redes sociales, donde el texto es un **tecnodiscurso**: los hashtags, menciones, emojis, alargamientos y mayúsculas son materia enunciativa a analizar. El principio del subsistema es anotar sin borrar: el texto nunca se altera y cada elemento se extrae con sus offsets a una tabla aparte.
 
 ```bash
-# 1. Adquirir un corpus (Bluesky o Mastodon; también importa dumps JSONL o CSV)
+# 1. Adquirir un corpus (Bluesky, Mastodon o X API; también importa JSONL o CSV)
 emoparse acquire --source bluesky --query "#tarifazo" --lang es \
     --max 500 --out data/tarifazo.jsonl
 
@@ -188,6 +190,22 @@ La adquisición respeta los términos de cada plataforma e incluye seudonimizaci
 ## Evaluación de validez
 
 `emoparse eval` implementa el circuito de validación: exportar una muestra estratificada para **anotación humana a ciegas** (`--make-sample`), calcular el **acuerdo inter-anotador** con alpha de Krippendorff (`--agreement`, implementación propia verificada contra los valores publicados), construir un **golden set** de regresión y comparar cada run contra él (`--golden`: precisión/recall/F1 de detección más accuracy por dimensión), y medir la **sobre-detección** sobre corpus de control sin carga emocional (`--control`). El manual de anotación vive en `evals/manual_anotacion.md`; el protocolo convierte cada cambio de prompt u ontología en un experimento medible.
+
+---
+
+## Desarrollo y pruebas
+
+La suite ordinaria no requiere GPU, red ni un modelo real. Los contratos permanentes y el andamio
+se ejecutan por separado:
+
+```bash
+python -m pytest tests/contrato -q
+python -m pytest tests/andamio -q
+python -m pytest -m "not llm" -q
+```
+
+Las integraciones con backends reales son opt-in y se documentan en
+`tests/integracion_llm/README.md`.
 
 ---
 

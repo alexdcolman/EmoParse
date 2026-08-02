@@ -80,14 +80,21 @@ class SummarizerAgent:
 
     # ── API pública: una llamada al LLM por fragmento o por global ───────────
 
-    def summarize_fragment(self, fragment_text: str) -> str:
+    def summarize_fragment(
+        self,
+        fragment_text: str,
+        contexto_genero: str = "",
+    ) -> str:
         """Genera el resumen de un fragmento.
 
         Propaga BackendError en caso de fallo del backend.
         """
         response = self._backend.generate(
             system=prompts.SYSTEM_FRAGMENTO,
-            user=prompts.render_user_fragmento(fragmento=fragment_text),
+            user=prompts.render_user_fragmento(
+                fragmento=fragment_text,
+                contexto_genero=contexto_genero or None,
+            ),
         )
         return _strip_reasoning(response.raw)
 
@@ -96,6 +103,7 @@ class SummarizerAgent:
         titulo: str,
         fecha: str,
         resumenes_parciales: list[str],
+        contexto_genero: str = "",
     ) -> str:
         """Genera el resumen global a partir de resúmenes parciales.
 
@@ -110,6 +118,7 @@ class SummarizerAgent:
                 titulo=titulo,
                 fecha=fecha,
                 resumenes_parciales=joined,
+                contexto_genero=contexto_genero or None,
             ),
         )
         return _strip_reasoning(response.raw)
@@ -157,7 +166,11 @@ class SummarizerAgent:
                     results.append(row_out)
                     continue
 
-                parciales = [self.summarize_fragment(ch) for ch in chunks]
+                contexto_genero = _opt_text(row.get("contexto_genero"))
+                parciales = [
+                    self.summarize_fragment(ch, contexto_genero)
+                    for ch in chunks
+                ]
                 row_out["resumen_fragmentos"] = json.dumps(
                     parciales, ensure_ascii=False
                 )
@@ -173,6 +186,7 @@ class SummarizerAgent:
                         titulo=titulo,
                         fecha=fecha,
                         resumenes_parciales=parciales,
+                        contexto_genero=contexto_genero,
                     )
 
             except BackendError as e:
@@ -240,6 +254,13 @@ def _strip_reasoning(text: str) -> str:
         cut = lowered.rfind("</think>") + len("</think>")
         cleaned = cleaned[cut:]
     return cleaned.strip()
+
+
+def _opt_text(value: Any) -> str:
+    """Convierte una celda opcional en texto limpio."""
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return ""
+    return str(value).strip()
 
 
 def _split_into_chunks(text: str, char_limit: int) -> list[str]:

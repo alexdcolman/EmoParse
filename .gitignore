@@ -223,6 +223,7 @@ models/
 
 # Local developer-only stuff
 .dev/
+.build/
 
 # Local developer-only data
 runs/
@@ -233,5 +234,5 @@ data/
 # Local logs
 logs/
 
-# Asistentes de IA
+# Local assistant instructions
 .assistant/

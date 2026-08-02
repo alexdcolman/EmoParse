@@ -8,10 +8,9 @@ from __future__ import annotations
 
 from collections.abc import Iterator
 from datetime import date
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 import requests
-from bs4 import BeautifulSoup
 from loguru import logger
 
 from emoparse.acquisition.base import DiscursoRecord, SourceAdapter
@@ -23,8 +22,30 @@ from emoparse.acquisition.normalize import (
     strip_boilerplate,
 )
 
+if TYPE_CHECKING:
+    from bs4 import BeautifulSoup
+
 
 Mode = Literal["http", "selenium", "auto"]
+
+
+def _parse_html(html: str) -> BeautifulSoup:
+    """Construye el parser HTML, cargando el extra de scraping al usarlo."""
+    try:
+        from bs4 import BeautifulSoup, FeatureNotFound
+    except ImportError as e:
+        raise RuntimeError(
+            "Beautiful Soup no está instalado. Instalá el extra: "
+            'pip install -e ".[scraping]"'
+        ) from e
+
+    try:
+        return BeautifulSoup(html, "lxml")
+    except FeatureNotFound as e:
+        raise RuntimeError(
+            "El parser lxml no está instalado. Instalá el extra: "
+            'pip install -e ".[scraping]"'
+        ) from e
 
 
 #: Selectores.
@@ -98,7 +119,7 @@ class CasaRosadaAdapter(SourceAdapter):
             if not html:
                 break
 
-            soup = BeautifulSoup(html, "lxml")
+            soup = _parse_html(html)
             new_count = 0
             for a in soup.select(_LISTING_LINK_SELECTOR):
                 href = a.get("href", "").strip()
@@ -144,7 +165,7 @@ class CasaRosadaAdapter(SourceAdapter):
         if not html:
             return None
 
-        soup = BeautifulSoup(html, "lxml")
+        soup = _parse_html(html)
 
         titulo = self._select_first_text(soup, _TITULO_SELECTORS) or "Sin título"
         fecha = self._extract_fecha(soup)

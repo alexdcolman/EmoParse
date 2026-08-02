@@ -18,6 +18,11 @@ REGLAS PARA EL ENUNCIADOR:
   justificación que es una inferencia.
 - Si es totalmente indeterminable, escribí exactamente "no identificado".
   NO dejes el campo vacío.
+{% if reglas_enunciador %}
+REGLAS ESPECÍFICAS DEL GÉNERO PARA EL ENUNCIADOR:
+
+{{ reglas_enunciador }}
+{% endif %}
 
 REGLAS PARA LOS ENUNCIATARIOS:
 
@@ -45,6 +50,11 @@ REGLAS PARA EL AUDITORIO:
 - El campo `actor` del auditorio también debe ser un referente concreto,
   nunca una etiqueta de rol.
 - Si no es determinable, devolvé lista vacía.
+{% if reglas_auditorio %}
+REGLAS ESPECÍFICAS DEL GÉNERO PARA EL AUDITORIO:
+
+{{ reglas_auditorio }}
+{% endif %}
 {% if colectivos %}
 REGLAS PARA LOS COLECTIVOS DE IDENTIFICACIÓN:
 

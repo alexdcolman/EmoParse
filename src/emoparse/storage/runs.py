@@ -40,6 +40,7 @@ class RunsRepository:
                     f"abrir como '{ctx.run_id}'. Una DB = un run. "
                     f"Usá un archivo distinto."
                 )
+            self._sync_runtime_config(ctx.config)
             return
 
         with self._db.transaction() as cur:
@@ -63,6 +64,31 @@ class RunsRepository:
                     json.dumps(ctx.config, ensure_ascii=False, default=str),
                     ctx.notes,
                 ),
+            )
+
+
+    def _sync_runtime_config(self, incoming: dict[str, Any]) -> None:
+        """Actualiza metadata reservada sin reescribir el config del usuario."""
+        runtime = incoming.get("_emoparse")
+        if not isinstance(runtime, dict):
+            return
+
+        row = self._db.execute("SELECT config FROM runs LIMIT 1").fetchone()
+        stored_raw = row["config"] if row is not None else None
+        try:
+            stored = json.loads(stored_raw) if stored_raw else {}
+        except (json.JSONDecodeError, TypeError):
+            stored = {}
+        if not isinstance(stored, dict):
+            stored = {}
+        if stored.get("_emoparse") == runtime:
+            return
+
+        stored["_emoparse"] = runtime
+        with self._db.transaction() as cur:
+            cur.execute(
+                "UPDATE runs SET config = ?",
+                (json.dumps(stored, ensure_ascii=False, default=str),),
             )
 
     # ── Migraciones additive ─────────────────────────────────────────────────

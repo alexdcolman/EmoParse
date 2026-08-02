@@ -22,8 +22,10 @@
 
 from __future__ import annotations
 
-from typing import Any, Callable
+import math
+from typing import Any
 
+from emoparse.pipeline.context_blocks import ContextBlockProvider
 from emoparse.storage.emociones import EmocionesRepository
 from emoparse.storage.frases import FrasesRepository
 from emoparse.storage.hilos import HilosRepository
@@ -47,6 +49,20 @@ _PARTICIPANT_POST_CHARS = 200
 #: prompts batcheados: sin tope, un post muy anotado infla el batch entero.
 _MAX_EMOCIONES = 6
 
+#: Presupuestos por defecto de los bloques que antes no declaraban un límite
+#: propio. Son cotas aproximadas y solo se pagan cuando el provider devuelve
+#: contenido.
+_TECNO_TOKENS = 300
+_MEDIA_TOKENS = 400
+_EMBED_TOKENS = 300
+_EMOCIONES_DETECTADAS_TOKENS = 300
+_REFRAMING_TOKENS = 180
+
+
+def _tokens_for_chars(max_chars: int) -> int:
+    """Convierte una cota histórica de caracteres a tokens aproximados."""
+    return max(1, math.ceil(max_chars / 3))
+
 
 def make_hilo_context_provider(
     posts_repo: PostsRepository,
@@ -57,7 +73,7 @@ def make_hilo_context_provider(
     include_participants: bool = True,
     max_participant_posts: int = _MAX_PARTICIPANT_POSTS,
     participant_post_chars: int = _PARTICIPANT_POST_CHARS,
-) -> Callable[[str], str | None]:
+) -> ContextBlockProvider:
     """Provider codigo → contexto conversacional formateado (o None).
 
     Arma, del más lejano al inmediato, la cadena de posts a los que la unidad
@@ -154,13 +170,17 @@ def make_hilo_context_provider(
         if not lineas:
             return None
         texto = "\n".join(lineas)
-        if len(texto) > max_chars:
-            # Recortar desde el principio: los padres inmediatos, la cita y los
-            # participantes (al final) son lo más relevante para desambiguar.
-            texto = "(...)\n" + texto[-max_chars:]
         return texto
 
-    return provider
+    return ContextBlockProvider(
+        name="contexto_hilo",
+        target_column="contexto_hilo",
+        stages=("metadata", "enunciation", "emotions", "emotions_pass2"),
+        token_budget=_tokens_for_chars(max_chars),
+        scope="discurso",
+        keep_tail=True,
+        render_fn=lambda codigo, _unit_idx: provider(codigo),
+    )
 
 
 def _posts_menciones_participantes(
@@ -208,7 +228,7 @@ def make_hilo_emotion_context_provider(
     frases_repo: FrasesRepository,
     max_parents: int = _MAX_PARENTS,
     max_chars: int = _MAX_CHARS,
-) -> Callable[[str], str | None]:
+) -> ContextBlockProvider:
     """Provider codigo → emociones detectadas en los posts padre (o None).
 
     Contexto del pase 2 para géneros con `context_unit == "hilo"`: con una
@@ -249,18 +269,25 @@ def make_hilo_emotion_context_provider(
         # Del más lejano al inmediato, como el contexto de hilo textual.
         cadena.reverse()
         texto = "\n".join(cadena)
-        if len(texto) > max_chars:
-            texto = "(...)\n" + texto[-max_chars:]
         return texto
 
-    return provider
+    return ContextBlockProvider(
+        name="emociones_hilo",
+        target_column="emotion_rolling",
+        stages=("emotions_pass2",),
+        token_budget=_tokens_for_chars(max_chars),
+        scope="discurso",
+        keep_tail=True,
+        render_fn=lambda codigo, _unit_idx: provider(codigo),
+    )
 
 
 def make_tecno_context_provider(
     tecno_repo: TecnoRepository,
     emoji_lexicon: dict[str, Any] | None = None,
     hashtags_como_bloque: bool = False,
-) -> Callable[[str, int], str | None]:
+    token_budget: int = _TECNO_TOKENS,
+) -> ContextBlockProvider:
     """Provider (codigo, unit_idx) → tecnolingüísticos formateados (o None).
 
     Los emojis repetidos se agrupan con un contador (`😡×2`): la repetición es
@@ -308,12 +335,20 @@ def make_tecno_context_provider(
             )
         return " | ".join(partes)
 
-    return provider
+    return ContextBlockProvider(
+        name="tecnolinguisticos",
+        target_column="tecno",
+        stages=("emotions", "emotions_pass2"),
+        token_budget=token_budget,
+        scope="unidad",
+        render_fn=lambda codigo, unit_idx: provider(codigo, int(unit_idx)),
+    )
 
 
 def make_media_context_provider(
     posts_repo: PostsRepository,
-) -> Callable[[str], str | None]:
+    token_budget: int = _MEDIA_TOKENS,
+) -> ContextBlockProvider:
     """Provider codigo → descripciones generadas de la media del post.
 
     Requiere la stage `vision_describe` corrida antes; sin descripciones
@@ -342,12 +377,20 @@ def make_media_context_provider(
             lineas.append(linea)
         return "\n".join(lineas) if lineas else None
 
-    return provider
+    return ContextBlockProvider(
+        name="media_descripta",
+        target_column="media_desc",
+        stages=("emotions", "emotions_pass2"),
+        token_budget=token_budget,
+        scope="discurso",
+        render_fn=lambda codigo, _unit_idx: provider(codigo),
+    )
 
 
 def make_embed_context_provider(
     posts_repo: PostsRepository,
-) -> Callable[[str], str | None]:
+    token_budget: int = _EMBED_TOKENS,
+) -> ContextBlockProvider:
     """Provider codigo → información adjunta del post (campo `embed` + alts).
 
     Extrae del JSON crudo del post los subcampos informativos del embed
@@ -392,29 +435,47 @@ def make_embed_context_provider(
 
         return "\n".join(lineas) if lineas else None
 
-    return provider
+    return ContextBlockProvider(
+        name="adjuntos_fuente",
+        target_column="adjuntos",
+        stages=("metadata", "enunciation", "emotions", "emotions_pass2"),
+        token_budget=token_budget,
+        scope="discurso",
+        render_fn=lambda codigo, _unit_idx: provider(codigo),
+    )
 
 
 def combine_context_providers(
-    *providers: Callable[[str], str | None] | None,
-) -> Callable[[str], str | None] | None:
-    """Combina providers codigo → str en uno solo (secciones concatenadas).
+    *providers: ContextBlockProvider | None,
+    target_column: str | None = None,
+    name: str | None = None,
+) -> ContextBlockProvider | None:
+    """Combina providers en un bloque concatenado con destino explícito.
 
-    Ignora los None; si todos son None devuelve None. Se usa para sumar la
-    metadata del embed al canal de descripciones de media sin tocar los
-    templates: ambos describen los adjuntos del post.
+    Ignora los ``None`` y conserva el objeto original cuando queda un solo
+    provider y no se solicita cambiar su identidad. ``target_column`` permite
+    declarar la columna real en la que la stage inyectará el bloque combinado.
     """
     activos = [p for p in providers if p is not None]
     if not activos:
         return None
-    if len(activos) == 1:
+    if len(activos) == 1 and target_column is None and name is None:
         return activos[0]
 
-    def provider(codigo: str) -> str | None:
-        partes = [texto for p in activos if (texto := p(codigo))]
+    def provider(codigo: str, unit_idx: int | None) -> str | None:
+        partes = [texto for p in activos if (texto := p(codigo, unit_idx))]
         return "\n".join(partes) if partes else None
 
-    return provider
+    stages = tuple(dict.fromkeys(stage for p in activos for stage in p.stages))
+    scope = "unidad" if any(p.scope == "unidad" for p in activos) else "discurso"
+    return ContextBlockProvider(
+        name=name or "_y_".join(p.name for p in activos),
+        target_column=target_column or activos[0].target_column,
+        stages=stages,
+        token_budget=sum(p.token_budget for p in activos),
+        scope=scope,
+        render_fn=provider,
+    )
 
 
 def _embed_dict(raw: Any) -> dict[str, Any]:
@@ -446,7 +507,8 @@ def _dominio(uri: str) -> str:
 def make_emociones_detectadas_provider(
     emociones_repo: EmocionesRepository,
     max_emociones: int = _MAX_EMOCIONES,
-) -> Callable[[str], str | None]:
+    token_budget: int = _EMOCIONES_DETECTADAS_TOKENS,
+) -> ContextBlockProvider:
     """Provider codigo → emociones ya materializadas del discurso (o None).
 
     Lo consume `reframing` sobre el post CITADO: el agente tiene que juzgar
@@ -477,12 +539,20 @@ def make_emociones_detectadas_provider(
             partes.append(f"(+{restantes} más)")
         return " · ".join(partes)
 
-    return provider
+    return ContextBlockProvider(
+        name="emociones_detectadas",
+        target_column="emociones_citadas",
+        stages=("reframing",),
+        token_budget=token_budget,
+        scope="discurso",
+        render_fn=lambda codigo, _unit_idx: provider(codigo),
+    )
 
 
 def make_reframing_context_provider(
     posts_repo: PostsRepository,
-) -> Callable[[str], str | None]:
+    token_budget: int = _REFRAMING_TOKENS,
+) -> ContextBlockProvider:
     """Provider codigo → línea con la operación de redocumentación del post.
 
     Solo posts que citan/repostean y ya clasificados por la stage reframing.
@@ -510,7 +580,14 @@ def make_reframing_context_provider(
             f"{payload.get('emociones_citadas', '?')}"
         )
 
-    return provider
+    return ContextBlockProvider(
+        name="reframing",
+        target_column="reframing_context",
+        stages=("judge",),
+        token_budget=token_budget,
+        scope="discurso",
+        render_fn=lambda codigo, _unit_idx: provider(codigo),
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════

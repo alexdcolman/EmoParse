@@ -5,10 +5,10 @@
 #
 #  Flujo:
 #  1) Cargar config YAML (validado por Pydantic).
-#  2) Cargar discursos del input (CSV/JSON).
-#  3) Acotar el input si se pasó --select.
-#  4) Resolver path de la DB (default: <runs_dir>/<run_id>.sqlite).
-#  5) Resolver el género: --genre <id> o default ('discurso_presidencial').
+#  2) Resolver el género: --genre <id> o default ('discurso_presidencial').
+#  3) Cargar y validar el input según el género.
+#  4) Acotar el input si se pasó --select.
+#  5) Resolver path de la DB (default: <runs_dir>/<run_id>.sqlite).
 #  6) Construir KnowledgeLoader.
 #  7) Construir PipelineRunner con enabled_stages parseado y el género.
 #  8) Ingest + run.
@@ -29,6 +29,7 @@ from loguru import logger
 
 from emoparse.config import ConfigError, load_config
 from emoparse.genres import (
+    Genre,
     GenreRegistryError,
     default_genre,
     get_genre,
@@ -65,7 +66,22 @@ def handle(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        df_input, posts_bundle = _load_input(args.input)
+        if args.genre is None:
+            genre = default_genre()
+            logger.info(
+                f"[run] Género: {genre.genre_id} ({genre.display_name}) [default]"
+            )
+        else:
+            genre = get_genre(args.genre)
+            logger.info(
+                f"[run] Género: {genre.genre_id} ({genre.display_name})"
+            )
+    except GenreRegistryError as e:
+        logger.error(f"Género inválido: {e}")
+        return 1
+
+    try:
+        df_input, posts_bundle = _load_input(args.input, genre=genre)
     except InputError as e:
         logger.error(f"Input inválido: {e}")
         return 1
@@ -84,21 +100,6 @@ def handle(args: argparse.Namespace) -> int:
             f"[run] Alcance: {len(df_input)} de {n_input} unidad(es) del "
             f"input ({resumen_seleccion})."
         )
-
-    try:
-        if args.genre is None:
-            genre = default_genre()
-            logger.info(
-                f"[run] Género: {genre.genre_id} ({genre.display_name}) [default]"
-            )
-        else:
-            genre = get_genre(args.genre)
-            logger.info(
-                f"[run] Género: {genre.genre_id} ({genre.display_name})"
-            )
-    except GenreRegistryError as e:
-        logger.error(f"Género inválido: {e}")
-        return 1
 
     db_path = _resolve_db_path(args.db, cfg.paths.runs_dir, args.run_id)
     accion = _resolver_db_existente(db_path, args)
@@ -273,6 +274,8 @@ def _borrar_db(db_path: Path) -> None:
 
 def _load_input(
     input_arg: str,
+    *,
+    genre: Genre,
 ) -> tuple[pd.DataFrame, PostsBundle | None]:
     """Carga el input según su extensión.
 
@@ -282,7 +285,7 @@ def _load_input(
       por discurso; los reposts puros quedan solo en el bundle).
     """
     if Path(input_arg).suffix.lower() != ".jsonl":
-        return load_discursos(input_arg), None
+        return load_discursos(input_arg, genre=genre), None
 
     bundle = load_posts(input_arg)
     df_posts, df_hilos = build_threads(bundle.posts)
@@ -360,11 +363,11 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     p.add_argument(
         "--stages",
         help=(
-            "Lista comma-separated de stages a correr (subset de "
-            "summarizer,metadata,enunciation,actors,emotions,emotions_pass2,"
-            "explode_emotions,deixis,modalidad,normalize_emotions,characterizer,"
-            "actants,judge,semas). Default: las stages por default "
-            "(opt-in: emotions_pass2, deixis, modalidad, actants, judge)."
+            "Lista comma-separated de stages a correr. Válidas: "
+            f"{','.join(STAGE_ORDER)}. Si se omite, se usan las stages por "
+            "default; el género puede sumar etapas propias. Un --stages "
+            "explícito se respeta tal como fue escrito y debe incluir las "
+            "dependencias duras."
         ),
     )
     p.add_argument(

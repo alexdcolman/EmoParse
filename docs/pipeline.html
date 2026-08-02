@@ -18,7 +18,7 @@
   <header class="masthead">
     <h1 class="titulo"><a href="index.html">EmoParse</a></h1>
     <p class="bajada">Análisis semiótico de emociones en discursos</p>
-    <p class="sello"><span>v0.6.4</span><span>Beta</span><span>Licencia MIT</span></p>
+    <p class="sello"><span>v0.6.5</span><span>Beta</span><span>Licencia MIT</span></p>
   </header>
 
   <nav class="nav" aria-label="Navegación del sitio">
@@ -63,7 +63,8 @@
 
     <p>Cada etapa trabaja sobre un nivel distinto del material. Algunas leen el discurso completo,
     otras van unidad por unidad, otras recorren emociones ya detectadas o actores ya identificados.
-    Las etapas marcadas como opcionales se activan solo si se las pide.</p>
+    Las etapas opcionales se activan al pedirlas. Las marcadas «por género» se habilitan
+    automáticamente para <code>tuit</code> cuando no se escribe un <code>--stages</code> explícito.</p>
 
     <div class="tabla-caja">
     <table>
@@ -71,17 +72,23 @@
         <tr><th>Etapa</th><th>Nivel</th><th>Qué resuelve</th><th></th></tr>
       </thead>
       <tbody>
+        <tr><td><code>technoparse</code></td><td>post</td><td>Extrae etiquetas, menciones, enlaces, emojis y tecnografismos con su posición exacta. Sin modelo.</td><td class="dato">por género</td></tr>
+        <tr><td><code>emoji_affect</code></td><td>emoji</td><td>Resuelve el aporte afectivo de cada racha de emojis mediante léxico y, si hace falta, modelo.</td><td class="dato">por género</td></tr>
+        <tr><td><code>hashtag_semiotics</code></td><td>etiqueta</td><td>Caracteriza la función, el acoplamiento y la foria de cada uso de una etiqueta.</td><td class="dato">opcional</td></tr>
+        <tr><td><code>tecno_usage</code></td><td>marca digital</td><td>Interpreta el uso de menciones, tecnografismos y enlaces dentro de su post.</td><td class="dato">opcional</td></tr>
+        <tr><td><code>vision_describe</code></td><td>imagen</td><td>Describe la media adjunta para incorporarla como contexto del análisis.</td><td class="dato">opcional</td></tr>
         <tr><td><code>summarizer</code></td><td>discurso</td><td>Un resumen del texto completo, que después sirve de contexto a las demás etapas.</td><td class="dato">activa</td></tr>
         <tr><td><code>metadata</code></td><td>discurso</td><td>El tipo de discurso y el lugar, si el texto lo menciona.</td><td class="dato">activa</td></tr>
         <tr><td><code>enunciation</code></td><td>discurso</td><td>Quién habla, a quiénes se dirige, ante qué público y con qué colectivos se identifica.</td><td class="dato">activa</td></tr>
-        <tr><td><code>actors</code></td><td>unidad</td><td>Los actores nombrados o deducibles: personas, colectivos, instituciones.</td><td class="dato">activa</td></tr>
-        <tr><td><code>emotions</code></td><td>unidad</td><td>Primera lectura de emociones, unidad por unidad y de forma aislada.</td><td class="dato">activa</td></tr>
+        <tr><td><code>actors</code></td><td>unidad</td><td>Los actores nombrados o deducibles: personas, colectivos, instituciones.</td><td class="dato">opcional</td></tr>
+        <tr><td><code>emotions</code></td><td>unidad</td><td>Primera lectura de emociones. Usa los actores si esa etapa fue ejecutada, pero no depende de ella.</td><td class="dato">activa</td></tr>
         <tr><td><code>emotions_pass2</code></td><td>unidad</td><td>Segunda lectura, con las unidades anteriores del mismo discurso como contexto.</td><td class="dato">opcional</td></tr>
         <tr><td><code>explode_emotions</code></td><td>emoción</td><td>Separa cada emoción en su propia fila y siembra los vínculos entre marcas y referentes. Sin modelo.</td><td class="dato">activa</td></tr>
         <tr><td><code>deixis</code></td><td>marca</td><td>A quién remite cada «yo», «nosotros», «ustedes».</td><td class="dato">opcional</td></tr>
         <tr><td><code>modalidad</code></td><td>vínculo</td><td>De qué manera cada marca refiere a su referente.</td><td class="dato">opcional</td></tr>
         <tr><td><code>normalize_emotions</code></td><td>emoción</td><td>El nombre canónico de cada emoción, según la lista editable.</td><td class="dato">activa</td></tr>
         <tr><td><code>characterizer</code></td><td>emoción</td><td>Foria, dominancia, intensidad, duración, atribución, temporalidad y aspecto.</td><td class="dato">activa</td></tr>
+        <tr><td><code>reframing</code></td><td>cita o repost</td><td>Clasifica qué hace quien cita con el contenido y con el afecto que pone a circular.</td><td class="dato">opcional</td></tr>
         <tr><td><code>actants</code></td><td>emoción</td><td>Mediador, verificadores, operador de modificación y polaridad.</td><td class="dato">opcional</td></tr>
         <tr><td><code>judge</code></td><td>emoción</td><td>Un segundo modelo revisa la reconstrucción y propone correcciones acotadas.</td><td class="dato">opcional</td></tr>
         <tr>
@@ -100,8 +107,10 @@
     </table>
     </div>
 
-    <p class="marginal">Las dependencias entre etapas están declaradas. Pedir solo <code>emotions</code>
-    hace que el programa verifique antes que <code>actors</code> esté completa, y avise si no lo está.</p>
+    <p class="marginal">Las dependencias entre etapas están declaradas. Las dependencias duras
+    tienen que estar incluidas en una corrida parcial; las blandas solo fijan el orden cuando ambas
+    etapas se ejecutan. Por eso <code>actors</code> enriquece a <code>emotions</code>, pero esta última
+    también puede correr sin aquella.</p>
 
     <p>La primera lectura de emociones analiza cada unidad por separado, sin ver lo que vino antes.
     La razón es evitar que una unidad cargada de indignación arrastre a la siguiente. La segunda
@@ -113,8 +122,9 @@
       <div class="marco">
         <img src="assets/img/svg/03-etapas.svg" alt="Grafo de dependencias entre las etapas del análisis: qué etapa necesita cuál terminada antes de poder correr.">
       </div>
-      <figcaption><span class="fnum">Figura 3.</span> Dependencias entre etapas. Las flechas indican
-      qué tiene que estar resuelto antes de que una etapa pueda correr.</figcaption>
+      <figcaption><span class="fnum">Figura 3.</span> Dependencias entre etapas. Las flechas continuas
+      son dependencias duras y las discontinuas, de orden. Los bordes discontinuos distinguen etapas
+      opcionales; el fondo azulado marca las que el género <code>tuit</code> suma automáticamente.</figcaption>
     </figure>
 
     <h2 id="unidades"><span class="num">2</span>En qué se corta el texto</h2>

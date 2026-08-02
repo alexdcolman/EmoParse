@@ -24,6 +24,8 @@ from emoparse.core.cache.backend import CachedBackend
 from emoparse.core.cache.repository import CacheRepository
 from emoparse.knowledge.loader import KnowledgeError, KnowledgeLoader
 from emoparse.pipeline.dag import EMOPARSE_DAG
+from emoparse.genres.presentation import attach_genre_presentation
+from emoparse.pipeline.genre_context import GenreContextProvider
 from emoparse.pipeline.stages import (
     ActantsStage,
     _FraseStage,
@@ -78,14 +80,14 @@ STAGE_ORDER: tuple[str, ...] = EMOPARSE_DAG.toposort()
 #: `actants` queda OPT-IN: análisis fino opcional sobre emociones detectadas.
 #: `technoparse` y `emoji_affect` quedan OPT-IN por género: las habilitan
 #: los géneros de discurso nativo digital (genre.technoparse=True) vía CLI.
-#: `reframing`, `hashtag_semiotics` y `tecno_usage` son OPT-IN explícito
-#: (--stages): requieren un modelo asignado en `pipeline.stages` del config.
+#: `reframing`, `hashtag_semiotics`, `tecno_usage` y `modalidad` son
+#: OPT-IN explícito (--stages); `modalidad` requiere además el extra `nlp`.
 DEFAULT_ENABLED_STAGES: tuple[str, ...] = tuple(
     s for s in STAGE_ORDER
     if s not in (
         "technoparse", "reframing", "emoji_affect", "hashtag_semiotics",
         "tecno_usage", "vision_describe", "emotions_pass2", "deixis",
-        "judge", "actants", "actors",
+        "modalidad", "judge", "actants", "actors",
     )
 )
 
@@ -223,6 +225,11 @@ class PipelineRunner:
             self._genre = _default_genre()
         else:
             self._genre = genre
+        self._genre_context = (
+            GenreContextProvider(self._genre)
+            if self._genre.context_blocks
+            else None
+        )
 
         # Validar que las stages habilitadas son todas conocidas y que
         # forman un subset coherente del DAG.
@@ -281,7 +288,10 @@ class PipelineRunner:
                 ontology=v.ontology,
                 schema=v.schema_,  # Nota: alias para `schema` reservado.
             ),
-            config=self._cfg.model_dump(by_alias=False, exclude_none=True),
+            config=attach_genre_presentation(
+                self._cfg.model_dump(by_alias=False, exclude_none=True),
+                self._genre,
+            ),
         )
 
     def _wrap_with_cache(self, backend: LLMBackend) -> LLMBackend:
@@ -625,7 +635,10 @@ class PipelineRunner:
                 genre=self._genre,
             )
             return SummarizerStage(
-                agent, self._d_repo, agent_version=self._cfg.versions.prompt
+                agent,
+                self._d_repo,
+                agent_version=self._cfg.versions.prompt,
+                genre_context_provider=self._genre_context,
             )
 
         if name == "metadata":
@@ -645,6 +658,7 @@ class PipelineRunner:
                 posts_repo=self._p_repo,
                 embed_context_provider=self._embed_provider(),
                 hilo_context_provider=self._hilo_provider(),
+                genre_context_provider=self._genre_context,
             )
 
         if name == "enunciation":
@@ -702,6 +716,7 @@ class PipelineRunner:
                 embed_context_provider=self._embed_provider(),
                 hilo_context_provider=self._hilo_provider(),
                 enunciator_release=enunciator_release,
+                genre_context_provider=self._genre_context,
             )
 
         if name == "actors":
@@ -749,7 +764,10 @@ class PipelineRunner:
                     combine_context_providers,
                 )
                 media_provider = combine_context_providers(
-                    self._embed_provider(), media_provider
+                    self._embed_provider(),
+                    media_provider,
+                    target_column="media_desc",
+                    name="media_y_adjuntos",
                 )
             return EmotionsStage(
                 backend, self._d_repo, self._f_repo,
@@ -760,6 +778,7 @@ class PipelineRunner:
                 hilo_context_provider=hilo_provider,
                 tecno_context_provider=tecno_provider,
                 media_context_provider=media_provider,
+                genre_context_provider=self._genre_context,
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
@@ -804,7 +823,10 @@ class PipelineRunner:
                     combine_context_providers,
                 )
                 media_provider = combine_context_providers(
-                    self._embed_provider(), media_provider
+                    self._embed_provider(),
+                    media_provider,
+                    target_column="media_desc",
+                    name="media_y_adjuntos",
                 )
             return EmotionsPass2Stage(
                 backend, self._d_repo, self._f_repo,

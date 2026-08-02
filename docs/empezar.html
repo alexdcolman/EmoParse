@@ -18,7 +18,7 @@
   <header class="masthead">
     <h1 class="titulo"><a href="index.html">EmoParse</a></h1>
     <p class="bajada">Análisis semiótico de emociones en discursos</p>
-    <p class="sello"><span>v0.6.4</span><span>Beta</span><span>Licencia MIT</span></p>
+    <p class="sello"><span>v0.6.5</span><span>Beta</span><span>Licencia MIT</span></p>
   </header>
 
   <nav class="nav" aria-label="Navegación del sitio">
@@ -114,7 +114,7 @@ pip install -e ".[llamacpp,ui,scraping]"</code></pre>
       <thead><tr><th>Agregado</th><th>Para qué</th></tr></thead>
       <tbody>
         <tr><td><code>llamacpp</code></td><td>Correr modelos de lenguaje localmente.</td></tr>
-        <tr><td><code>lmstudio</code></td><td>Usar modelos a través de LM Studio, una aplicación con interfaz gráfica.</td></tr>
+        <tr><td><code>lmstudio</code></td><td>Usar modelos a través de LM Studio, mediante su API compatible con OpenAI.</td></tr>
         <tr><td><code>ui</code></td><td>El tablero de exploración.</td></tr>
         <tr><td><code>scraping</code></td><td>Bajar discursos de sitios web.</td></tr>
         <tr><td><code>nlp</code></td><td>Análisis gramatical, que usa la etapa de modalidad referencial.</td></tr>
@@ -126,6 +126,10 @@ pip install -e ".[llamacpp,ui,scraping]"</code></pre>
       </tbody>
     </table>
     </div>
+
+    <p>El backend <code>llama_server</code> usa el cliente HTTP incluido en la instalación base; no
+    necesita un agregado de Python. El ejecutable <code>llama-server</code> se obtiene con llama.cpp y
+    debe iniciarse antes de correr el análisis.</p>
 
     <p>La etapa de modalidad referencial necesita además un modelo gramatical del español, que se baja
     una vez:</p>
@@ -151,8 +155,10 @@ python -m spacy download es_core_news_md</code></pre>
     </div>
 
     <p>Un modelo distinto por etapa es la configuración habitual: las tareas de ficha breve no
-    justifican un modelo grande. El programa carga y descarga los modelos de la memoria de la placa a
-    medida que cambia de etapa, así que no conviven dos modelos grandes al mismo tiempo.</p>
+    justifican un modelo grande. Con el backend <code>llama_cpp</code>, el programa carga y descarga los
+    modelos dentro del mismo proceso a medida que cambia de etapa. También puede conectarse a un
+    servidor local <code>llama-server</code> o a LM Studio mediante una API compatible con OpenAI; en
+    los tres casos las respuestas mantienen el mismo contrato estructurado.</p>
 
     <h2 id="configurar"><span class="num">4</span>Configurar</h2>
 
@@ -191,6 +197,13 @@ emoparse app</code></pre>
 
 <pre><code>emoparse run ... --stages actors,emotions,explode_emotions</code></pre>
 
+    <p>También se puede acotar una corrida a una selección declarada en YAML sin modificar el corpus
+    original. La selección queda registrada en la base y una ejecución posterior puede retomar el
+    resto.</p>
+
+<pre><code>emoparse run --config config.yaml --input data/discursos.csv \
+  --run-id prueba_acotada --select data/ejemplos/seleccion.yaml</code></pre>
+
     <div class="nota">
       <span class="rotulo">Dónde queda todo</span>
       <p>Cada análisis produce un archivo único en la carpeta <code>runs/</code>, con el nombre que se
@@ -202,7 +215,8 @@ emoparse app</code></pre>
     <h2 id="posts"><span class="num">6</span>Un corpus de posts</h2>
 
     <p>Para posts de redes sociales, el corpus se adquiere primero y se analiza después, con la
-    indicación del género.</p>
+    indicación del género. La adquisición admite Bluesky, Mastodon y la API oficial de X, además de
+    importar dumps JSONL o CSV.</p>
 
 <pre><code><span class="c"># 1. Adquirir</span>
 emoparse acquire --source bluesky --query "#tarifazo" --lang es \

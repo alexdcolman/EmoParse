@@ -5,6 +5,11 @@ CONTEXTO DEL HILO (conversación en la que se inserta el post; el tipo de
 discurso puede variar dentro de un hilo, ubicá el de ESTE post):
 {{ contexto_hilo }}
 
+{% endif %}{% if contexto_genero %}
+CONTEXTO DE GÉNERO (sitúa la pieza y su encuadre; no lo uses por sí solo como
+prueba del lugar de enunciación):
+{{ contexto_genero }}
+
 {% endif %}{% if bio %}
 BIO DE LA CUENTA AUTORA (contexto para situar el tipo de discurso; NO lo
 determina por sí sola):

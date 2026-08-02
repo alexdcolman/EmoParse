@@ -83,7 +83,7 @@
 
     <p>Válidas para cualquier subcomando, escritas antes de él.</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -99,7 +99,7 @@
 
     <p>Carga la config, ingesta los discursos del input, y ejecuta todas las stages habilitadas. Si la DB ya existe (mismo run-id), reanuda desde donde quedó.</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -107,8 +107,9 @@
         <tr><td><code>--input, -i</code></td><td><code>INPUT</code></td><td><code>requerido</code></td><td>Path al CSV/JSON de discursos.</td></tr>
         <tr><td><code>--run-id</code></td><td><code>RUN_ID</code></td><td><code>requerido</code></td><td>Identificador único del run.</td></tr>
         <tr><td><code>--db</code></td><td><code>DB</code></td><td></td><td>Path al .sqlite del run. Default: &lt;runs_dir&gt;/&lt;run_id&gt;.sqlite.</td></tr>
-        <tr><td><code>--stages</code></td><td><code>STAGES</code></td><td></td><td>Lista comma-separated de stages a correr (subset de summarizer,metadata,enunciation,actors,emotions,emotions_pass2,explode_emotions,deixis,modalidad,normalize_emotions,characterizer,actants,judge,semas). Default: las stages por default (opt-in: emotions_pass2, deixis, modalidad, actants, judge).</td></tr>
+        <tr><td><code>--stages</code></td><td><code>STAGES</code></td><td></td><td>Lista comma-separated de stages a correr. Válidas: technoparse,emoji_affect,hashtag_semiotics,tecno_usage,vision_describe,summarizer,metadata,enunciation,actors,emotions,emotions_pass2,explode_emotions,deixis,modalidad,normalize_emotions,characterizer,reframing,actants,judge,semas. Si se omite, se usan las stages por default; el género puede sumar etapas propias. Un --stages explícito se respeta tal como fue escrito y debe incluir las dependencias duras.</td></tr>
         <tr><td><code>--genre</code></td><td><code>GENRE</code></td><td></td><td>ID del género de discurso a aplicar. Default: &#x27;discurso_presidencial&#x27;. Los géneros disponibles dependen de los entry-points &#x27;emoparse.genres&#x27; instalados. El género determina los roles enunciativos válidos, la unidad de chunking (frase/parrafo/documento), y opcionalmente overrides de modelos y batch_sizes.</td></tr>
+        <tr><td><code>--select</code></td><td><code>ARCHIVO.YAML</code></td><td></td><td>Archivo YAML que acota qué unidades del input se analizan, según los campos que el propio input trae (fuente, autor, fecha, tipo, idioma, o cualquier columna presente). En corpus de posts se guarda el corpus técnico completo; lo que se acota es qué se analiza. Ver data/ejemplos/seleccion.yaml.</td></tr>
         <tr><td><code>--enunciador</code></td><td></td><td></td><td>Acota la detección de emociones (ambos pases) a las del enunciador. Combinable con --enunciatarios y --actores (se unen). Si no se pasa ninguna de las tres, se analizan todos los experienciadores.</td></tr>
         <tr><td><code>--enunciatarios</code></td><td></td><td></td><td>Acota la detección de emociones (ambos pases) a las de los enunciatarios.</td></tr>
         <tr><td><code>--actores</code></td><td></td><td></td><td>Acota la detección de emociones (ambos pases) a las de otros actores (distintos del enunciador y los enunciatarios).</td></tr>
@@ -123,7 +124,7 @@
 
     <p>Muestra el progreso del pipeline en una DB.</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -136,7 +137,7 @@
 
     <p>Modos: 1) --stage &lt;n&gt;: limpia todos los errors de esa stage. En el próximo `emoparse run` se reintentan. 2) --policy &lt;file&gt;: aplica un YAML de policies (target=failed/completed/all, filters declarativos sobre el payload JSON, override_model opcional). Si además se pasan --config + --input + --run-id, ejecuta el pipeline con el config overrideado por las policies.</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -154,7 +155,7 @@
 
     <p>Imprime los datos asociados a un discurso en la DB.</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -168,7 +169,7 @@
 
     <p>Muestra estadísticas del cache LLM.</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -181,7 +182,7 @@
 
     <p>Imprime la última métrica registrada de cada stage del run. Las métricas se persisten al final de cada stage durante `emoparse run`. Si una stage corrió varias veces, se muestra la más reciente.</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -194,7 +195,7 @@
 
     <p>Read-only: imprime el resumen de juicios persistidos en la tabla `judgments`. La ejecución del judge se hace incluyéndolo en `--stages` durante `emoparse run` (es opt-in).</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -209,7 +210,7 @@
 
     <p>Clasifica, con el pre-pass NLP (spaCy) y sin LLM, la modalidad referencial (designacion / referencia_gramatical / identificacion_inferencial) y la naturaleza del referente de cada vínculo marca→referente de una DB existente. Idempotente: solo clasifica lo que aún no tiene modalidad y no pisa lo editado a mano. La variante con LLM (para los casos ambiguos) se corre vía `emoparse run --stages ...,modalidad`.</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -223,7 +224,7 @@
 
     <p>Read-only por default (no ejecuta nada sin flags). Con --reset, borra todos los semas persistidos en `canonico_semas` (propuestos y editados a mano), sin distinguir origen. Para reasignarlos con el vocabulario vigente, correr después `emoparse run --stages ...,semas` sobre el mismo run.</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -235,9 +236,9 @@
 
     <h2 id="export">emoparse export</h2>
 
-    <p>Genera tres CSVs en el directorio de salida: discursos.csv, frases.csv, emociones.csv. Los payloads de stages a nivel discurso se flatten a columnas; los de frases se preservan como JSON strings.</p>
+    <p>Genera cuatro CSVs en el directorio de salida: discursos.csv, metadata_genero.csv, frases.csv y emociones.csv. La metadata propia del género se exporta en formato largo, con etiquetas y presencia por campo. Los payloads de stages a nivel discurso se flatten a columnas; los de frases se preservan como JSON strings.</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -251,7 +252,7 @@
 
     <p>Lee las emociones ya caracterizadas de la DB y aplica los domain validators. Las issues encontradas se persisten en &#x27;validation_issues&#x27; y se muestran en consola. Siempre informativo (warnings), no bloquea.</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -268,11 +269,11 @@
 
     <p>Scrapea discursos de una fuente registrada. Modo append incremental: se puede interrumpir y reanudar (dedupe por URL).</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
-        <tr><td><code>--source</code></td><td><code>casarosada</code></td><td><code>requerido</code></td><td>Fuente a scrapear (ej. casarosada).</td></tr>
+        <tr><td><code>--source</code></td><td><code>casarosada | pagina12</code></td><td><code>requerido</code></td><td>Fuente registrada a scrapear.</td></tr>
         <tr><td><code>--output</code></td><td><code>OUTPUT</code></td><td><code>requerido</code></td><td>CSV de salida. Se crea si no existe; append si ya existe.</td></tr>
         <tr><td><code>--max</code></td><td><code>MAX</code></td><td></td><td>Máximo de discursos a extraer en esta corrida. None = sin tope.</td></tr>
         <tr><td><code>--from</code></td><td><code>YYYY-MM-DD</code></td><td></td><td>Solo discursos con fecha &gt;= esta. Best-effort si la fuente no expone fechas en el listado.</td></tr>
@@ -288,7 +289,7 @@
 
     <p>Adquiere posts (tuits y afines) de una fuente registrada. Modo append incremental: se puede interrumpir y reanudar (dedupe por id). El JSONL resultante se analiza con `emoparse run --genre tuit --input &lt;archivo&gt;.jsonl`.</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -317,7 +318,7 @@
 
     <p>Construye grafos de interacción (reply, mention, rt, qt, hashtag_co) desde los posts del run, calcula métricas y comunidades, las persiste en la DB y reporta el acoplamiento con el análisis emocional. Requiere el extra [network].</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -343,7 +344,7 @@
 
     <p>Pide a la fuente a quién sigue cada cuenta del corpus y persiste como grafo &#x27;follow&#x27; las aristas internas al corpus. Habilita el análisis de comunidades y cliques por seguimiento en `emoparse network` y en la tab Red.</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -364,7 +365,7 @@
 
     <p>Evaluación de validez del análisis emocional.</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
@@ -385,7 +386,7 @@
 
     <p>Inicia el servidor Streamlit y abre el dashboard en el navegador. Equivalente a: streamlit run src/emoparse/app/__main__.py</p>
 
-    <div class="tabla-caja">
+    <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>

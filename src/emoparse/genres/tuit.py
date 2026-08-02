@@ -191,8 +191,6 @@ def get_genre() -> Genre:
         prompt_overrides={
             "emotions": "emotions_system_tuit",
             "emotions_pass2": "emotions_pass2_system_tuit",
-            "enunciation": "enunciation_system_tuit",
-            "metadata": "metadata_system_tuit",
         },
         heuristics_overrides={
             "emotions": "heuristicas/emotions_tuit.md",
