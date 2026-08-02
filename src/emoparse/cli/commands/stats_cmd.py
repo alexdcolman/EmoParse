@@ -57,3 +57,13 @@ def handle(args: argparse.Namespace) -> int:
     # Stats de la sesión actual (siempre 0 en CLI, DB abierta solo en modo
     # lectura). Comentado para consistencia futura.
     return 0
+
+
+def register(subparsers: argparse._SubParsersAction) -> None:
+    """Registra `stats` como subcomando en el CLI principal."""
+    p = subparsers.add_parser(
+        "stats",
+        help="Muestra estadísticas del cache LLM.",
+    )
+    p.add_argument("--db", required=True, help="Path al .sqlite.")
+    p.set_defaults(handler=handle)

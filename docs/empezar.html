@@ -30,6 +30,7 @@
       <li><a href="digital.html">Posts y redes</a></li>
       <li><a href="tablero.html">El tablero</a></li>
       <li><a href="empezar.html" aria-current="page">Empezar</a></li>
+      <li><a href="comandos.html">Comandos</a></li>
       <li><a href="glosario.html">Glosario</a></li>
     </ul>
     <h2>En esta página</h2>
@@ -220,31 +221,14 @@ emoparse network --db runs/tarifazo01.sqlite \
 
     <h2 id="comandos"><span class="num">7</span>Los comandos</h2>
 
-    <div class="tabla-caja">
-    <table>
-      <thead><tr><th>Comando</th><th>Qué hace</th></tr></thead>
-      <tbody>
-        <tr><td><code>emoparse run</code></td><td>Corre el análisis.</td></tr>
-        <tr><td><code>emoparse app</code></td><td>Abre el tablero.</td></tr>
-        <tr><td><code>emoparse scrape</code></td><td>Baja discursos de un sitio registrado.</td></tr>
-        <tr><td><code>emoparse acquire</code></td><td>Adquiere posts a un corpus incremental.</td></tr>
-        <tr><td><code>emoparse follows</code></td><td>Consulta quién sigue a quién entre las cuentas del corpus.</td></tr>
-        <tr><td><code>emoparse network</code></td><td>Construye y analiza las redes de una corrida.</td></tr>
-        <tr><td><code>emoparse eval</code></td><td>Circuito de validación: muestras a ciegas, acuerdo, conjunto de referencia.</td></tr>
-        <tr><td><code>emoparse status</code></td><td>Qué quedó pendiente, qué falló y qué terminó, por etapa.</td></tr>
-        <tr><td><code>emoparse inspect</code></td><td>Estado completo de un texto en particular.</td></tr>
-        <tr><td><code>emoparse retry</code></td><td>Limpia los errores para volver a intentarlos.</td></tr>
-        <tr><td><code>emoparse validate</code></td><td>Aplica las reglas de coherencia sobre las emociones.</td></tr>
-        <tr><td><code>emoparse modalidad</code></td><td>Clasifica el modo de referencia sin usar modelos de lenguaje.</td></tr>
-        <tr><td><code>emoparse judge</code></td><td>Resumen de la revisión hecha por el segundo modelo.</td></tr>
-        <tr><td><code>emoparse metrics</code></td><td>Tiempos, cantidades y errores por etapa.</td></tr>
-        <tr><td><code>emoparse stats</code></td><td>Estado de la memoria de respuestas ya obtenidas.</td></tr>
-        <tr><td><code>emoparse export</code></td><td>Exporta los resultados a planillas.</td></tr>
-      </tbody>
-    </table>
-    </div>
+    <p>El programa se maneja con un puñado de comandos. Los tres que se usan casi siempre son
+    <code>emoparse run</code>, que corre el análisis; <code>emoparse status</code>, que informa qué
+    quedó pendiente y qué falló; y <code>emoparse app</code>, que abre el tablero. Los demás cubren
+    la adquisición de corpus, el análisis de redes, la validación y la exportación.</p>
 
-    <p>Todos aceptan <code>--help</code>, que describe sus opciones.</p>
+    <p>La lista completa, con todas las opciones de cada comando, está en
+    <a href="comandos.html">Comandos</a>. Todos aceptan además <code>--help</code>, que imprime lo
+    mismo en la consola.</p>
 
     <h2 id="problemas"><span class="num">8</span>Si algo falla</h2>
 

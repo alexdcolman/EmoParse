@@ -229,3 +229,9 @@ runs/
 exports/
 knowledge/actors_kb.json.bak*
 data/
+
+# Local logs
+logs/
+
+# Asistentes de IA
+.assistant/

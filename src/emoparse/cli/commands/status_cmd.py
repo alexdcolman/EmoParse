@@ -17,6 +17,10 @@
 #  - Completed: resuelta.
 #  - n/a:       fuera del alcance de la stage; no entra en el porcentaje.
 #  Una stage que no corrió en este run se marca aparte, sin porcentaje.
+#
+#  Si alguna corrida acotó el input con un selector, se lista antes de la
+#  tabla: una DB corrida parcialmente se lee igual que una completa, y dos
+#  runs comparados más adelante pueden estar midiendo universos distintos.
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -59,11 +63,27 @@ def handle(args: argparse.Namespace) -> int:
 
     total_discursos = len(DiscursosRepository(db).list_codigos())
     print(f"Discursos: {total_discursos}")
+    _print_alcance(runs_repo)
     print()
 
     _print_stage_table(collect_from_path(db_path))
 
     return 0
+
+
+def _print_alcance(runs_repo: RunsRepository) -> None:
+    """Lista las corridas que analizaron solo una parte del input."""
+    corridas = [c for c in runs_repo.list_alcance() if c.get("seleccion")]
+    if not corridas:
+        return
+    print()
+    print("Corridas con alcance acotado:")
+    for c in corridas:
+        fecha = str(c.get("fecha", ""))[:10]
+        print(
+            f"  {fecha}  {c.get('n_en_alcance')} de {c.get('n_input')} "
+            f"unidades del input  ·  {c.get('seleccion')}"
+        )
 
 
 def _print_stage_table(rows: list[StageStatus]) -> None:
@@ -106,3 +126,13 @@ def _marca(r: StageStatus) -> str:
     if r.pending:
         return "·"
     return "✓"
+
+
+def register(subparsers: argparse._SubParsersAction) -> None:
+    """Registra `status` como subcomando en el CLI principal."""
+    p = subparsers.add_parser(
+        "status",
+        help="Muestra el progreso del pipeline en una DB.",
+    )
+    p.add_argument("--db", required=True, help="Path al .sqlite.")
+    p.set_defaults(handler=handle)

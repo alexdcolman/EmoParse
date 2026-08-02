@@ -81,8 +81,15 @@ El input mínimo es un CSV con columnas `codigo` (identificador único) y `conte
 
 ```bash
 emoparse scrape --source casarosada \
-  --out data/discursos.csv \
+  --output data/discursos.csv \
   --from 2024-01-01 --to 2024-12-31
+```
+
+Para iterar sin correr el corpus entero, `run` acepta `--select` con un archivo que acota qué unidades se analizan según los campos del input (fuente, autor, fecha como rango, tipo, idioma, o cualquier columna presente). El alcance de cada corrida queda asentado y `emoparse status` lo informa. Hay un ejemplo comentado en `data/ejemplos/seleccion.yaml`.
+
+```bash
+emoparse run --config config.yaml --input data/discursos.csv \
+  --run-id mi_run --select seleccion.yaml
 ```
 
 ---
@@ -109,7 +116,9 @@ emoparse stats       Estadísticas del cache
 emoparse export      Exporta las tablas a CSV
 ```
 
-Todos aceptan `--help`.
+Todos aceptan `--help`. La referencia completa, con todas las opciones de cada comando, está en [`docs/comandos.md`](docs/comandos.md) y en la página **Comandos** del sitio; se genera desde el propio CLI con `python scripts/gen_cli_reference.py`.
+
+Las flags globales `-v` / `-q` regulan el detalle en consola. Además, cada corrida escribe su propio log en `logs/`, siempre en nivel DEBUG, con rotación; `--log-dir` cambia el destino y `--no-log-file` lo desactiva.
 
 ---
 

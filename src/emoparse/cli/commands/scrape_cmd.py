@@ -27,7 +27,7 @@ from loguru import logger
 from emoparse.acquisition import SOURCES, CsvAppender, get_source
 
 
-def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
+def register(subparsers: argparse._SubParsersAction) -> None:
     """Registra `scrape` como subcomando en el CLI principal."""
     p = subparsers.add_parser(
         "scrape",
@@ -94,7 +94,6 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
         help="Timeout HTTP por request (segundos).",
     )
     p.set_defaults(handler=run)
-    return p
 
 
 def parse_date(s: str) -> date:

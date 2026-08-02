@@ -42,7 +42,7 @@ def handle(args: argparse.Namespace) -> int:
     print(f"  Errores:         {counts['errors']}")
     print()
 
-    if counts["incoherent"] == 0 and not getattr(args, "verbose", False):
+    if counts["incoherent"] == 0 and not getattr(args, "coherentes", False):
         return 0
 
     judgments = (
@@ -62,7 +62,7 @@ def handle(args: argparse.Namespace) -> int:
             print(f"    {j['issues']}")
         print()
 
-    if getattr(args, "verbose", False):
+    if getattr(args, "coherentes", False):
         coherent_rows = [j for j in judgments if j.get("coherente") is True]
         if coherent_rows:
             print(f"COHERENTES ({len(coherent_rows)}):")
@@ -94,3 +94,27 @@ def _list_all(db: Database) -> list[dict]:
             d["coherente"] = bool(d["coherente"])
         out.append(d)
     return out
+
+
+def register(subparsers: argparse._SubParsersAction) -> None:
+    """Registra `judge` como subcomando en el CLI principal."""
+    p = subparsers.add_parser(
+        "judge",
+        help="Muestra los juicios del JudgeAgent (capa 3 de validación).",
+        description=(
+            "Read-only: imprime el resumen de juicios persistidos en la "
+            "tabla `judgments`. La ejecución del judge se hace incluyéndolo "
+            "en `--stages` durante `emoparse run` (es opt-in)."
+        ),
+    )
+    p.add_argument("--db", required=True, help="Path al .sqlite del run.")
+    p.add_argument(
+        "--codigo",
+        help="Mostrar solo este discurso. Default: todos.",
+    )
+    p.add_argument(
+        "--coherentes",
+        action="store_true",
+        help="Listar también las emociones juzgadas como coherentes.",
+    )
+    p.set_defaults(handler=handle)

@@ -108,3 +108,19 @@ def _fmt_ms(v: float | None) -> str:
     if v >= 1000:
         return f"{v/1000:.1f}s"
     return f"{v:.1f}"
+
+
+def register(subparsers: argparse._SubParsersAction) -> None:
+    """Registra `metrics` como subcomando en el CLI principal."""
+    p = subparsers.add_parser(
+        "metrics",
+        help="Muestra telemetría por stage del run (latencias, tokens, cache).",
+        description=(
+            "Imprime la última métrica registrada de cada stage del run. "
+            "Las métricas se persisten al final de cada stage durante "
+            "`emoparse run`. Si una stage corrió varias veces, se muestra "
+            "la más reciente."
+        ),
+    )
+    p.add_argument("--db", required=True, help="Path al .sqlite del run.")
+    p.set_defaults(handler=handle)

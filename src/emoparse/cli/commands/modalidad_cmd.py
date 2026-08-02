@@ -47,3 +47,31 @@ def handle(args: argparse.Namespace) -> int:
     n = stage.run_pending()
     logger.info(f"[modalidad] {n} vínculos clasificados (NLP-only).")
     return 0
+
+
+def register(subparsers: argparse._SubParsersAction) -> None:
+    """Registra `modalidad` como subcomando en el CLI principal."""
+    p = subparsers.add_parser(
+        "modalidad",
+        help="Clasifica la modalidad referencial de los vínculos (NLP-only).",
+        description=(
+            "Clasifica, con el pre-pass NLP (spaCy) y sin LLM, la modalidad "
+            "referencial (designacion / referencia_gramatical / "
+            "identificacion_inferencial) y la naturaleza del referente de cada "
+            "vínculo marca→referente de una DB existente. Idempotente: solo "
+            "clasifica lo que aún no tiene modalidad y no pisa lo editado a "
+            "mano. La variante con LLM (para los casos ambiguos) se corre vía "
+            "`emoparse run --stages ...,modalidad`."
+        ),
+    )
+    p.add_argument("--db", required=True, help="Path al .sqlite del run.")
+    p.add_argument(
+        "--nlp-model",
+        dest="nlp_model",
+        default=None,
+        help=(
+            "Modelo spaCy a usar (ES). Default: es_core_news_md con fallback a "
+            "sm/lg. Instalá el modelo con `python -m spacy download <modelo>`."
+        ),
+    )
+    p.set_defaults(handler=handle)

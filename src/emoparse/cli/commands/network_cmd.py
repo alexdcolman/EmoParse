@@ -58,7 +58,7 @@ from emoparse.storage.red import RedRepository
 from emoparse.storage.runs import RunsRepository
 
 
-def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
+def register(subparsers: argparse._SubParsersAction) -> None:
     """Registra `network` como subcomando en el CLI principal."""
     p = subparsers.add_parser(
         "network",
@@ -164,7 +164,6 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
              "mostrar en los resúmenes.",
     )
     p.set_defaults(handler=run)
-    return p
 
 
 def run(args: argparse.Namespace) -> int:

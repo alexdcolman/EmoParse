@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es-AR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comandos — EmoParse</title>
+<meta name="description" content="Referencia completa de los comandos de EmoParse y de las opciones de cada uno.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&family=IBM+Plex+Sans+Condensed:wght@400;600&family=Spectral:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/css/estilo.css">
+</head>
+<body>
+<a class="saltar" href="#principal">Ir al contenido</a>
+
+<div class="hoja">
+
+  <header class="masthead">
+    <h1 class="titulo"><a href="index.html">EmoParse</a></h1>
+    <p class="bajada">Análisis semiótico de emociones en discursos</p>
+    <p class="sello"><span>v0.6.5</span><span>Beta</span><span>Licencia MIT</span></p>
+  </header>
+
+  <nav class="nav" aria-label="Navegación del sitio">
+    <h2>Secciones</h2>
+    <ul>
+      <li><a href="index.html">Portada</a></li>
+      <li><a href="enfoque.html">El enfoque</a></li>
+      <li><a href="pipeline.html">Cómo funciona</a></li>
+      <li><a href="digital.html">Posts y redes</a></li>
+      <li><a href="tablero.html">El tablero</a></li>
+      <li><a href="empezar.html">Empezar</a></li>
+      <li><a href="comandos.html" aria-current="page">Comandos</a></li>
+      <li><a href="glosario.html">Glosario</a></li>
+    </ul>
+    <h2>En esta página</h2>
+    <ul class="indice">
+<!-- indice:inicio -->
+      <li><a href="#globales">Opciones globales</a></li>
+      <li><a href="#run">emoparse run</a></li>
+      <li><a href="#status">emoparse status</a></li>
+      <li><a href="#retry">emoparse retry</a></li>
+      <li><a href="#inspect">emoparse inspect</a></li>
+      <li><a href="#stats">emoparse stats</a></li>
+      <li><a href="#metrics">emoparse metrics</a></li>
+      <li><a href="#judge">emoparse judge</a></li>
+      <li><a href="#modalidad">emoparse modalidad</a></li>
+      <li><a href="#semas">emoparse semas</a></li>
+      <li><a href="#export">emoparse export</a></li>
+      <li><a href="#validate">emoparse validate</a></li>
+      <li><a href="#scrape">emoparse scrape</a></li>
+      <li><a href="#acquire">emoparse acquire</a></li>
+      <li><a href="#network">emoparse network</a></li>
+      <li><a href="#follows">emoparse follows</a></li>
+      <li><a href="#eval">emoparse eval</a></li>
+      <li><a href="#app">emoparse app</a></li>
+<!-- indice:fin -->
+    </ul>
+    <h2>Repositorio</h2>
+    <ul>
+      <li><a href="https://github.com/alexdcolman/EmoParse">Código en GitHub</a></li>
+    </ul>
+  </nav>
+
+  <main class="cuerpo" id="principal">
+  <div class="contenido">
+
+    <h1>Comandos</h1>
+
+    <p class="entradilla">Referencia completa de lo que se puede escribir en la consola. Es la página
+    técnica del sitio: lista cada comando con todas sus opciones. Para instalar el programa y hacer
+    un primer análisis, ver <a href="empezar.html">Empezar</a>.</p>
+
+    <div class="nota">
+      <span class="rotulo">Cómo leer esta página</span>
+      <p>Las opciones marcadas como requeridas hay que escribirlas siempre. Las que no muestran valor
+      son interruptores: alcanza con nombrarlas. Todo comando acepta además <code>--help</code>, que
+      imprime lo mismo que esta página pero en la consola.</p>
+    </div>
+
+<!-- comandos:inicio -->
+    <h2 id="globales">Opciones globales</h2>
+
+    <p>Válidas para cualquier subcomando, escritas antes de él.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>-v, --verbose</code></td><td></td><td></td><td>Logging en DEBUG (más detalle).</td></tr>
+        <tr><td><code>-q, --quiet</code></td><td></td><td></td><td>Logging en WARNING (menos ruido).</td></tr>
+        <tr><td><code>--log-dir</code></td><td><code>DIR</code></td><td></td><td>Directorio donde escribir el log de la corrida. Default: la variable EMOPARSE_LOG_DIR, o `logs/`.</td></tr>
+        <tr><td><code>--no-log-file</code></td><td></td><td></td><td>No escribir el log a archivo; solo consola.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="run">emoparse run</h2>
+
+    <p>Carga la config, ingesta los discursos del input, y ejecuta todas las stages habilitadas. Si la DB ya existe (mismo run-id), reanuda desde donde quedó.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--config, -c</code></td><td><code>CONFIG</code></td><td><code>requerido</code></td><td>Path al YAML de config.</td></tr>
+        <tr><td><code>--input, -i</code></td><td><code>INPUT</code></td><td><code>requerido</code></td><td>Path al CSV/JSON de discursos.</td></tr>
+        <tr><td><code>--run-id</code></td><td><code>RUN_ID</code></td><td><code>requerido</code></td><td>Identificador único del run.</td></tr>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td></td><td>Path al .sqlite del run. Default: &lt;runs_dir&gt;/&lt;run_id&gt;.sqlite.</td></tr>
+        <tr><td><code>--stages</code></td><td><code>STAGES</code></td><td></td><td>Lista comma-separated de stages a correr (subset de summarizer,metadata,enunciation,actors,emotions,emotions_pass2,explode_emotions,deixis,modalidad,normalize_emotions,characterizer,actants,judge,semas). Default: las stages por default (opt-in: emotions_pass2, deixis, modalidad, actants, judge).</td></tr>
+        <tr><td><code>--genre</code></td><td><code>GENRE</code></td><td></td><td>ID del género de discurso a aplicar. Default: &#x27;discurso_presidencial&#x27;. Los géneros disponibles dependen de los entry-points &#x27;emoparse.genres&#x27; instalados. El género determina los roles enunciativos válidos, la unidad de chunking (frase/parrafo/documento), y opcionalmente overrides de modelos y batch_sizes.</td></tr>
+        <tr><td><code>--enunciador</code></td><td></td><td></td><td>Acota la detección de emociones (ambos pases) a las del enunciador. Combinable con --enunciatarios y --actores (se unen). Si no se pasa ninguna de las tres, se analizan todos los experienciadores.</td></tr>
+        <tr><td><code>--enunciatarios</code></td><td></td><td></td><td>Acota la detección de emociones (ambos pases) a las de los enunciatarios.</td></tr>
+        <tr><td><code>--actores</code></td><td></td><td></td><td>Acota la detección de emociones (ambos pases) a las de otros actores (distintos del enunciador y los enunciatarios).</td></tr>
+        <tr><td><code>--embed</code></td><td></td><td></td><td>Inyecta como contexto la información adjunta de cada post (título/descripción/sitio de links del campo embed, alt de imágenes) en emotions, emotions_pass2, enunciation y metadata. Las descripciones de vision_describe ya se inyectan solas si esa stage corrió antes.</td></tr>
+        <tr><td><code>--overwrite-db</code></td><td></td><td></td><td>Si la DB del run ya existe, la elimina y empieza de cero sin preguntar. Sin esta flag (ni --resume), una DB existente dispara una pregunta interactiva (o un error si no hay TTY).</td></tr>
+        <tr><td><code>--resume</code></td><td></td><td></td><td>Si la DB del run ya existe, reanuda sin preguntar (el comportamiento clásico de re-correr el mismo run-id).</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="status">emoparse status</h2>
+
+    <p>Muestra el progreso del pipeline en una DB.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>Path al .sqlite.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="retry">emoparse retry</h2>
+
+    <p>Modos: 1) --stage &lt;n&gt;: limpia todos los errors de esa stage. En el próximo `emoparse run` se reintentan. 2) --policy &lt;file&gt;: aplica un YAML de policies (target=failed/completed/all, filters declarativos sobre el payload JSON, override_model opcional). Si además se pasan --config + --input + --run-id, ejecuta el pipeline con el config overrideado por las policies.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>Path al .sqlite.</td></tr>
+        <tr><td><code>--stage</code></td><td><code>STAGE</code></td><td></td><td>Modo legacy: stage cuyos errors limpiar. Una de: summarizer, metadata, enunciation, actores, emociones, characterizer, actants.</td></tr>
+        <tr><td><code>--policy</code></td><td><code>POLICY</code></td><td></td><td>Modo policy: path al YAML de retry policies declarativas. Incompatible con --stage.</td></tr>
+        <tr><td><code>--config</code></td><td><code>CONFIG</code></td><td></td><td>(opcional, solo con --policy) Path al config.yaml. Si se pasa junto con --input y --run-id, después de aplicar las policies se ejecuta el pipeline con el config overrideado.</td></tr>
+        <tr><td><code>--input</code></td><td><code>INPUT</code></td><td></td><td>(opcional, solo con --policy) Path al CSV/JSON de discursos.</td></tr>
+        <tr><td><code>--run-id</code></td><td><code>RUN_ID</code></td><td></td><td>(opcional, solo con --policy) Identificador del run.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="inspect">emoparse inspect</h2>
+
+    <p>Imprime los datos asociados a un discurso en la DB.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>Path al .sqlite.</td></tr>
+        <tr><td><code>--codigo</code></td><td><code>CODIGO</code></td><td><code>requerido</code></td><td>Código del discurso a inspeccionar.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="stats">emoparse stats</h2>
+
+    <p>Muestra estadísticas del cache LLM.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>Path al .sqlite.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="metrics">emoparse metrics</h2>
+
+    <p>Imprime la última métrica registrada de cada stage del run. Las métricas se persisten al final de cada stage durante `emoparse run`. Si una stage corrió varias veces, se muestra la más reciente.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>Path al .sqlite del run.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="judge">emoparse judge</h2>
+
+    <p>Read-only: imprime el resumen de juicios persistidos en la tabla `judgments`. La ejecución del judge se hace incluyéndolo en `--stages` durante `emoparse run` (es opt-in).</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>Path al .sqlite del run.</td></tr>
+        <tr><td><code>--codigo</code></td><td><code>CODIGO</code></td><td></td><td>Mostrar solo este discurso. Default: todos.</td></tr>
+        <tr><td><code>--coherentes</code></td><td></td><td></td><td>Listar también las emociones juzgadas como coherentes.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="modalidad">emoparse modalidad</h2>
+
+    <p>Clasifica, con el pre-pass NLP (spaCy) y sin LLM, la modalidad referencial (designacion / referencia_gramatical / identificacion_inferencial) y la naturaleza del referente de cada vínculo marca→referente de una DB existente. Idempotente: solo clasifica lo que aún no tiene modalidad y no pisa lo editado a mano. La variante con LLM (para los casos ambiguos) se corre vía `emoparse run --stages ...,modalidad`.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>Path al .sqlite del run.</td></tr>
+        <tr><td><code>--nlp-model</code></td><td><code>NLP_MODEL</code></td><td></td><td>Modelo spaCy a usar (ES). Default: es_core_news_md con fallback a sm/lg. Instalá el modelo con `python -m spacy download &lt;modelo&gt;`.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="semas">emoparse semas</h2>
+
+    <p>Read-only por default (no ejecuta nada sin flags). Con --reset, borra todos los semas persistidos en `canonico_semas` (propuestos y editados a mano), sin distinguir origen. Para reasignarlos con el vocabulario vigente, correr después `emoparse run --stages ...,semas` sobre el mismo run.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>Path al .sqlite del run.</td></tr>
+        <tr><td><code>--reset</code></td><td></td><td></td><td>Borra todos los semas existentes (propuestos y humanos). No hay vuelta atrás.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="export">emoparse export</h2>
+
+    <p>Genera tres CSVs en el directorio de salida: discursos.csv, frases.csv, emociones.csv. Los payloads de stages a nivel discurso se flatten a columnas; los de frases se preservan como JSON strings.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>Path al .sqlite del run.</td></tr>
+        <tr><td><code>--output-dir</code></td><td><code>OUTPUT_DIR</code></td><td><code>requerido</code></td><td>Directorio donde escribir los CSVs. Se crea si no existe.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="validate">emoparse validate</h2>
+
+    <p>Lee las emociones ya caracterizadas de la DB y aplica los domain validators. Las issues encontradas se persisten en &#x27;validation_issues&#x27; y se muestran en consola. Siempre informativo (warnings), no bloquea.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>Path al .sqlite.</td></tr>
+        <tr><td><code>--codigo</code></td><td><code>CODIGO</code></td><td></td><td>Validar solo este discurso (por código). Default: todos.</td></tr>
+        <tr><td><code>--verbose-issues</code></td><td></td><td></td><td>Mostrar detalle de cada issue aunque sean muchas.</td></tr>
+        <tr><td><code>--knowledge-dir</code></td><td><code>KNOWLEDGE_DIR</code></td><td></td><td>Directorio de knowledge files. Permite cargar la ontología de emociones para activar V11_DesviacionOntologica.</td></tr>
+        <tr><td><code>--ontology-file</code></td><td><code>ONTOLOGY_FILE</code></td><td><code>emociones_ontologia.json</code></td><td>Nombre del archivo de ontología de emociones dentro de --knowledge-dir. Default: emociones_ontologia.json.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="scrape">emoparse scrape</h2>
+
+    <p>Scrapea discursos de una fuente registrada. Modo append incremental: se puede interrumpir y reanudar (dedupe por URL).</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--source</code></td><td><code>casarosada</code></td><td><code>requerido</code></td><td>Fuente a scrapear (ej. casarosada).</td></tr>
+        <tr><td><code>--output</code></td><td><code>OUTPUT</code></td><td><code>requerido</code></td><td>CSV de salida. Se crea si no existe; append si ya existe.</td></tr>
+        <tr><td><code>--max</code></td><td><code>MAX</code></td><td></td><td>Máximo de discursos a extraer en esta corrida. None = sin tope.</td></tr>
+        <tr><td><code>--from</code></td><td><code>YYYY-MM-DD</code></td><td></td><td>Solo discursos con fecha &gt;= esta. Best-effort si la fuente no expone fechas en el listado.</td></tr>
+        <tr><td><code>--to</code></td><td><code>YYYY-MM-DD</code></td><td></td><td>Solo discursos con fecha &lt;= esta.</td></tr>
+        <tr><td><code>--max-after-filter</code></td><td></td><td></td><td>Si se usa junto con --from/--to, --max cuenta discursos ya filtrados por fecha (no el listado crudo del adapter). Por defecto --max se pasa tal cual al adapter, que puede cortar el listado antes de que se aplique el filtro de fechas, dando menos resultados de los esperados.</td></tr>
+        <tr><td><code>--mode</code></td><td><code>auto | http | selenium</code></td><td><code>auto</code></td><td>Cómo descargar páginas. auto = HTTP con fallback Selenium.</td></tr>
+        <tr><td><code>--timeout</code></td><td><code>TIMEOUT</code></td><td><code>20.0</code></td><td>Timeout HTTP por request (segundos).</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="acquire">emoparse acquire</h2>
+
+    <p>Adquiere posts (tuits y afines) de una fuente registrada. Modo append incremental: se puede interrumpir y reanudar (dedupe por id). El JSONL resultante se analiza con `emoparse run --genre tuit --input &lt;archivo&gt;.jsonl`.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--source</code></td><td><code>bluesky | csv | jsonl | mastodon | x_api</code></td><td><code>requerido</code></td><td>Fuente de posts (ej. bluesky, jsonl, csv).</td></tr>
+        <tr><td><code>--out</code></td><td><code>OUT</code></td><td><code>requerido</code></td><td>JSONL de salida. Se crea si no existe; append si ya existe.</td></tr>
+        <tr><td><code>--query</code></td><td><code>QUERY</code></td><td></td><td>Búsqueda (texto libre, hashtag, operadores de la fuente).</td></tr>
+        <tr><td><code>--user</code></td><td><code>USER</code></td><td></td><td>Handle de una cuenta cuyos posts adquirir.</td></tr>
+        <tr><td><code>--thread</code></td><td><code>THREAD</code></td><td></td><td>Id del post raíz de una conversación a adquirir completa.</td></tr>
+        <tr><td><code>--max</code></td><td><code>MAX</code></td><td></td><td>Máximo de posts a extraer en esta corrida. None = sin tope.</td></tr>
+        <tr><td><code>--min-conv-posts</code></td><td><code>N</code></td><td></td><td>Solo con --query: adquiere únicamente conversaciones con al menos N posts. Por cada resultado de búsqueda se expande su hilo completo (una llamada por conversación candidata, deduplicadas); las conversaciones más cortas se descartan. Agnóstico de la fuente: usa el fetch_thread del adapter.</td></tr>
+        <tr><td><code>--max-convs</code></td><td><code>M</code></td><td></td><td>Con --min-conv-posts: corta tras adquirir M conversaciones que pasaron el filtro (economía de adquisición).</td></tr>
+        <tr><td><code>--from</code></td><td><code>YYYY-MM-DD</code></td><td></td><td>Solo posts con fecha &gt;= esta. Best-effort si la fuente no filtra por fecha.</td></tr>
+        <tr><td><code>--to</code></td><td><code>YYYY-MM-DD</code></td><td></td><td>Solo posts con fecha &lt;= esta.</td></tr>
+        <tr><td><code>--lang</code></td><td><code>LANG</code></td><td></td><td>Filtro de idioma (código ISO, ej. &#x27;es&#x27;) si la fuente lo soporta.</td></tr>
+        <tr><td><code>--input</code></td><td><code>PATH</code></td><td></td><td>Archivo de entrada para fuentes de importación (jsonl, csv).</td></tr>
+        <tr><td><code>--mapping</code></td><td><code>MAPPING</code></td><td></td><td>JSON {campo_normalizado: columna} para la fuente csv.</td></tr>
+        <tr><td><code>--with-media</code></td><td></td><td></td><td>Descarga las imágenes adjuntas a &lt;out&gt;_media/ y registra path_local en cada post (solo imágenes, con tope de tamaño).</td></tr>
+        <tr><td><code>--with-author-profile</code></td><td></td><td></td><td>Completa autor_bio/autor_seguidores/autor_siguiendo/autor_verificado con una llamada extra por autor (cache en memoria). Solo si la fuente lo soporta; se ignora con un warning si no.</td></tr>
+        <tr><td><code>--pseudonymize</code></td><td></td><td></td><td>Seudonimiza handles al escribir (sal persistida en &lt;out&gt;.salt). Ver emoparse/acquisition/README.md.</td></tr>
+        <tr><td><code>--timeout</code></td><td><code>TIMEOUT</code></td><td><code>20.0</code></td><td>Timeout HTTP por request (segundos), si la fuente lo usa.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="network">emoparse network</h2>
+
+    <p>Construye grafos de interacción (reply, mention, rt, qt, hashtag_co) desde los posts del run, calcula métricas y comunidades, las persiste en la DB y reporta el acoplamiento con el análisis emocional. Requiere el extra [network].</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>Path a la DB SQLite del run.</td></tr>
+        <tr><td><code>--graphs</code></td><td><code>LISTA</code></td><td><code>reply,mention,rt,qt,hashtag_co</code></td><td>Grafos a construir, separados por coma. Válidos: reply, mention, rt, qt, hashtag_co. El grafo &#x27;follow&#x27; se adquiere aparte con `emoparse follows` y se mide agregándolo acá.</td></tr>
+        <tr><td><code>--cliques</code></td><td></td><td></td><td>Reporta las cliques de vínculos recíprocos de cada grafo de cuentas (todos se vinculan con todos, a diferencia de la comunidad, que solo es una zona densa).</td></tr>
+        <tr><td><code>--min-clique</code></td><td><code>N</code></td><td><code>3</code></td><td>Tamaño mínimo de clique a reportar (default 3).</td></tr>
+        <tr><td><code>--flujo</code></td><td></td><td></td><td>Circulación de la emoción: contagio por tipo de emoción y transición fórica partida en intra e inter comunidad.</td></tr>
+        <tr><td><code>--similitud</code></td><td></td><td></td><td>Agrupamiento narrativo: agrupa los simulacros emocionales por parecido entre sus componentes.</td></tr>
+        <tr><td><code>--similitud-componentes</code></td><td><code>LISTA</code></td><td><code>experienciador,tipo_emocion,fuente,mediador,verificador_normativo,verificador_observacional,operador_modificacion,foria</code></td><td>Componentes del simulacro que inciden en el parecido, separados por coma. Disponibles: experienciador, tipo_emocion, fuente, semas_experienciador, semas_fuente, mediador, verificador_normativo, verificador_observacional, operador_modificacion, polaridad, foria, intensidad, dominancia, tipo_configuracion.</td></tr>
+        <tr><td><code>--similitud-umbral</code></td><td><code>X</code></td><td><code>0.5</code></td><td>Parecido mínimo para ligar dos simulacros (default 0.5).</td></tr>
+        <tr><td><code>--semantico</code></td><td></td><td></td><td>Agrupa los posts por contenido semántico (requiere el extra [embeddings]).</td></tr>
+        <tr><td><code>--modelo-embeddings</code></td><td><code>NOMBRE</code></td><td></td><td>Modelo de sentence-transformers para --semantico.</td></tr>
+        <tr><td><code>--seed</code></td><td><code>SEED</code></td><td><code>42</code></td><td>Seed para la detección de comunidades (reproducibilidad).</td></tr>
+        <tr><td><code>--profile-graph</code></td><td><code>reply | mention | rt | qt | follow</code></td><td></td><td>Grafo cuyas comunidades se usan para el perfil emocional. Por defecto, el primer grafo de autores con comunidades.</td></tr>
+        <tr><td><code>--export-dir</code></td><td><code>EXPORT_DIR</code></td><td></td><td>Directorio para exportar GEXF + CSVs por grafo (Gephi) y el perfil por comunidad.</td></tr>
+        <tr><td><code>--top</code></td><td><code>TOP</code></td><td><code>10</code></td><td>Cantidad de nodos (y de tipos de emoción por comunidad) a mostrar en los resúmenes.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="follows">emoparse follows</h2>
+
+    <p>Pide a la fuente a quién sigue cada cuenta del corpus y persiste como grafo &#x27;follow&#x27; las aristas internas al corpus. Habilita el análisis de comunidades y cliques por seguimiento en `emoparse network` y en la tab Red.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>Path a la DB SQLite del run.</td></tr>
+        <tr><td><code>--source</code></td><td><code>bluesky | csv | jsonl | mastodon | x_api</code></td><td><code>requerido</code></td><td>Fuente desde la que consultar el seguimiento.</td></tr>
+        <tr><td><code>--handles</code></td><td><code>HANDLES</code></td><td></td><td>Archivo con un handle por línea. Necesario cuando el corpus está seudonimizado: la DB guarda alias, que no se pueden consultar en la plataforma.</td></tr>
+        <tr><td><code>--pseudonymize</code></td><td></td><td></td><td>Escribe las aristas con los alias de --salt, para que el grafo quede en los mismos términos que un corpus seudonimizado.</td></tr>
+        <tr><td><code>--salt</code></td><td><code>SALT</code></td><td></td><td>Archivo de sal de la seudonimización (el mismo que usó `acquire --pseudonymize`).</td></tr>
+        <tr><td><code>--seed</code></td><td><code>SEED</code></td><td><code>42</code></td><td>Seed para la detección de comunidades (reproducibilidad).</td></tr>
+        <tr><td><code>--max-follows</code></td><td><code>N</code></td><td><code>5000</code></td><td>Tope de seguidos consultados por cuenta (default 5000).</td></tr>
+        <tr><td><code>--rehacer</code></td><td></td><td></td><td>Descarta el grafo persistido y vuelve a consultar todas las cuentas. Sin esta flag, se reanuda: solo se consultan las que todavía no tienen aristas.</td></tr>
+        <tr><td><code>--timeout</code></td><td><code>TIMEOUT</code></td><td><code>20.0</code></td><td>Timeout HTTP por request (segundos), si la fuente lo usa.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="eval">emoparse eval</h2>
+
+    <p>Evaluación de validez del análisis emocional.</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td></td><td>DB del run a evaluar (para --golden, --make-sample, --control).</td></tr>
+        <tr><td><code>--golden</code></td><td><code>GOLDEN</code></td><td></td><td>Golden set (.jsonl o directorio de .jsonl).</td></tr>
+        <tr><td><code>--ontology</code></td><td><code>ONTOLOGY</code></td><td><code>knowledge/emociones_ontologia.json</code></td><td>Ontología para canonicalizar tipos al comparar.</td></tr>
+        <tr><td><code>--make-sample</code></td><td></td><td></td><td>Exporta planilla de anotación a ciegas (--out).</td></tr>
+        <tr><td><code>--n</code></td><td><code>N</code></td><td><code>300</code></td><td>Tamaño de la muestra de anotación.</td></tr>
+        <tr><td><code>--seed</code></td><td><code>SEED</code></td><td><code>42</code></td><td>Seed del muestreo (reproducibilidad).</td></tr>
+        <tr><td><code>--agreement</code></td><td><code>AGREEMENT</code></td><td></td><td>CSV con las planillas completadas (columna `anotador` + columnas de anotación).</td></tr>
+        <tr><td><code>--control</code></td><td></td><td></td><td>Reporta la tasa de detección del run (corpus de control → tasa esperada ≈ 0).</td></tr>
+        <tr><td><code>--out</code></td><td><code>OUT</code></td><td></td><td>Archivo de salida (reporte .md o planilla .csv).</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="app">emoparse app</h2>
+
+    <p>Inicia el servidor Streamlit y abre el dashboard en el navegador. Equivalente a: streamlit run src/emoparse/app/__main__.py</p>
+
+    <div class="tabla-caja">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--port</code></td><td><code>PORT</code></td><td></td><td>Puerto en el que escucha Streamlit (default: 8501).</td></tr>
+        <tr><td><code>--no-browser</code></td><td></td><td></td><td>No abrir el navegador automáticamente al iniciar.</td></tr>
+      </tbody>
+    </table>
+    </div>
+<!-- comandos:fin -->
+
+  </div>
+  </main>
+
+  <footer class="pie">
+    <div>
+      <h2>Proyecto</h2>
+      <p>EmoParse se desarrolla en el marco de una investigación sobre análisis automático de
+      emociones en discursos.</p>
+      <p><a href="https://github.com/alexdcolman/EmoParse">github.com/alexdcolman/EmoParse</a></p>
+    </div>
+    <div>
+      <h2>Autoría</h2>
+      <p><a href="https://independent.academia.edu/AlexColman1">Alex Colman</a></p>
+      <p>alexdcolman@gmail.com</p>
+    </div>
+    <div>
+      <h2>Licencia</h2>
+      <p>MIT. Si se usa en una publicación, una referencia al repositorio ayuda a sostener
+      el proyecto.</p>
+    </div>
+  </footer>
+
+</div>
+<script src="assets/js/figuras.js"></script>
+</body>
+</html>

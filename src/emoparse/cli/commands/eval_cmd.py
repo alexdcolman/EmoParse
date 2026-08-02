@@ -46,7 +46,7 @@ _AGREEMENT_DIMENSIONS: dict[str, str] = {
 }
 
 
-def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
+def register(subparsers: argparse._SubParsersAction) -> None:
     """Registra `eval` como subcomando en el CLI principal."""
     p = subparsers.add_parser(
         "eval",
@@ -77,7 +77,6 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
     p.add_argument("--out", type=Path, default=None,
                    help="Archivo de salida (reporte .md o planilla .csv).")
     p.set_defaults(handler=run)
-    return p
 
 
 def run(args: argparse.Namespace) -> int:

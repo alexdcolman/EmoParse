@@ -32,7 +32,7 @@ from emoparse.acquisition.pseudonym import Pseudonymizer
 from emoparse.cli.commands.scrape_cmd import parse_date
 
 
-def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentParser:
+def register(subparsers: argparse._SubParsersAction) -> None:
     """Registra `acquire` como subcomando en el CLI principal."""
     p = subparsers.add_parser(
         "acquire",
@@ -157,7 +157,6 @@ def add_subparser(subparsers: argparse._SubParsersAction) -> argparse.ArgumentPa
         help="Timeout HTTP por request (segundos), si la fuente lo usa.",
     )
     p.set_defaults(handler=run)
-    return p
 
 
 def run(args: argparse.Namespace) -> int:

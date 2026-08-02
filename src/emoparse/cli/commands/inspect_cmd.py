@@ -139,3 +139,16 @@ def _count_frase_status(
     return int(row["ok"] or 0), int(row["failed"] or 0)
 
 
+def register(subparsers: argparse._SubParsersAction) -> None:
+    """Registra `inspect` como subcomando en el CLI principal."""
+    p = subparsers.add_parser(
+        "inspect",
+        help="Imprime los datos asociados a un discurso en la DB.",
+    )
+    p.add_argument("--db", required=True, help="Path al .sqlite.")
+    p.add_argument(
+        "--codigo",
+        required=True,
+        help="Código del discurso a inspeccionar.",
+    )
+    p.set_defaults(handler=handle)

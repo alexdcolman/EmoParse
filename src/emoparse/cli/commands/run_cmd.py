@@ -6,12 +6,13 @@
 #  Flujo:
 #  1) Cargar config YAML (validado por Pydantic).
 #  2) Cargar discursos del input (CSV/JSON).
-#  3) Resolver path de la DB (default: <runs_dir>/<run_id>.sqlite).
-#  4) Resolver el género: --genre <id> o default ('discurso_presidencial').
-#  5) Construir KnowledgeLoader.
-#  6) Construir PipelineRunner con enabled_stages parseado y el género.
-#  7) Ingest + run.
-#  8) Imprimir reporte final.
+#  3) Acotar el input si se pasó --select.
+#  4) Resolver path de la DB (default: <runs_dir>/<run_id>.sqlite).
+#  5) Resolver el género: --genre <id> o default ('discurso_presidencial').
+#  6) Construir KnowledgeLoader.
+#  7) Construir PipelineRunner con enabled_stages parseado y el género.
+#  8) Ingest + run.
+#  9) Imprimir reporte final.
 #
 #  Flag --genre <id>: define el género del pipeline.
 #  Default: 'discurso_presidencial'. Si se especifica otro, se resuelve vía registry.
@@ -32,7 +33,13 @@ from emoparse.genres import (
     default_genre,
     get_genre,
 )
-from emoparse.inputs import InputError, load_discursos
+from emoparse.inputs import (
+    InputError,
+    SeleccionError,
+    aplicar_seleccion,
+    load_discursos,
+    load_seleccion,
+)
 from emoparse.inputs.posts_loader import (
     PostsBundle,
     load_posts,
@@ -45,6 +52,8 @@ from emoparse.pipeline import (
     PipelineRunner,
 )
 from emoparse.pipeline.thread_builder import build_threads
+from emoparse.storage.db import Database
+from emoparse.storage.runs import RunsRepository
 
 
 def handle(args: argparse.Namespace) -> int:
@@ -60,6 +69,21 @@ def handle(args: argparse.Namespace) -> int:
     except InputError as e:
         logger.error(f"Input inválido: {e}")
         return 1
+
+    n_input = len(df_input)
+    resumen_seleccion: str | None = None
+    if args.select is not None:
+        try:
+            seleccion = load_seleccion(args.select)
+            df_input = aplicar_seleccion(df_input, seleccion)
+        except SeleccionError as e:
+            logger.error(f"Selección inválida: {e}")
+            return 1
+        resumen_seleccion = seleccion.leer()
+        logger.info(
+            f"[run] Alcance: {len(df_input)} de {n_input} unidad(es) del "
+            f"input ({resumen_seleccion})."
+        )
 
     try:
         if args.genre is None:
@@ -152,6 +176,7 @@ def handle(args: argparse.Namespace) -> int:
         embed_context=bool(getattr(args, "embed", False)),
     ) as runner:
         runner.ingest(df_input)
+        _registrar_alcance(db_path, resumen_seleccion, n_input, len(df_input))
         if posts_bundle is not None:
             runner.ingest_posts(posts_bundle)
         report = runner.run()
@@ -160,6 +185,11 @@ def handle(args: argparse.Namespace) -> int:
     print(f"=== Run {args.run_id} completado ===")
     print(f"DB:    {db_path}")
     print(f"Género: {genre.genre_id} ({genre.display_name})")
+    if resumen_seleccion:
+        print(
+            f"Alcance: {len(df_input)} de {n_input} unidades del input "
+            f"({resumen_seleccion})"
+        )
     print()
     print("Stages procesadas (items ok):")
     for stage_name in STAGE_ORDER:
@@ -171,6 +201,26 @@ def handle(args: argparse.Namespace) -> int:
             print(f"    {stage_name:<25s} (saltada)")
 
     return 0
+
+
+def _registrar_alcance(
+    db_path: Path,
+    seleccion: str | None,
+    n_input: int,
+    n_en_alcance: int,
+) -> None:
+    """Asienta en la DB qué parte del input cubrió esta corrida.
+
+    Se escribe apenas ingestado el input, antes de procesar: si el run se
+    interrumpe, el alcance ya quedó registrado. El registro es informativo,
+    así que un fallo acá no aborta el run.
+    """
+    try:
+        RunsRepository(Database(db_path)).registrar_alcance(
+            seleccion, n_input, n_en_alcance
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"[run] No pude registrar el alcance de la corrida: {e}")
 
 
 def _resolver_db_existente(db_path: Path, args: argparse.Namespace) -> str:
@@ -287,3 +337,111 @@ def _parse_stages(raw: str) -> tuple[str, ...]:
             f"Válidas: {', '.join(STAGE_ORDER)}"
         )
     return tuple(parts)
+
+
+def register(subparsers: argparse._SubParsersAction) -> None:
+    """Registra `run` como subcomando en el CLI principal."""
+    p = subparsers.add_parser(
+        "run",
+        help="Ejecuta el pipeline completo sobre un input.",
+        description=(
+            "Carga la config, ingesta los discursos del input, y ejecuta "
+            "todas las stages habilitadas. Si la DB ya existe (mismo "
+            "run-id), reanuda desde donde quedó."
+        ),
+    )
+    p.add_argument("--config", "-c", required=True, help="Path al YAML de config.")
+    p.add_argument("--input", "-i", required=True, help="Path al CSV/JSON de discursos.")
+    p.add_argument("--run-id", required=True, help="Identificador único del run.")
+    p.add_argument(
+        "--db",
+        help="Path al .sqlite del run. Default: <runs_dir>/<run_id>.sqlite.",
+    )
+    p.add_argument(
+        "--stages",
+        help=(
+            "Lista comma-separated de stages a correr (subset de "
+            "summarizer,metadata,enunciation,actors,emotions,emotions_pass2,"
+            "explode_emotions,deixis,modalidad,normalize_emotions,characterizer,"
+            "actants,judge,semas). Default: las stages por default "
+            "(opt-in: emotions_pass2, deixis, modalidad, actants, judge)."
+        ),
+    )
+    p.add_argument(
+        "--genre",
+        default=None,
+        help=(
+            "ID del género de discurso a aplicar. Default: "
+            "'discurso_presidencial'. Los géneros disponibles dependen "
+            "de los entry-points 'emoparse.genres' instalados. El "
+            "género determina los roles enunciativos válidos, la unidad "
+            "de chunking (frase/parrafo/documento), y opcionalmente "
+            "overrides de modelos y batch_sizes."
+        ),
+    )
+    p.add_argument(
+        "--select",
+        default=None,
+        metavar="ARCHIVO.yaml",
+        help=(
+            "Archivo YAML que acota qué unidades del input se analizan, "
+            "según los campos que el propio input trae (fuente, autor, "
+            "fecha, tipo, idioma, o cualquier columna presente). En corpus "
+            "de posts se guarda el corpus técnico completo; lo que se acota "
+            "es qué se analiza. Ver data/ejemplos/seleccion.yaml."
+        ),
+    )
+    p.add_argument(
+        "--enunciador",
+        dest="scope_enunciador",
+        action="store_true",
+        help=(
+            "Acota la detección de emociones (ambos pases) a las del enunciador. Combinable "
+            "con --enunciatarios y --actores (se unen). Si no se pasa "
+            "ninguna de las tres, se analizan todos los experienciadores."
+        ),
+    )
+    p.add_argument(
+        "--enunciatarios",
+        dest="scope_enunciatarios",
+        action="store_true",
+        help="Acota la detección de emociones (ambos pases) a las de los enunciatarios.",
+    )
+    p.add_argument(
+        "--actores",
+        dest="scope_actores",
+        action="store_true",
+        help=(
+            "Acota la detección de emociones (ambos pases) a las de otros actores "
+            "(distintos del enunciador y los enunciatarios)."
+        ),
+    )
+    p.add_argument(
+        "--embed",
+        action="store_true",
+        help=(
+            "Inyecta como contexto la información adjunta de cada post "
+            "(título/descripción/sitio de links del campo embed, alt de "
+            "imágenes) en emotions, emotions_pass2, enunciation y metadata. "
+            "Las descripciones de vision_describe ya se inyectan solas si "
+            "esa stage corrió antes."
+        ),
+    )
+    p.add_argument(
+        "--overwrite-db",
+        action="store_true",
+        help=(
+            "Si la DB del run ya existe, la elimina y empieza de cero sin "
+            "preguntar. Sin esta flag (ni --resume), una DB existente "
+            "dispara una pregunta interactiva (o un error si no hay TTY)."
+        ),
+    )
+    p.add_argument(
+        "--resume",
+        action="store_true",
+        help=(
+            "Si la DB del run ya existe, reanuda sin preguntar (el "
+            "comportamiento clásico de re-correr el mismo run-id)."
+        ),
+    )
+    p.set_defaults(handler=handle)

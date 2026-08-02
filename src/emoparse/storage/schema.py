@@ -25,7 +25,10 @@ CREATE TABLE IF NOT EXISTS runs (
     -- Configuración del run, JSON.
     config              TEXT,
     -- Notas opcionales del usuario.
-    notes               TEXT
+    notes               TEXT,
+    -- Alcance de cada corrida sobre el input, JSON: una entrada por corrida
+    -- con el selector aplicado y cuántas unidades quedaron dentro.
+    alcance             TEXT
 )
 """.strip()
 

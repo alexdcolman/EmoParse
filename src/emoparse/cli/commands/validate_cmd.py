@@ -146,3 +146,45 @@ def _print_issues_detail(issues: list[dict]) -> None:
             ctx_str = json.dumps(issue["contexto"], ensure_ascii=False)
             print(f"  contexto: {ctx_str}")
         print()
+
+
+def register(subparsers: argparse._SubParsersAction) -> None:
+    """Registra `validate` como subcomando en el CLI principal."""
+    p = subparsers.add_parser(
+        "validate",
+        help="Ejecuta validators de coherencia semiótica sobre las emociones caracterizadas.",
+        description=(
+            "Lee las emociones ya caracterizadas de la DB y aplica los domain "
+            "validators. Las issues encontradas se persisten en 'validation_issues' "
+            "y se muestran en consola. Siempre informativo (warnings), no bloquea."
+        ),
+    )
+    p.add_argument("--db", required=True, help="Path al .sqlite.")
+    p.add_argument(
+        "--codigo",
+        help="Validar solo este discurso (por código). Default: todos.",
+    )
+    p.add_argument(
+        "--verbose-issues",
+        action="store_true",
+        dest="verbose_issues",
+        help="Mostrar detalle de cada issue aunque sean muchas.",
+    )
+    p.add_argument(
+        "--knowledge-dir",
+        dest="knowledge_dir",
+        help=(
+            "Directorio de knowledge files. Permite cargar la ontología "
+            "de emociones para activar V11_DesviacionOntologica."
+        ),
+    )
+    p.add_argument(
+        "--ontology-file",
+        default="emociones_ontologia.json",
+        dest="ontology_file",
+        help=(
+            "Nombre del archivo de ontología de emociones dentro de "
+            "--knowledge-dir. Default: emociones_ontologia.json."
+        ),
+    )
+    p.set_defaults(handler=handle)

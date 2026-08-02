@@ -190,3 +190,61 @@ def _handle_policy_mode(args: argparse.Namespace, db_path: Path) -> int:
     except Exception as e:
         logger.exception(f"Ejecución del pipeline falló: {e}")
         return 2
+
+
+def register(subparsers: argparse._SubParsersAction) -> None:
+    """Registra `retry` como subcomando en el CLI principal."""
+    p = subparsers.add_parser(
+        "retry",
+        help=(
+            "Limpia errors / prepara reproceso. Dos modos: "
+            "--stage (legacy, una stage entera) o --policy (declarativo)."
+        ),
+        description=(
+            "Modos:\n"
+            "  1) --stage <n>:  limpia todos los errors de esa stage. "
+            "En el próximo `emoparse run` se reintentan.\n"
+            "  2) --policy <file>: aplica un YAML de policies (target=failed/"
+            "completed/all, filters declarativos sobre el payload JSON, "
+            "override_model opcional). Si además se pasan --config + "
+            "--input + --run-id, ejecuta el pipeline con el config "
+            "overrideado por las policies."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    p.add_argument("--db", required=True, help="Path al .sqlite.")
+    # Se valida en el handler para poder devolver un mensaje más claro
+    # que el default de argparse.
+    p.add_argument(
+        "--stage",
+        help=(
+            "Modo legacy: stage cuyos errors limpiar. Una de: summarizer, "
+            "metadata, enunciation, actores, emociones, characterizer, "
+            "actants."
+        ),
+    )
+    p.add_argument(
+        "--policy",
+        help=(
+            "Modo policy: path al YAML de retry policies declarativas. "
+            "Incompatible con --stage."
+        ),
+    )
+    p.add_argument(
+        "--config",
+        help=(
+            "(opcional, solo con --policy) Path al config.yaml. Si se pasa "
+            "junto con --input y --run-id, después de aplicar las policies "
+            "se ejecuta el pipeline con el config overrideado."
+        ),
+    )
+    p.add_argument(
+        "--input",
+        help="(opcional, solo con --policy) Path al CSV/JSON de discursos.",
+    )
+    p.add_argument(
+        "--run-id",
+        dest="run_id",
+        help="(opcional, solo con --policy) Identificador del run.",
+    )
+    p.set_defaults(handler=handle)

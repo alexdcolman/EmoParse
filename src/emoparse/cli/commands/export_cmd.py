@@ -40,3 +40,25 @@ def handle(args: argparse.Namespace) -> int:
     print(f"  emociones.csv : {counts['emociones']} filas")
 
     return 0
+
+
+def register(subparsers: argparse._SubParsersAction) -> None:
+    """Registra `export` como subcomando en el CLI principal."""
+    p = subparsers.add_parser(
+        "export",
+        help="Exporta los resultados del run a CSVs (discursos, frases, emociones).",
+        description=(
+            "Genera tres CSVs en el directorio de salida: discursos.csv, "
+            "frases.csv, emociones.csv. Los payloads de stages a nivel "
+            "discurso se flatten a columnas; los de frases se preservan "
+            "como JSON strings."
+        ),
+    )
+    p.add_argument("--db", required=True, help="Path al .sqlite del run.")
+    p.add_argument(
+        "--output-dir",
+        required=True,
+        dest="output_dir",
+        help="Directorio donde escribir los CSVs. Se crea si no existe.",
+    )
+    p.set_defaults(handler=handle)

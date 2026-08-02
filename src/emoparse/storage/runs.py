@@ -197,6 +197,11 @@ class RunsRepository:
             column="reframing_error",
             type_def="TEXT",
         )
+        self._add_column_if_missing(
+            table="runs",
+            column="alcance",
+            type_def="TEXT",
+        )
 
     def _add_column_if_missing(
         self,
@@ -241,6 +246,47 @@ class RunsRepository:
             config=config,
             notes=row["notes"] or "",
         )
+
+    # ── Alcance de las corridas ──────────────────────────────────────────────
+
+    def registrar_alcance(
+        self,
+        seleccion: str | None,
+        n_input: int,
+        n_en_alcance: int,
+    ) -> None:
+        """Asienta qué parte del input cubrió esta corrida.
+
+        Una DB corrida parcialmente se ve igual que una completa: sin este
+        registro, dos runs comparados más adelante pueden estar midiendo
+        universos distintos sin que nada lo indique. Se acumula una entrada
+        por corrida porque el alcance de una DB es la unión de lo que
+        cubrió cada pasada.
+        """
+        entradas = self.list_alcance()
+        entradas.append(
+            {
+                "fecha": datetime.now(timezone.utc).isoformat(),
+                "seleccion": seleccion,
+                "n_input": n_input,
+                "n_en_alcance": n_en_alcance,
+            }
+        )
+        with self._db.transaction() as cur:
+            cur.execute(
+                "UPDATE runs SET alcance = ?",
+                (json.dumps(entradas, ensure_ascii=False),),
+            )
+
+    def list_alcance(self) -> list[dict[str, Any]]:
+        """Corridas asentadas, de la más vieja a la más reciente."""
+        if not self._db.table_exists("runs"):
+            return []
+        row = self._db.execute("SELECT alcance FROM runs LIMIT 1").fetchone()
+        if row is None or not row["alcance"]:
+            return []
+        cargado = json.loads(row["alcance"])
+        return cargado if isinstance(cargado, list) else []
 
     # ── Status updates ───────────────────────────────────────────────────────
 

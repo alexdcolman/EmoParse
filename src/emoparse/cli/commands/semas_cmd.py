@@ -42,3 +42,28 @@ def handle(args: argparse.Namespace) -> int:
         "reasignarlos con el vocabulario vigente."
     )
     return 0
+
+
+def register(subparsers: argparse._SubParsersAction) -> None:
+    """Registra `semas` como subcomando en el CLI principal."""
+    p = subparsers.add_parser(
+        "semas",
+        help="Mantenimiento de los semas de referentes canónicos de una DB.",
+        description=(
+            "Read-only por default (no ejecuta nada sin flags). Con --reset, "
+            "borra todos los semas persistidos en `canonico_semas` (propuestos "
+            "y editados a mano), sin distinguir origen. Para reasignarlos con "
+            "el vocabulario vigente, correr después "
+            "`emoparse run --stages ...,semas` sobre el mismo run."
+        ),
+    )
+    p.add_argument("--db", required=True, help="Path al .sqlite del run.")
+    p.add_argument(
+        "--reset",
+        action="store_true",
+        help=(
+            "Borra todos los semas existentes (propuestos y humanos). "
+            "No hay vuelta atrás."
+        ),
+    )
+    p.set_defaults(handler=handle)
