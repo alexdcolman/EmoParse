@@ -18,18 +18,14 @@ class TecnoRepository:
     def __init__(self, db: Database) -> None:
         self._db = db
 
-    def replace_for_codigo(
-        self, codigo: str, rows: list[dict[str, Any]]
-    ) -> int:
+    def replace_for_codigo(self, codigo: str, rows: list[dict[str, Any]]) -> int:
         """Reemplaza las entidades de un discurso (idempotente).
 
         Cada row: {unit_idx, tipo, valor, valor_norm, inicio, fin, extra}.
         `extra` puede venir como dict: se serializa a JSON.
         """
         with self._db.transaction() as cur:
-            cur.execute(
-                "DELETE FROM tecno_entidades WHERE codigo = ?", (codigo,)
-            )
+            cur.execute("DELETE FROM tecno_entidades WHERE codigo = ?", (codigo,))
             for r in rows:
                 extra = r.get("extra")
                 if isinstance(extra, dict):
@@ -42,20 +38,22 @@ class TecnoRepository:
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
-                        codigo, int(r["unit_idx"]), r["tipo"], r["valor"],
-                        r["valor_norm"], int(r["inicio"]), int(r["fin"]),
+                        codigo,
+                        int(r["unit_idx"]),
+                        r["tipo"],
+                        r["valor"],
+                        r["valor_norm"],
+                        int(r["inicio"]),
+                        int(r["fin"]),
                         extra,
                     ),
                 )
         return len(rows)
 
-    def list_for_unit(
-        self, codigo: str, unit_idx: int
-    ) -> list[dict[str, Any]]:
+    def list_for_unit(self, codigo: str, unit_idx: int) -> list[dict[str, Any]]:
         """Entidades de una unidad, en orden de aparición."""
         rows = self._db.execute(
-            "SELECT * FROM tecno_entidades "
-            "WHERE codigo = ? AND unit_idx = ? ORDER BY inicio",
+            "SELECT * FROM tecno_entidades WHERE codigo = ? AND unit_idx = ? ORDER BY inicio",
             (codigo, unit_idx),
         ).fetchall()
         return [_row_to_entidad(r) for r in rows]
@@ -63,8 +61,7 @@ class TecnoRepository:
     def list_for_codigo(self, codigo: str) -> list[dict[str, Any]]:
         """Entidades de un discurso completo."""
         rows = self._db.execute(
-            "SELECT * FROM tecno_entidades "
-            "WHERE codigo = ? ORDER BY unit_idx, inicio",
+            "SELECT * FROM tecno_entidades WHERE codigo = ? ORDER BY unit_idx, inicio",
             (codigo,),
         ).fetchall()
         return [_row_to_entidad(r) for r in rows]
@@ -76,9 +73,7 @@ class TecnoRepository:
         ).fetchall()
         return {str(r["tipo"]): int(r["n"]) for r in rows}
 
-    def top_valores(
-        self, tipo: str, limit: int = 50
-    ) -> list[tuple[str, int]]:
+    def top_valores(self, tipo: str, limit: int = 50) -> list[tuple[str, int]]:
         """Valores normalizados más frecuentes de un tipo (p. ej. hashtags)."""
         rows = self._db.execute(
             "SELECT valor_norm, COUNT(*) AS n FROM tecno_entidades "
@@ -87,7 +82,6 @@ class TecnoRepository:
             (tipo, limit),
         ).fetchall()
         return [(str(r["valor_norm"]), int(r["n"])) for r in rows]
-
 
     # ── Afecto de emojis ─────────────────────────────────────────────────────
 
@@ -106,15 +100,11 @@ class TecnoRepository:
         ).fetchall()
         return [dict(r) | {"extra": _parse_extra(r["extra"])} for r in rows]
 
-    def set_extra_key(
-        self, entidad_id: int, key: str, value: Any
-    ) -> None:
+    def set_extra_key(self, entidad_id: int, key: str, value: Any) -> None:
         """Registra un valor bajo una clave del `extra` de una entidad."""
         self.set_extra_keys(entidad_id, {key: value})
 
-    def set_extra_keys(
-        self, entidad_id: int, valores: dict[str, Any]
-    ) -> None:
+    def set_extra_keys(self, entidad_id: int, valores: dict[str, Any]) -> None:
         """Registra varias claves del `extra` en una sola lectura-escritura.
 
         Las stages que anotan más de un bloque por entidad (afecto y su
@@ -139,9 +129,7 @@ class TecnoRepository:
 
     # ── Análisis por uso (hashtags y tecno_usage) ────────────────────────────
 
-    def list_usos_hashtag_sin_funcion(
-        self, valor_norm: str
-    ) -> list[dict[str, Any]]:
+    def list_usos_hashtag_sin_funcion(self, valor_norm: str) -> list[dict[str, Any]]:
         """Usos de un hashtag cuyo `extra` aún no registra función resuelta.
 
         Devuelve cada uso con el texto de su unidad, en orden estable.
@@ -156,9 +144,7 @@ class TecnoRepository:
         ).fetchall()
         return [dict(r) | {"extra": _parse_extra(r["extra"])} for r in rows]
 
-    def analisis_usos_hashtag(
-        self, valor_norm: str
-    ) -> list[dict[str, Any]]:
+    def analisis_usos_hashtag(self, valor_norm: str) -> list[dict[str, Any]]:
         """Payloads de función por uso ya registrados para un hashtag."""
         rows = self._db.execute(
             "SELECT extra FROM tecno_entidades "
@@ -192,22 +178,21 @@ class TecnoRepository:
         unidades: dict[tuple[str, int], dict[str, Any]] = {}
         for r in rows:
             key = (str(r["codigo"]), int(r["unit_idx"]))
-            u = unidades.setdefault(key, {
-                "codigo": key[0],
-                "unit_idx": key[1],
-                "frase": str(r["frase"]),
-                "entidades": [],
-            })
-            u["entidades"].append(
-                dict(r) | {"extra": _parse_extra(r["extra"])}
+            u = unidades.setdefault(
+                key,
+                {
+                    "codigo": key[0],
+                    "unit_idx": key[1],
+                    "frase": str(r["frase"]),
+                    "entidades": [],
+                },
             )
+            u["entidades"].append(dict(r) | {"extra": _parse_extra(r["extra"])})
         return list(unidades.values())
 
     # ── Muestras de hashtags ─────────────────────────────────────────────────
 
-    def sample_usos_hashtag(
-        self, valor_norm: str, limit: int = 8
-    ) -> list[str]:
+    def sample_usos_hashtag(self, valor_norm: str, limit: int = 8) -> list[str]:
         """Muestra de textos de unidades que usan un hashtag (uno por unidad)."""
         rows = self._db.execute(
             "SELECT DISTINCT f.frase FROM tecno_entidades t "

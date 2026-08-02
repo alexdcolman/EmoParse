@@ -14,7 +14,8 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Any, Hashable, Literal, Sequence
+from collections.abc import Hashable, Sequence
+from typing import Any, Literal
 
 Metric = Literal["nominal", "ordinal", "interval"]
 
@@ -65,21 +66,17 @@ def krippendorff_alpha(
                     coincidencias[(c, k)] += 1.0 / (m - 1)  # type: ignore[assignment]
 
     categorias = sorted({c for c, _ in coincidencias})
-    n_c = {c: sum(v for (a, _), v in coincidencias.items() if a == c)
-           for c in categorias}
+    n_c = {c: sum(v for (a, _), v in coincidencias.items() if a == c) for c in categorias}
     n_total = sum(n_c.values())
     if len(categorias) < 2 or n_total <= 1:
         return None
 
     delta = _delta_fn(metric, categorias, n_c)
 
-    do = sum(
-        v * delta(c, k) for (c, k), v in coincidencias.items() if c != k
-    ) / n_total
-    de = sum(
-        n_c[c] * n_c[k] * delta(c, k)
-        for c in categorias for k in categorias if c != k
-    ) / (n_total * (n_total - 1))
+    do = sum(v * delta(c, k) for (c, k), v in coincidencias.items() if c != k) / n_total
+    de = sum(n_c[c] * n_c[k] * delta(c, k) for c in categorias for k in categorias if c != k) / (
+        n_total * (n_total - 1)
+    )
     if de == 0:
         return None
     return 1.0 - do / de

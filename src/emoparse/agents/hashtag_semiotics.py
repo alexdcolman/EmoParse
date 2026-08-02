@@ -45,7 +45,7 @@ class HashtagSemioticsAgent(BaseBatchAgent[ListaHashtagUsosBatchSchema]):
         backend: LLMBackend,
         heuristicas: str | None = None,
         retry_config: Any | None = None,
-        genre: "Genre | None" = None,
+        genre: Genre | None = None,
     ) -> None:
         """
         Args:
@@ -75,10 +75,7 @@ class HashtagSemioticsAgent(BaseBatchAgent[ListaHashtagUsosBatchSchema]):
         head = batch.iloc[0]
         bloques: list[str] = []
         for i, (_, row) in enumerate(batch.iterrows()):
-            bloques.append(
-                f"UNIDAD [{i}]:\n"
-                f"POST: {row.get('uso_texto', '')}"
-            )
+            bloques.append(f"UNIDAD [{i}]:\nPOST: {row.get('uso_texto', '')}")
         funciones = str(head.get("funciones_previas", "") or "").strip()
         return prompts.render_user(
             hashtag=str(head.get("hashtag", "")),
@@ -92,8 +89,4 @@ class HashtagSemioticsAgent(BaseBatchAgent[ListaHashtagUsosBatchSchema]):
         item: HashtagUsoBatchItemSchema,
         row: pd.Series,
     ) -> dict[str, Any]:
-        return {
-            "analisis": json.dumps(
-                item.analisis.model_dump(), ensure_ascii=False
-            )
-        }
+        return {"analisis": json.dumps(item.analisis.model_dump(), ensure_ascii=False)}

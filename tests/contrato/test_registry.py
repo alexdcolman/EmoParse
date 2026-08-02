@@ -26,6 +26,7 @@ T = TypeVar("T", bound=BaseModel)
 #  FakeBackend para tests
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class FakeBackend(LLMBackend):
     """Backend de prueba: devuelve respuestas configuradas, contabiliza llamadas."""
 
@@ -69,6 +70,7 @@ class FakeBackend(LLMBackend):
 #  Fixtures
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 @pytest.fixture
 def fake_models_config() -> dict[str, dict[str, Any]]:
     return {
@@ -91,6 +93,7 @@ def patched_build(monkeypatch: pytest.MonkeyPatch) -> dict[str, FakeBackend]:
         return b
 
     import emoparse.core.backend.registry as reg_mod
+
     monkeypatch.setattr(reg_mod, "build_backend", _fake_build)
     return instances
 
@@ -99,8 +102,8 @@ def patched_build(monkeypatch: pytest.MonkeyPatch) -> dict[str, FakeBackend]:
 #  Lazy loading
 # ══════════════════════════════════════════════════════════════════════════════
 
-class TestLazyLoading:
 
+class TestLazyLoading:
     def test_no_instance_until_get(
         self,
         fake_models_config: dict[str, dict[str, Any]],
@@ -139,8 +142,8 @@ class TestLazyLoading:
 #  Circuit breaker
 # ══════════════════════════════════════════════════════════════════════════════
 
-class TestCircuitBreaker:
 
+class TestCircuitBreaker:
     def test_record_failure_does_not_open_below_threshold(
         self,
         fake_models_config: dict[str, dict[str, Any]],
@@ -229,8 +232,8 @@ class TestCircuitBreaker:
 #  Lifecycle
 # ══════════════════════════════════════════════════════════════════════════════
 
-class TestLifecycle:
 
+class TestLifecycle:
     def test_unload_calls_close(
         self,
         fake_models_config: dict[str, dict[str, Any]],
@@ -269,8 +272,8 @@ class TestLifecycle:
 #  Healthcheck on load
 # ══════════════════════════════════════════════════════════════════════════════
 
-class TestHealthcheckOnLoad:
 
+class TestHealthcheckOnLoad:
     def test_healthcheck_on_load_success(
         self,
         patched_build: dict[str, FakeBackend],

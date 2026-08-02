@@ -44,7 +44,11 @@ try:
     _MODOS: list[str] = list(get_args(_sc.ModoExistenciaEmocion))
 except Exception:  # pragma: no cover — fallback defensivo
     _MODOS = [
-        "realizada", "potencial", "actual", "virtual", "inducida_proyectada",
+        "realizada",
+        "potencial",
+        "actual",
+        "virtual",
+        "inducida_proyectada",
     ]
 
 #: Opción neutra del selector de modo: el simulacro conserva el suyo.
@@ -74,15 +78,18 @@ def render(db_path: Path) -> None:
     fcol1, fcol2 = st.columns([1, 2])
     with fcol1:
         only_pending = st.toggle(
-            "Solo pendientes", value=True, key="deixis_only_pending",
+            "Solo pendientes",
+            value=True,
+            key="deixis_only_pending",
             help="Oculta las marcas cuyos referentes ya fueron aplicados a un "
-                 "simulacro o descartados.",
+            "simulacro o descartados.",
         )
         include_unlinked = st.toggle(
-            "Incluir marcas sin sugerencia", value=False,
+            "Incluir marcas sin sugerencia",
+            value=False,
             key="deixis_include_unlinked",
             help="Muestra también marcas deícticas (yo/nosotros/ustedes…) que el "
-                 "LLM no asignó, para asignarles un referente a mano.",
+            "LLM no asignó, para asignarles un referente a mano.",
         )
     with fcol2:
         func_inc = st.multiselect(
@@ -128,13 +135,13 @@ def render(db_path: Path) -> None:
     page = max(0, min(page, n_pages - 1))
     p1, p2, p3 = st.columns([1, 6, 1])
     with p1:
-        if st.button("◀", key="deixis_prev", disabled=page == 0,
-                     use_container_width=True):
+        if st.button("◀", key="deixis_prev", disabled=page == 0, use_container_width=True):
             st.session_state["deixis_page"] = page - 1
             st.rerun()
     with p3:
-        if st.button("▶", key="deixis_next", disabled=page >= n_pages - 1,
-                     use_container_width=True):
+        if st.button(
+            "▶", key="deixis_next", disabled=page >= n_pages - 1, use_container_width=True
+        ):
             st.session_state["deixis_page"] = page + 1
             st.rerun()
     with p2:
@@ -144,20 +151,20 @@ def render(db_path: Path) -> None:
             unsafe_allow_html=True,
         )
 
-    pagina = sugerencias[page * _PAGE:(page + 1) * _PAGE]
+    pagina = sugerencias[page * _PAGE : (page + 1) * _PAGE]
     ref_map = data_layer.get_deixis_referentes_map(
         db_path, codigos=sorted({s["codigo"] for s in pagina})
     )
     canonicos = data_layer.list_canonicos(db_path)
     emo_brief = data_layer.get_frase_emociones_brief(db_path)
     for sug in pagina:
-        _render_sugerencia(
-            db_path, sug, ref_map.get(sug["codigo"], []), canonicos, emo_brief
-        )
+        _render_sugerencia(db_path, sug, ref_map.get(sug["codigo"], []), canonicos, emo_brief)
 
 
 def _render_sugerencia(
-    db_path: Path, sug: dict, referentes_discurso: list[dict],
+    db_path: Path,
+    sug: dict,
+    referentes_discurso: list[dict],
     canonicos: list[str],
     emo_brief: dict[tuple[str, int], list[dict[str, str]]] | None = None,
 ) -> None:
@@ -200,14 +207,15 @@ def _roles_en_emocion(sug: dict, brief: dict) -> list[str]:
     marca = str(sug["marca"]).strip().lower()
     funciones = set(sug["funciones"])
     return [
-        rol for rol in _ROL_LABEL
-        if rol in funciones
-        and str(brief.get(f"{rol}_marca") or "").strip().lower() == marca
+        rol
+        for rol in _ROL_LABEL
+        if rol in funciones and str(brief.get(f"{rol}_marca") or "").strip().lower() == marca
     ]
 
 
 def _render_simulacros(
-    db_path: Path, sug: dict,
+    db_path: Path,
+    sug: dict,
     emo_brief: dict[tuple[str, int], list[dict[str, str]]] | None,
 ) -> None:
     """Simulacros de la unidad, con la acción por emoción y por rol.
@@ -235,7 +243,9 @@ def _render_simulacros(
     resto = len(briefs) - len(aplicables)
     detalle = (
         f" <span style='color:var(--dim);'>· {len(aplicables)} de {len(briefs)} "
-        f"de la unidad; el resto no usa esta marca</span>" if resto else ""
+        f"de la unidad; el resto no usa esta marca</span>"
+        if resto
+        else ""
     )
     st.markdown(
         f"<div style='color:var(--text-dim);font-size:0.78rem;margin:0.55rem 0 0.2rem;'>"
@@ -244,10 +254,14 @@ def _render_simulacros(
         unsafe_allow_html=True,
     )
     destino = (
-        elegibles[0] if len(elegibles) == 1
+        elegibles[0]
+        if len(elegibles) == 1
         else st.selectbox(
-            "referente a aplicar", elegibles, key=f"dxap_ref_{mid}",
-            format_func=_pretty, label_visibility="collapsed",
+            "referente a aplicar",
+            elegibles,
+            key=f"dxap_ref_{mid}",
+            format_func=_pretty,
+            label_visibility="collapsed",
         )
     )
     sugerido = _MODO_SUGERIDO.get(tipo_de.get(destino, ""), "")
@@ -260,8 +274,8 @@ def _render_simulacros(
             index=opciones.index(sugerido) if sugerido in opciones else 0,
             key=f"dxap_modo_{mid}_{destino}",
             help="Con «sin cambio» el simulacro conserva su modo. Una emoción "
-                 "atribuida al auditorio se propone como potencial; cambialo "
-                 "si el texto simula que ya la siente.",
+            "atribuida al auditorio se propone como potencial; cambialo "
+            "si el texto simula que ya la siente.",
         )
     modo_dest = "" if elegido == _SIN_CAMBIO else elegido
     for brief, roles in aplicables:
@@ -269,7 +283,11 @@ def _render_simulacros(
 
 
 def _render_simulacro(
-    db_path: Path, sug: dict, brief: dict, roles: list[str], destino: str,
+    db_path: Path,
+    sug: dict,
+    brief: dict,
+    roles: list[str],
+    destino: str,
     modo_dest: str = "",
 ) -> None:
     """Una emoción de la unidad, con sus dos acciones en el rol que toca."""
@@ -287,12 +305,13 @@ def _render_simulacro(
             unsafe_allow_html=True,
         )
     with c_del:
-        if st.button("🗑 eliminar", key=f"dxdel_{mid}_{eidx}",
-                     use_container_width=True,
-                     help="Elimina este simulacro de la base. No se deshace."):
-            actions_layer.emocion_delete(
-                db_path, str(sug["codigo"]), int(sug["unit_idx"]), eidx
-            )
+        if st.button(
+            "🗑 eliminar",
+            key=f"dxdel_{mid}_{eidx}",
+            use_container_width=True,
+            help="Elimina este simulacro de la base. No se deshace.",
+        ):
+            actions_layer.emocion_delete(db_path, str(sug["codigo"]), int(sug["unit_idx"]), eidx)
             st.toast(f"Emoción #{eidx} eliminada.", icon="🗑")
             st.rerun()
     for rol in _ROL_LABEL:
@@ -302,7 +321,9 @@ def _render_simulacro(
         with c_lbl:
             flecha = (
                 f" <span style='color:var(--dim);'>← marca «"
-                f"{html.escape(str(sug['marca']))}»</span>" if marcado else ""
+                f"{html.escape(str(sug['marca']))}»</span>"
+                if marcado
+                else ""
             )
             st.markdown(
                 f"<div style='padding-top:0.3rem;font-size:0.78rem;'>"
@@ -316,21 +337,23 @@ def _render_simulacro(
         duplica = rol == "experienciador" and destino not in actual.split("; ")
         with c_rep:
             if st.button(
-                "reemplazar", key=f"dxrep_{mid}_{eidx}_{rol}",
+                "reemplazar",
+                key=f"dxrep_{mid}_{eidx}_{rol}",
                 use_container_width=True,
                 help=f"«{_pretty(destino)}» pasa a ser el único referente de "
-                     f"este rol en esta emoción.",
+                f"este rol en esta emoción.",
             ):
                 _aplicar(db_path, sug, eidx, rol, destino, "reemplazar", modo_dest)
         with c_add:
             if st.button(
-                "añadir", key=f"dxadd2_{mid}_{eidx}_{rol}",
+                "añadir",
+                key=f"dxadd2_{mid}_{eidx}_{rol}",
                 use_container_width=True,
                 help=(
-                    "El experienciador es uno solo: la emoción se duplica, una "
-                    "por referente." if rol == "experienciador"
+                    "El experienciador es uno solo: la emoción se duplica, una por referente."
+                    if rol == "experienciador"
                     else "La fuente admite combinación: el referente se suma "
-                         "sin duplicar la emoción."
+                    "sin duplicar la emoción."
                 ),
                 disabled=rol == "experienciador" and not duplica,
             ):
@@ -338,13 +361,24 @@ def _render_simulacro(
 
 
 def _aplicar(
-    db_path: Path, sug: dict, emocion_idx: int, rol: str, destino: str,
-    modo: str, modo_dest: str = "",
+    db_path: Path,
+    sug: dict,
+    emocion_idx: int,
+    rol: str,
+    destino: str,
+    modo: str,
+    modo_dest: str = "",
 ) -> None:
     """Ejecuta la acción por emoción y avisa qué pasó."""
     res = actions_layer.deixis_aplicar_a_emocion(
-        db_path, str(sug["codigo"]), int(sug["unit_idx"]), emocion_idx,
-        rol, destino, modo, mencion_id=sug["mencion_id"],
+        db_path,
+        str(sug["codigo"]),
+        int(sug["unit_idx"]),
+        emocion_idx,
+        rol,
+        destino,
+        modo,
+        mencion_id=sug["mencion_id"],
         modo_existencia=modo_dest if rol == "experienciador" else None,
     )
     if res["duplicada"]:
@@ -364,10 +398,7 @@ def _render_agregar(db_path: Path, sug: dict, referentes_discurso: list[dict]) -
     if not opciones:
         return
     mid = sug["mencion_id"]
-    labels = {
-        f"{r['nombre']} ({_TIPO_LABEL.get(r['tipo'], r['tipo'])})": r
-        for r in opciones
-    }
+    labels = {f"{r['nombre']} ({_TIPO_LABEL.get(r['tipo'], r['tipo'])})": r for r in opciones}
     ac1, ac2 = st.columns([5, 1])
     sel = ac1.selectbox(
         "agregar otro referente",
@@ -377,9 +408,12 @@ def _render_agregar(db_path: Path, sug: dict, referentes_discurso: list[dict]) -
     )
     with ac2:
         st.markdown("<div style='height:0.35rem;'></div>", unsafe_allow_html=True)
-        if st.button("＋ agregar", key=f"dxadd_btn_{mid}",
-                     use_container_width=True,
-                     disabled=sel == "— agregar otro —"):
+        if st.button(
+            "＋ agregar",
+            key=f"dxadd_btn_{mid}",
+            use_container_width=True,
+            disabled=sel == "— agregar otro —",
+        ):
             r = labels[sel]
             actions_layer.deixis_add(db_path, mid, r["canonical_id"], r["tipo"])
             st.toast(f"«{r['nombre']}» agregado.", icon="✅")
@@ -412,11 +446,8 @@ def _render_agregar_canonico(db_path: Path, sug: dict, canonicos: list[str]) -> 
         )
         with bcol:
             st.markdown("<div style='height:1.8rem;'></div>", unsafe_allow_html=True)
-            if st.button("＋ agregar", key=f"dxc_btn_{mid}",
-                         use_container_width=True):
-                canonical = nuevo.strip() or (
-                    existente if existente != "— ninguno —" else ""
-                )
+            if st.button("＋ agregar", key=f"dxc_btn_{mid}", use_container_width=True):
+                canonical = nuevo.strip() or (existente if existente != "— ninguno —" else "")
                 if not canonical:
                     st.warning("Elegí un canónico existente o escribí uno nuevo.")
                 else:
@@ -425,9 +456,7 @@ def _render_agregar_canonico(db_path: Path, sug: dict, canonicos: list[str]) -> 
                     st.rerun()
 
 
-def _render_referente(
-    db_path: Path, mencion_id: int, ref: dict, solo_actor: bool
-) -> None:
+def _render_referente(db_path: Path, mencion_id: int, ref: dict, solo_actor: bool) -> None:
     """Un referente de la marca, con su estado frente a los simulacros.
 
     En una marca de actor el vínculo agota la relación, así que se inscribe
@@ -444,8 +473,7 @@ def _render_referente(
         badge_txt, badge_col = f"rige {', '.join(aplicado)}", _APLICADO_COLOR
     elif solo_actor:
         badge_txt, badge_col = (
-            ("inscripto", _APLICADO_COLOR) if ref["status"] == "accepted"
-            else _SIN_APLICAR
+            ("inscripto", _APLICADO_COLOR) if ref["status"] == "accepted" else _SIN_APLICAR
         )
     else:
         badge_txt, badge_col = _SIN_APLICAR
@@ -463,27 +491,31 @@ def _render_referente(
         )
     with c_ok:
         if solo_actor and not descartado:
-            if st.button("✓ inscribir", key=f"dxok_{mencion_id}_{cid}",
-                         disabled=ref["status"] == "accepted",
-                         use_container_width=True,
-                         help="Inscribe la marca en el referente."):
+            if st.button(
+                "✓ inscribir",
+                key=f"dxok_{mencion_id}_{cid}",
+                disabled=ref["status"] == "accepted",
+                use_container_width=True,
+                help="Inscribe la marca en el referente.",
+            ):
                 actions_layer.deixis_accept(db_path, mencion_id, cid)
                 st.toast(f"«{_pretty(cid)}» inscripto.", icon="✅")
                 st.rerun()
         elif descartado:
-            if st.button("↺ restaurar", key=f"dxres_{mencion_id}_{cid}",
-                         use_container_width=True):
+            if st.button("↺ restaurar", key=f"dxres_{mencion_id}_{cid}", use_container_width=True):
                 actions_layer.deixis_restore(db_path, mencion_id, cid)
                 st.toast(f"«{_pretty(cid)}» restaurado.", icon="↩")
                 st.rerun()
     with c_no:
-        if st.button("✗ descartar", key=f"dxno_{mencion_id}_{cid}",
-                     disabled=descartado, use_container_width=True,
-                     help="Lo quita de los simulacros donde rija y evita que "
-                          "vuelva a proponerse para esta marca."):
+        if st.button(
+            "✗ descartar",
+            key=f"dxno_{mencion_id}_{cid}",
+            disabled=descartado,
+            use_container_width=True,
+            help="Lo quita de los simulacros donde rija y evita que "
+            "vuelva a proponerse para esta marca.",
+        ):
             limpiadas = actions_layer.deixis_reject(db_path, mencion_id, cid)
-            extra = (
-                f" Quitado de {limpiadas} simulacro(s)." if limpiadas else ""
-            )
+            extra = f" Quitado de {limpiadas} simulacro(s)." if limpiadas else ""
             st.toast(f"«{_pretty(cid)}» descartado.{extra}", icon="🗑")
             st.rerun()

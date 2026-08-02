@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from emoparse.app import data as data_layer
 from emoparse.genres.articulo_periodistico import get_genre
@@ -16,7 +16,7 @@ def _build_db(tmp_path):
     RunsRepository(db).bootstrap(
         RunContext(
             run_id="run_dashboard",
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
             config=attach_genre_presentation({}, get_genre()),
         )
     )

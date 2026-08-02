@@ -38,6 +38,4 @@ def split_for(text: str, unit: ChunkUnit) -> list[str]:
     if unit == "documento":
         stripped = text.strip()
         return [stripped] if stripped else []
-    raise ValueError(
-        f"unit desconocido: {unit!r}. Esperaba frase|parrafo|documento."
-    )
+    raise ValueError(f"unit desconocido: {unit!r}. Esperaba frase|parrafo|documento.")

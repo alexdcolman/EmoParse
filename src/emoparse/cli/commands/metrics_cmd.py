@@ -106,7 +106,7 @@ def _fmt_ms(v: float | None) -> str:
     if v is None:
         return "-"
     if v >= 1000:
-        return f"{v/1000:.1f}s"
+        return f"{v / 1000:.1f}s"
     return f"{v:.1f}"
 
 

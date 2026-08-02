@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from emoparse.storage.db import Database
@@ -38,9 +38,7 @@ class JudgmentsRepository:
         `sugerencias` es la lista de correcciones por elemento (cada una
         {campo, valor_sugerido, justificacion}). Se serializa a JSON.
         """
-        sugerencias_json = json.dumps(
-            sugerencias or [], ensure_ascii=False, default=str
-        )
+        sugerencias_json = json.dumps(sugerencias or [], ensure_ascii=False, default=str)
         with self._db.transaction() as cur:
             cur.execute(
                 """
@@ -59,13 +57,15 @@ class JudgmentsRepository:
                     updated_at    = ?
                 """,
                 (
-                    codigo, frase_idx, emocion_idx,
+                    codigo,
+                    frase_idx,
+                    emocion_idx,
                     1 if coherente else 0,
                     issues,
                     confianza,
                     sugerencias_json,
                     version,
-                    datetime.now(timezone.utc),
+                    datetime.now(UTC),
                 ),
             )
 
@@ -95,9 +95,11 @@ class JudgmentsRepository:
                     updated_at    = ?
                 """,
                 (
-                    codigo, frase_idx, emocion_idx,
+                    codigo,
+                    frase_idx,
+                    emocion_idx,
                     error_message,
-                    datetime.now(timezone.utc),
+                    datetime.now(UTC),
                 ),
             )
 
@@ -171,10 +173,7 @@ class JudgmentsRepository:
             sql += " AND e.codigo = ?"
             params = (codigo,)
         rows = self._db.execute(sql, params).fetchall()
-        return [
-            (row["codigo"], row["frase_idx"], row["emocion_idx"])
-            for row in rows
-        ]
+        return [(row["codigo"], row["frase_idx"], row["emocion_idx"]) for row in rows]
 
     def clear_errors(self, codigo: str | None = None) -> int:
         """Borra rows con error para reintento."""
@@ -201,8 +200,7 @@ class JudgmentsRepository:
         Devuelve True si había una fila que borrar."""
         with self._db.transaction() as cur:
             cur.execute(
-                "DELETE FROM judgments "
-                "WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
+                "DELETE FROM judgments WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
                 (codigo, frase_idx, emocion_idx),
             )
             return cur.rowcount > 0

@@ -6,10 +6,10 @@
 
 from __future__ import annotations
 
-from typing import Callable, Literal
+from collections.abc import Callable
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-
 
 #: Unidad de chunking que el género quiere consumir.
 ChunkUnit = Literal["frase", "parrafo", "documento"]
@@ -77,24 +77,21 @@ class GenreContextBlock(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_declaration(self) -> "GenreContextBlock":
+    def validate_declaration(self) -> GenreContextBlock:
         """Comprueba unicidad de campos y presupuestos positivos."""
         if len(set(self.fields)) != len(self.fields):
             raise ValueError(f"El bloque '{self.name}' contiene campos repetidos")
         invalid = {
-            stage: budget
-            for stage, budget in self.stage_token_budgets.items()
-            if budget < 1
+            stage: budget for stage, budget in self.stage_token_budgets.items() if budget < 1
         }
         if invalid:
-            raise ValueError(
-                f"El bloque '{self.name}' tiene presupuestos inválidos: {invalid}"
-            )
+            raise ValueError(f"El bloque '{self.name}' tiene presupuestos inválidos: {invalid}")
         return self
 
 
 class Genre(BaseModel):
     """Descriptor declarativo de un género de discurso."""
+
     model_config = ConfigDict(
         extra="forbid",
         frozen=True,
@@ -103,8 +100,8 @@ class Genre(BaseModel):
 
     genre_id: str = Field(
         description="Identificador único, snake_case. Se usa en CLI "
-                    "(`--genre <id>`) y se persiste en runs.config para "
-                    "auditoría.",
+        "(`--genre <id>`) y se persiste en runs.config para "
+        "auditoría.",
     )
     display_name: str = Field(
         description="Nombre legible (aparece en logs y en stats).",
@@ -115,122 +112,122 @@ class Genre(BaseModel):
         default=None,
         exclude=True,
         description="Modelo Pydantic que valida la metadata propia del género "
-                    "en el borde de ingesta. Se excluye de model_dump porque "
-                    "es una clase de runtime, no configuración serializable.",
+        "en el borde de ingesta. Se excluye de model_dump porque "
+        "es una clase de runtime, no configuración serializable.",
     )
     input_metadata_display: dict[str, str] = Field(
         default_factory=dict,
         description="Etiquetas legibles para los campos declarados por "
-                    "input_metadata_model. Permiten que interfaces y exports "
-                    "los presenten sin ramas específicas por género.",
+        "input_metadata_model. Permiten que interfaces y exports "
+        "los presenten sin ramas específicas por género.",
     )
     context_blocks: tuple[GenreContextBlock, ...] = Field(
         default=(),
         description="Bloques de contexto construidos desde la metadata del "
-                    "input. Cada bloque declara sus campos y el presupuesto "
-                    "por stage; el pipeline los renderiza sin ramas por género.",
+        "input. Cada bloque declara sus campos y el presupuesto "
+        "por stage; el pipeline los renderiza sin ramas por género.",
     )
 
     # ── Unidad de chunking ───────────────────────────────────────────────────
     unit: ChunkUnit = Field(
         default="frase",
         description="Granularidad de las unidades textuales que consumen "
-                    "los agentes por-frase."
-                    "'frase' usa split_into_sentences."
-                    "'parrafo' parte por dobles newlines."
-                    "'documento' no chunkea — cada discurso es una sola unidad.",
+        "los agentes por-frase."
+        "'frase' usa split_into_sentences."
+        "'parrafo' parte por dobles newlines."
+        "'documento' no chunkea — cada discurso es una sola unidad.",
     )
 
     # ── Unidad de contexto enunciativo ───────────────────────────────────────
     context_unit: ContextUnit = Field(
         default="discurso",
         description="De dónde toman contexto los agentes que desambiguan "
-                    "con material circundante. 'discurso' es el "
-                    "comportamiento clásico (frases previas + resumen). "
-                    "'hilo' usa la conversación (posts padre) cuando el "
-                    "corpus la trae. 'ninguno' analiza cada unidad aislada.",
+        "con material circundante. 'discurso' es el "
+        "comportamiento clásico (frases previas + resumen). "
+        "'hilo' usa la conversación (posts padre) cuando el "
+        "corpus la trae. 'ninguno' analiza cada unidad aislada.",
     )
 
     # ── Parsing tecnodiscursivo ──────────────────────────────────────────────
     technoparse: bool = Field(
         default=False,
         description="Si True, la stage determinista `technoparse` extrae "
-                    "los tecnolingüísticos de cada unidad (hashtags, "
-                    "menciones, URLs, emojis, tecnografismos) antes de "
-                    "cualquier agente LLM. Pensado para discurso nativo "
-                    "digital (tuits, posts).",
+        "los tecnolingüísticos de cada unidad (hashtags, "
+        "menciones, URLs, emojis, tecnografismos) antes de "
+        "cualquier agente LLM. Pensado para discurso nativo "
+        "digital (tuits, posts).",
     )
 
     # ── Roles enunciativos válidos ───────────────────────────────────────────
     enunciation_roles: tuple[str, ...] = Field(
         description="Universo cerrado de roles enunciativos que el género "
-                    "acepta. Construye dinámicamente Literal[*roles] para "
-                    "el schema de EnunciatarioSchema, restringiendo el "
-                    "sampler vía GBNF al universo válido del género. Cuando "
-                    "el género discrimina roles por tipo de discurso "
-                    "(`enunciatarios_por_tipo`), este universo es la unión de "
-                    "todos ellos más los transversales: la restricción por "
-                    "tipo se resuelve en el prompt y en un filtro post-hoc, "
-                    "no en el sampler, para no multiplicar variantes de "
-                    "gramática ni de cache por tipo.",
+        "acepta. Construye dinámicamente Literal[*roles] para "
+        "el schema de EnunciatarioSchema, restringiendo el "
+        "sampler vía GBNF al universo válido del género. Cuando "
+        "el género discrimina roles por tipo de discurso "
+        "(`enunciatarios_por_tipo`), este universo es la unión de "
+        "todos ellos más los transversales: la restricción por "
+        "tipo se resuelve en el prompt y en un filtro post-hoc, "
+        "no en el sampler, para no multiplicar variantes de "
+        "gramática ni de cache por tipo.",
     )
 
     # ── Roles enunciativos por tipo de discurso ──────────────────────────────
     roles_transversales: tuple[str, ...] = Field(
         default=(),
         description="Roles enunciativos del dispositivo, válidos en cualquier "
-                    "tipo de discurso del género (p. ej. en el post de red "
-                    "social, el destinatario mencionado y la audiencia "
-                    "ambiente). Se suman a los roles del tipo identificado.",
+        "tipo de discurso del género (p. ej. en el post de red "
+        "social, el destinatario mencionado y la audiencia "
+        "ambiente). Se suman a los roles del tipo identificado.",
     )
     enunciatarios_por_tipo: dict[str, tuple[str, ...]] = Field(
         default_factory=dict,
         description="Mapa tipo_de_discurso → roles enunciativos propios de ese "
-                    "tipo (posiciones de creencia/destinación). La escena "
-                    "enunciativa se cruza: los roles efectivos de un discurso "
-                    "son los transversales más los de su tipo. El tipo lo "
-                    "resuelve `metadata`; si el mapa tiene una sola entrada, "
-                    "se usa siempre (géneros de campo discursivo fijo). Vacío "
-                    "conserva el comportamiento plano (roles = "
-                    "`enunciation_roles`).",
+        "tipo (posiciones de creencia/destinación). La escena "
+        "enunciativa se cruza: los roles efectivos de un discurso "
+        "son los transversales más los de su tipo. El tipo lo "
+        "resuelve `metadata`; si el mapa tiene una sola entrada, "
+        "se usa siempre (géneros de campo discursivo fijo). Vacío "
+        "conserva el comportamiento plano (roles = "
+        "`enunciation_roles`).",
     )
     roles_descripciones: dict[str, str] = Field(
         default_factory=dict,
         description="Descripción breve de cada rol enunciativo (transversal o "
-                    "por tipo), inyectada en el prompt de enunciación junto al "
-                    "identificador. Claves sin rol asociado se ignoran.",
+        "por tipo), inyectada en el prompt de enunciación junto al "
+        "identificador. Claves sin rol asociado se ignoran.",
     )
 
     # ── Overrides opcionales del config global ───────────────────────────────
     models: dict[str, str] = Field(
         default_factory=dict,
         description="Override (parcial) de pipeline.stages: stage→alias. "
-                    "Solo las stages presentes acá overridean; el resto "
-                    "respeta el config.yaml.",
+        "Solo las stages presentes acá overridean; el resto "
+        "respeta el config.yaml.",
     )
     batch_size: dict[str, int] = Field(
         default_factory=dict,
         description="Override de batch size por stage. Solo aplica a "
-                    "stages batch (actors, emotions, characterizer, judge).",
+        "stages batch (actors, emotions, characterizer, judge).",
     )
     summarizer: bool = Field(
         default=True,
         description="Si False, la stage summarizer se desactiva para este "
-                    "género. Útil para textos cortos como tuits donde resumir "
-                    "no aporta.",
+        "género. Útil para textos cortos como tuits donde resumir "
+        "no aporta.",
     )
 
     stages_invalidas: tuple[str, ...] = Field(
         default=(),
         description="Stages que no tienen sentido para este género y que el "
-                    "CLI rechaza si se piden explícitamente por --stages. A "
-                    "diferencia de `summarizer=False` (que desactiva en "
-                    "silencio una stage que igual correría en los defaults), "
-                    "esto es para stages que el usuario podría pedir a mano "
-                    "pero que producirían ruido o no aplican: el pase 2 de "
-                    "emociones en textos de una sola frase, por ejemplo. Se "
-                    "informan con un error explícito, no se saltean en "
-                    "silencio, para que quede claro por qué no corrieron.",
+        "CLI rechaza si se piden explícitamente por --stages. A "
+        "diferencia de `summarizer=False` (que desactiva en "
+        "silencio una stage que igual correría en los defaults), "
+        "esto es para stages que el usuario podría pedir a mano "
+        "pero que producirían ruido o no aplican: el pase 2 de "
+        "emociones en textos de una sola frase, por ejemplo. Se "
+        "informan con un error explícito, no se saltean en "
+        "silencio, para que quede claro por qué no corrieron.",
     )
 
     # ── Detección de emociones ───────────────────────────────────────────────
@@ -238,78 +235,77 @@ class Genre(BaseModel):
         default=10,
         ge=1,
         description="Tope de emociones que los pases de detección pueden "
-                    "devolver por unidad. Restringe el schema (maxItems) vía "
-                    "`schema_factory`, así que la gramática obliga a cerrar la "
-                    "lista: acota el peor caso de generación y garantiza que "
-                    "la salida entre en la ventana del modelo. Ajustarlo por "
-                    "género permite ceñirlo a lo que cada unidad puede portar "
-                    "de verdad (un post es mucho más corto que un párrafo de "
-                    "discurso).",
+        "devolver por unidad. Restringe el schema (maxItems) vía "
+        "`schema_factory`, así que la gramática obliga a cerrar la "
+        "lista: acota el peor caso de generación y garantiza que "
+        "la salida entre en la ventana del modelo. Ajustarlo por "
+        "género permite ceñirlo a lo que cada unidad puede portar "
+        "de verdad (un post es mucho más corto que un párrafo de "
+        "discurso).",
     )
 
     # ── Enunciación por género ───────────────────────────────────────────────
     enunciador_from_handle: bool = Field(
         default=False,
         description="Si True, el enunciador se fija de forma determinista "
-                    "desde los campos del input (`autor_display`, con "
-                    "fallback a `autor_handle`), sin inferencia LLM. Pensado "
-                    "para discurso nativo digital, donde la cuenta autora es "
-                    "el enunciador; funciona igual con corpus seudonimizados "
-                    "(el alias es estable por cuenta).",
+        "desde los campos del input (`autor_display`, con "
+        "fallback a `autor_handle`), sin inferencia LLM. Pensado "
+        "para discurso nativo digital, donde la cuenta autora es "
+        "el enunciador; funciona igual con corpus seudonimizados "
+        "(el alias es estable por cuenta).",
     )
     auditorio_predeterminado: bool = Field(
         default=False,
         description="Si True, el auditorio se construye de forma "
-                    "determinista desde el dispositivo, sin inferencia LLM: "
-                    "seguidores de la cuenta (siempre), un auditorio por "
-                    "hashtag presente (nunca combinados) y un destinatario "
-                    "directo por cuenta mencionada.",
+        "determinista desde el dispositivo, sin inferencia LLM: "
+        "seguidores de la cuenta (siempre), un auditorio por "
+        "hashtag presente (nunca combinados) y un destinatario "
+        "directo por cuenta mencionada.",
     )
 
     # ── Tipos de discurso cerrados ───────────────────────────────────────────
     tipos_discurso: tuple[str, ...] = Field(
         default=(),
         description="Vocabulario cerrado de tipos de discurso para la stage "
-                    "metadata. Si no está vacío, construye Literal[*tipos] "
-                    "para `MetadatosSchema.tipo_discurso`, restringiendo el "
-                    "sampler vía GBNF. Tupla vacía conserva el campo libre "
-                    "con el diccionario de tipos como referencia.",
+        "metadata. Si no está vacío, construye Literal[*tipos] "
+        "para `MetadatosSchema.tipo_discurso`, restringiendo el "
+        "sampler vía GBNF. Tupla vacía conserva el campo libre "
+        "con el diccionario de tipos como referencia.",
     )
     tipos_discurso_descripciones: dict[str, str] = Field(
         default_factory=dict,
         description="Descripciones breves de los tipos cerrados, inyectadas "
-                    "en el system prompt junto al identificador. Claves que "
-                    "no estén en `tipos_discurso` se ignoran.",
+        "en el system prompt junto al identificador. Claves que "
+        "no estén en `tipos_discurso` se ignoran.",
     )
 
     prompt_overrides: dict[str, str] = Field(
         default_factory=dict,
         description="Map stage_name → nombre de template Jinja2 alternativo. "
-                    "Útil cuando un género quiere un prompt completamente "
-                    "distinto (ej. tuit sin sección 'enunciador' en actors). "
-                    "El template alternativo debe existir en "
-                    "core/prompts/templates/. Si no se especifica, se "
-                    "usa el template default.",
+        "Útil cuando un género quiere un prompt completamente "
+        "distinto (ej. tuit sin sección 'enunciador' en actors). "
+        "El template alternativo debe existir en "
+        "core/prompts/templates/. Si no se especifica, se "
+        "usa el template default.",
     )
 
     heuristics_overrides: dict[str, str] = Field(
         default_factory=dict,
         description="Map stage_name → archivo de heurísticas propio del "
-                    "género, relativo a knowledge_dir. No reemplaza a las "
-                    "heurísticas base de la stage: se concatena después de "
-                    "ellas, de modo que el género suma sus reglas de lectura "
-                    "sin repetir las comunes. Si el archivo no existe, la "
-                    "stage corre solo con las base.",
+        "género, relativo a knowledge_dir. No reemplaza a las "
+        "heurísticas base de la stage: se concatena después de "
+        "ellas, de modo que el género suma sus reglas de lectura "
+        "sin repetir las comunes. Si el archivo no existe, la "
+        "stage corre solo con las base.",
     )
 
     @model_validator(mode="after")
-    def validate_input_metadata_declaration(self) -> "Genre":
+    def validate_input_metadata_declaration(self) -> Genre:
         """Comprueba que las etiquetas refieran a campos del modelo tipado."""
         if self.input_metadata_model is None:
             if self.input_metadata_display or self.context_blocks:
                 raise ValueError(
-                    "input_metadata_display y context_blocks requieren "
-                    "input_metadata_model"
+                    "input_metadata_display y context_blocks requieren input_metadata_model"
                 )
             return self
 
@@ -317,8 +313,7 @@ class Genre(BaseModel):
         unknown = set(self.input_metadata_display) - declared
         if unknown:
             raise ValueError(
-                "input_metadata_display contiene campos no declarados: "
-                f"{sorted(unknown)}"
+                f"input_metadata_display contiene campos no declarados: {sorted(unknown)}"
             )
 
         block_names = [block.name for block in self.context_blocks]
@@ -329,8 +324,7 @@ class Genre(BaseModel):
             undeclared = set(block.fields) - declared
             if undeclared:
                 raise ValueError(
-                    f"El bloque '{block.name}' usa campos no declarados: "
-                    f"{sorted(undeclared)}"
+                    f"El bloque '{block.name}' usa campos no declarados: {sorted(undeclared)}"
                 )
             without_label = set(block.fields) - set(self.input_metadata_display)
             if without_label:
@@ -360,9 +354,7 @@ class Genre(BaseModel):
             especificos = next(iter(self.enunciatarios_por_tipo.values()))
         else:
             especificos = tuple(
-                dict.fromkeys(
-                    r for roles in self.enunciatarios_por_tipo.values() for r in roles
-                )
+                dict.fromkeys(r for roles in self.enunciatarios_por_tipo.values() for r in roles)
             )
         # dict.fromkeys preserva orden y deduplica (transversales primero).
         return tuple(dict.fromkeys((*self.roles_transversales, *especificos)))

@@ -75,14 +75,14 @@ def handle(args: argparse.Namespace) -> int:
         print("✓ Sin issues de coherencia encontradas.")
         return 0
 
-    print(f"\n{'─'*60}")
+    print(f"\n{'─' * 60}")
     print(f"  VALIDATION ISSUES — {total} en total")
-    print(f"{'─'*60}")
+    print(f"{'─' * 60}")
     print(f"  {'Validator':<30}  {'Issues':>6}")
-    print(f"  {'─'*30}  {'─'*6}")
+    print(f"  {'─' * 30}  {'─' * 6}")
     for vid, cnt in sorted(by_validator.items()):
         print(f"  {vid:<30}  {cnt:>6}")
-    print(f"{'─'*60}\n")
+    print(f"{'─' * 60}\n")
 
     # Detalle mostrado siempre si verbose o si el total es bajo.
     show_detail = getattr(args, "verbose_issues", False) or total <= _AUTO_DETAIL_THRESHOLD
@@ -92,14 +92,15 @@ def handle(args: argparse.Namespace) -> int:
         _print_issues_detail(all_issues)
     else:
         print(
-            f"  Usá --verbose-issues para ver el detalle de cada issue.\n"
-            f"  O inspeccioná la tabla 'validation_issues' en la DB.\n"
+            "  Usá --verbose-issues para ver el detalle de cada issue.\n"
+            "  O inspeccioná la tabla 'validation_issues' en la DB.\n"
         )
 
     return 0
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
 
 def _load_emotion_ontology(args: argparse.Namespace) -> dict[str, Any] | None:
     """Intenta cargar la ontología de emociones para V11.
@@ -121,8 +122,7 @@ def _load_emotion_ontology(args: argparse.Namespace) -> dict[str, Any] | None:
         loader = KnowledgeLoader(knowledge_dir)
         ontology = loader.load_emotion_ontology(ontology_filename)
         logger.info(
-            f"[validate] Ontología de emociones cargada desde "
-            f"'{ontology_filename}' — V11 activo."
+            f"[validate] Ontología de emociones cargada desde '{ontology_filename}' — V11 activo."
         )
         return ontology
     except KnowledgeError as e:

@@ -13,10 +13,14 @@ from loguru import logger
 
 from emoparse.acquisition.base import DiscursoRecord
 
-
 #: Columnas obligatorias en orden.
 _REQUIRED_COLUMNS: tuple[str, ...] = (
-    "codigo", "url", "titulo", "fecha", "contenido", "fuente",
+    "codigo",
+    "url",
+    "titulo",
+    "fecha",
+    "contenido",
+    "fuente",
 )
 
 

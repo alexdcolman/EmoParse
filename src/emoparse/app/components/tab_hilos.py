@@ -88,6 +88,7 @@ def render(db_path: Path) -> None:
 #  Vista de hilo
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _render_hilos(db_path: Path) -> None:
     """Árbol de una conversación, ordenado por descendencia."""
     col_inc, col_sel = st.columns([1, 3])
@@ -96,10 +97,7 @@ def _render_hilos(db_path: Path) -> None:
             "Incluir conversaciones de un post",
             value=False,
             key="hilos_solos",
-            help=(
-                "Una cita o un repost no abren conversación: quedan como "
-                "hilo de un solo post."
-            ),
+            help=("Una cita o un repost no abren conversación: quedan como hilo de un solo post."),
         )
     df_hilos = data.get_hilos(db_path, min_posts=1 if incluir_solos else 2)
     if df_hilos.empty:
@@ -107,8 +105,9 @@ def _render_hilos(db_path: Path) -> None:
         return
 
     opciones = {
-        f"{h['conversacion_id']}  ({h['n_posts']} posts, "
-        f"prof. {h['profundidad_max']})": h["conversacion_id"]
+        f"{h['conversacion_id']}  ({h['n_posts']} posts, prof. {h['profundidad_max']})": h[
+            "conversacion_id"
+        ]
         for _, h in df_hilos.iterrows()
     }
     with col_sel:
@@ -129,13 +128,18 @@ def _render_hilos(db_path: Path) -> None:
     st.caption(f"{len(df_posts)} post(s) en la vista.")
     for post, nivel in _orden_arbol(df_posts):
         _render_post(
-            db_path, post, nivel=nivel, citados=citados, emociones=emociones,
+            db_path,
+            post,
+            nivel=nivel,
+            citados=citados,
+            emociones=emociones,
         )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Vista de citas y reposts
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _render_citas(db_path: Path) -> None:
     """Posts que citan o repostean del corpus entero, con su reframing."""
@@ -148,8 +152,7 @@ def _render_citas(db_path: Path) -> None:
         lambda r: str(r.get("operacion")) if isinstance(r, dict) else None
     )
     df["evidencia"] = df["reframing"].map(
-        lambda r: str(r.get("evidencia_citada") or "")
-        if isinstance(r, dict) else ""
+        lambda r: str(r.get("evidencia_citada") or "") if isinstance(r, dict) else ""
     )
     _resumen_operaciones(df)
 
@@ -186,7 +189,8 @@ def _render_citas(db_path: Path) -> None:
         df = df[df["evidencia"].isin(sel_ev)]
     # `reframing_error` puede faltar en runs anteriores a la migración.
     errores = (
-        df["reframing_error"].notna() if "reframing_error" in df.columns
+        df["reframing_error"].notna()
+        if "reframing_error" in df.columns
         else pd.Series(False, index=df.index)
     )
     if estado == "Clasificados":
@@ -207,17 +211,24 @@ def _render_citas(db_path: Path) -> None:
     if paginas > 1:
         pagina = st.number_input(
             f"Página (de {paginas})",
-            min_value=1, max_value=paginas, value=1, step=1,
+            min_value=1,
+            max_value=paginas,
+            value=1,
+            step=1,
             key="citas_pagina",
         )
     inicio = (int(pagina) - 1) * _PAGINA
-    sub = df.iloc[inicio:inicio + _PAGINA]
+    sub = df.iloc[inicio : inicio + _PAGINA]
     st.caption(f"{total} cita(s) o repost(s); mostrando {len(sub)}.")
 
     citados, emociones = _citados_de(db_path, sub)
     for _, post in sub.iterrows():
         _render_post(
-            db_path, post, nivel=0, citados=citados, emociones=emociones,
+            db_path,
+            post,
+            nivel=0,
+            citados=citados,
+            emociones=emociones,
         )
 
 
@@ -226,15 +237,12 @@ def _resumen_operaciones(df: pd.DataFrame) -> None:
     conteo = df["operacion"].value_counts()
     sin_clasificar = int(df["operacion"].isna().sum())
     chips = [
-        f"<span class='ep-op ep-op-{op}'>{_OPERACIONES.get(op, op)} "
-        f"· {int(conteo[op])}</span>"
-        for op in _OPERACIONES if op in conteo
+        f"<span class='ep-op ep-op-{op}'>{_OPERACIONES.get(op, op)} · {int(conteo[op])}</span>"
+        for op in _OPERACIONES
+        if op in conteo
     ]
     if sin_clasificar:
-        chips.append(
-            f"<span class='badge badge-dim'>sin clasificar "
-            f"· {sin_clasificar}</span>"
-        )
+        chips.append(f"<span class='badge badge-dim'>sin clasificar · {sin_clasificar}</span>")
     st.markdown(
         "<div style='display:flex;gap:0.4rem;flex-wrap:wrap;"
         f"margin-bottom:0.6rem;'>{''.join(chips)}</div>",
@@ -243,17 +251,16 @@ def _resumen_operaciones(df: pd.DataFrame) -> None:
     if "evidencia" in df.columns:
         conteo_ev = df["evidencia"].value_counts()
         partes = [
-            f"{_EVIDENCIA.get(e, e)}: {int(conteo_ev[e])}"
-            for e in _EVIDENCIA if e in conteo_ev
+            f"{_EVIDENCIA.get(e, e)}: {int(conteo_ev[e])}" for e in _EVIDENCIA if e in conteo_ev
         ]
         if partes:
-            st.caption("Evidencia sobre la que se clasificó · "
-                       + " · ".join(partes))
+            st.caption("Evidencia sobre la que se clasificó · " + " · ".join(partes))
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Filtros y ordenamiento
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _panel_filtros(df: pd.DataFrame, key: str) -> pd.DataFrame:
     """Filtro por tipo de post y por presencia de reframing."""
@@ -261,14 +268,22 @@ def _panel_filtros(df: pd.DataFrame, key: str) -> pd.DataFrame:
     en_corpus = set(df["tipo"]) if "tipo" in df.columns else set()
     presentes = [t for t in _TIPOS if t in en_corpus]
     with col_tipo:
-        tipos = st.multiselect(
-            "Tipo de post", presentes, key=f"{key}_tipos",
-        ) if presentes else []
+        tipos = (
+            st.multiselect(
+                "Tipo de post",
+                presentes,
+                key=f"{key}_tipos",
+            )
+            if presentes
+            else []
+        )
     with col_rt:
         solo_rt = st.toggle("Solo reposts", value=False, key=f"{key}_rt")
     with col_ref:
         solo_ref = st.toggle(
-            "Solo con reframing", value=False, key=f"{key}_ref",
+            "Solo con reframing",
+            value=False,
+            key=f"{key}_ref",
         )
 
     if tipos:
@@ -321,7 +336,8 @@ def _orden_arbol(df: pd.DataFrame) -> list[tuple[pd.Series, int]]:
 
 
 def _citados_de(
-    db_path: Path, df: pd.DataFrame,
+    db_path: Path,
+    df: pd.DataFrame,
 ) -> tuple[dict[str, dict], dict[str, list[dict]]]:
     """Posts citados por los de la vista y sus emociones, en dos consultas.
 
@@ -341,6 +357,7 @@ def _citados_de(
 #  Render de post
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _render_post(
     db_path: Path,
     post: pd.Series,
@@ -355,8 +372,7 @@ def _render_post(
     texto = str(post.get("texto") or "").strip() or "(repost sin texto)"
 
     partes = [
-        f"<span class='ep-post-handle'>@{html.escape(str(post['autor_handle']))}"
-        "</span>",
+        f"<span class='ep-post-handle'>@{html.escape(str(post['autor_handle']))}</span>",
         f"<span>{html.escape(str(post.get('tipo') or 'original'))}</span>",
         _chip_foria(foria, color),
     ]
@@ -390,10 +406,7 @@ def _chips_reframing(post: pd.Series) -> list[str]:
     if isinstance(reframing, dict):
         op = str(reframing.get("operacion") or "ambigua")
         citadas = str(reframing.get("emociones_citadas") or "")
-        chips = [
-            f"<span class='ep-op ep-op-{html.escape(op)}'>↪ "
-            f"{_OPERACIONES.get(op, op)}</span>"
-        ]
+        chips = [f"<span class='ep-op ep-op-{html.escape(op)}'>↪ {_OPERACIONES.get(op, op)}</span>"]
         if citadas:
             chips.append(
                 f"<span class='badge badge-dim' style='font-size:0.68rem;'>"
@@ -455,7 +468,10 @@ def _bloque_citado(
 
 
 def _quote_html(
-    color: str, encabezado: str, texto: str, extra: str = "",
+    color: str,
+    encabezado: str,
+    texto: str,
+    extra: str = "",
 ) -> str:
     """Bloque de cita con su barra de color, su encabezado y su análisis."""
     return (

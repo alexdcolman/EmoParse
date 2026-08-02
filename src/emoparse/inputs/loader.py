@@ -29,7 +29,7 @@ REQUIRED_COLUMNS: tuple[str, ...] = ("codigo", "contenido")
 def load_discursos(
     path: Path | str,
     *,
-    genre: "Genre | None" = None,
+    genre: Genre | None = None,
 ) -> pd.DataFrame:
     """Carga discursos y valida la metadata declarada por el género."""
     p = Path(path).expanduser().resolve()
@@ -55,8 +55,7 @@ def load_discursos(
     _validate_genre_metadata(df, p, genre)
 
     logger.info(
-        f"[Inputs] Cargados {len(df)} discursos desde {p.name} "
-        f"(columnas: {list(df.columns)})"
+        f"[Inputs] Cargados {len(df)} discursos desde {p.name} (columnas: {list(df.columns)})"
     )
     return df
 
@@ -64,6 +63,7 @@ def load_discursos(
 # ══════════════════════════════════════════════════════════════════════════════
 #  Lectores por formato
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _load_csv(path: Path) -> pd.DataFrame:
     """Lee un CSV con pandas."""
@@ -113,9 +113,7 @@ def _load_json(path: Path) -> pd.DataFrame:
                 )
             rows.append({"codigo": codigo, **payload})
     else:
-        raise InputError(
-            f"JSON de {path} debe ser lista o dict, recibí: {type(data).__name__}"
-        )
+        raise InputError(f"JSON de {path} debe ser lista o dict, recibí: {type(data).__name__}")
 
     if not rows:
         raise InputError(f"JSON de {path} no contiene discursos.")
@@ -126,6 +124,7 @@ def _load_json(path: Path) -> pd.DataFrame:
 # ══════════════════════════════════════════════════════════════════════════════
 #  Validaciones
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _validate_columns(df: pd.DataFrame, path: Path) -> None:
     """Verifica columnas obligatorias."""
@@ -174,15 +173,14 @@ def _validate_no_empty_content(df: pd.DataFrame, path: Path) -> None:
         codigos_vacios = df.loc[empty_mask, "codigo"].tolist()
         raise InputError(
             f"En {path}, hay {n_empty} discurso(s) con `contenido` vacío. "
-            f"Códigos: {codigos_vacios[:5]}"
-            + ("..." if n_empty > 5 else "")
+            f"Códigos: {codigos_vacios[:5]}" + ("..." if n_empty > 5 else "")
         )
 
 
 def _validate_genre_metadata(
     df: pd.DataFrame,
     path: Path,
-    genre: "Genre | None",
+    genre: Genre | None,
 ) -> None:
     """Valida y normaliza la metadata propia del género, si fue declarada."""
     if genre is None or genre.input_metadata_model is None:
@@ -194,11 +192,7 @@ def _validate_genre_metadata(
     errors: list[str] = []
 
     for row_index, row in df.iterrows():
-        payload = {
-            field: _none_if_na(row[field])
-            for field in fields
-            if field in df.columns
-        }
+        payload = {field: _none_if_na(row[field]) for field in fields if field in df.columns}
         try:
             validated = model.model_validate(payload)
         except ValidationError as e:
@@ -222,10 +216,7 @@ def _validate_genre_metadata(
     for field in fields:
         df[field] = [row[field] for row in normalized_rows]
 
-    logger.info(
-        f"[Inputs] Metadata de género validada: {genre.genre_id} "
-        f"({', '.join(fields)})."
-    )
+    logger.info(f"[Inputs] Metadata de género validada: {genre.genre_id} ({', '.join(fields)}).")
 
 
 def _none_if_na(value: Any) -> Any:
@@ -237,4 +228,3 @@ def _none_if_na(value: Any) -> Any:
         return None if bool(missing) else value
     except (TypeError, ValueError):
         return value
-

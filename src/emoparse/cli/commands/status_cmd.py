@@ -55,10 +55,12 @@ def handle(args: argparse.Namespace) -> int:
     print(f"Iniciado:   {ctx.started_at}")
     if ctx.notes:
         print(f"Notas:      {ctx.notes[:80]}")
-    print(f"Versions:   knowledge={ctx.versions.knowledge}, "
-          f"prompt={ctx.versions.prompt}, "
-          f"ontology={ctx.versions.ontology}, "
-          f"schema={ctx.versions.schema}")
+    print(
+        f"Versions:   knowledge={ctx.versions.knowledge}, "
+        f"prompt={ctx.versions.prompt}, "
+        f"ontology={ctx.versions.ontology}, "
+        f"schema={ctx.versions.schema}"
+    )
     print()
 
     total_discursos = len(DiscursosRepository(db).list_codigos())
@@ -94,19 +96,19 @@ def _print_stage_table(rows: list[StageStatus]) -> None:
     num_w = 9
 
     sep = "─" * (name_w + 2) + "┼" + ("─" * num_w + "┼") * 4 + "─" * num_w
-    print(f"  {headers[0]:<{name_w}}  │ " + " │ ".join(
-        f"{h:>{num_w - 2}}" for h in headers[1:]
-    ))
+    print(f"  {headers[0]:<{name_w}}  │ " + " │ ".join(f"{h:>{num_w - 2}}" for h in headers[1:]))
     print(f"  {sep}")
     for r in rows:
         # Una stage que no corrió no tiene pendientes: tiene un universo a
         # su alcance por si se la habilita.
         pending = r.pending if r.ejecutada else 0
-        print(f"{_marca(r)} {r.stage:<{name_w}}  │ " + " │ ".join(
-            f"{v:>{num_w - 2}}" for v in (
-                pending, r.failed, r.completed, r.no_aplica, r.total
+        print(
+            f"{_marca(r)} {r.stage:<{name_w}}  │ "
+            + " │ ".join(
+                f"{v:>{num_w - 2}}" for v in (pending, r.failed, r.completed, r.no_aplica, r.total)
             )
-        ) + f"  {r.unidad:<{unidad_w}}")
+            + f"  {r.unidad:<{unidad_w}}"
+        )
     print()
 
     sin_correr = [r.stage for r in rows if not r.ejecutada]

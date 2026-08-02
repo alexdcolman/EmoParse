@@ -15,10 +15,10 @@ from emoparse.domain.validators.base import (
 )
 from emoparse.knowledge.normalization import build_emotion_alias_lookup, strip_accents
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  RowValidators (operan sobre una emoción individual)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class V01_ModoPotencialVirtualExperienciador(RowValidator):
     """V-01: modo Virtual o Potencial con experienciador que parece ser
@@ -37,11 +37,24 @@ class V01_ModoPotencialVirtualExperienciador(RowValidator):
 
     VALIDATOR_ID = "V-01"
 
-    def validate(self, *, codigo, frase_idx, emocion_idx,
-                 experienciador, experienciador_marca, tipo_emocion, modo_existencia,
-                 fuente_marca, fuente_inferencia,
-                 foria, dominancia, intensidad,
-                 enunciador, enunciatarios) -> list[ValidationIssue]:
+    def validate(
+        self,
+        *,
+        codigo,
+        frase_idx,
+        emocion_idx,
+        experienciador,
+        experienciador_marca,
+        tipo_emocion,
+        modo_existencia,
+        fuente_marca,
+        fuente_inferencia,
+        foria,
+        dominancia,
+        intensidad,
+        enunciador,
+        enunciatarios,
+    ) -> list[ValidationIssue]:
         modos_aplica = {"virtual", "potencial"}
         if modo_existencia.lower() not in modos_aplica:
             return []
@@ -54,23 +67,25 @@ class V01_ModoPotencialVirtualExperienciador(RowValidator):
         # Coincidencia: el experienciador contiene al enunciador o viceversa.
         # No se utiliza igualdad exacta porque el LLM puede parafrasear.
         if enu_norm in exp_norm or exp_norm in enu_norm:
-            return [ValidationIssue(
-                validator_id=self.VALIDATOR_ID,
-                mensaje=(
-                    f"Emoción en modo '{modo_existencia}' tiene como experienciador "
-                    f"al enunciador ('{experienciador}'). "
-                    f"Los modos virtual/potencial refieren a enunciatarios o "
-                    f"estructuras hipotéticas, no al enunciador."
-                ),
-                codigo=codigo,
-                frase_idx=frase_idx,
-                emocion_idx=emocion_idx,
-                contexto={
-                    "modo_existencia": modo_existencia,
-                    "experienciador": experienciador,
-                    "enunciador": enunciador,
-                },
-            )]
+            return [
+                ValidationIssue(
+                    validator_id=self.VALIDATOR_ID,
+                    mensaje=(
+                        f"Emoción en modo '{modo_existencia}' tiene como experienciador "
+                        f"al enunciador ('{experienciador}'). "
+                        f"Los modos virtual/potencial refieren a enunciatarios o "
+                        f"estructuras hipotéticas, no al enunciador."
+                    ),
+                    codigo=codigo,
+                    frase_idx=frase_idx,
+                    emocion_idx=emocion_idx,
+                    contexto={
+                        "modo_existencia": modo_existencia,
+                        "experienciador": experienciador,
+                        "enunciador": enunciador,
+                    },
+                )
+            ]
         return []
 
 
@@ -91,33 +106,48 @@ class V02_FuenteNoIdentificadaConIntensidadAlta(RowValidator):
 
     VALIDATOR_ID = "V-02"
 
-    def validate(self, *, codigo, frase_idx, emocion_idx,
-                 experienciador, experienciador_marca, tipo_emocion, modo_existencia,
-                 fuente_marca, fuente_inferencia,
-                 foria, dominancia, intensidad,
-                 enunciador, enunciatarios) -> list[ValidationIssue]:
+    def validate(
+        self,
+        *,
+        codigo,
+        frase_idx,
+        emocion_idx,
+        experienciador,
+        experienciador_marca,
+        tipo_emocion,
+        modo_existencia,
+        fuente_marca,
+        fuente_inferencia,
+        foria,
+        dominancia,
+        intensidad,
+        enunciador,
+        enunciatarios,
+    ) -> list[ValidationIssue]:
         if fuente_inferencia.lower() != "no identificado":
             return []
         if intensidad.lower() != "alta":
             return []
 
-        return [ValidationIssue(
-            validator_id=self.VALIDATOR_ID,
-            mensaje=(
-                f"Emoción '{tipo_emocion}' tiene intensidad 'alta' pero "
-                f"fuente 'no identificado'. Las emociones de alta intensidad "
-                f"suelen tener fuente identificable. Revisar si la fuente "
-                f"quedó sin detectar."
-            ),
-            codigo=codigo,
-            frase_idx=frase_idx,
-            emocion_idx=emocion_idx,
-            contexto={
-                "tipo_emocion": tipo_emocion,
-                "intensidad": intensidad,
-                "fuente_inferencia": fuente_inferencia,
-            },
-        )]
+        return [
+            ValidationIssue(
+                validator_id=self.VALIDATOR_ID,
+                mensaje=(
+                    f"Emoción '{tipo_emocion}' tiene intensidad 'alta' pero "
+                    f"fuente 'no identificado'. Las emociones de alta intensidad "
+                    f"suelen tener fuente identificable. Revisar si la fuente "
+                    f"quedó sin detectar."
+                ),
+                codigo=codigo,
+                frase_idx=frase_idx,
+                emocion_idx=emocion_idx,
+                contexto={
+                    "tipo_emocion": tipo_emocion,
+                    "intensidad": intensidad,
+                    "fuente_inferencia": fuente_inferencia,
+                },
+            )
+        ]
 
 
 class V04_AforicoConIntensidadAlta(RowValidator):
@@ -136,32 +166,47 @@ class V04_AforicoConIntensidadAlta(RowValidator):
 
     VALIDATOR_ID = "V-04"
 
-    def validate(self, *, codigo, frase_idx, emocion_idx,
-                 experienciador, experienciador_marca, tipo_emocion, modo_existencia,
-                 fuente_marca, fuente_inferencia,
-                 foria, dominancia, intensidad,
-                 enunciador, enunciatarios) -> list[ValidationIssue]:
+    def validate(
+        self,
+        *,
+        codigo,
+        frase_idx,
+        emocion_idx,
+        experienciador,
+        experienciador_marca,
+        tipo_emocion,
+        modo_existencia,
+        fuente_marca,
+        fuente_inferencia,
+        foria,
+        dominancia,
+        intensidad,
+        enunciador,
+        enunciatarios,
+    ) -> list[ValidationIssue]:
         if foria.lower() != "aforico":
             return []
         if intensidad.lower() != "alta":
             return []
 
-        return [ValidationIssue(
-            validator_id=self.VALIDATOR_ID,
-            mensaje=(
-                f"Emoción '{tipo_emocion}': foria 'afórico' (neutro, sin polaridad) "
-                f"es incompatible con intensidad 'alta'. Lo afórico no admite "
-                f"intensidad fuerte según la ontología del proyecto."
-            ),
-            codigo=codigo,
-            frase_idx=frase_idx,
-            emocion_idx=emocion_idx,
-            contexto={
-                "tipo_emocion": tipo_emocion,
-                "foria": foria,
-                "intensidad": intensidad,
-            },
-        )]
+        return [
+            ValidationIssue(
+                validator_id=self.VALIDATOR_ID,
+                mensaje=(
+                    f"Emoción '{tipo_emocion}': foria 'afórico' (neutro, sin polaridad) "
+                    f"es incompatible con intensidad 'alta'. Lo afórico no admite "
+                    f"intensidad fuerte según la ontología del proyecto."
+                ),
+                codigo=codigo,
+                frase_idx=frase_idx,
+                emocion_idx=emocion_idx,
+                contexto={
+                    "tipo_emocion": tipo_emocion,
+                    "foria": foria,
+                    "intensidad": intensidad,
+                },
+            )
+        ]
 
 
 class V05_AmbiforicaConIntensidadBaja(RowValidator):
@@ -178,32 +223,47 @@ class V05_AmbiforicaConIntensidadBaja(RowValidator):
 
     VALIDATOR_ID = "V-05"
 
-    def validate(self, *, codigo, frase_idx, emocion_idx,
-                 experienciador, experienciador_marca, tipo_emocion, modo_existencia,
-                 fuente_marca, fuente_inferencia,
-                 foria, dominancia, intensidad,
-                 enunciador, enunciatarios) -> list[ValidationIssue]:
+    def validate(
+        self,
+        *,
+        codigo,
+        frase_idx,
+        emocion_idx,
+        experienciador,
+        experienciador_marca,
+        tipo_emocion,
+        modo_existencia,
+        fuente_marca,
+        fuente_inferencia,
+        foria,
+        dominancia,
+        intensidad,
+        enunciador,
+        enunciatarios,
+    ) -> list[ValidationIssue]:
         if foria.lower() != "ambiforico":
             return []
         if intensidad.lower() != "baja":
             return []
 
-        return [ValidationIssue(
-            validator_id=self.VALIDATOR_ID,
-            mensaje=(
-                f"Emoción '{tipo_emocion}': foria 'ambifórico' implica tensión "
-                f"entre polaridades opuestas, incompatible con intensidad 'baja'. "
-                f"Una emoción ambivalente débil sería afórica, no ambifórica."
-            ),
-            codigo=codigo,
-            frase_idx=frase_idx,
-            emocion_idx=emocion_idx,
-            contexto={
-                "tipo_emocion": tipo_emocion,
-                "foria": foria,
-                "intensidad": intensidad,
-            },
-        )]
+        return [
+            ValidationIssue(
+                validator_id=self.VALIDATOR_ID,
+                mensaje=(
+                    f"Emoción '{tipo_emocion}': foria 'ambifórico' implica tensión "
+                    f"entre polaridades opuestas, incompatible con intensidad 'baja'. "
+                    f"Una emoción ambivalente débil sería afórica, no ambifórica."
+                ),
+                codigo=codigo,
+                frase_idx=frase_idx,
+                emocion_idx=emocion_idx,
+                contexto={
+                    "tipo_emocion": tipo_emocion,
+                    "foria": foria,
+                    "intensidad": intensidad,
+                },
+            )
+        ]
 
 
 class V06_VirtualConForiaAforica(RowValidator):
@@ -223,33 +283,48 @@ class V06_VirtualConForiaAforica(RowValidator):
 
     VALIDATOR_ID = "V-06"
 
-    def validate(self, *, codigo, frase_idx, emocion_idx,
-                 experienciador, experienciador_marca, tipo_emocion, modo_existencia,
-                 fuente_marca, fuente_inferencia,
-                 foria, dominancia, intensidad,
-                 enunciador, enunciatarios) -> list[ValidationIssue]:
+    def validate(
+        self,
+        *,
+        codigo,
+        frase_idx,
+        emocion_idx,
+        experienciador,
+        experienciador_marca,
+        tipo_emocion,
+        modo_existencia,
+        fuente_marca,
+        fuente_inferencia,
+        foria,
+        dominancia,
+        intensidad,
+        enunciador,
+        enunciatarios,
+    ) -> list[ValidationIssue]:
         if modo_existencia.lower() != "virtual":
             return []
         if foria.lower() != "aforico":
             return []
 
-        return [ValidationIssue(
-            validator_id=self.VALIDATOR_ID,
-            mensaje=(
-                f"Emoción '{tipo_emocion}' en modo 'virtual' con foria 'afórico'. "
-                f"Lo virtual presupone una emoción imaginada con alguna coloración "
-                f"afectiva; sin polaridad (afórico) no es emoción virtual sino "
-                f"estado neutro."
-            ),
-            codigo=codigo,
-            frase_idx=frase_idx,
-            emocion_idx=emocion_idx,
-            contexto={
-                "tipo_emocion": tipo_emocion,
-                "modo_existencia": modo_existencia,
-                "foria": foria,
-            },
-        )]
+        return [
+            ValidationIssue(
+                validator_id=self.VALIDATOR_ID,
+                mensaje=(
+                    f"Emoción '{tipo_emocion}' en modo 'virtual' con foria 'afórico'. "
+                    f"Lo virtual presupone una emoción imaginada con alguna coloración "
+                    f"afectiva; sin polaridad (afórico) no es emoción virtual sino "
+                    f"estado neutro."
+                ),
+                codigo=codigo,
+                frase_idx=frase_idx,
+                emocion_idx=emocion_idx,
+                contexto={
+                    "tipo_emocion": tipo_emocion,
+                    "modo_existencia": modo_existencia,
+                    "foria": foria,
+                },
+            )
+        ]
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -274,8 +349,7 @@ class V08_ActorCoincideConEnunciador(DiscursoValidator):
 
     VALIDATOR_ID = "V-08"
 
-    def validate(self, *, codigo, emociones, enunciador,
-                 enunciatarios) -> list[ValidationIssue]:
+    def validate(self, *, codigo, emociones, enunciador, enunciatarios) -> list[ValidationIssue]:
         if not enunciador or enunciador.strip().lower() == "no identificado":
             return []
 
@@ -288,23 +362,25 @@ class V08_ActorCoincideConEnunciador(DiscursoValidator):
             if not exp_norm:
                 continue
             if enu_norm in exp_norm or exp_norm in enu_norm:
-                issues.append(ValidationIssue(
-                    validator_id=self.VALIDATOR_ID,
-                    mensaje=(
-                        f"El experienciador '{exp}' coincide con el enunciador "
-                        f"'{enunciador}'. Según la ontología de actores, el "
-                        f"enunciador debe excluirse de los actores representados."
-                    ),
-                    codigo=codigo,
-                    frase_idx=emo.get("frase_idx"),
-                    emocion_idx=emo.get("emocion_idx"),
-                    contexto={
-                        "experienciador": exp,
-                        "experienciador_marca": emo.get("experienciador_marca", ""),
-                        "enunciador": enunciador,
-                        "tipo_emocion": emo.get("tipo_emocion", ""),
-                    },
-                ))
+                issues.append(
+                    ValidationIssue(
+                        validator_id=self.VALIDATOR_ID,
+                        mensaje=(
+                            f"El experienciador '{exp}' coincide con el enunciador "
+                            f"'{enunciador}'. Según la ontología de actores, el "
+                            f"enunciador debe excluirse de los actores representados."
+                        ),
+                        codigo=codigo,
+                        frase_idx=emo.get("frase_idx"),
+                        emocion_idx=emo.get("emocion_idx"),
+                        contexto={
+                            "experienciador": exp,
+                            "experienciador_marca": emo.get("experienciador_marca", ""),
+                            "enunciador": enunciador,
+                            "tipo_emocion": emo.get("tipo_emocion", ""),
+                        },
+                    )
+                )
 
         return issues
 
@@ -324,8 +400,7 @@ class V09_EmocionDuplicadaMismoActorMismaFrase(DiscursoValidator):
 
     VALIDATOR_ID = "V-09"
 
-    def validate(self, *, codigo, emociones, enunciador,
-                 enunciatarios) -> list[ValidationIssue]:
+    def validate(self, *, codigo, emociones, enunciador, enunciatarios) -> list[ValidationIssue]:
         # clave → lista de (frase_idx, emocion_idx)
         seen: dict[tuple[int, str, str], list[tuple[int, int]]] = {}
 
@@ -345,26 +420,28 @@ class V09_EmocionDuplicadaMismoActorMismaFrase(DiscursoValidator):
                 continue
             # Reportar usando los índices de la primera ocurrencia duplicada.
             _, first_ei = ocurrencias[0]
-            issues.append(ValidationIssue(
-                validator_id=self.VALIDATOR_ID,
-                mensaje=(
-                    f"Emoción '{tipo}' del experienciador '{exp}' aparece "
-                    f"{len(ocurrencias)} veces en la frase {fi}. "
-                    f"La ontología prohíbe repetir emociones del mismo actor "
-                    f"en la misma frase."
-                ),
-                codigo=codigo,
-                frase_idx=fi,
-                emocion_idx=first_ei,
-                contexto={
-                    "tipo_emocion": tipo,
-                    "experienciador": exp,
-                    "experienciador_marca": emo.get("experienciador_marca", ""),
-                    "frase_idx": fi,
-                    "ocurrencias": len(ocurrencias),
-                    "emocion_idxs": [ei for _, ei in ocurrencias],
-                },
-            ))
+            issues.append(
+                ValidationIssue(
+                    validator_id=self.VALIDATOR_ID,
+                    mensaje=(
+                        f"Emoción '{tipo}' del experienciador '{exp}' aparece "
+                        f"{len(ocurrencias)} veces en la frase {fi}. "
+                        f"La ontología prohíbe repetir emociones del mismo actor "
+                        f"en la misma frase."
+                    ),
+                    codigo=codigo,
+                    frase_idx=fi,
+                    emocion_idx=first_ei,
+                    contexto={
+                        "tipo_emocion": tipo,
+                        "experienciador": exp,
+                        "experienciador_marca": emo.get("experienciador_marca", ""),
+                        "frase_idx": fi,
+                        "ocurrencias": len(ocurrencias),
+                        "emocion_idxs": [ei for _, ei in ocurrencias],
+                    },
+                )
+            )
 
         return issues
 
@@ -386,17 +463,14 @@ class V10_ModoPotencialConExperienciadorNoEnunciatario(DiscursoValidator):
 
     VALIDATOR_ID = "V-10"
 
-    def validate(self, *, codigo, emociones, enunciador,
-                 enunciatarios) -> list[ValidationIssue]:
+    def validate(self, *, codigo, emociones, enunciador, enunciatarios) -> list[ValidationIssue]:
         if not enunciatarios:
             # Sin enunciatarios identificados, no es posible comparar.
             return []
 
         # Normalizar enunciatarios para comparación.
         enun_actores_norm = [
-            (e.get("actor") or "").strip().lower()
-            for e in enunciatarios
-            if e.get("actor")
+            (e.get("actor") or "").strip().lower() for e in enunciatarios if e.get("actor")
         ]
         if not enun_actores_norm:
             return []
@@ -412,32 +486,30 @@ class V10_ModoPotencialConExperienciadorNoEnunciatario(DiscursoValidator):
             exp_norm = exp.lower()
 
             # Búsqueda de coincidencias con algún enunciatario.
-            coincide = any(
-                ea in exp_norm or exp_norm in ea
-                for ea in enun_actores_norm
-                if ea
-            )
+            coincide = any(ea in exp_norm or exp_norm in ea for ea in enun_actores_norm if ea)
 
             if not coincide:
-                issues.append(ValidationIssue(
-                    validator_id=self.VALIDATOR_ID,
-                    mensaje=(
-                        f"Emoción '{emo.get('tipo_emocion', '')}' en modo 'potencial' "
-                        f"tiene como experienciador '{exp}', que no coincide con "
-                        f"ningún enunciatario del discurso. El modo potencial refiere "
-                        f"a efectos pretendidos sobre enunciatarios."
-                    ),
-                    codigo=codigo,
-                    frase_idx=emo.get("frase_idx"),
-                    emocion_idx=emo.get("emocion_idx"),
-                    contexto={
-                        "tipo_emocion": emo.get("tipo_emocion", ""),
-                        "modo_existencia": "potencial",
-                        "experienciador": exp,
-                        "experienciador_marca": emo.get("experienciador_marca", ""),
-                        "enunciatarios": [e.get("actor") for e in enunciatarios],
-                    },
-                ))
+                issues.append(
+                    ValidationIssue(
+                        validator_id=self.VALIDATOR_ID,
+                        mensaje=(
+                            f"Emoción '{emo.get('tipo_emocion', '')}' en modo 'potencial' "
+                            f"tiene como experienciador '{exp}', que no coincide con "
+                            f"ningún enunciatario del discurso. El modo potencial refiere "
+                            f"a efectos pretendidos sobre enunciatarios."
+                        ),
+                        codigo=codigo,
+                        frase_idx=emo.get("frase_idx"),
+                        emocion_idx=emo.get("emocion_idx"),
+                        contexto={
+                            "tipo_emocion": emo.get("tipo_emocion", ""),
+                            "modo_existencia": "potencial",
+                            "experienciador": exp,
+                            "experienciador_marca": emo.get("experienciador_marca", ""),
+                            "enunciatarios": [e.get("actor") for e in enunciatarios],
+                        },
+                    )
+                )
 
         return issues
 
@@ -468,9 +540,9 @@ class V11_DesviacionOntologica(RowValidator):
     VALIDATOR_ID = "V11_desviacion_ontologica"
 
     _DIMS: tuple[tuple[str, str], ...] = (
-        ("foria",           "foria"),
-        ("intensidad",      "intensidad"),
-        ("dominancia",      "dominancia"),
+        ("foria", "foria"),
+        ("intensidad", "intensidad"),
+        ("dominancia", "dominancia"),
         ("modo_existencia", "modo_existencia"),
     )
 
@@ -499,9 +571,7 @@ class V11_DesviacionOntologica(RowValidator):
         """
         alias_to_canonical = build_emotion_alias_lookup(ont, normalize_accents=True)
         emociones: dict[str, Any] = ont.get("emociones", {})
-        canonical_to_entry = {
-            k: v for k, v in emociones.items() if isinstance(v, dict)
-        }
+        canonical_to_entry = {k: v for k, v in emociones.items() if isinstance(v, dict)}
         lookup: dict[str, dict[str, Any]] = {}
         for alias_norm, canonical in alias_to_canonical.items():
             entry = canonical_to_entry.get(canonical)
@@ -532,9 +602,9 @@ class V11_DesviacionOntologica(RowValidator):
             return []  # emoción no cubierta → no penalizar
 
         dim_values: dict[str, str] = {
-            "foria":           foria,
-            "intensidad":      intensidad,
-            "dominancia":      dominancia,
+            "foria": foria,
+            "intensidad": intensidad,
+            "dominancia": dominancia,
             "modo_existencia": modo_existencia,
         }
 
@@ -549,28 +619,30 @@ class V11_DesviacionOntologica(RowValidator):
                 continue
 
             value_norm = self._normalize(value)
-            esperado  = [self._normalize(v) for v in constraints.get("esperado", [])]
-            tolerado  = [self._normalize(v) for v in constraints.get("tolerado", [])]
+            esperado = [self._normalize(v) for v in constraints.get("esperado", [])]
+            tolerado = [self._normalize(v) for v in constraints.get("tolerado", [])]
 
             if value_norm not in esperado and value_norm not in tolerado:
-                issues.append(ValidationIssue(
-                    validator_id=self.VALIDATOR_ID,
-                    mensaje=(
-                        f"{tipo_emocion}: {dim_key}='{value}' fuera de "
-                        f"esperado={constraints.get('esperado', [])} y "
-                        f"tolerado={constraints.get('tolerado', [])}"
-                    ),
-                    codigo=codigo,
-                    frase_idx=frase_idx,
-                    emocion_idx=emocion_idx,
-                    contexto={
-                        "dim": dim_key,
-                        "value": value,
-                        "tipo_emocion": tipo_emocion,
-                        "esperado": constraints.get("esperado", []),
-                        "tolerado": constraints.get("tolerado", []),
-                    },
-                ))
+                issues.append(
+                    ValidationIssue(
+                        validator_id=self.VALIDATOR_ID,
+                        mensaje=(
+                            f"{tipo_emocion}: {dim_key}='{value}' fuera de "
+                            f"esperado={constraints.get('esperado', [])} y "
+                            f"tolerado={constraints.get('tolerado', [])}"
+                        ),
+                        codigo=codigo,
+                        frase_idx=frase_idx,
+                        emocion_idx=emocion_idx,
+                        contexto={
+                            "dim": dim_key,
+                            "value": value,
+                            "tipo_emocion": tipo_emocion,
+                            "esperado": constraints.get("esperado", []),
+                            "tolerado": constraints.get("tolerado", []),
+                        },
+                    )
+                )
 
         return issues
 

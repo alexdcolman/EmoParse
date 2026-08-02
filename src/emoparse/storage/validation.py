@@ -7,12 +7,11 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from emoparse.domain.validators.base import ValidationIssue
 from emoparse.storage.db import Database
-
 
 CREATE_VALIDATION_ISSUES = """
 CREATE TABLE IF NOT EXISTS validation_issues (
@@ -51,7 +50,7 @@ class ValidationRepository:
 
     def save_issues(self, issues: list[ValidationIssue]) -> None:
         """Inserta un lote de issues."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         rows = [
             (
                 issue.validator_id,
@@ -128,17 +127,19 @@ class ValidationRepository:
             except (json.JSONDecodeError, TypeError):
                 contexto = {}
 
-            result.append({
-                "id": row["id"],
-                "validator_id": row["validator_id"],
-                "severidad": row["severidad"],
-                "mensaje": row["mensaje"],
-                "codigo": row["codigo"],
-                "frase_idx": row["frase_idx"],
-                "emocion_idx": row["emocion_idx"],
-                "contexto": contexto,
-                "run_at": row["run_at"],
-            })
+            result.append(
+                {
+                    "id": row["id"],
+                    "validator_id": row["validator_id"],
+                    "severidad": row["severidad"],
+                    "mensaje": row["mensaje"],
+                    "codigo": row["codigo"],
+                    "frase_idx": row["frase_idx"],
+                    "emocion_idx": row["emocion_idx"],
+                    "contexto": contexto,
+                    "run_at": row["run_at"],
+                }
+            )
 
         return result
 
@@ -156,7 +157,5 @@ class ValidationRepository:
 
     def count_total(self) -> int:
         """Total de issues en la tabla."""
-        row = self._db.execute(
-            "SELECT COUNT(*) as cnt FROM validation_issues"
-        ).fetchone()
+        row = self._db.execute("SELECT COUNT(*) as cnt FROM validation_issues").fetchone()
         return row["cnt"] if row else 0

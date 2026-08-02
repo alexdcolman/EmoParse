@@ -19,7 +19,8 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
-from typing import Any, Callable, ClassVar, Generic, TypeVar
+from collections.abc import Callable
+from typing import Any, ClassVar, Generic, TypeVar
 
 import pandas as pd
 from loguru import logger
@@ -39,6 +40,7 @@ ResultT = TypeVar("ResultT", bound=BaseModel)
 # ══════════════════════════════════════════════════════════════════════════════
 #  BaseAgent — una llamada al LLM por fila del DF
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class BaseAgent(ABC, Generic[ResultT]):
     """Clase base para agentes que procesan un DataFrame fila por fila.
@@ -130,6 +132,7 @@ class BaseAgent(ABC, Generic[ResultT]):
             BackendError:
                 Si falla la generación o la validación estructurada.
         """
+
         def _call() -> ResultT:
             user = self._build_user(row)
             response = self._backend.generate(
@@ -183,9 +186,7 @@ class BaseAgent(ABC, Generic[ResultT]):
                 parsed = self.process_unit(row)
                 row_out.update(self._map_to_columns(parsed, row))
             except BackendError as e:
-                logger.warning(
-                    f"[{self.NAME}] {codigo}: {type(e).__name__}: {e}"
-                )
+                logger.warning(f"[{self.NAME}] {codigo}: {type(e).__name__}: {e}")
                 # None → NaN en columnas object, distinguible de
                 # "no identificado" que es decisión del modelo.
                 for col in self.OUTPUT_COLUMNS:
@@ -203,6 +204,7 @@ class BaseAgent(ABC, Generic[ResultT]):
 # El item de batch tiene la forma {unit_idx: int, <payload>: ...}.
 # Python no deja imponer eso vía typing, se deja como contrato
 # documentado y validado en runtime.
+
 
 class BaseBatchAgent(ABC, Generic[ResultT]):
     """Clase base para agentes que procesan múltiples filas por llamada.
@@ -302,9 +304,7 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
         # Reset de índice para que iloc[0..N-1] coincida con unit_idx.
         # Se guarda el índice original como columna temporal para
         # poder restaurarlo al final si el llamador depende de él.
-        df_reset = df.reset_index(drop=False).rename(
-            columns={"index": "__orig_index"}
-        )
+        df_reset = df.reset_index(drop=False).rename(columns={"index": "__orig_index"})
 
         results: list[dict[str, Any]] = []
         total = len(df_reset)
@@ -320,9 +320,7 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
                     f"[{self.NAME}] batch {batch_i + 1}/{n_batches} "
                     f"(filas {start + 1}-{end} de {total})"
                 )
-            results.extend(
-                self._process_batch(batch, split_on_overflow=True)
-            )
+            results.extend(self._process_batch(batch, split_on_overflow=True))
             if self.on_progress is not None:
                 self.on_progress(end - start)
 
@@ -349,9 +347,7 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
         batch = batch.reset_index(drop=True)
         batch_size = len(batch)
 
-        unit_idx_to_row: dict[int, pd.Series] = {
-            i: batch.iloc[i] for i in range(batch_size)
-        }
+        unit_idx_to_row: dict[int, pd.Series] = {i: batch.iloc[i] for i in range(batch_size)}
         row_outputs: dict[int, dict[str, Any]] = {}
         for i in range(batch_size):
             row_dict = batch.iloc[i].to_dict()
@@ -395,25 +391,15 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
                     f"[{self.NAME}] batch de {batch_size} excedió el contexto; "
                     f"reintento partido en {mid}+{batch_size - mid} (una vez)."
                 )
-                out = self._process_batch(
-                    batch.iloc[:mid], split_on_overflow=False
-                )
-                out += self._process_batch(
-                    batch.iloc[mid:], split_on_overflow=False
-                )
+                out = self._process_batch(batch.iloc[:mid], split_on_overflow=False)
+                out += self._process_batch(batch.iloc[mid:], split_on_overflow=False)
                 return out
-            logger.warning(
-                f"[{self.NAME}] batch de {batch_size} falló: "
-                f"{type(e).__name__}: {e}"
-            )
+            logger.warning(f"[{self.NAME}] batch de {batch_size} falló: {type(e).__name__}: {e}")
 
         except BackendError as e:
             # El batch entero falla → todas las filas quedan con None en
             # OUTPUT_COLUMNS (ya inicializadas así).
-            logger.warning(
-                f"[{self.NAME}] batch de {batch_size} falló: "
-                f"{type(e).__name__}: {e}"
-            )
+            logger.warning(f"[{self.NAME}] batch de {batch_size} falló: {type(e).__name__}: {e}")
 
         return [row_outputs[i] for i in range(batch_size)]
 
@@ -446,9 +432,7 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
         así que si una unidad está mal atribuida las demás no son confiables.
         """
         idxs = [getattr(it, "unit_idx", None) for it in items]
-        all_int = len(idxs) == batch_size and all(
-            isinstance(x, int) for x in idxs
-        )
+        all_int = len(idxs) == batch_size and all(isinstance(x, int) for x in idxs)
         perfect = all_int and sorted(idxs) == list(range(batch_size))
         off_by_one = all_int and sorted(idxs) == list(range(1, batch_size + 1))
 
@@ -463,15 +447,11 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
         else:
             self._rechazar_batch(
                 row_outputs,
-                f"unit_idx no confiable (recibidos={idxs}, "
-                f"batch_size={batch_size})",
+                f"unit_idx no confiable (recibidos={idxs}, batch_size={batch_size})",
             )
             return
 
-        anclas = {
-            j: _normalizar_ancla(self._anchor(row))
-            for j, row in unit_idx_to_row.items()
-        }
+        anclas = {j: _normalizar_ancla(self._anchor(row)) for j, row in unit_idx_to_row.items()}
         presentes = [a for a in anclas.values() if a]
         if presentes and len(set(presentes)) < len(presentes):
             # Sin unicidad el ancla no distingue unidades: decirlo es mejor
@@ -485,14 +465,11 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
         desajustes = [
             (j, anclas[j], _normalizar_ancla(getattr(item, "ancla", None)))
             for j, item in pares
-            if not _anclas_coinciden(
-                anclas[j], _normalizar_ancla(getattr(item, "ancla", None))
-            )
+            if not _anclas_coinciden(anclas[j], _normalizar_ancla(getattr(item, "ancla", None)))
         ]
         if desajustes:
             detalle = "; ".join(
-                f"unidad {j}: esperaba '{esp}', recibí '{rec}'"
-                for j, esp, rec in desajustes
+                f"unidad {j}: esperaba '{esp}', recibí '{rec}'" for j, esp, rec in desajustes
             )
             if self.ANCHOR_STRICT:
                 self._rechazar_batch(
@@ -511,17 +488,16 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
             )
 
         for j, item in pares:
-            row_outputs[j].update(
-                self._map_item_to_columns(item, unit_idx_to_row[j])
-            )
+            row_outputs[j].update(self._map_item_to_columns(item, unit_idx_to_row[j]))
 
     def _rechazar_batch(
-        self, row_outputs: dict[int, dict[str, Any]], motivo: str,
+        self,
+        row_outputs: dict[int, dict[str, Any]],
+        motivo: str,
     ) -> None:
         """Descarta el batch entero dejando rastro en las filas y en el log."""
         logger.error(
-            "[{}] batch RECHAZADO: {}. Las filas quedan sin resolver para "
-            "reintento.",
+            "[{}] batch RECHAZADO: {}. Las filas quedan sin resolver para reintento.",
             self.NAME,
             motivo,
         )
@@ -540,11 +516,7 @@ def _anclas_coinciden(esperada: str, recibida: str) -> bool:
     """
     if not esperada or not recibida:
         return True
-    return (
-        esperada == recibida
-        or esperada in recibida
-        or recibida in esperada
-    )
+    return esperada == recibida or esperada in recibida or recibida in esperada
 
 
 def _normalizar_ancla(valor: Any) -> str:

@@ -53,7 +53,7 @@ def test_grammar_has_root_and_reusable_primitives() -> None:
 
 
 def test_string_primitive_forbids_empty_strings_without_unbounded_whitespace() -> None:
-    assert 'string ::= "\\\"" strchar' in PRIMITIVE_RULES
+    assert 'string ::= "\\"" strchar' in PRIMITIVE_RULES
     assert "strsep? strchar" in PRIMITIVE_RULES
     assert "strunit*" not in PRIMITIVE_RULES
 

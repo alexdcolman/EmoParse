@@ -22,8 +22,9 @@
 from __future__ import annotations
 
 from collections import Counter
+from collections.abc import Iterable
 from dataclasses import dataclass
-from typing import Any, Iterable
+from typing import Any
 
 import pandas as pd
 
@@ -49,20 +50,27 @@ class Componente:
 #: los consume la CLI (`--similitud-componentes`) y la tab.
 COMPONENTES: dict[str, Componente] = {
     "experienciador": Componente(
-        ("experienciador_canonicos", "experienciador_canonico",
-         "experienciador_efectivo", "experienciador"),
-        multiple=True, peso=1.5,
+        (
+            "experienciador_canonicos",
+            "experienciador_canonico",
+            "experienciador_efectivo",
+            "experienciador",
+        ),
+        multiple=True,
+        peso=1.5,
     ),
     "tipo_emocion": Componente(
-        ("tipo_emocion_canonico", "tipo_emocion"), peso=1.5,
+        ("tipo_emocion_canonico", "tipo_emocion"),
+        peso=1.5,
     ),
     "fuente": Componente(
-        ("fuente_canonicos", "fuente_canonico", "fuente_efectiva",
-         "fuente_inferencia"),
-        multiple=True, peso=1.5,
+        ("fuente_canonicos", "fuente_canonico", "fuente_efectiva", "fuente_inferencia"),
+        multiple=True,
+        peso=1.5,
     ),
     "semas_experienciador": Componente(
-        ("experienciador_semas",), multiple=True,
+        ("experienciador_semas",),
+        multiple=True,
     ),
     "semas_fuente": Componente(("fuente_semas",), multiple=True),
     "mediador": Componente(("mediador",)),
@@ -80,9 +88,14 @@ COMPONENTES: dict[str, Componente] = {
 #: simulacro, sin los rasgos graduales que agrupan por intensidad más que
 #: por historia.
 COMPONENTES_DEFAULT: tuple[str, ...] = (
-    "experienciador", "tipo_emocion", "fuente", "mediador",
-    "verificador_normativo", "verificador_observacional",
-    "operador_modificacion", "foria",
+    "experienciador",
+    "tipo_emocion",
+    "fuente",
+    "mediador",
+    "verificador_normativo",
+    "verificador_observacional",
+    "operador_modificacion",
+    "foria",
 )
 
 #: Parecido mínimo para que dos simulacros queden ligados.
@@ -106,12 +119,10 @@ class ComponenteDesconocidoError(ValueError):
 #  Rasgos
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def componentes_disponibles(df: pd.DataFrame) -> tuple[str, ...]:
     """Componentes que el DataFrame puede alimentar, en orden de declaración."""
-    return tuple(
-        nombre for nombre, comp in COMPONENTES.items()
-        if _columna(df, comp) is not None
-    )
+    return tuple(nombre for nombre, comp in COMPONENTES.items() if _columna(df, comp) is not None)
 
 
 def build_features(
@@ -142,6 +153,7 @@ def build_features(
 #  Parecido
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def similarity_pairs(
     features: list[dict[str, frozenset[str]]],
     pesos: dict[str, float] | None = None,
@@ -169,16 +181,17 @@ def similarity_pairs(
     for i, j in candidatos:
         similitud, comparten = _similitud(features[i], features[j], pesos)
         if similitud >= umbral:
-            filas.append({
-                "i": i, "j": j,
-                "similitud": round(similitud, 4),
-                "comparten": ", ".join(comparten),
-            })
+            filas.append(
+                {
+                    "i": i,
+                    "j": j,
+                    "similitud": round(similitud, 4),
+                    "comparten": ", ".join(comparten),
+                }
+            )
     if not filas:
         return pd.DataFrame(columns=["i", "j", "similitud", "comparten"])
-    return pd.DataFrame(filas).sort_values(
-        "similitud", ascending=False
-    ).reset_index(drop=True)
+    return pd.DataFrame(filas).sort_values("similitud", ascending=False).reset_index(drop=True)
 
 
 def agrupar(
@@ -241,13 +254,9 @@ def perfil_grupos(
             counts: Counter = Counter()
             for r in items:
                 counts.update(_valores(r.get(col)) if col else [])
-            fila[nombre] = ", ".join(
-                f"{v} ({n})" for v, n in counts.most_common(top)
-            )
+            fila[nombre] = ", ".join(f"{v} ({n})" for v, n in counts.most_common(top))
         filas.append(fila)
-    return pd.DataFrame(filas).sort_values(
-        "simulacros", ascending=False
-    ).reset_index(drop=True)
+    return pd.DataFrame(filas).sort_values("simulacros", ascending=False).reset_index(drop=True)
 
 
 def grupos_por_autor(
@@ -274,11 +283,10 @@ def grupos_por_autor(
             counts[(str(autor).lower(), int(grupo))] += 1
     if not counts:
         return pd.DataFrame(columns=["autor", "grupo", "simulacros"])
-    return pd.DataFrame(
-        [{"autor": a, "grupo": g, "simulacros": n}
-         for (a, g), n in counts.items()]
-    ).sort_values(["grupo", "simulacros"], ascending=[True, False]).reset_index(
-        drop=True
+    return (
+        pd.DataFrame([{"autor": a, "grupo": g, "simulacros": n} for (a, g), n in counts.items()])
+        .sort_values(["grupo", "simulacros"], ascending=[True, False])
+        .reset_index(drop=True)
     )
 
 
@@ -331,9 +339,7 @@ def describir_simulacros(rows: list[dict[str, Any]]) -> str:
         rows,
         key=lambda r: (int(r.get("frase_idx") or 0), int(r.get("emocion_idx") or 0)),
     )
-    return "<br>".join(
-        f"{i}. {describir_simulacro(r)}" for i, r in enumerate(ordenados, 1)
-    )
+    return "<br>".join(f"{i}. {describir_simulacro(r)}" for i, r in enumerate(ordenados, 1))
 
 
 def _celda(row: dict[str, Any], columnas: tuple[str, ...]) -> Any:
@@ -362,6 +368,7 @@ def clave_simulacro(row: dict[str, Any]) -> str:
 #  Internos
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _validar(componentes: Iterable[str]) -> tuple[str, ...]:
     """Normaliza y valida la selección de componentes."""
     nombres = tuple(dict.fromkeys(str(c).strip() for c in componentes if str(c).strip()))
@@ -370,8 +377,7 @@ def _validar(componentes: Iterable[str]) -> tuple[str, ...]:
     desconocidos = [n for n in nombres if n not in COMPONENTES]
     if desconocidos:
         raise ComponenteDesconocidoError(
-            f"Componentes desconocidos: {desconocidos}. "
-            f"Disponibles: {', '.join(COMPONENTES)}"
+            f"Componentes desconocidos: {desconocidos}. Disponibles: {', '.join(COMPONENTES)}"
         )
     return nombres
 
@@ -401,14 +407,11 @@ def _valores(celda: Any) -> list[str]:
     return out
 
 
-def _pesos(
-    nombres: Iterable[str], pesos: dict[str, float] | None
-) -> dict[str, float]:
+def _pesos(nombres: Iterable[str], pesos: dict[str, float] | None) -> dict[str, float]:
     """Peso efectivo de cada componente: el pedido, o el declarado."""
     pesos = pesos or {}
     return {
-        n: float(pesos.get(n, COMPONENTES[n].peso if n in COMPONENTES else 1.0))
-        for n in nombres
+        n: float(pesos.get(n, COMPONENTES[n].peso if n in COMPONENTES else 1.0)) for n in nombres
     }
 
 

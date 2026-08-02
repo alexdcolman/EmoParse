@@ -18,10 +18,10 @@ from emoparse.cli.commands.export_cmd import handle
 from emoparse.storage.db import Database
 from emoparse.storage.schema import ALL_TABLES_DDL
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  Helpers
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _init_db(path: Path) -> Database:
     db = Database(path)
@@ -55,7 +55,17 @@ def _make_populated_db(tmp_path: Path) -> Path:
                 fuente_marca, fuente_inferencia, tipo_emocion, modo_existencia)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            ("D1", 0, 0, "Pueblo", "el pueblo", "el socialismo", "socialismo", "alegria", "realizada"),
+            (
+                "D1",
+                0,
+                0,
+                "Pueblo",
+                "el pueblo",
+                "el socialismo",
+                "socialismo",
+                "alegria",
+                "realizada",
+            ),
         )
 
     return db_path
@@ -65,8 +75,8 @@ def _make_populated_db(tmp_path: Path) -> Path:
 #  Tests vía main()
 # ══════════════════════════════════════════════════════════════════════════════
 
-class TestExportCLI:
 
+class TestExportCLI:
     def test_export_creates_declared_csvs(self, tmp_path: Path) -> None:
         db_path = _make_populated_db(tmp_path)
         out_dir = tmp_path / "csvs"
@@ -78,11 +88,16 @@ class TestExportCLI:
         assert (out_dir / "emociones.csv").is_file()
 
     def test_export_db_not_found_returns_1(self, tmp_path: Path) -> None:
-        rc = main([
-            "--no-log-file", "export",
-            "--db", str(tmp_path / "no_existe.sqlite"),
-            "--output-dir", str(tmp_path / "out"),
-        ])
+        rc = main(
+            [
+                "--no-log-file",
+                "export",
+                "--db",
+                str(tmp_path / "no_existe.sqlite"),
+                "--output-dir",
+                str(tmp_path / "out"),
+            ]
+        )
         assert rc == 1
 
     def test_export_creates_output_dir_if_missing(self, tmp_path: Path) -> None:
@@ -97,7 +112,9 @@ class TestExportCLI:
         self, tmp_path: Path, capsys: pytest.CaptureFixture[str]
     ) -> None:
         db_path = _make_populated_db(tmp_path)
-        main(["--no-log-file", "export", "--db", str(db_path), "--output-dir", str(tmp_path / "out")])
+        main(
+            ["--no-log-file", "export", "--db", str(db_path), "--output-dir", str(tmp_path / "out")]
+        )
         out = capsys.readouterr().out
         assert "discursos.csv" in out
         assert "metadata_genero.csv" in out
@@ -121,8 +138,8 @@ class TestExportCLI:
 #  Tests vía handle() directo
 # ══════════════════════════════════════════════════════════════════════════════
 
-class TestExportHandleDirect:
 
+class TestExportHandleDirect:
     def _make_args(self, db: str, output_dir: str) -> argparse.Namespace:
         return argparse.Namespace(db=db, output_dir=output_dir)
 

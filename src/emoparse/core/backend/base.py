@@ -16,7 +16,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel
@@ -30,11 +30,12 @@ FinishReason = Literal["stop", "length", "schema", "error"]
 #  Tipos de retorno
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass(frozen=True, slots=True)
 class TokenUsage:
     """Tokens consumidos por una llamada.
 
-    prompt_tokens incluye system, user y control tokens del template.  
+    prompt_tokens incluye system, user y control tokens del template.
     Si no se exponen tokens, los campos quedan en 0.
     """
 
@@ -61,7 +62,7 @@ class LLMResponse:
         timestamp: Hora UTC ISO de la llamada.
         extra: Metadata adicional del backend.
     """
-    
+
     parsed: BaseModel | None
     raw: str
     usage: TokenUsage
@@ -69,13 +70,14 @@ class LLMResponse:
     model_alias: str
     cache_hit: bool
     finish_reason: FinishReason
-    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    timestamp: str = field(default_factory=lambda: datetime.now(UTC).isoformat())
     extra: dict[str, Any] = field(default_factory=dict)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Interfaz abstracta
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class LLMBackend(ABC):
     """Backend LLM con generación estructurada opcional.

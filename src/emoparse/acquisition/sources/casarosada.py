@@ -35,16 +35,14 @@ def _parse_html(html: str) -> BeautifulSoup:
         from bs4 import BeautifulSoup, FeatureNotFound
     except ImportError as e:
         raise RuntimeError(
-            "Beautiful Soup no está instalado. Instalá el extra: "
-            'pip install -e ".[scraping]"'
+            'Beautiful Soup no está instalado. Instalá el extra: pip install -e ".[scraping]"'
         ) from e
 
     try:
         return BeautifulSoup(html, "lxml")
     except FeatureNotFound as e:
         raise RuntimeError(
-            "El parser lxml no está instalado. Instalá el extra: "
-            'pip install -e ".[scraping]"'
+            'El parser lxml no está instalado. Instalá el extra: pip install -e ".[scraping]"'
         ) from e
 
 
@@ -61,13 +59,8 @@ _FECHA_SELECTORS = ("article time", "time")
 _CONTENIDO_SELECTOR = "article p"
 
 # Paginación.
-_NEXT_LINK_SELECTOR = (
-    'li.pagination-next a, a[rel="next"], a.next, '
-    'a:-soup-contains("Siguiente")'
-)
-_NEXT_BUTTON_XPATH = (
-    '//li[contains(@class,"pagination-next")]/a | //a[contains(.,"Siguiente")]'
-)
+_NEXT_LINK_SELECTOR = 'li.pagination-next a, a[rel="next"], a.next, a:-soup-contains("Siguiente")'
+_NEXT_BUTTON_XPATH = '//li[contains(@class,"pagination-next")]/a | //a[contains(.,"Siguiente")]'
 
 
 class CasaRosadaAdapter(SourceAdapter):
@@ -95,7 +88,7 @@ class CasaRosadaAdapter(SourceAdapter):
         self._listing_url = listing_url or f"{_BASE_DOMAIN}{_LISTING_PATH}"
         self._http = HttpClient(timeout=timeout, max_retries=max_retries)
         self._selenium: Any = None
-        self._stuck_on_selenium = (mode == "selenium")
+        self._stuck_on_selenium = mode == "selenium"
 
     # ── Listado de URLs ──────────────────────────────────────────────────
 
@@ -230,6 +223,7 @@ class CasaRosadaAdapter(SourceAdapter):
         slug = url.rstrip("/").rsplit("/", 1)[-1]
         # Sanitizar caracteres raros en el slug: solo [\w-].
         import re
+
         slug = re.sub(r"[^\w\-]", "_", slug)
         return f"casarosada_{slug}" if slug else f"casarosada_{abs(hash(url))}"
 
@@ -255,9 +249,7 @@ class CasaRosadaAdapter(SourceAdapter):
                 return self._fetch_selenium(url)
             return html
         except (requests.HTTPError, RuntimeError) as e:
-            logger.warning(
-                f"[CasaRosada] HTTP falló para {url} ({e}), escalando a Selenium."
-            )
+            logger.warning(f"[CasaRosada] HTTP falló para {url} ({e}), escalando a Selenium.")
             self._stuck_on_selenium = True
             return self._fetch_selenium(url)
 
@@ -284,6 +276,7 @@ class CasaRosadaAdapter(SourceAdapter):
         """Devuelve HTML renderizado vía Selenium."""
         if self._selenium is None:
             from emoparse.acquisition.selenium_client import SeleniumClient
+
             self._selenium = SeleniumClient(headless=True, page_load_wait=1.5)
             self._selenium.start()
         return self._selenium.get_html(url)

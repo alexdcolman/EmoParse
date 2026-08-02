@@ -7,7 +7,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from emoparse.storage.db import Database
@@ -65,7 +65,6 @@ class RunsRepository:
                     ctx.notes,
                 ),
             )
-
 
     def _sync_runtime_config(self, incoming: dict[str, Any]) -> None:
         """Actualiza metadata reservada sin reescribir el config del usuario."""
@@ -237,10 +236,7 @@ class RunsRepository:
     ) -> None:
         """Agrega una columna si no existe."""
         existing = {
-            row["name"]
-            for row in self._db.execute(
-                f"PRAGMA table_info({table})"
-            ).fetchall()
+            row["name"] for row in self._db.execute(f"PRAGMA table_info({table})").fetchall()
         }
         if column in existing:
             return
@@ -253,9 +249,7 @@ class RunsRepository:
         """Devuelve el RunContext de la DB, o None si no se inicializó."""
         if not self._db.table_exists("runs"):
             return None
-        row = self._db.execute(
-            "SELECT * FROM runs LIMIT 1"
-        ).fetchone()
+        row = self._db.execute("SELECT * FROM runs LIMIT 1").fetchone()
         if row is None:
             return None
         config_str = row["config"]
@@ -292,7 +286,7 @@ class RunsRepository:
         entradas = self.list_alcance()
         entradas.append(
             {
-                "fecha": datetime.now(timezone.utc).isoformat(),
+                "fecha": datetime.now(UTC).isoformat(),
                 "seleccion": seleccion,
                 "n_input": n_input,
                 "n_en_alcance": n_en_alcance,
@@ -325,7 +319,7 @@ class RunsRepository:
                     status = 'completed',
                     finished_at = ?
                 """,
-                (datetime.now(timezone.utc),),
+                (datetime.now(UTC),),
             )
 
     def mark_failed(self, reason: str = "") -> None:
@@ -339,7 +333,7 @@ class RunsRepository:
                     notes = COALESCE(notes, '') || ? || ?
                 """,
                 (
-                    datetime.now(timezone.utc),
+                    datetime.now(UTC),
                     "\n\n[FAILED] " if reason else "",
                     reason,
                 ),

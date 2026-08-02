@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 
-from functools import lru_cache
+from functools import cache
 from typing import TYPE_CHECKING, Annotated, Literal
 
 from pydantic import Field, RootModel, create_model
@@ -28,8 +28,7 @@ def _literal_from_roles(roles: tuple[str, ...]) -> type:
     """Construye un `Literal[*roles]` runtime."""
     if not roles:
         raise ValueError(
-            "El género debe declarar al menos un rol enunciativo en "
-            "`enunciation_roles`."
+            "El género debe declarar al menos un rol enunciativo en `enunciation_roles`."
         )
     return Literal[tuple(roles)]  # type: ignore[valid-type]
 
@@ -38,7 +37,8 @@ def _literal_from_roles(roles: tuple[str, ...]) -> type:
 #  Schemas dinámicos por género
 # ══════════════════════════════════════════════════════════════════════════════
 
-@lru_cache(maxsize=None)
+
+@cache
 def enunciatario_schema_for(genre_id: str, roles: tuple[str, ...]) -> type:
     """Subclase de EnunciatarioSchema con tipo restringido a roles."""
     literal_type = _literal_from_roles(roles)
@@ -56,7 +56,7 @@ def enunciatario_schema_for(genre_id: str, roles: tuple[str, ...]) -> type:
     return Model
 
 
-@lru_cache(maxsize=None)
+@cache
 def enunciacion_schema_for(genre_id: str, roles: tuple[str, ...]) -> type:
     """Subclase de EnunciacionSchema con enunciatarios restringidos a roles."""
     enunciatario_cls = enunciatario_schema_for(genre_id, roles)
@@ -78,7 +78,7 @@ def enunciacion_schema_for(genre_id: str, roles: tuple[str, ...]) -> type:
     return Model
 
 
-@lru_cache(maxsize=None)
+@cache
 def metadatos_schema_for(genre_id: str, tipos: tuple[str, ...]) -> type:
     """Subclase de MetadatosSchema con `tipo_discurso` restringido a tipos."""
     if not tipos:
@@ -100,7 +100,7 @@ def metadatos_schema_for(genre_id: str, tipos: tuple[str, ...]) -> type:
     return Model
 
 
-@lru_cache(maxsize=None)
+@cache
 def emociones_batch_schema_for(genre_id: str, max_emociones: int) -> type:
     """Batch de emociones con la lista por unidad acotada a `max_emociones`.
 
@@ -116,9 +116,7 @@ def emociones_batch_schema_for(genre_id: str, max_emociones: int) -> type:
             list[EmocionSchema],
             Field(
                 max_length=max_emociones,
-                description=EmocionesBatchItemSchema.model_fields[
-                    "emociones"
-                ].description,
+                description=EmocionesBatchItemSchema.model_fields["emociones"].description,
             ),
         ),
     )
@@ -132,12 +130,13 @@ def emociones_batch_schema_for(genre_id: str, max_emociones: int) -> type:
 #  Entrypoint conveniente desde un Genre
 # ══════════════════════════════════════════════════════════════════════════════
 
-def enunciacion_schema(genre: "Genre") -> type:
+
+def enunciacion_schema(genre: Genre) -> type:
     """Devuelve EnunciacionSchema dinámico para un Genre."""
     return enunciacion_schema_for(genre.genre_id, genre.enunciation_roles)
 
 
-def metadatos_schema(genre: "Genre") -> type | None:
+def metadatos_schema(genre: Genre) -> type | None:
     """Devuelve MetadatosSchema dinámico para un Genre.
 
     None si el género no declara `tipos_discurso` (campo libre)."""
@@ -146,7 +145,7 @@ def metadatos_schema(genre: "Genre") -> type | None:
     return metadatos_schema_for(genre.genre_id, genre.tipos_discurso)
 
 
-def emociones_batch_schema(genre: "Genre") -> type | None:
+def emociones_batch_schema(genre: Genre) -> type | None:
     """Devuelve el batch de emociones dinámico para un Genre.
 
     None si el género conserva el tope por defecto del schema base."""
@@ -155,6 +154,4 @@ def emociones_batch_schema(genre: "Genre") -> type | None:
         base_max = getattr(meta, "max_length", None) or base_max
     if base_max is not None and genre.max_emociones_unidad == base_max:
         return None
-    return emociones_batch_schema_for(
-        genre.genre_id, genre.max_emociones_unidad
-    )
+    return emociones_batch_schema_for(genre.genre_id, genre.max_emociones_unidad)

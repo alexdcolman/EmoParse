@@ -6,7 +6,6 @@ from datetime import date
 from emoparse.acquisition.sources import SOURCES
 from emoparse.acquisition.sources.pagina12 import Pagina12Adapter, parse_sitemap
 
-
 SITEMAP = """<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
         xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">

@@ -31,6 +31,7 @@ def _opt(row, key: str):
         return None
     try:
         import pandas as _pd
+
         if _pd.isna(value):
             return None
     except (TypeError, ValueError):
@@ -78,9 +79,7 @@ class MetadataAgent(BaseAgent[MetadatosSchema]):
         """
         # Debe inicializarse antes de super().__init__ porque la base
         # construye el system prompt durante el init.
-        self._diccionario_str = json.dumps(
-            diccionario_tipos, ensure_ascii=False, indent=2
-        )
+        self._diccionario_str = json.dumps(diccionario_tipos, ensure_ascii=False, indent=2)
         self._genre = genre
 
         # Si el género cierra el vocabulario, reemplazar el schema antes de

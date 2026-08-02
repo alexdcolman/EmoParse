@@ -58,9 +58,14 @@ def render(db_path: Path) -> None:
 
     df_sel = df_em[df_em["codigo"].isin(seleccionados)]
 
-    subtab_perfil, subtab_radar, subtab_traj, subtab_timeline = st.tabs([
-        "Perfil apilado", "Radar", "Trayectoria", "Timeline",
-    ])
+    subtab_perfil, subtab_radar, subtab_traj, subtab_timeline = st.tabs(
+        [
+            "Perfil apilado",
+            "Radar",
+            "Trayectoria",
+            "Timeline",
+        ]
+    )
 
     with subtab_perfil:
         normalize = st.toggle("Normalizar (proporciones)", value=True, key="comp_norm")
@@ -77,7 +82,8 @@ def render(db_path: Path) -> None:
             )
         emociones_top = (
             df_em["tipo_emocion"].value_counts().head(12).index.tolist()
-            if "tipo_emocion" in df_em.columns else []
+            if "tipo_emocion" in df_em.columns
+            else []
         )
         emo_ref = None
         if emociones_top:
@@ -112,7 +118,8 @@ def render(db_path: Path) -> None:
                 df_tl = _filtrar_timeline(db_path, df_raw)
             emos = (
                 df_tl["tipo_emocion"].value_counts().head(15).index.tolist()
-                if "tipo_emocion" in df_tl.columns else []
+                if "tipo_emocion" in df_tl.columns
+                else []
             )
             opt = ["(emoción dominante por discurso)"] + emos
             sel = st.selectbox("Ver", opt, key="tl_emo")
@@ -128,6 +135,7 @@ def render(db_path: Path) -> None:
 #  Helpers para corpus de posts
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _render_trayectoria_conversaciones(db_path: Path, df_raw) -> None:
     """Trayectoria de la emoción dominante recorriendo conversaciones públicas."""
     modos = []
@@ -140,7 +148,10 @@ def _render_trayectoria_conversaciones(db_path: Path, df_raw) -> None:
         st.info("El corpus no tiene hashtags ni hilos para recorrer.")
         return
     modo = st.radio(
-        "Recorrer", modos, horizontal=True, key="traj_modo",
+        "Recorrer",
+        modos,
+        horizontal=True,
+        key="traj_modo",
         format_func={"hashtag": "Por #hashtag", "hilo": "Por hilo"}.get,
     )
     df_g = data_layer.agrupar_por_conversacion(db_path, df_raw, modo)
@@ -149,7 +160,9 @@ def _render_trayectoria_conversaciones(db_path: Path, df_raw) -> None:
         return
     grupos = sorted(df_g["codigo"].unique().tolist())
     sel = st.multiselect(
-        "Conversaciones", grupos, default=grupos[: min(4, len(grupos))],
+        "Conversaciones",
+        grupos,
+        default=grupos[: min(4, len(grupos))],
         key=f"traj_grupos_{modo}",
     )
     if not sel:
@@ -168,9 +181,9 @@ def _filtrar_timeline(db_path: Path, df_raw):
     opciones += [f"#{t}" for t in tags]
     ctx = data_layer.get_post_contexto(db_path)
     hilos = (
-        sorted(ctx[ctx["conversacion_id"].notna()]["conversacion_id"]
-               .astype(str).unique().tolist())
-        if not ctx.empty else []
+        sorted(ctx[ctx["conversacion_id"].notna()]["conversacion_id"].astype(str).unique().tolist())
+        if not ctx.empty
+        else []
     )
     opciones += [f"hilo: {h}" for h in hilos]
     sel = st.selectbox("Filtrar timeline por", opciones, key="tl_filtro")

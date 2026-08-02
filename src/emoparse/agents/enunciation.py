@@ -14,12 +14,11 @@ import pandas as pd
 
 from emoparse.agents.base import BaseAgent
 from emoparse.core.backend.base import LLMBackend
-from emoparse.core.text import strip_accents_lower
 from emoparse.core.prompts import enunciation as prompts
 from emoparse.core.schemas import EnunciacionSchema, EnunciadorSchema
+from emoparse.core.text import strip_accents_lower
 from emoparse.genres.base import Genre
 from emoparse.genres.schema_factory import enunciacion_schema
-
 
 #: Tope de indicadores lingüísticos por rol inyectados en el prompt. Acota el
 #: tamaño del bloque de roles para no comer el margen de completion en el
@@ -162,9 +161,7 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
                 auditorio = []
         else:
             auditorio = [
-                a.model_dump()
-                for a in parsed.auditorio
-                if not es_rol_enunciativo(a.actor)
+                a.model_dump() for a in parsed.auditorio if not es_rol_enunciativo(a.actor)
             ]
         auditorio_json = json.dumps(auditorio, ensure_ascii=False)
         # Validación post-hoc de la clase de colectivo contra la ontología:
@@ -172,14 +169,12 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         colectivos = [
             c.model_dump()
             for c in parsed.colectivos
-            if not self._clases_validas
-            or c.clase.strip().lower() in self._clases_validas
+            if not self._clases_validas or c.clase.strip().lower() in self._clases_validas
         ]
         colectivos_json = json.dumps(colectivos, ensure_ascii=False)
         enunciador = _opt_cell(row, "enunciador_fijado") or parsed.enunciador.actor
         enunciador_just = (
-            _opt_cell(row, "enunciador_fijado_justificacion")
-            or parsed.enunciador.justificacion
+            _opt_cell(row, "enunciador_fijado_justificacion") or parsed.enunciador.justificacion
         )
         return {
             "enunciador": enunciador,
@@ -199,9 +194,7 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         """
         if self._genre is None or not self._genre.enunciatarios_por_tipo:
             return set()
-        return {
-            _norm_rol(r) for r in self._genre.roles_para_tipo(tipo_discurso or None)
-        }
+        return {_norm_rol(r) for r in self._genre.roles_para_tipo(tipo_discurso or None)}
 
     def _roles_block(self, tipo_discurso: str) -> str:
         """Bloque de roles válidos para este discurso, con indicadores.
@@ -273,6 +266,7 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
 #  Sub-paso de identificación del enunciador
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class EnunciatorIdAgent(BaseAgent[EnunciadorSchema]):
     """Identifica solo el enunciador de un discurso, normalizado.
 
@@ -307,9 +301,7 @@ class EnunciatorIdAgent(BaseAgent[EnunciadorSchema]):
         super().__init__(backend, retry_config=retry_config)
 
     def _build_system(self) -> str:
-        return prompts.render_enunciator_id_system(
-            heuristicas=self._heuristicas
-        )
+        return prompts.render_enunciator_id_system(heuristicas=self._heuristicas)
 
     def _build_user(self, row: pd.Series) -> str:
         return prompts.render_user(
@@ -359,30 +351,60 @@ def _reglas_auditorio_genero(genre: Genre | None) -> str | None:
 #: deben devolver referentes concretos; estas etiquetas se filtran post-hoc
 #: como defensa. "audiencia ambiente" queda fuera de la lista: es el único rol
 #: admisible como actor, por ser un público indeterminado por naturaleza.
-_ROL_LABELS = frozenset({
-    "enunciador", "enunciatario", "enunciatarios",
-    "autor", "autor del post", "autor post", "autora", "la cuenta",
-    "prodestinatario", "paradestinatario", "contradestinatario",
-    "destinatario", "destinatarios", "destinatario mencionado",
-    "destinatario directo", "actor", "auditorio",
-    # Roles por tipo de discurso del post (nunca son el referente concreto).
-    "lector ciudadano", "instancia blanco", "fuente referente",
-    "ciudadano usuario", "comunidad interna", "rendicion cuentas",
-    "rendicion de cuentas", "comunidad sentido", "comunidad de sentido",
-    "no iniciado", "blanco burla", "blanco de la burla",
-    "circulo afectivo", "autodestinatario", "testigo indeseado",
-    "enunciatario target", "comunidad marca", "comunidad de marca",
-    "prescriptor amplificador",
-})
+_ROL_LABELS = frozenset(
+    {
+        "enunciador",
+        "enunciatario",
+        "enunciatarios",
+        "autor",
+        "autor del post",
+        "autor post",
+        "autora",
+        "la cuenta",
+        "prodestinatario",
+        "paradestinatario",
+        "contradestinatario",
+        "destinatario",
+        "destinatarios",
+        "destinatario mencionado",
+        "destinatario directo",
+        "actor",
+        "auditorio",
+        # Roles por tipo de discurso del post (nunca son el referente concreto).
+        "lector ciudadano",
+        "instancia blanco",
+        "fuente referente",
+        "ciudadano usuario",
+        "comunidad interna",
+        "rendicion cuentas",
+        "rendicion de cuentas",
+        "comunidad sentido",
+        "comunidad de sentido",
+        "no iniciado",
+        "blanco burla",
+        "blanco de la burla",
+        "circulo afectivo",
+        "autodestinatario",
+        "testigo indeseado",
+        "enunciatario target",
+        "comunidad marca",
+        "comunidad de marca",
+        "prescriptor amplificador",
+    }
+)
 
 
 #: Roles cuya destinación se ordena alrededor de creencias y valores: el
 #: prodestinatario presupone las compartidas, el contradestinatario las
 #: opuestas y el paradestinatario su suspensión. El actor de estos roles
 #: tiene que nombrar esa posición, no la audiencia técnica de la cuenta.
-_ROLES_DE_CREENCIA = frozenset({
-    "prodestinatario", "paradestinatario", "contradestinatario",
-})
+_ROLES_DE_CREENCIA = frozenset(
+    {
+        "prodestinatario",
+        "paradestinatario",
+        "contradestinatario",
+    }
+)
 
 #: Núcleos que designan a la audiencia por el dispositivo (los seguidores de
 #: una cuenta, el público de la plataforma) y no por lo que cree.
@@ -473,6 +495,7 @@ def format_repertorio_kb(entry: dict[str, Any] | None) -> str:
 # ══════════════════════════════════════════════════════════════════════════════
 #  Helpers de colectivos de identificación
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _format_colectivos(colectivos: dict[str, Any] | None) -> str:
     """Formatea la ontología de colectivos por tipo de discurso para el prompt."""

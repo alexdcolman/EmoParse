@@ -7,7 +7,7 @@
 #  (ListaEmocionesBatchSchema), permitiendo que ambos resultados sean
 #  consumidos de forma intercambiable según el flujo downstream.
 # ══════════════════════════════════════════════════════════════════════════════
- 
+
 from __future__ import annotations
 
 import json
@@ -22,13 +22,13 @@ from emoparse.agents.emotions import (
     sanitize_emocion,
 )
 from emoparse.core.backend.base import LLMBackend
-from emoparse.genres.schema_factory import emociones_batch_schema
+from emoparse.core.backend.retry import RetryConfig
 from emoparse.core.prompts import emotions_pass2 as prompts
 from emoparse.core.schemas import (
     EmocionesBatchItemSchema,
     ListaEmocionesBatchSchema,
 )
-from emoparse.core.backend.retry import RetryConfig
+from emoparse.genres.schema_factory import emociones_batch_schema
 
 if TYPE_CHECKING:
     from emoparse.genres.base import Genre
@@ -86,7 +86,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         emotion_scope: tuple[str, ...] | None = None,
         context_mode: Literal["rolling", "full"] = "rolling",
         retry_config: RetryConfig | None = None,
-        genre: "Genre | None" = None,
+        genre: Genre | None = None,
     ) -> None:
         """
         Args:
@@ -146,9 +146,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
     def _build_system(self) -> str:
         template = "emotions_pass2_system"
         if self._genre is not None:
-            template = self._genre.prompt_overrides.get(
-                "emotions_pass2", template
-            )
+            template = self._genre.prompt_overrides.get("emotions_pass2", template)
         return prompts.render_system(
             ontologia=self._ontologia,
             heuristicas=self._heuristicas,
@@ -159,20 +157,16 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
             enunciatarios=self._enunciatarios,
             auditorio=self._auditorio,
             resumen=self._resumen,
-            alcance=alcance_text(
-                self._emotion_scope, self._enunciador, self._enunciatarios
-            ),
+            alcance=alcance_text(self._emotion_scope, self._enunciador, self._enunciatarios),
             template=template,
         )
 
     def _build_user(self, batch: pd.DataFrame) -> str:
         hilo_genre = self._genre is not None and self._genre.context_unit == "hilo"
         rolling_label = (
-            "EMOCIONES EN EL HILO "
-            "(posts padre; referencia auxiliar, NO evidencia de este post):"
+            "EMOCIONES EN EL HILO (posts padre; referencia auxiliar, NO evidencia de este post):"
             if hilo_genre
-            else "EMOCIONES EN FRASES PREVIAS "
-            "(referencia auxiliar, NO evidencia de esta frase):"
+            else "EMOCIONES EN FRASES PREVIAS (referencia auxiliar, NO evidencia de esta frase):"
         )
         bloques: list[str] = []
         for i, (_, row) in enumerate(batch.iterrows()):
@@ -216,9 +210,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         row: pd.Series,
     ) -> dict[str, Any]:
         emociones_json = json.dumps(
-            dedupe_emociones(
-                [sanitize_emocion(e.model_dump()) for e in item.emociones]
-            ),
+            dedupe_emociones([sanitize_emocion(e.model_dump()) for e in item.emociones]),
             ensure_ascii=False,
         )
         return {"emociones": emociones_json}

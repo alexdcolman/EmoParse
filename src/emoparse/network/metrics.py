@@ -31,8 +31,7 @@ def _nx() -> Any:
         import networkx
     except ImportError as e:
         raise NetworkUnavailableError(
-            "networkx no está instalado. Instalá el extra: "
-            'pip install -e ".[network]"'
+            'networkx no está instalado. Instalá el extra: pip install -e ".[network]"'
         ) from e
     return networkx
 
@@ -63,8 +62,7 @@ def compute_node_metrics(
     nx = _nx()
     if G.number_of_nodes() == 0:
         return pd.DataFrame(
-            columns=["nodo", "grado_in", "grado_out", "grado_total",
-                     "pagerank", "intermediacion"]
+            columns=["nodo", "grado_in", "grado_out", "grado_total", "pagerank", "intermediacion"]
         )
     dirigido = G.is_directed()
     pagerank = nx.pagerank(G, weight="weight")
@@ -75,19 +73,17 @@ def compute_node_metrics(
 
     rows = []
     for nodo in G.nodes():
-        rows.append({
-            "nodo": str(nodo),
-            "grado_in": int(G.in_degree(nodo)) if dirigido else None,
-            "grado_out": int(G.out_degree(nodo)) if dirigido else None,
-            "grado_total": int(G.degree(nodo)),
-            "pagerank": float(pagerank.get(nodo, 0.0)),
-            "intermediacion": (
-                float(intermediacion[nodo]) if nodo in intermediacion else None
-            ),
-        })
-    return pd.DataFrame(rows).sort_values(
-        "pagerank", ascending=False
-    ).reset_index(drop=True)
+        rows.append(
+            {
+                "nodo": str(nodo),
+                "grado_in": int(G.in_degree(nodo)) if dirigido else None,
+                "grado_out": int(G.out_degree(nodo)) if dirigido else None,
+                "grado_total": int(G.degree(nodo)),
+                "pagerank": float(pagerank.get(nodo, 0.0)),
+                "intermediacion": (float(intermediacion[nodo]) if nodo in intermediacion else None),
+            }
+        )
+    return pd.DataFrame(rows).sort_values("pagerank", ascending=False).reset_index(drop=True)
 
 
 def mutual_subgraph(G: Any) -> Any:
@@ -121,9 +117,7 @@ def detect_cliques(
     enumeración en grafos densos, devolviendo lo hallado hasta ahí.
     """
     nx = _nx()
-    base = mutual_subgraph(G) if mutual_only else (
-        G.to_undirected() if G.is_directed() else G
-    )
+    base = mutual_subgraph(G) if mutual_only else (G.to_undirected() if G.is_directed() else G)
     if base.number_of_nodes() == 0:
         return []
     encontradas: list[list[str]] = []

@@ -15,7 +15,7 @@ from __future__ import annotations
 import json
 import os
 import shutil
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -33,7 +33,7 @@ def default_overlay_path(db_path: Path) -> Path:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return datetime.now(UTC).isoformat()
 
 
 def _empty() -> dict[str, Any]:
@@ -75,9 +75,7 @@ class RevisionOverlay:
                 data = json.load(fh)
         except (json.JSONDecodeError, OSError) as exc:
             # Nunca pisamos un archivo corrupto en silencio: avisamos.
-            raise OverlayCorruptError(
-                f"Overlay ilegible en {self.path}: {exc}"
-            ) from exc
+            raise OverlayCorruptError(f"Overlay ilegible en {self.path}: {exc}") from exc
         if not isinstance(data, dict):
             raise OverlayCorruptError(f"Overlay con formato inesperado en {self.path}")
         # Garantizar todas las secciones (tolerante a versiones previas).
@@ -109,16 +107,13 @@ class RevisionOverlay:
         return str(int(idx))
 
     def _disc(self, codigo: str) -> dict[str, Any]:
-        return self._data["discursos"].setdefault(
-            codigo, {"overrides": {}, "confirmado": {}}
-        )
+        return self._data["discursos"].setdefault(codigo, {"overrides": {}, "confirmado": {}})
 
     def _frase(self, codigo: str, unit_idx: int) -> dict[str, Any]:
         d = self._data["frases"].setdefault(codigo, {})
         return d.setdefault(
             self._si(unit_idx),
-            {"actores_removidos": [], "actores_agregados": [],
-             "confirmado_actores": False},
+            {"actores_removidos": [], "actores_agregados": [], "confirmado_actores": False},
         )
 
     def _emo(self, codigo: str, frase_idx: int, emocion_idx: int) -> dict[str, Any]:
@@ -149,10 +144,13 @@ class RevisionOverlay:
     # ── Frase: correspondencia frase↔actor (NO toca la KB) ───────────────────
 
     def get_frase(self, codigo: str, unit_idx: int) -> dict[str, Any]:
-        return self._data["frases"].get(codigo, {}).get(
-            self._si(unit_idx),
-            {"actores_removidos": [], "actores_agregados": [],
-             "confirmado_actores": False},
+        return (
+            self._data["frases"]
+            .get(codigo, {})
+            .get(
+                self._si(unit_idx),
+                {"actores_removidos": [], "actores_agregados": [], "confirmado_actores": False},
+            )
         )
 
     def remove_actor(self, codigo: str, unit_idx: int, actor_key: str) -> None:
@@ -189,10 +187,10 @@ class RevisionOverlay:
 
     def get_emocion(self, codigo: str, frase_idx: int, emocion_idx: int) -> dict[str, Any]:
         return (
-            self._data["emociones"].get(codigo, {})
+            self._data["emociones"]
+            .get(codigo, {})
             .get(self._si(frase_idx), {})
-            .get(self._si(emocion_idx),
-                 {"deleted": False, "overrides": {}, "confirmado": {}})
+            .get(self._si(emocion_idx), {"deleted": False, "overrides": {}, "confirmado": {}})
         )
 
     def iter_emocion_overrides(self):
@@ -210,15 +208,23 @@ class RevisionOverlay:
         return bool(self.get_emocion(codigo, frase_idx, emocion_idx).get("deleted"))
 
     def set_emocion_override(
-        self, codigo: str, frase_idx: int, emocion_idx: int,
-        field: str, value: Any,
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+        field: str,
+        value: Any,
     ) -> None:
         self._emo(codigo, frase_idx, emocion_idx)["overrides"][field] = value
         self._save()
 
     def set_emocion_override_path(
-        self, codigo: str, frase_idx: int, emocion_idx: int,
-        path: list[str], value: Any,
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+        path: list[str],
+        value: Any,
     ) -> None:
         """Setea un override anidado, p. ej. ['caracterizacion', 'foria']."""
         node = self._emo(codigo, frase_idx, emocion_idx)["overrides"]
@@ -232,7 +238,11 @@ class RevisionOverlay:
         self._save()
 
     def clear_emocion_override_path(
-        self, codigo: str, frase_idx: int, emocion_idx: int, path: list[str],
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+        path: list[str],
     ) -> None:
         node = self._emo(codigo, frase_idx, emocion_idx)["overrides"]
         for p in path[:-1]:
@@ -243,14 +253,22 @@ class RevisionOverlay:
         self._save()
 
     def clear_emocion_override(
-        self, codigo: str, frase_idx: int, emocion_idx: int, field: str,
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+        field: str,
     ) -> None:
         self._emo(codigo, frase_idx, emocion_idx)["overrides"].pop(field, None)
         self._save()
 
     def confirm_emocion_field(
-        self, codigo: str, frase_idx: int, emocion_idx: int,
-        field: str, value: bool = True,
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+        field: str,
+        value: bool = True,
     ) -> None:
         self._emo(codigo, frase_idx, emocion_idx)["confirmado"][field] = bool(value)
         self._save()
@@ -258,16 +276,21 @@ class RevisionOverlay:
     # ── Sugerencias del juez (aceptar / rechazar por campo) ──────────────────
 
     def get_suggestion_states(
-        self, codigo: str, frase_idx: int, emocion_idx: int,
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
     ) -> dict[str, str]:
         """Estado de cada sugerencia por `campo`: 'accepted' | 'rejected'."""
-        return dict(
-            self.get_emocion(codigo, frase_idx, emocion_idx).get("sugerencias", {})
-        )
+        return dict(self.get_emocion(codigo, frase_idx, emocion_idx).get("sugerencias", {}))
 
     def set_suggestion_state(
-        self, codigo: str, frase_idx: int, emocion_idx: int,
-        campo: str, state: str,
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+        campo: str,
+        state: str,
     ) -> None:
         """Registra el estado de una sugerencia ('accepted' | 'rejected').
 
@@ -275,17 +298,17 @@ class RevisionOverlay:
         (cuando se acepta) se hace aparte vía `set_emocion_override_path`, de
         modo que el analista pueda luego editar libremente el override.
         """
-        self._emo(codigo, frase_idx, emocion_idx).setdefault(
-            "sugerencias", {}
-        )[campo] = state
+        self._emo(codigo, frase_idx, emocion_idx).setdefault("sugerencias", {})[campo] = state
         self._save()
 
     def clear_suggestion_state(
-        self, codigo: str, frase_idx: int, emocion_idx: int, campo: str,
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
+        campo: str,
     ) -> None:
-        self._emo(codigo, frase_idx, emocion_idx).get("sugerencias", {}).pop(
-            campo, None
-        )
+        self._emo(codigo, frase_idx, emocion_idx).get("sugerencias", {}).pop(campo, None)
         self._save()
 
     def delete_emocion(self, codigo: str, frase_idx: int, emocion_idx: int) -> None:
@@ -299,9 +322,7 @@ class RevisionOverlay:
     # ── Emociones nuevas (agregadas a mano) ──────────────────────────────────
 
     def list_new_emociones(self, codigo: str, frase_idx: int) -> list[dict[str, Any]]:
-        return list(
-            self._data["emociones_nuevas"].get(codigo, {}).get(self._si(frase_idx), [])
-        )
+        return list(self._data["emociones_nuevas"].get(codigo, {}).get(self._si(frase_idx), []))
 
     def add_emocion(self, codigo: str, frase_idx: int, emocion: dict[str, Any]) -> None:
         c = self._data["emociones_nuevas"].setdefault(codigo, {})
@@ -320,7 +341,10 @@ class RevisionOverlay:
         return dict(self._data["actores_kb_propuestos"])
 
     def propose_actor(
-        self, canonical_id: str, display_name: str, tipo: str,
+        self,
+        canonical_id: str,
+        display_name: str,
+        tipo: str,
         existing_kb_ids: set[str],
     ) -> None:
         """Registra un actor nuevo propuesto. Nunca pisa uno existente.
@@ -345,7 +369,10 @@ class RevisionOverlay:
     # ── Aplicación efectiva (lectura) ────────────────────────────────────────
 
     def effective_emocion(
-        self, codigo: str, frase_idx: int, emocion_idx: int,
+        self,
+        codigo: str,
+        frase_idx: int,
+        emocion_idx: int,
         db_record: dict[str, Any],
     ) -> dict[str, Any]:
         """Devuelve el registro de emoción con los overrides aplicados.

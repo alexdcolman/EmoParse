@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from emoparse.storage.db import Database
@@ -62,12 +62,17 @@ class EmocionesRepository:
                     updated_at              = ?
                 """,
                 (
-                    codigo, frase_idx, emocion_idx,
-                    experienciador, experienciador_marca, 
-                    tipo_emocion, fuente_marca,
-                    fuente_inferencia, modo_existencia,
+                    codigo,
+                    frase_idx,
+                    emocion_idx,
+                    experienciador,
+                    experienciador_marca,
+                    tipo_emocion,
+                    fuente_marca,
+                    fuente_inferencia,
+                    modo_existencia,
                     tipo_configuracion,
-                    datetime.now(timezone.utc),
+                    datetime.now(UTC),
                 ),
             )
 
@@ -85,21 +90,30 @@ class EmocionesRepository:
         nunca se pisa. Un re-run del explode reafirma el 'auto' y respeta el
         'human'.
         """
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         params = []
         for r in rows:
             exp_canon = r.get("experienciador_canonico")
             fte_canon = r.get("fuente_canonico")
-            params.append((
-                r["codigo"], r["frase_idx"], r["emocion_idx"],
-                r["experienciador"], r["experienciador_marca"],
-                r["tipo_emocion"], r["fuente_marca"],
-                r["fuente_inferencia"], r["modo_existencia"],
-                r.get("tipo_configuracion"),
-                exp_canon, exp_canon,   # valor + guard del CASE de origin
-                fte_canon, fte_canon,
-                now,
-            ))
+            params.append(
+                (
+                    r["codigo"],
+                    r["frase_idx"],
+                    r["emocion_idx"],
+                    r["experienciador"],
+                    r["experienciador_marca"],
+                    r["tipo_emocion"],
+                    r["fuente_marca"],
+                    r["fuente_inferencia"],
+                    r["modo_existencia"],
+                    r.get("tipo_configuracion"),
+                    exp_canon,
+                    exp_canon,  # valor + guard del CASE de origin
+                    fte_canon,
+                    fte_canon,
+                    now,
+                )
+            )
         with self._db.transaction() as cur:
             cur.executemany(
                 """
@@ -170,9 +184,12 @@ class EmocionesRepository:
                 WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?
                 """,
                 (
-                    payload_str, version,
-                    datetime.now(timezone.utc),
-                    codigo, frase_idx, emocion_idx,
+                    payload_str,
+                    version,
+                    datetime.now(UTC),
+                    codigo,
+                    frase_idx,
+                    emocion_idx,
                 ),
             )
 
@@ -196,8 +213,10 @@ class EmocionesRepository:
                 """,
                 (
                     error_message,
-                    datetime.now(timezone.utc),
-                    codigo, frase_idx, emocion_idx,
+                    datetime.now(UTC),
+                    codigo,
+                    frase_idx,
+                    emocion_idx,
                 ),
             )
 
@@ -224,9 +243,12 @@ class EmocionesRepository:
                 WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?
                 """,
                 (
-                    payload_str, version,
-                    datetime.now(timezone.utc),
-                    codigo, frase_idx, emocion_idx,
+                    payload_str,
+                    version,
+                    datetime.now(UTC),
+                    codigo,
+                    frase_idx,
+                    emocion_idx,
                 ),
             )
 
@@ -250,8 +272,10 @@ class EmocionesRepository:
                 """,
                 (
                     error_message,
-                    datetime.now(timezone.utc),
-                    codigo, frase_idx, emocion_idx,
+                    datetime.now(UTC),
+                    codigo,
+                    frase_idx,
+                    emocion_idx,
                 ),
             )
 
@@ -268,20 +292,12 @@ class EmocionesRepository:
         if codigo is None:
             rows = self._db.execute(base_sql).fetchall()
         else:
-            rows = self._db.execute(
-                base_sql + " AND codigo = ?", (codigo,)
-            ).fetchall()
-        return [
-            (row["codigo"], row["frase_idx"], row["emocion_idx"])
-            for row in rows
-        ]
+            rows = self._db.execute(base_sql + " AND codigo = ?", (codigo,)).fetchall()
+        return [(row["codigo"], row["frase_idx"], row["emocion_idx"]) for row in rows]
 
     def clear_actantes_errors(self, codigo: str | None = None) -> int:
         """Limpia errors de actantes para reintento."""
-        sql = (
-            "UPDATE emociones SET actantes_error = NULL "
-            "WHERE actantes_error IS NOT NULL"
-        )
+        sql = "UPDATE emociones SET actantes_error = NULL WHERE actantes_error IS NOT NULL"
         params: tuple = ()
         if codigo is not None:
             sql += " AND codigo = ?"
@@ -320,13 +336,8 @@ class EmocionesRepository:
         if codigo is None:
             rows = self._db.execute(base_sql).fetchall()
         else:
-            rows = self._db.execute(
-                base_sql + " AND codigo = ?", (codigo,)
-            ).fetchall()
-        return [
-            (row["codigo"], row["frase_idx"], row["emocion_idx"])
-            for row in rows
-        ]
+            rows = self._db.execute(base_sql + " AND codigo = ?", (codigo,)).fetchall()
+        return [(row["codigo"], row["frase_idx"], row["emocion_idx"]) for row in rows]
 
     # ── Normalización ────────────────────────────────────────────────────────
 
@@ -338,8 +349,7 @@ class EmocionesRepository:
     ) -> dict[str, Any] | None:
         """Devuelve una emoción individual como dict, o None si no existe."""
         row = self._db.execute(
-            "SELECT * FROM emociones "
-            "WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
+            "SELECT * FROM emociones WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
             (codigo, frase_idx, emocion_idx),
         ).fetchone()
         return dict(row) if row is not None else None
@@ -363,9 +373,12 @@ class EmocionesRepository:
                 WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?
                 """,
                 (
-                    tipo_emocion_canonico, version,
-                    datetime.now(timezone.utc),
-                    codigo, frase_idx, emocion_idx,
+                    tipo_emocion_canonico,
+                    version,
+                    datetime.now(UTC),
+                    codigo,
+                    frase_idx,
+                    emocion_idx,
                 ),
             )
 
@@ -382,13 +395,8 @@ class EmocionesRepository:
         if codigo is None:
             rows = self._db.execute(base_sql).fetchall()
         else:
-            rows = self._db.execute(
-                base_sql + " AND codigo = ?", (codigo,)
-            ).fetchall()
-        return [
-            (row["codigo"], row["frase_idx"], row["emocion_idx"])
-            for row in rows
-        ]
+            rows = self._db.execute(base_sql + " AND codigo = ?", (codigo,)).fetchall()
+        return [(row["codigo"], row["frase_idx"], row["emocion_idx"]) for row in rows]
 
     def clear_errors(self, codigo: str | None = None) -> int:
         """Limpia errors de caracterización para reintento."""
@@ -445,8 +453,9 @@ class EmocionesRepository:
                 """,
                 (
                     canonical,
-                    datetime.now(timezone.utc),
-                    codigo, raw_experienciador,
+                    datetime.now(UTC),
+                    codigo,
+                    raw_experienciador,
                 ),
             )
             return cur.rowcount
@@ -470,7 +479,10 @@ class EmocionesRepository:
         no se persiste (igual que `set_experienciador_canonico`)."""
         return self._set_canonico_at(
             "experienciador_canonico",
-            codigo, frase_idx, emocion_idx, canonical,
+            codigo,
+            frase_idx,
+            emocion_idx,
+            canonical,
         )
 
     def set_fuente_canonico_at(
@@ -488,7 +500,10 @@ class EmocionesRepository:
         stage LLM), por lo que no requiere invalidación downstream."""
         return self._set_canonico_at(
             "fuente_canonico",
-            codigo, frase_idx, emocion_idx, canonical,
+            codigo,
+            frase_idx,
+            emocion_idx,
+            canonical,
         )
 
     def set_modo_existencia_at(
@@ -510,8 +525,7 @@ class EmocionesRepository:
                 "UPDATE emociones SET modo_existencia = ?, updated_at = ? "
                 "WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ? "
                 "  AND modo_existencia != ?",
-                (modo, datetime.now(timezone.utc),
-                 codigo, frase_idx, emocion_idx, modo),
+                (modo, datetime.now(UTC), codigo, frase_idx, emocion_idx, modo),
             )
             return cur.rowcount > 0
 
@@ -546,8 +560,7 @@ class EmocionesRepository:
                 f"UPDATE emociones SET {column} = ?, {column}_origin = ?, "
                 "updated_at = ? "
                 "WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
-                (new, origin, datetime.now(timezone.utc),
-                 codigo, frase_idx, emocion_idx),
+                (new, origin, datetime.now(UTC), codigo, frase_idx, emocion_idx),
             )
         return True
 
@@ -555,9 +568,12 @@ class EmocionesRepository:
 
     #: Columnas downstream que las emociones nuevas dejan en NULL (re-pending).
     _DOWNSTREAM_COLS = (
-        "caracterizacion_payload", "caracterizacion_version",
+        "caracterizacion_payload",
+        "caracterizacion_version",
         "caracterizacion_error",
-        "actantes_payload", "actantes_version", "actantes_error",
+        "actantes_payload",
+        "actantes_version",
+        "actantes_error",
     )
 
     def split_por_experienciadores(
@@ -579,7 +595,11 @@ class EmocionesRepository:
         `changed` indica si la emoción original cambió (el caller debe
         invalidar su downstream)."""
         return self._split_at(
-            codigo, frase_idx, emocion_idx, canonicals, modos,
+            codigo,
+            frase_idx,
+            emocion_idx,
+            canonicals,
+            modos,
         )
 
     def _split_at(
@@ -601,16 +621,13 @@ class EmocionesRepository:
             return {"changed": False, "nuevos": []}
         modos = [str(m).strip() for m in (modos or [])]
 
-        changed = self._set_canonico_at(
-            column, codigo, frase_idx, emocion_idx, cids[0]
-        )
+        changed = self._set_canonico_at(column, codigo, frase_idx, emocion_idx, cids[0])
         if modos and modos[0] and modos[0] != (src.get("modo_existencia") or ""):
             with self._db.transaction() as cur:
                 cur.execute(
                     "UPDATE emociones SET modo_existencia = ?, updated_at = ? "
                     "WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
-                    (modos[0], datetime.now(timezone.utc),
-                     codigo, frase_idx, emocion_idx),
+                    (modos[0], datetime.now(UTC), codigo, frase_idx, emocion_idx),
                 )
             changed = True
 
@@ -619,10 +636,7 @@ class EmocionesRepository:
             "FROM emociones WHERE codigo = ? AND frase_idx = ?",
             (codigo, frase_idx),
         ).fetchall()
-        existentes = {
-            (str(r["tipo_emocion"] or ""), str(r["canon"] or ""))
-            for r in rows
-        }
+        existentes = {(str(r["tipo_emocion"] or ""), str(r["canon"] or "")) for r in rows}
         next_idx = max(int(r["emocion_idx"]) for r in rows) + 1
 
         nuevos: list[int] = []
@@ -641,13 +655,12 @@ class EmocionesRepository:
             for c in self._DOWNSTREAM_COLS:
                 if c in rec:
                     rec[c] = None
-            rec["updated_at"] = datetime.now(timezone.utc)
+            rec["updated_at"] = datetime.now(UTC)
             cols = list(rec.keys())
             placeholders = ", ".join("?" * len(cols))
             with self._db.transaction() as cur:
                 cur.execute(
-                    f"INSERT INTO emociones ({', '.join(cols)}) "
-                    f"VALUES ({placeholders})",
+                    f"INSERT INTO emociones ({', '.join(cols)}) VALUES ({placeholders})",
                     tuple(rec[c] for c in cols),
                 )
             existentes.add((str(src.get("tipo_emocion") or ""), cid))
@@ -655,9 +668,7 @@ class EmocionesRepository:
             next_idx += 1
         return {"changed": changed, "nuevos": nuevos}
 
-    def delete_emocion(
-        self, codigo: str, frase_idx: int, emocion_idx: int
-    ) -> bool:
+    def delete_emocion(self, codigo: str, frase_idx: int, emocion_idx: int) -> bool:
         """Elimina una emoción y lo que cuelga de ella. True si existía.
 
         Arrastra el juicio y los hallazgos de validación de esa emoción. No
@@ -673,8 +684,7 @@ class EmocionesRepository:
                         (codigo, frase_idx, emocion_idx),
                     )
             cur.execute(
-                "DELETE FROM emociones "
-                "WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
+                "DELETE FROM emociones WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?",
                 (codigo, frase_idx, emocion_idx),
             )
             return cur.rowcount > 0
@@ -692,8 +702,7 @@ class EmocionesRepository:
         barrido sobre lo que infirió el modelo.
         """
         rows = self._db.execute(
-            "SELECT * FROM emociones WHERE codigo = ? AND frase_idx = ? "
-            "ORDER BY emocion_idx",
+            "SELECT * FROM emociones WHERE codigo = ? AND frase_idx = ? ORDER BY emocion_idx",
             (codigo, frase_idx),
         ).fetchall()
         if len(rows) < 2:
@@ -708,7 +717,8 @@ class EmocionesRepository:
             e = dict(row)
             clave = (
                 resolver_canonico(
-                    marcas_exp, e.get("experienciador_marca"),
+                    marcas_exp,
+                    e.get("experienciador_marca"),
                     override=e.get("experienciador_canonico"),
                     inferencia=e.get("experienciador"),
                 ),
@@ -725,7 +735,8 @@ class EmocionesRepository:
             fuentes: list[str] = []
             for e in miembros:
                 for cid in resolver_canonicos(
-                    marcas_fte, e.get("fuente_marca"),
+                    marcas_fte,
+                    e.get("fuente_marca"),
                     override=e.get("fuente_canonico"),
                     inferencia=e.get("fuente_inferencia"),
                 ):
@@ -733,7 +744,9 @@ class EmocionesRepository:
                         fuentes.append(cid)
             if fuentes:
                 self.set_fuente_canonico_at(
-                    codigo, frase_idx, int(superviviente["emocion_idx"]),
+                    codigo,
+                    frase_idx,
+                    int(superviviente["emocion_idx"]),
                     "; ".join(fuentes),
                 )
             for e in resto:
@@ -765,8 +778,9 @@ class EmocionesRepository:
                     updated_at              = ?
                 WHERE codigo = ? AND frase_idx = ? AND emocion_idx = ?
                 """,
-                (datetime.now(timezone.utc), codigo, frase_idx, emocion_idx),
+                (datetime.now(UTC), codigo, frase_idx, emocion_idx),
             )
+
     # ── Resolución de canónicos por marca (refleja tab Referentes) ────────────
 
     _MARCA_FIELDS = {"experienciador_marca", "fuente_marca"}
@@ -827,7 +841,8 @@ class EmocionesRepository:
             return {}
         return {
             (int(r["frase_idx"]), int(r["emocion_idx"])): (
-                index.get((codigo, int(r["frase_idx"]))), r["marca"]
+                index.get((codigo, int(r["frase_idx"]))),
+                r["marca"],
             )
             for r in self._db.execute(
                 f"SELECT frase_idx, emocion_idx, {marca_field} AS marca "

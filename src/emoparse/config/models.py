@@ -13,7 +13,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  Modelos
 # ══════════════════════════════════════════════════════════════════════════════
@@ -30,13 +29,14 @@ class ModelConfig(BaseModel):
     (n_gpu_layers para llama_cpp, base_url para lmstudio, etc.). Se usa
     `extra="allow"` para evitar acoplar este schema a detalles de cada backend.
     """
+
     model_config = ConfigDict(extra="allow")
 
     backend: BackendName = Field(
         description="Tipo de backend: llama_cpp para GGUFs locales "
-                    "in-process, llama_server para llama.cpp en modo server "
-                    "(continuous batching, cache de prefijo, draft models, "
-                    "multimodal), lmstudio para API OpenAI-compatible.",
+        "in-process, llama_server para llama.cpp en modo server "
+        "(continuous batching, cache de prefijo, draft models, "
+        "multimodal), lmstudio para API OpenAI-compatible.",
     )
     temperature: float = Field(
         default=0.0,
@@ -49,7 +49,7 @@ class ModelConfig(BaseModel):
     seed: int = Field(
         default=42,
         description="Seed del sampler para idempotencia. Cambiá solo si "
-                    "querés explorar variaciones.",
+        "querés explorar variaciones.",
     )
     # Específicos de llama_cpp (extras="allow" permite ignorarlos para lmstudio).
     path: str | None = Field(
@@ -68,6 +68,7 @@ class ModelConfig(BaseModel):
 
 class PipelineConfig(BaseModel):
     """Parámetros del pipeline (orquestación)."""
+
     model_config = ConfigDict(extra="forbid")
 
     # Asignación de etapas a modelos; cada etapa apunta a un alias en `models`.
@@ -75,7 +76,7 @@ class PipelineConfig(BaseModel):
     stages: dict[str, str] = Field(
         default_factory=dict,
         description="Mapa stage → alias_de_modelo. Ej: {'metadata': 'phi4-mini', "
-                    "'emotions': 'qwen3-14b'}.",
+        "'emotions': 'qwen3-14b'}.",
     )
     cache_enabled: bool = Field(
         default=True,
@@ -85,10 +86,10 @@ class PipelineConfig(BaseModel):
         default=1,
         ge=1,
         description="Discursos procesados en simultáneo dentro de cada stage "
-                    "por-frase. Solo tiene efecto con backends servidor "
-                    "(llama_server con --parallel N --cont-batching, "
-                    "lmstudio); con llama_cpp in-process el runner lo "
-                    "fuerza a 1.",
+        "por-frase. Solo tiene efecto con backends servidor "
+        "(llama_server con --parallel N --cont-batching, "
+        "lmstudio); con llama_cpp in-process el runner lo "
+        "fuerza a 1.",
     )
     max_retries: int = Field(default=3, ge=0)
     retry_delays_seconds: list[int] = Field(
@@ -111,10 +112,11 @@ class PipelineConfig(BaseModel):
 
 class PathsConfig(BaseModel):
     """Paths del proyecto.
-    
+
     Strings en lugar de Path para mantener serialización a YAML/JSON sin
     convertidores custom.
     """
+
     model_config = ConfigDict(extra="forbid")
 
     runs_dir: str = Field(default="runs/")
@@ -129,6 +131,7 @@ class VersionsConfig(BaseModel):
     Campos equivalentes a `storage.models.Versions`, unificados al construir
     RunContext en Runner.
     """
+
     model_config = ConfigDict(extra="forbid")
 
     knowledge: str | None = Field(
@@ -141,8 +144,7 @@ class VersionsConfig(BaseModel):
     )
     ontology: str | None = Field(
         default=None,
-        description="Bumpear cuando cambian las ontologías "
-                    "(emociones.json, foria.json, etc.).",
+        description="Bumpear cuando cambian las ontologías (emociones.json, foria.json, etc.).",
     )
     schema_: str | None = Field(
         default=None,
@@ -154,6 +156,7 @@ class VersionsConfig(BaseModel):
 
 class LoggingConfig(BaseModel):
     """Configuración de logging."""
+
     model_config = ConfigDict(extra="forbid")
 
     level: Literal["DEBUG", "INFO", "WARNING", "ERROR"] = "INFO"
@@ -166,8 +169,10 @@ class LoggingConfig(BaseModel):
 #  RunConfig — top-level
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class RunConfig(BaseModel):
     """Configuración completa de un run. Lo que el YAML representa."""
+
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     models: dict[str, ModelConfig] = Field(
@@ -189,8 +194,7 @@ class RunConfig(BaseModel):
         """
         if alias not in self.models:
             raise KeyError(
-                f"Alias '{alias}' no definido en config.models. "
-                f"Disponibles: {sorted(self.models)}"
+                f"Alias '{alias}' no definido en config.models. Disponibles: {sorted(self.models)}"
             )
         # by_alias=False asegura que `schema` aparezca como tal y no como `schema_`.
         return self.models[alias].model_dump(by_alias=False, exclude_none=True)

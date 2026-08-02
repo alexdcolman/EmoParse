@@ -64,8 +64,7 @@ def configure(
         destino.mkdir(parents=True, exist_ok=True)
     except OSError as e:
         logger.warning(
-            f"No pude crear el directorio de logs {destino}: {e}. "
-            "Sigo solo con la consola."
+            f"No pude crear el directorio de logs {destino}: {e}. Sigo solo con la consola."
         )
         return None
 
@@ -87,8 +86,7 @@ def configure(
             diagnose=False,
         )
     except OSError as e:
-        logger.warning(f"No pude escribir el log en {archivo}: {e}. "
-                       "Sigo solo con la consola.")
+        logger.warning(f"No pude escribir el log en {archivo}: {e}. Sigo solo con la consola.")
         return None
     return archivo
 

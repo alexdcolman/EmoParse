@@ -13,10 +13,7 @@ from typing import Any
 
 def strip_accents(s: str) -> str:
     """Elimina tildes para comparación tolerante."""
-    return "".join(
-        c for c in unicodedata.normalize("NFD", s)
-        if unicodedata.category(c) != "Mn"
-    )
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
 
 
 def build_emotion_alias_lookup(
@@ -30,6 +27,7 @@ def build_emotion_alias_lookup(
     Con ``normalize_accents=True`` también elimina tildes.
     El nombre canónico tiene prioridad sobre aliases mediante setdefault.
     """
+
     def _norm(s: str) -> str:
         t = s.strip().lower()
         return strip_accents(t) if normalize_accents else t

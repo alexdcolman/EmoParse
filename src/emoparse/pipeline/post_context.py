@@ -26,12 +26,12 @@ import math
 from typing import Any
 
 from emoparse.pipeline.context_blocks import ContextBlockProvider
+from emoparse.pipeline.technoparse import menciones_handles, parse_texto
 from emoparse.storage.emociones import EmocionesRepository
 from emoparse.storage.frases import FrasesRepository
 from emoparse.storage.hilos import HilosRepository
 from emoparse.storage.posts import PostsRepository
 from emoparse.storage.tecno import TecnoRepository
-from emoparse.pipeline.technoparse import menciones_handles, parse_texto
 
 #: Máximo de posts padre incluidos en el contexto de hilo.
 _MAX_PARENTS = 5
@@ -102,9 +102,7 @@ def make_hilo_context_provider(
             hilo = hilos_repo.get_hilo(str(conv_id))
             n_posts = hilo.get("n_posts") if isinstance(hilo, dict) else None
             if isinstance(n_posts, int) and n_posts > 1:
-                lineas.append(
-                    f"(este post forma parte de un hilo de {n_posts} mensajes)"
-                )
+                lineas.append(f"(este post forma parte de un hilo de {n_posts} mensajes)")
 
         # Cadena de padres, del inmediato hacia arriba.
         padres: list[dict[str, Any] | None] = []
@@ -130,8 +128,12 @@ def make_hilo_context_provider(
         # Post que abrió la conversación. Va primero: es el que fija el objeto
         # del que se habla cuando las respuestas son elípticas. Se omite si es
         # la propia unidad o si ya aparece en la cadena de padres.
-        if include_root and conv_id and str(conv_id) not in mostrados \
-                and str(conv_id) != str(post["post_id"]):
+        if (
+            include_root
+            and conv_id
+            and str(conv_id) not in mostrados
+            and str(conv_id) != str(post["post_id"])
+        ):
             raiz = posts_repo.get_post(str(conv_id))
             if raiz is not None:
                 mostrados.add(str(raiz["post_id"]))
@@ -158,13 +160,15 @@ def make_hilo_context_provider(
         # Posts de cuentas mencionadas que participan del hilo.
         if include_participants and conv_id and max_participant_posts > 0:
             extra = _posts_menciones_participantes(
-                post, posts_repo, str(conv_id), mostrados,
-                max_participant_posts, participant_post_chars,
+                post,
+                posts_repo,
+                str(conv_id),
+                mostrados,
+                max_participant_posts,
+                participant_post_chars,
             )
             if extra:
-                lineas.append(
-                    "POSTS DE CUENTAS MENCIONADAS QUE PARTICIPAN DEL HILO:"
-                )
+                lineas.append("POSTS DE CUENTAS MENCIONADAS QUE PARTICIPAN DEL HILO:")
                 lineas.extend(extra)
 
         if not lineas:
@@ -320,13 +324,11 @@ def make_tecno_context_provider(
             grupos.setdefault(tipo, []).append(_format_entidad(e, lexicon))
         if emojis:
             grupos["emoji"] = [
-                _format_entidad(slot["e"], lexicon)
-                + (f" ×{slot['n']}" if slot["n"] > 1 else "")
+                _format_entidad(slot["e"], lexicon) + (f" ×{slot['n']}" if slot["n"] > 1 else "")
                 for slot in emojis.values()
             ]
         partes = [
-            f"{_LABELS.get(tipo, tipo)}: " + ", ".join(valores)
-            for tipo, valores in grupos.items()
+            f"{_LABELS.get(tipo, tipo)}: " + ", ".join(valores) for tipo, valores in grupos.items()
         ]
         if hashtags:
             partes.append(
@@ -531,9 +533,7 @@ def make_emociones_detectadas_provider(
             return None
         if not emociones:
             return None
-        partes = [
-            _format_emocion_detectada(e) for e in emociones[:max_emociones]
-        ]
+        partes = [_format_emocion_detectada(e) for e in emociones[:max_emociones]]
         restantes = len(emociones) - len(partes)
         if restantes > 0:
             partes.append(f"(+{restantes} más)")
@@ -653,21 +653,9 @@ def _format_emocion_detectada(emocion: dict[str, Any]) -> str:
     inferencia cruda: sin eso, al prompt le llegan deícticos sueltos como
     "él", que no informan nada.
     """
-    tipo = (
-        emocion.get("tipo_emocion_canonico")
-        or emocion.get("tipo_emocion")
-        or "?"
-    )
-    exp = (
-        emocion.get("experienciador_canonico")
-        or emocion.get("experienciador")
-        or "?"
-    )
-    fuente = (
-        emocion.get("fuente_canonico")
-        or emocion.get("fuente_inferencia")
-        or ""
-    )
+    tipo = emocion.get("tipo_emocion_canonico") or emocion.get("tipo_emocion") or "?"
+    exp = emocion.get("experienciador_canonico") or emocion.get("experienciador") or "?"
+    fuente = emocion.get("fuente_canonico") or emocion.get("fuente_inferencia") or ""
     linea = f"{tipo} (exp: {exp}"
     if fuente:
         linea += f" ← {fuente}"

@@ -18,7 +18,8 @@ def render(runs_dir: Path) -> Path | None:
 
     Devuelve `None` si no hay runs disponibles.
     """
-    st.sidebar.markdown("""
+    st.sidebar.markdown(
+        """
     <div style='padding: 1.2rem 0.5rem 1rem;'>
         <div style='font-family:"DM Serif Display",serif; font-size:1.5rem; color:var(--accent); letter-spacing:-0.02em;'>
             🧭 EmoParse
@@ -28,11 +29,14 @@ def render(runs_dir: Path) -> Path | None:
         </div>
     </div>
     <hr style='border-color:var(--border); margin: 0 0 1rem;'>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     runs = data_layer.list_runs(runs_dir)
     if not runs:
-        st.sidebar.markdown(f"""
+        st.sidebar.markdown(
+            f"""
         <div class='ep-card' style='border-left:3px solid var(--danger);'>
             <p style='margin:0;font-size:0.85rem;color:var(--danger);'>Sin runs.</p>
             <p style='margin:0.4rem 0 0;font-size:0.78rem;color:var(--text-dim);'>
@@ -40,7 +44,9 @@ def render(runs_dir: Path) -> Path | None:
                 <code>{runs_dir}/</code>.
             </p>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
         return None
 
     # El selectbox muestra una etiqueta formateada, pero devuelve
@@ -52,7 +58,9 @@ def render(runs_dir: Path) -> Path | None:
         key="emoparse_run_selector",
     )
 
-    st.sidebar.markdown("<hr style='border-color:var(--border); margin: 1rem 0;'>", unsafe_allow_html=True)
+    st.sidebar.markdown(
+        "<hr style='border-color:var(--border); margin: 1rem 0;'>", unsafe_allow_html=True
+    )
 
     _render_run_stats(selected.path)
     return selected.path
@@ -80,11 +88,12 @@ def _render_run_stats(db_path: Path) -> None:
     status = stats.get("status") or "—"
     badge_class = {
         "completed": "badge-ok",
-        "failed":    "badge-err",
-        "running":   "badge-warn",
+        "failed": "badge-err",
+        "running": "badge-warn",
     }.get(status, "badge-dim")
 
-    st.sidebar.markdown(f"""
+    st.sidebar.markdown(
+        f"""
     <div class='ep-card ep-card-accent' style='padding:0.9rem 1rem;'>
         <div style='font-family:"DM Mono",monospace;font-size:0.7rem;color:var(--dim);'>RUN</div>
         <div style='font-family:"DM Mono",monospace;font-size:0.85rem;color:var(--text);
@@ -95,12 +104,15 @@ def _render_run_stats(db_path: Path) -> None:
             <span class='badge {badge_class}'>{status}</span>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     n_d = stats.get("n_discursos", 0)
     n_f = stats.get("n_frases", 0)
     n_e = stats.get("n_emociones", 0)
-    st.sidebar.markdown(f"""
+    st.sidebar.markdown(
+        f"""
     <div class='stat-grid' style='margin-bottom:1rem;'>
         <div class='stat-box' style='padding:0.7rem 0.9rem;'>
             <div class='stat-val' style='font-size:1.2rem;'>{n_d}</div>
@@ -115,13 +127,15 @@ def _render_run_stats(db_path: Path) -> None:
             <div class='stat-lbl'>Emociones</div>
         </div>
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     versions = [
         ("knowledge", stats.get("knowledge_version")),
-        ("prompt",    stats.get("prompt_version")),
-        ("ontology",  stats.get("ontology_version")),
-        ("schema",    stats.get("schema_version")),
+        ("prompt", stats.get("prompt_version")),
+        ("ontology", stats.get("ontology_version")),
+        ("schema", stats.get("schema_version")),
     ]
     rows = "".join(
         f"<div style='display:flex;justify-content:space-between;"
@@ -131,7 +145,8 @@ def _render_run_stats(db_path: Path) -> None:
         f"</div>"
         for name, val in versions
     )
-    st.sidebar.markdown(f"""
+    st.sidebar.markdown(
+        f"""
     <div style='margin-top:0.4rem;'>
         <div style='font-size:0.7rem;color:var(--dim);font-family:DM Mono,monospace;
                     text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.3rem;'>
@@ -139,13 +154,18 @@ def _render_run_stats(db_path: Path) -> None:
         </div>
         {rows}
     </div>
-    """, unsafe_allow_html=True)
+    """,
+        unsafe_allow_html=True,
+    )
 
     if stats.get("notes"):
-        st.sidebar.markdown(f"""
+        st.sidebar.markdown(
+            f"""
         <details style='margin-top:0.8rem;'>
             <summary style='font-size:0.75rem;color:var(--text-dim);cursor:pointer;'>Notas</summary>
             <pre style='font-size:0.75rem;color:var(--text-dim);white-space:pre-wrap;
                         margin-top:0.4rem;'>{stats["notes"]}</pre>
         </details>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )

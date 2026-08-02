@@ -33,7 +33,6 @@ def _key(**overrides: object) -> str:
 
 
 class TestDeterminism:
-
     def test_same_inputs_same_digest(self) -> None:
         d1 = _key()
         d2 = _key()
@@ -52,7 +51,6 @@ class TestDeterminism:
 
 
 class TestSensitivity:
-
     def test_model_alias_affects(self) -> None:
         assert _key(model_alias="A") != _key(model_alias="B")
 
@@ -90,7 +88,6 @@ class TestSensitivity:
 
 
 class TestNoneVsEmpty:
-
     def test_seed_none_vs_zero_distinct(self) -> None:
         """seed=None y seed=0 son entidades distintas: 0 es una seed válida."""
         assert _key(seed=None) != _key(seed=0)
@@ -116,7 +113,6 @@ class TestNoneVsEmpty:
 
 
 class TestKeyMetadata:
-
     def test_metadata_fields_populated(self) -> None:
         key = make_cache_key(
             model_alias="qwen3-14b",

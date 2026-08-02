@@ -18,7 +18,8 @@ import streamlit as st
 from emoparse.app import data as data_layer
 from emoparse.app._knowledge import semas_list
 from emoparse.app.components import _emofilter
-from emoparse.viz import charts, foria as foria_viz
+from emoparse.viz import charts
+from emoparse.viz import foria as foria_viz
 
 
 def render(db_path: Path) -> None:
@@ -63,7 +64,8 @@ def render(db_path: Path) -> None:
 
     unidad_lbl = (
         _MODO_LABELS.get(modo, "Discurso").replace("Por ", "").capitalize()
-        if corpus_posts else "Discurso"
+        if corpus_posts
+        else "Discurso"
     )
     col_sel, col_toggle, col_max = st.columns([3, 1.2, 1])
     with col_sel:
@@ -78,7 +80,10 @@ def render(db_path: Path) -> None:
     with col_max:
         max_fr = st.number_input(
             "Máx. frases",
-            min_value=20, max_value=500, value=200, step=20,
+            min_value=20,
+            max_value=500,
+            value=200,
+            step=20,
             key="curva_maxfr",
         )
 
@@ -86,9 +91,7 @@ def render(db_path: Path) -> None:
     if comparar:
         otros = [c for c in codigos if c != codigo_sel]
         if otros:
-            codigo_b = st.selectbox(
-                f"{unidad_lbl} B", otros, key=f"curva_codigo_b_{modo}"
-            )
+            codigo_b = st.selectbox(f"{unidad_lbl} B", otros, key=f"curva_codigo_b_{modo}")
 
     # ── Opciones de visualización ────────────────────────────────────────────
     opt_a, opt_b, opt_c = st.columns(3)
@@ -145,28 +148,40 @@ def render(db_path: Path) -> None:
         c_a, c_b = st.columns(2)
         with c_a:
             df_a = _emofilter.filter_panel(
-                df_em[df_em["codigo"] == codigo_sel], key="curva_f_a",
-                semas_options=semas_opts, title=f"Filtros · {codigo_sel}",
+                df_em[df_em["codigo"] == codigo_sel],
+                key="curva_f_a",
+                semas_options=semas_opts,
+                title=f"Filtros · {codigo_sel}",
             )
         with c_b:
             df_bsel = _emofilter.filter_panel(
-                df_em[df_em["codigo"] == codigo_b], key="curva_f_b",
-                semas_options=semas_opts, title=f"Filtros · {codigo_b}",
+                df_em[df_em["codigo"] == codigo_b],
+                key="curva_f_b",
+                semas_options=semas_opts,
+                title=f"Filtros · {codigo_b}",
             )
         df_plot = pd.concat([df_a, df_bsel], ignore_index=True)
         fig = charts.curva_emocional_comparada(
-            df_plot, [codigo_sel, codigo_b], max_frases=int(max_fr),
-            actor_col=actor_col, fuente_col=fuente_col,
+            df_plot,
+            [codigo_sel, codigo_b],
+            max_frases=int(max_fr),
+            actor_col=actor_col,
+            fuente_col=fuente_col,
             posicion_relativa=posicion_relativa,
         )
     else:
         df_a = _emofilter.filter_panel(
-            df_em[df_em["codigo"] == codigo_sel], key="curva_f_a",
-            semas_options=semas_opts, title="Filtros",
+            df_em[df_em["codigo"] == codigo_sel],
+            key="curva_f_a",
+            semas_options=semas_opts,
+            title="Filtros",
         )
         fig = charts.curva_emocional(
-            df_a, codigo_sel, max_frases=int(max_fr),
-            actor_col=actor_col, fuente_col=fuente_col,
+            df_a,
+            codigo_sel,
+            max_frases=int(max_fr),
+            actor_col=actor_col,
+            fuente_col=fuente_col,
             posicion_relativa=posicion_relativa,
         )
     st.plotly_chart(fig, use_container_width=True)
@@ -210,7 +225,8 @@ def _render_chips(df_sel: pd.DataFrame, *, usar_llm: bool = False) -> None:
         fte_badge = (
             f"<span class='badge badge-dim' style='font-size:0.64rem;"
             f"color:var(--ok);border-color:var(--ok)40;'>← {fte}</span>"
-            if fte and fte != "—" else ""
+            if fte and fte != "—"
+            else ""
         )
 
         chips_html.append(
@@ -230,8 +246,7 @@ def _render_chips(df_sel: pd.DataFrame, *, usar_llm: bool = False) -> None:
         )
 
     st.markdown(
-        "<div style='max-height:400px;overflow-y:auto;'>"
-        + "".join(chips_html) + "</div>",
+        "<div style='max-height:400px;overflow-y:auto;'>" + "".join(chips_html) + "</div>",
         unsafe_allow_html=True,
     )
 

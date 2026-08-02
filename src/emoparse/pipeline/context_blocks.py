@@ -16,7 +16,6 @@ from emoparse.pipeline.genre_context import (
     truncate_to_token_budget,
 )
 
-
 ContextScope = Literal["discurso", "unidad"]
 ContextRender = Callable[[str, int | None], str | None]
 
@@ -58,8 +57,7 @@ class ContextBlockProvider:
         """Renderiza y recorta el bloque para un discurso o una unidad."""
         if self.scope == "unidad" and unit_idx is None:
             raise TypeError(
-                f"El bloque '{self.name}' requiere unit_idx porque su alcance "
-                "es por unidad"
+                f"El bloque '{self.name}' requiere unit_idx porque su alcance es por unidad"
             )
 
         text = self.render_fn(codigo, unit_idx)
@@ -89,7 +87,7 @@ def _truncate_tail(text: str, *, budget: int) -> str:
     prefix = "(...)\n"
     if max_chars <= len(prefix) + 1:
         return "…"
-    body = text[-(max_chars - len(prefix)):].lstrip()
+    body = text[-(max_chars - len(prefix)) :].lstrip()
     clipped = prefix + body
     while estimate_tokens(clipped) > budget and body:
         body = body[1:].lstrip()

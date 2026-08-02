@@ -47,10 +47,12 @@ class ReferenceError(Exception):
 #  Lectura del parser
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _acciones(parser: argparse.ArgumentParser) -> list[argparse.Action]:
     """Acciones documentables de un parser: sin la ayuda ni los subparsers."""
     return [
-        a for a in parser._actions
+        a
+        for a in parser._actions
         if not isinstance(a, (argparse._HelpAction, argparse._SubParsersAction))
         and a.help != argparse.SUPPRESS
     ]
@@ -110,6 +112,7 @@ def _ayuda_corta(principal: argparse.ArgumentParser, nombre: str) -> str:
 #  Markdown
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _md_celda(texto: str) -> str:
     """Escapa lo que rompería una celda de tabla markdown."""
     return " ".join(texto.split()).replace("|", "\\|")
@@ -162,6 +165,7 @@ def render_markdown(parser: argparse.ArgumentParser) -> str:
 #  HTML
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _h(texto: str) -> str:
     """Texto plano listo para insertar en HTML."""
     return html.escape(" ".join(texto.split()))
@@ -197,8 +201,7 @@ def render_html(parser: argparse.ArgumentParser) -> dict[str, str]:
 
     indice = ['      <li><a href="#globales">Opciones globales</a></li>']
     indice += [
-        f'      <li><a href="#{nombre}">emoparse {nombre}</a></li>'
-        for nombre in subcomandos
+        f'      <li><a href="#{nombre}">emoparse {nombre}</a></li>' for nombre in subcomandos
     ]
 
     cuerpo = [
@@ -227,22 +230,15 @@ def _insertar(pagina: str, fragmentos: dict[str, str]) -> str:
     for clave, (inicio, fin) in _MARCAS.items():
         i, f = pagina.find(inicio), pagina.find(fin)
         if i == -1 or f == -1 or f < i:
-            raise ReferenceError(
-                f"Faltan los marcadores {inicio} / {fin} en {_HTML.name}."
-            )
-        pagina = (
-            pagina[: i + len(inicio)]
-            + "\n"
-            + fragmentos[clave]
-            + "\n"
-            + pagina[f:]
-        )
+            raise ReferenceError(f"Faltan los marcadores {inicio} / {fin} en {_HTML.name}.")
+        pagina = pagina[: i + len(inicio)] + "\n" + fragmentos[clave] + "\n" + pagina[f:]
     return pagina
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Entrada
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _escribir(destino: Path, contenido: str, check: bool) -> bool:
     """Escribe el archivo, o informa si difiere cuando se pidió verificar.

@@ -30,8 +30,11 @@ class RedRepository:
                     "(grafo, origen, destino, post_id, peso, fecha) "
                     "VALUES (?, ?, ?, ?, ?, ?)",
                     (
-                        grafo, str(r["origen"]), str(r["destino"]),
-                        _s(r.get("post_id")), float(r.get("peso", 1.0)),
+                        grafo,
+                        str(r["origen"]),
+                        str(r["destino"]),
+                        _s(r.get("post_id")),
+                        float(r.get("peso", 1.0)),
                         _s(r.get("fecha")),
                     ),
                 )
@@ -56,10 +59,13 @@ class RedRepository:
                     " pagerank, intermediacion, comunidad) "
                     "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     (
-                        grafo, nodo,
-                        _i(r.get("grado_in")), _i(r.get("grado_out")),
+                        grafo,
+                        nodo,
+                        _i(r.get("grado_in")),
+                        _i(r.get("grado_out")),
                         _i(r.get("grado_total")),
-                        _f(r.get("pagerank")), _f(r.get("intermediacion")),
+                        _f(r.get("pagerank")),
+                        _f(r.get("intermediacion")),
                         communities.get(nodo),
                     ),
                 )
@@ -68,8 +74,7 @@ class RedRepository:
     def load_edges(self, grafo: str) -> pd.DataFrame:
         """Aristas persistidas de un grafo."""
         rows = self._db.execute(
-            "SELECT grafo, origen, destino, post_id, peso, fecha "
-            "FROM aristas WHERE grafo = ?",
+            "SELECT grafo, origen, destino, post_id, peso, fecha FROM aristas WHERE grafo = ?",
             (grafo,),
         ).fetchall()
         return pd.DataFrame([dict(r) for r in rows])
@@ -77,17 +82,14 @@ class RedRepository:
     def load_metrics(self, grafo: str) -> pd.DataFrame:
         """Métricas persistidas de un grafo, por PageRank descendente."""
         rows = self._db.execute(
-            "SELECT * FROM red_metricas WHERE grafo = ? "
-            "ORDER BY pagerank DESC",
+            "SELECT * FROM red_metricas WHERE grafo = ? ORDER BY pagerank DESC",
             (grafo,),
         ).fetchall()
         return pd.DataFrame([dict(r) for r in rows])
 
     def grafos_disponibles(self) -> list[str]:
         """Grafos con aristas persistidas."""
-        rows = self._db.execute(
-            "SELECT DISTINCT grafo FROM aristas ORDER BY grafo"
-        ).fetchall()
+        rows = self._db.execute("SELECT DISTINCT grafo FROM aristas ORDER BY grafo").fetchall()
         return [str(r["grafo"]) for r in rows]
 
 

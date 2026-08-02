@@ -44,8 +44,8 @@ from emoparse.network import (
     detect_communities,
     flujo_entre_comunidades,
     foria_by_post,
-    foria_transition_matrix,
     foria_transition_by_scope,
+    foria_transition_matrix,
     tipos_por_post,
     to_graph,
 )
@@ -80,16 +80,16 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         default="reply,mention,rt,qt,hashtag_co",
         metavar="LISTA",
         help="Grafos a construir, separados por coma. "
-             f"Válidos: {', '.join(GRAFOS)}. El grafo '{GRAFO_FOLLOW}' se "
-             "adquiere aparte con `emoparse follows` y se mide agregándolo "
-             "acá.",
+        f"Válidos: {', '.join(GRAFOS)}. El grafo '{GRAFO_FOLLOW}' se "
+        "adquiere aparte con `emoparse follows` y se mide agregándolo "
+        "acá.",
     )
     p.add_argument(
         "--cliques",
         action="store_true",
         help="Reporta las cliques de vínculos recíprocos de cada grafo de "
-             "cuentas (todos se vinculan con todos, a diferencia de la "
-             "comunidad, que solo es una zona densa).",
+        "cuentas (todos se vinculan con todos, a diferencia de la "
+        "comunidad, que solo es una zona densa).",
     )
     p.add_argument(
         "--min-clique",
@@ -102,20 +102,20 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--flujo",
         action="store_true",
         help="Circulación de la emoción: contagio por tipo de emoción y "
-             "transición fórica partida en intra e inter comunidad.",
+        "transición fórica partida en intra e inter comunidad.",
     )
     p.add_argument(
         "--similitud",
         action="store_true",
         help="Agrupamiento narrativo: agrupa los simulacros emocionales por "
-             "parecido entre sus componentes.",
+        "parecido entre sus componentes.",
     )
     p.add_argument(
         "--similitud-componentes",
         default=",".join(sim.COMPONENTES_DEFAULT),
         metavar="LISTA",
         help="Componentes del simulacro que inciden en el parecido, "
-             f"separados por coma. Disponibles: {', '.join(sim.COMPONENTES)}.",
+        f"separados por coma. Disponibles: {', '.join(sim.COMPONENTES)}.",
     )
     p.add_argument(
         "--similitud-umbral",
@@ -127,8 +127,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     p.add_argument(
         "--semantico",
         action="store_true",
-        help="Agrupa los posts por contenido semántico (requiere el extra "
-             "[embeddings]).",
+        help="Agrupa los posts por contenido semántico (requiere el extra [embeddings]).",
     )
     p.add_argument(
         "--modelo-embeddings",
@@ -147,21 +146,19 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         choices=GRAFOS_AUTOR,
         default=None,
         help="Grafo cuyas comunidades se usan para el perfil emocional. "
-             "Por defecto, el primer grafo de autores con comunidades.",
+        "Por defecto, el primer grafo de autores con comunidades.",
     )
     p.add_argument(
         "--export-dir",
         type=Path,
         default=None,
-        help="Directorio para exportar GEXF + CSVs por grafo (Gephi) y el "
-             "perfil por comunidad.",
+        help="Directorio para exportar GEXF + CSVs por grafo (Gephi) y el perfil por comunidad.",
     )
     p.add_argument(
         "--top",
         type=int,
         default=10,
-        help="Cantidad de nodos (y de tipos de emoción por comunidad) a "
-             "mostrar en los resúmenes.",
+        help="Cantidad de nodos (y de tipos de emoción por comunidad) a mostrar en los resúmenes.",
     )
     p.set_defaults(handler=run)
 
@@ -195,9 +192,7 @@ def run(args: argparse.Namespace) -> int:
     # corre tal cual sobre un corpus de discursos.
     pide_similitud = args.semantico or args.similitud
     if df_posts.empty:
-        grafos_interaccion = [
-            g for g in graphs if g in GRAFOS or g == GRAFO_FOLLOW
-        ]
+        grafos_interaccion = [g for g in graphs if g in GRAFOS or g == GRAFO_FOLLOW]
         if grafos_interaccion and pide_similitud:
             logger.warning(
                 "[network] El run no trae posts: se omiten los grafos de "
@@ -220,9 +215,7 @@ def run(args: argparse.Namespace) -> int:
 
     red_repo = RedRepository(db)
     try:
-        comunidades = _procesar_grafos(
-            red_repo, df_posts, df_tecno, graphs, args
-        )
+        comunidades = _procesar_grafos(red_repo, df_posts, df_tecno, graphs, args)
     except NetworkUnavailableError as e:
         logger.error(f"[network] {e}")
         return 2
@@ -239,6 +232,7 @@ def run(args: argparse.Namespace) -> int:
 # ══════════════════════════════════════════════════════════════════════════════
 #  Procesamiento
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _procesar_grafos(
     red_repo: RedRepository,
@@ -269,13 +263,11 @@ def _procesar_grafos(
                 )
                 continue
         else:
-            df_edges = (
-                df_all[df_all["grafo"] == grafo]
-                if not df_all.empty
-                else df_all
-            )
+            df_edges = df_all[df_all["grafo"] == grafo] if not df_all.empty else df_all
         if df_edges.empty:
-            print(f"── {grafo}: sin aristas (referencias no capturadas o corpus sin ese tipo de interacción)")
+            print(
+                f"── {grafo}: sin aristas (referencias no capturadas o corpus sin ese tipo de interacción)"
+            )
             continue
 
         directed = grafo != "hashtag_co"
@@ -298,8 +290,7 @@ def _procesar_grafos(
             com = communities.get(str(r["nodo"]))
             print(
                 f"     {r['nodo'][:40]:<42s} pagerank={r['pagerank']:.4f} "
-                f"grado={int(r['grado_total'])}"
-                + (f" comunidad={com}" if com is not None else "")
+                f"grado={int(r['grado_total'])}" + (f" comunidad={com}" if com is not None else "")
             )
 
         if args.cliques and grafo in GRAFOS_AUTOR:
@@ -307,13 +298,13 @@ def _procesar_grafos(
 
         if args.export_dir is not None:
             paths = export_graph(
-                G, args.export_dir, grafo,
-                node_attrs=df_metrics, communities=communities,
+                G,
+                args.export_dir,
+                grafo,
+                node_attrs=df_metrics,
+                communities=communities,
             )
-            logger.info(
-                f"[network] {grafo}: exportado → "
-                + ", ".join(p.name for p in paths)
-            )
+            logger.info(f"[network] {grafo}: exportado → " + ", ".join(p.name for p in paths))
     print()
     return comunidades_por_grafo
 
@@ -344,9 +335,7 @@ def _reporte_emocional(
         print()
     _reporte_comunidades(df_posts, df_emociones, comunidades_por_grafo, args)
     if args.flujo:
-        _reporte_flujo(
-            df_posts, df_emociones, foria_map, comunidades_por_grafo, args
-        )
+        _reporte_flujo(df_posts, df_emociones, foria_map, comunidades_por_grafo, args)
 
 
 def _reporte_comunidades(
@@ -366,9 +355,7 @@ def _reporte_comunidades(
         )
         return
 
-    perfil = community_emotion_profile(
-        df_posts, comunidades_por_grafo[grafo], df_emociones
-    )
+    perfil = community_emotion_profile(df_posts, comunidades_por_grafo[grafo], df_emociones)
     if perfil.empty:
         logger.info(
             f"[network] Ninguna emoción cae en las comunidades de {grafo}: "
@@ -379,21 +366,16 @@ def _reporte_comunidades(
     print(f"── Perfil emocional por comunidad ({grafo}):")
     for comunidad, grp in perfil.groupby("comunidad", sort=True):
         tipos = ", ".join(
-            f"{r['tipo_emocion']} ({int(r['n'])})"
-            for _, r in grp.head(args.top).iterrows()
+            f"{r['tipo_emocion']} ({int(r['n'])})" for _, r in grp.head(args.top).iterrows()
         )
-        forias = " ".join(
-            f"{f}={int(grp[f].sum())}" for f in FORIAS if int(grp[f].sum())
-        )
+        forias = " ".join(f"{f}={int(grp[f].sum())}" for f in FORIAS if int(grp[f].sum()))
         print(f"     comunidad {comunidad}: {int(grp['n'].sum())} emociones")
         print(f"       tipos:  {tipos}")
         print(f"       forias: {forias}")
     print()
 
     if args.export_dir is not None:
-        path = export_table(
-            perfil, args.export_dir, f"perfil_comunidades_{grafo}"
-        )
+        path = export_table(perfil, args.export_dir, f"perfil_comunidades_{grafo}")
         logger.info(f"[network] perfil por comunidad: exportado → {path.name}")
 
 
@@ -401,22 +383,16 @@ def _reporte_cliques(G, grafo: str, args: argparse.Namespace) -> None:
     """Cliques de vínculos recíprocos de un grafo de cuentas."""
     cliques = detect_cliques(G, min_size=args.min_clique, mutual_only=True)
     if not cliques:
-        print(
-            f"     cliques: ninguna de {args.min_clique}+ cuentas con "
-            "vínculo recíproco"
-        )
+        print(f"     cliques: ninguna de {args.min_clique}+ cuentas con vínculo recíproco")
         return
-    print(f"     cliques (vínculo recíproco, {len(cliques)} de "
-          f"{args.min_clique}+ cuentas):")
-    for c in cliques[:args.top]:
-        print(f"       {len(c)}: {', '.join(n[:28] for n in c[:8])}"
-              + (" …" if len(c) > 8 else ""))
+    print(f"     cliques (vínculo recíproco, {len(cliques)} de {args.min_clique}+ cuentas):")
+    for c in cliques[: args.top]:
+        print(f"       {len(c)}: {', '.join(n[:28] for n in c[:8])}" + (" …" if len(c) > 8 else ""))
     if args.export_dir is not None:
         export_table(
-            pd.DataFrame([
-                {"tamanio": len(c), "cuentas": "; ".join(c)} for c in cliques
-            ]),
-            args.export_dir, f"cliques_{grafo}",
+            pd.DataFrame([{"tamanio": len(c), "cuentas": "; ".join(c)} for c in cliques]),
+            args.export_dir,
+            f"cliques_{grafo}",
         )
 
 
@@ -436,20 +412,16 @@ def _reporte_flujo(
             "se omite el contagio por tipo."
         )
     else:
-        print("── Contagio por tipo de emoción (lift > 1: se replica más de "
-              "lo esperable):")
+        print("── Contagio por tipo de emoción (lift > 1: se replica más de lo esperable):")
         print(lift.head(args.top).to_string(index=False))
         print()
         if args.export_dir is not None:
             export_table(lift, args.export_dir, "contagio_por_tipo")
 
-    grafo = next(
-        (g for g in GRAFOS_AUTOR if comunidades_por_grafo.get(g)), None
-    )
+    grafo = next((g for g in GRAFOS_AUTOR if comunidades_por_grafo.get(g)), None)
     if grafo is None:
         logger.info(
-            "[network] Sin comunidades de cuentas: se omite la circulación "
-            "entre comunidades."
+            "[network] Sin comunidades de cuentas: se omite la circulación entre comunidades."
         )
         return
     comunidades = comunidades_por_grafo[grafo]
@@ -459,8 +431,7 @@ def _reporte_flujo(
         if int(matriz.values.sum()) == 0:
             continue
         etiqueta = (
-            "dentro de la misma comunidad" if alcance == "intra"
-            else "entre comunidades distintas"
+            "dentro de la misma comunidad" if alcance == "intra" else "entre comunidades distintas"
         )
         print(f"── Transiciones fóricas {etiqueta} ({grafo}):")
         print(matriz.to_string())
@@ -468,7 +439,8 @@ def _reporte_flujo(
         if args.export_dir is not None:
             export_table(
                 matriz.reset_index(names="foria_padre"),
-                args.export_dir, f"transicion_forica_{alcance}_{grafo}",
+                args.export_dir,
+                f"transicion_forica_{alcance}_{grafo}",
             )
 
     flujo = flujo_entre_comunidades(df_posts, foria_map, comunidades)
@@ -498,14 +470,9 @@ def _reporte_similitud(
 
     df = get_emociones_enriched(db_path)
     if df.empty:
-        logger.info(
-            "[network] El run no tiene emociones: se omite el agrupamiento "
-            "narrativo."
-        )
+        logger.info("[network] El run no tiene emociones: se omite el agrupamiento narrativo.")
         return
-    componentes = [
-        c.strip() for c in args.similitud_componentes.split(",") if c.strip()
-    ]
+    componentes = [c.strip() for c in args.similitud_componentes.split(",") if c.strip()]
     disponibles = sim.componentes_disponibles(df)
     faltan = [c for c in componentes if c not in disponibles]
     if faltan:
@@ -515,9 +482,7 @@ def _reporte_similitud(
         )
         componentes = [c for c in componentes if c in disponibles]
     if not componentes:
-        logger.error(
-            "[network] Ningún componente pedido tiene datos en este run."
-        )
+        logger.error("[network] Ningún componente pedido tiene datos en este run.")
         return
 
     try:
@@ -535,32 +500,38 @@ def _reporte_similitud(
     grupos = sim.agrupar(pares, len(df), seed=args.seed)
 
     claves = [sim.clave_simulacro(r) for r in df.to_dict(orient="records")]
-    df_edges = pd.DataFrame({
-        "grafo": "simulacro",
-        "origen": [claves[int(i)] for i in pares["i"]],
-        "destino": [claves[int(j)] for j in pares["j"]],
-        "post_id": [str(df.iloc[int(i)]["codigo"]) for i in pares["i"]],
-        "peso": pares["similitud"].astype(float),
-        "fecha": None,
-    })
+    df_edges = pd.DataFrame(
+        {
+            "grafo": "simulacro",
+            "origen": [claves[int(i)] for i in pares["i"]],
+            "destino": [claves[int(j)] for j in pares["j"]],
+            "post_id": [str(df.iloc[int(i)]["codigo"]) for i in pares["i"]],
+            "peso": pares["similitud"].astype(float),
+            "fecha": None,
+        }
+    )
     red_repo.replace_edges("simulacro", df_edges)
     G = to_graph(df_edges, directed=False)
     red_repo.replace_metrics(
-        "simulacro", compute_node_metrics(G),
+        "simulacro",
+        compute_node_metrics(G),
         {claves[i]: g for i, g in grupos.items()},
     )
 
     perfil = sim.perfil_grupos(df, grupos, componentes)
-    print(f"── Agrupamiento narrativo ({len(grupos)} de {len(df)} simulacros "
-          f"agrupados en {perfil.shape[0]} grupo(s)):")
+    print(
+        f"── Agrupamiento narrativo ({len(grupos)} de {len(df)} simulacros "
+        f"agrupados en {perfil.shape[0]} grupo(s)):"
+    )
     print(f"     componentes: {', '.join(componentes)}")
     print(perfil.head(args.top).to_string(index=False))
     print()
 
-    autor_por_unidad = {
-        str(r["post_id"]): str(r["autor_handle"])
-        for r in df_posts.to_dict(orient="records")
-    } if not df_posts.empty else {}
+    autor_por_unidad = (
+        {str(r["post_id"]): str(r["autor_handle"]) for r in df_posts.to_dict(orient="records")}
+        if not df_posts.empty
+        else {}
+    )
     if autor_por_unidad:
         autores = sim.grupos_por_autor(df, grupos, autor_por_unidad)
         if not autores.empty:
@@ -572,7 +543,8 @@ def _reporte_similitud(
         if autor_por_unidad:
             export_table(
                 sim.grupos_por_autor(df, grupos, autor_por_unidad),
-                args.export_dir, "grupos_narrativos_por_autor",
+                args.export_dir,
+                "grupos_narrativos_por_autor",
             )
         export_table(pares, args.export_dir, "parecido_simulacros")
 

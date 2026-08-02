@@ -39,6 +39,7 @@ class ValidationIssue:
         contexto: Dict con los valores que activaron la regla.
         severidad: Siempre "warning" (informativo, no bloquea pipeline).
     """
+
     validator_id: str
     mensaje: str
     codigo: str

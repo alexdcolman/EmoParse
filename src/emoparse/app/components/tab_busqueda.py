@@ -16,8 +16,8 @@ from pathlib import Path
 import streamlit as st
 
 from emoparse.app import data as data_layer
-from emoparse.app._textmatch import matches, normalize, parse_query
 from emoparse.app import styles
+from emoparse.app._textmatch import matches, normalize, parse_query
 
 _KIND_LABEL = {
     "emocion": "Emoción",
@@ -48,10 +48,11 @@ def render(db_path: Path) -> None:
 
 # ── Búsqueda por texto ───────────────────────────────────────────────────────
 
+
 def _render_text_search(db_path, frases, by_key, brief_map) -> None:
     st.caption(
-        "Palabra suelta: `javier milei` · Frase exacta: `\"los socialistas\"` · "
-        "Término opcional: `\"abandono del modelo de (la) libertad\"`."
+        'Palabra suelta: `javier milei` · Frase exacta: `"los socialistas"` · '
+        'Término opcional: `"abandono del modelo de (la) libertad"`.'
     )
     query = st.text_input("Buscar", key="busq_texto", placeholder="javier milei")
     if not query.strip():
@@ -84,11 +85,14 @@ def _render_text_search(db_path, frases, by_key, brief_map) -> None:
 
 # ── Búsqueda por selección ───────────────────────────────────────────────────
 
+
 def _render_selection_search(db_path, by_key, brief_map) -> None:
     opts = data_layer.list_search_options(db_path)
     kind = st.selectbox(
-        "Buscar por", list(_KIND_LABEL),
-        format_func=lambda k: _KIND_LABEL[k], key="busq_kind",
+        "Buscar por",
+        list(_KIND_LABEL),
+        format_func=lambda k: _KIND_LABEL[k],
+        key="busq_kind",
     )
     pool = {
         "emocion": opts["emociones"],
@@ -113,6 +117,7 @@ def _render_selection_search(db_path, by_key, brief_map) -> None:
 
 # ── Render de una frase con contexto ─────────────────────────────────────────
 
+
 def _compress_codigo(codigo: str, keep: int = 22) -> str:
     """Comprime un código largo dejando inicio y fin."""
     codigo = str(codigo)
@@ -134,13 +139,19 @@ def _render_hit(codigo, unit_idx, frase, by_key, brief_map=None) -> None:
         )
         ctx = ""
         if prev:
-            ctx += (f"<div style='color:var(--dim);font-size:0.8rem;line-height:1.5;'>"
-                    f"… {html.escape(prev)}</div>")
-        ctx += (f"<div style='color:var(--text);font-size:0.9rem;line-height:1.6;"
-                f"margin:0.15rem 0;'>{html.escape(str(frase))}</div>")
+            ctx += (
+                f"<div style='color:var(--dim);font-size:0.8rem;line-height:1.5;'>"
+                f"… {html.escape(prev)}</div>"
+            )
+        ctx += (
+            f"<div style='color:var(--text);font-size:0.9rem;line-height:1.6;"
+            f"margin:0.15rem 0;'>{html.escape(str(frase))}</div>"
+        )
         if nxt:
-            ctx += (f"<div style='color:var(--dim);font-size:0.8rem;line-height:1.5;'>"
-                    f"{html.escape(nxt)} …</div>")
+            ctx += (
+                f"<div style='color:var(--dim);font-size:0.8rem;line-height:1.5;'>"
+                f"{html.escape(nxt)} …</div>"
+            )
         st.markdown(ctx, unsafe_allow_html=True)
         _render_emociones((brief_map or {}).get((codigo, unit_idx)))
 

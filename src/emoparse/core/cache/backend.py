@@ -69,9 +69,7 @@ class CachedBackend(LLMBackend):
         # Construir clave; si seed no se pasa, se usa None. Las llamadas con
         # imágenes incorporan un digest del contenido visual (bytes de paths
         # locales; string de las URLs), de modo que también son cacheables.
-        schema_qualname = (
-            f"{schema.__module__}.{schema.__qualname__}" if schema else None
-        )
+        schema_qualname = f"{schema.__module__}.{schema.__qualname__}" if schema else None
         key = make_cache_key(
             model_alias=self._backend.alias,
             system=system,
@@ -88,9 +86,7 @@ class CachedBackend(LLMBackend):
 
         if cached is not None:
             # HIT: reconstruir LLMResponse desde entrada cacheada.
-            logger.debug(
-                f"[CachedBackend:{self.alias}] HIT (key={key.digest[:12]}...)"
-            )
+            logger.debug(f"[CachedBackend:{self.alias}] HIT (key={key.digest[:12]}...)")
             self._repo.record_hit(key.digest)
 
             parsed: BaseModel | None = None
@@ -122,9 +118,7 @@ class CachedBackend(LLMBackend):
             )
 
         # MISS: delegar al backend.
-        logger.debug(
-            f"[CachedBackend:{self.alias}] MISS (key={key.digest[:12]}...)"
-        )
+        logger.debug(f"[CachedBackend:{self.alias}] MISS (key={key.digest[:12]}...)")
         # `images` se pasa solo cuando existe: no todos los backends declaran
         # el parámetro en su firma (p. ej. lmstudio) y una llamada de texto
         # no debe depender de eso.

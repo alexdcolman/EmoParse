@@ -18,7 +18,8 @@ from __future__ import annotations
 
 import threading
 import time
-from typing import Iterable, Iterator, TypeVar
+from collections.abc import Iterable, Iterator
+from typing import TypeVar
 
 from loguru import logger
 
@@ -83,8 +84,7 @@ class ProgressReporter:
             hechos, total, unidad = self._hechos, self._total, self._unidad
             self._total = 0
         logger.info(
-            f"[Stage:{self._stage}] 100% · {hechos}/{total} {unidad} "
-            f"en {_duracion(transcurrido)}."
+            f"[Stage:{self._stage}] 100% · {hechos}/{total} {unidad} en {_duracion(transcurrido)}."
         )
 
     # ── Envoltorio de iteración ──────────────────────────────────────────────
@@ -109,10 +109,7 @@ class ProgressReporter:
     def _mensaje(self, ahora: float) -> str:
         """Línea de avance con porcentaje y estimación de lo que falta."""
         pct = int(100 * self._hechos / self._total)
-        linea = (
-            f"[Stage:{self._stage}] {pct}% · "
-            f"{self._hechos}/{self._total} {self._unidad}"
-        )
+        linea = f"[Stage:{self._stage}] {pct}% · {self._hechos}/{self._total} {self._unidad}"
         transcurrido = ahora - self._inicio
         if self._hechos:
             restante = transcurrido / self._hechos * (self._total - self._hechos)

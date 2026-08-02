@@ -31,7 +31,8 @@ def render(db_path: Path) -> None:
 
     usar_llm = st.toggle(
         "Usar resultados de la inferencia de los LLMs",
-        value=False, key="act_usar_llm",
+        value=False,
+        key="act_usar_llm",
         help="Muestra el experienciador crudo del LLM en lugar del canónico (revisado en Referentes).",
     )
     actor_col = "experienciador" if usar_llm else "experienciador_efectivo"
@@ -48,15 +49,23 @@ def render(db_path: Path) -> None:
         with col_b:
             top_emo = st.slider("Top emociones", 3, 15, 8, key="heat_top_emo")
         with col_c:
-            normalize = st.toggle("Normalizar (proporción por actor)",
-                                  value=True, key="heat_norm")
+            normalize = st.toggle("Normalizar (proporción por actor)", value=True, key="heat_norm")
 
-        discos = st.multiselect(
-            "Discursos", codigos, default=codigos, key="heat_discos",
-        ) if codigos else []
+        discos = (
+            st.multiselect(
+                "Discursos",
+                codigos,
+                default=codigos,
+                key="heat_discos",
+            )
+            if codigos
+            else []
+        )
         df_heat = df_em[df_em["codigo"].isin(discos)] if discos else df_em
         df_heat = _emofilter.filter_panel(
-            df_heat, key="heat_filter", semas_options=semas_opts,
+            df_heat,
+            key="heat_filter",
+            semas_options=semas_opts,
             title="Filtros (semas / referentes / caracterización)",
         )
 
@@ -90,18 +99,25 @@ def render(db_path: Path) -> None:
 
         df_sc = df_em if codigo_sel == "(todos)" else df_em[df_em["codigo"] == codigo_sel]
         df_sc = _emofilter.filter_panel(
-            df_sc, key="scatter_filter", semas_options=semas_opts,
+            df_sc,
+            key="scatter_filter",
+            semas_options=semas_opts,
             title="Filtros (semas / referentes / caracterización)",
         )
 
         fig_scatter = charts.scatter_foria_intensidad(
-            df_sc, codigo=None, top_actores=top_act_s, actor_col=actor_col,
+            df_sc,
+            codigo=None,
+            top_actores=top_act_s,
+            actor_col=actor_col,
         )
         st.plotly_chart(fig_scatter, use_container_width=True)
 
 
 def _render_resumen_actores(
-    df_em: pd.DataFrame, top_act: int, actor_col: str = "experienciador_efectivo",
+    df_em: pd.DataFrame,
+    top_act: int,
+    actor_col: str = "experienciador_efectivo",
 ) -> None:
     """Renderiza una tabla resumen con los actores más activos."""
     if "tipo_emocion" not in df_em.columns or actor_col not in df_em.columns:

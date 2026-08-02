@@ -58,10 +58,7 @@ class JsonlAppender:
         """Escribe el post si no estaba; devuelve True si escribió."""
         if record.id in self._ids:
             return False
-        self._fh.write(
-            json.dumps(record.to_json_dict(), ensure_ascii=False, default=str)
-            + "\n"
-        )
+        self._fh.write(json.dumps(record.to_json_dict(), ensure_ascii=False, default=str) + "\n")
         self._fh.flush()
         self._ids.add(record.id)
         return True
@@ -73,7 +70,7 @@ class JsonlAppender:
         """Cierra el archivo."""
         self._fh.close()
 
-    def __enter__(self) -> "JsonlAppender":
+    def __enter__(self) -> JsonlAppender:
         return self
 
     def __exit__(self, *exc: object) -> None:

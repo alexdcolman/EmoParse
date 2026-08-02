@@ -44,15 +44,19 @@ def render(db_path: Path) -> None:
     total_pending = sum(s.pending for s in statuses if s.ejecutada)
     sin_correr = [s.stage for s in statuses if not s.ejecutada]
     if total_failed == 0 and total_pending == 0:
-        st.markdown("""
+        st.markdown(
+            """
         <div class='ep-card' style='border-left:3px solid var(--ok);'>
             <p style='margin:0;color:var(--ok);font-family:"DM Mono",monospace;font-size:0.85rem;'>
                 ✓ Run completo. Todas las stages procesadas sin errores.
             </p>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
     else:
-        st.markdown(f"""
+        st.markdown(
+            f"""
         <div class='ep-card' style='border-left:3px solid {"var(--danger)" if total_failed else "var(--accent)"};'>
             <p style='margin:0;font-family:"DM Mono",monospace;font-size:0.85rem;'>
                 <span style='color:var(--danger);'>{total_failed} errores</span>
@@ -60,7 +64,9 @@ def render(db_path: Path) -> None:
                 <span style='color:var(--accent);'>{total_pending} pendientes</span>
             </p>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
 
     st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
 
@@ -91,17 +97,17 @@ def _render_stage_row(s: data_layer.StageStatus) -> None:
         # Sin ejecución no hay porcentaje que informar: lo que falta no es
         # trabajo pendiente sino una stage que este run no corrió.
         etiqueta = "no ejecutada" if not s.ejecutada else "sin unidades"
-        detalle = (
-            f" · {s.total} unidades a su alcance"
-            if not s.ejecutada and s.total else ""
-        )
-        st.markdown(f"""
+        detalle = f" · {s.total} unidades a su alcance" if not s.ejecutada and s.total else ""
+        st.markdown(
+            f"""
         <div style='display:flex;align-items:center;justify-content:space-between;
                     padding:0.5rem 0.8rem;border-bottom:1px solid var(--border-soft);font-size:0.85rem;'>
             <span style='color:var(--dim);font-family:DM Mono,monospace;'>{s.stage}{detalle}</span>
             <span class='badge badge-dim'>{etiqueta}</span>
         </div>
-        """, unsafe_allow_html=True)
+        """,
+            unsafe_allow_html=True,
+        )
         return
 
     pct = s.pct or 0
@@ -110,7 +116,8 @@ def _render_stage_row(s: data_layer.StageStatus) -> None:
     na_html = (
         f"<span style='color:var(--dim);font-family:DM Mono,monospace;font-size:0.78rem;'>"
         f"— {s.no_aplica} n/a</span>"
-        if s.no_aplica else ""
+        if s.no_aplica
+        else ""
     )
     summary_html = (
         f"<div style='display:flex;align-items:center;gap:0.8rem;font-size:0.85rem;'>"

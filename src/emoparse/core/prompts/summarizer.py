@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from emoparse.core.prompts._loader import render
 
-
 SYSTEM_FRAGMENTO = (
     "Sos un asistente que resume texto. Tu tarea es generar resúmenes "
     "fieles a la fuente, conservando actores, acciones principales y "

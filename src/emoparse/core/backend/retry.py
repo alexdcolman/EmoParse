@@ -8,8 +8,9 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 from loguru import logger
 
@@ -25,7 +26,7 @@ T = TypeVar("T")
 class RetryConfig:
     """Parámetros de retry.
 
-    max_retries: número máximo de reintentos.  
+    max_retries: número máximo de reintentos.
     delays_seconds: lista de delays entre intentos.
     """
 
@@ -47,7 +48,7 @@ def retry_with_backoff(
 ) -> T:
     """Ejecuta fn() reintentando ante TransientBackendError.
 
-    Máximo intentos: config.max_retries + 1.  
+    Máximo intentos: config.max_retries + 1.
     Raises: PermanentBackendError inmediato, TransientBackendError
     tras agotar reintentos, otras excepciones propagadas.
     """
@@ -65,8 +66,7 @@ def retry_with_backoff(
                 delay_idx = min(attempt, len(config.delays_seconds) - 1)
                 delay = config.delays_seconds[delay_idx]
                 logger.warning(
-                    "[retry] TransientBackendError en intento {}/{}: {}. "
-                    "Reintentando en {}s.",
+                    "[retry] TransientBackendError en intento {}/{}: {}. Reintentando en {}s.",
                     attempt + 1,
                     config.max_retries + 1,
                     exc,

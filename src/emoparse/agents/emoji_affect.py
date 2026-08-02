@@ -43,7 +43,7 @@ class EmojiAffectAgent(BaseBatchAgent[ListaEmojiAfectoBatchSchema]):
         backend: LLMBackend,
         heuristicas: str | None = None,
         retry_config: Any | None = None,
-        genre: "Genre | None" = None,
+        genre: Genre | None = None,
     ) -> None:
         """
         Args:
@@ -86,6 +86,4 @@ class EmojiAffectAgent(BaseBatchAgent[ListaEmojiAfectoBatchSchema]):
         item: EmojiAfectoBatchItemSchema,
         row: pd.Series,
     ) -> dict[str, Any]:
-        return {
-            "afecto": json.dumps(item.afecto.model_dump(), ensure_ascii=False)
-        }
+        return {"afecto": json.dumps(item.afecto.model_dump(), ensure_ascii=False)}

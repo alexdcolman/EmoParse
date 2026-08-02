@@ -60,9 +60,7 @@ class Pseudonymizer:
     def alias(self, handle: str) -> str:
         """Alias estable para un handle (insensible a mayúsculas y '@')."""
         norm = handle.lstrip("@").strip().lower()
-        digest = hashlib.sha256(
-            (self._salt + ":" + norm).encode("utf-8")
-        ).hexdigest()
+        digest = hashlib.sha256((self._salt + ":" + norm).encode("utf-8")).hexdigest()
         return f"u_{digest[:_ALIAS_LEN]}"
 
     def apply(self, record: PostRecord) -> PostRecord:
@@ -86,6 +84,7 @@ class Pseudonymizer:
 
     def _rewrite_text(self, texto: str) -> str:
         """Reescribe @menciones a handles conocidos dentro del texto."""
+
         def _sub(match: re.Match[str]) -> str:
             handle = match.group(1)
             if handle.lower() in self._known_handles:

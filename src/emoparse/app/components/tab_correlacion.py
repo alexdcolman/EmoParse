@@ -19,17 +19,16 @@ import streamlit as st
 
 from emoparse.app import data as data_layer
 from emoparse.app import styles
-from emoparse.viz import foria as foria_viz
 from emoparse.viz.theme import ACCENT, SURFACE, base_layout
-
 
 #: Etiquetas y descripciones de la unidad de copresencia.
 _UNIDADES: dict[str, tuple[str, str]] = {
     "frase": ("Por frase", "Pares de emociones que caen en una misma frase."),
-    "hilo": ("Por hilo", "Pares de emociones que coexisten en una misma "
-             "conversación (hilo)."),
-    "hashtag": ("Por #hashtag", "Pares de emociones que coexisten en los "
-                "posts de un mismo hashtag."),
+    "hilo": ("Por hilo", "Pares de emociones que coexisten en una misma conversación (hilo)."),
+    "hashtag": (
+        "Por #hashtag",
+        "Pares de emociones que coexisten en los posts de un mismo hashtag.",
+    ),
 }
 
 
@@ -55,10 +54,7 @@ def render(db_path: Path) -> None:
         return
 
     df = df.copy()
-    df["emo"] = (
-        df["tipo_emocion_canonico"].fillna("").replace("", pd.NA)
-        .fillna(df["tipo_emocion"])
-    )
+    df["emo"] = df["tipo_emocion_canonico"].fillna("").replace("", pd.NA).fillna(df["tipo_emocion"])
     df = df[df["emo"].notna() & (df["emo"].astype(str).str.strip() != "")]
     if df.empty:
         st.info("Sin emociones tipificadas.")
@@ -95,9 +91,7 @@ def render(db_path: Path) -> None:
             n_multi += 1
             for a, b in combinations(emos, 2):
                 pair_counts[(a, b)] += 1
-                pair_frases[(a, b)].extend(
-                    sorted(emo_units[a] | emo_units[b])
-                )
+                pair_frases[(a, b)].extend(sorted(emo_units[a] | emo_units[b]))
 
     unidad_n = {"frase": "frases", "hilo": "hilos", "hashtag": "hashtags"}[unidad]
     if not pair_counts:
@@ -133,18 +127,19 @@ def render(db_path: Path) -> None:
                 denom = min(solo_counts[a], solo_counts[b]) or 1
                 assoc.loc[a, b] = pair_counts.get(_pair(a, b), 0) / denom
 
-    st.markdown(
-        f"#### Matriz (color = asociación · número = {unidad_n} juntas / "
-        "diagonal = total)"
-    )
+    st.markdown(f"#### Matriz (color = asociación · número = {unidad_n} juntas / diagonal = total)")
     _render_matrix(assoc, counts_m)
 
     # ── Ranking de pares ──────────────────────────────────────────────────────
     st.markdown("#### Pares más frecuentes")
-    pares = pd.DataFrame(
-        [(a, b, n) for (a, b), n in pair_counts.items()],
-        columns=["emoción A", "emoción B", f"{unidad_n} juntas"],
-    ).sort_values(f"{unidad_n} juntas", ascending=False).reset_index(drop=True)
+    pares = (
+        pd.DataFrame(
+            [(a, b, n) for (a, b), n in pair_counts.items()],
+            columns=["emoción A", "emoción B", f"{unidad_n} juntas"],
+        )
+        .sort_values(f"{unidad_n} juntas", ascending=False)
+        .reset_index(drop=True)
+    )
     st.dataframe(pares, use_container_width=True, hide_index=True)
 
     # ── Detalle de un par: frases con su análisis emocional ───────────────────
@@ -167,8 +162,7 @@ def render(db_path: Path) -> None:
             tope = 40
             st.caption(
                 f"{len(frases)} frase(s) del par «{emo_a}» × «{emo_b}»"
-                + (f" (se muestran las primeras {tope})."
-                   if len(frases) > tope else ".")
+                + (f" (se muestran las primeras {tope})." if len(frases) > tope else ".")
             )
             for codigo, frase_idx in frases[:tope]:
                 _render_frase_analisis(df, codigo, frase_idx)
@@ -183,9 +177,7 @@ def _agrupar(
     posts sin hilo forman su propio grupo); 'hashtag' por hashtag (un post
     con dos hashtags integra ambos grupos).
     """
-    grupos: dict[str, dict[str, set[tuple[str, int]]]] = defaultdict(
-        lambda: defaultdict(set)
-    )
+    grupos: dict[str, dict[str, set[tuple[str, int]]]] = defaultdict(lambda: defaultdict(set))
 
     def _sumar(clave: str, row) -> None:
         grupos[clave][str(row.emo)].add((str(row.codigo), int(row.frase_idx)))
@@ -195,14 +187,14 @@ def _agrupar(
             _sumar(f"{row.codigo}·u{row.frase_idx}", row)
     elif unidad == "hilo":
         ctx = data_layer.get_post_contexto(db_path)
-        conv = (
-            dict(zip(ctx["codigo"].astype(str), ctx["conversacion_id"]))
-            if not ctx.empty else {}
-        )
+        conv = dict(zip(ctx["codigo"].astype(str), ctx["conversacion_id"])) if not ctx.empty else {}
         for row in df.itertuples(index=False):
             clave = conv.get(str(row.codigo))
-            if clave is None or (isinstance(clave, float) and pd.isna(clave)) \
-                    or not str(clave).strip():
+            if (
+                clave is None
+                or (isinstance(clave, float) and pd.isna(clave))
+                or not str(clave).strip()
+            ):
                 clave = str(row.codigo)
             _sumar(str(clave), row)
     elif unidad == "hashtag":
@@ -225,28 +217,40 @@ def _pair(a: str, b: str) -> tuple[str, str]:
 def _render_matrix(assoc: pd.DataFrame, counts_m: pd.DataFrame) -> None:
     """Heatmap estético de la matriz de asociación (texto = frases juntas)."""
     text = counts_m.map(lambda v: str(int(v)))
-    fig = go.Figure(go.Heatmap(
-        z=assoc.values, x=assoc.columns.tolist(), y=assoc.index.tolist(),
-        text=text.values.tolist(), texttemplate="%{text}",
-        textfont=dict(size=9),
-        # La asociación es intensidad, no foria: escala monocroma sobre el
-        # acento, para no sugerir una lectura fórica donde no la hay. Los
-        # colores van literales porque plotly no resuelve variables CSS: el
-        # tema los expone como constantes para eso.
-        colorscale=[
-            [0.0, SURFACE], [0.35, "#3d3a30"],
-            [0.7, "#8a7548"], [1.0, ACCENT],
-        ], zmin=0, zmax=1, showscale=True,
-        colorbar=dict(title="asociación", tickfont=dict(size=9)),
-        hovertemplate="<b>%{y}</b> × <b>%{x}</b><br>frases juntas: %{text}"
-                      "<br>asociación: %{z:.0%}<extra></extra>",
-    ))
-    fig.update_layout(**base_layout(
-        height=max(360, len(assoc) * 26 + 140),
-        margin=dict(l=10, r=10, t=10, b=10),
-        xaxis=dict(tickangle=-45),
-        yaxis=dict(autorange="reversed"),
-    ))
+    fig = go.Figure(
+        go.Heatmap(
+            z=assoc.values,
+            x=assoc.columns.tolist(),
+            y=assoc.index.tolist(),
+            text=text.values.tolist(),
+            texttemplate="%{text}",
+            textfont=dict(size=9),
+            # La asociación es intensidad, no foria: escala monocroma sobre el
+            # acento, para no sugerir una lectura fórica donde no la hay. Los
+            # colores van literales porque plotly no resuelve variables CSS: el
+            # tema los expone como constantes para eso.
+            colorscale=[
+                [0.0, SURFACE],
+                [0.35, "#3d3a30"],
+                [0.7, "#8a7548"],
+                [1.0, ACCENT],
+            ],
+            zmin=0,
+            zmax=1,
+            showscale=True,
+            colorbar=dict(title="asociación", tickfont=dict(size=9)),
+            hovertemplate="<b>%{y}</b> × <b>%{x}</b><br>frases juntas: %{text}"
+            "<br>asociación: %{z:.0%}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        **base_layout(
+            height=max(360, len(assoc) * 26 + 140),
+            margin=dict(l=10, r=10, t=10, b=10),
+            xaxis=dict(tickangle=-45),
+            yaxis=dict(autorange="reversed"),
+        )
+    )
     st.plotly_chart(fig, use_container_width=True)
 
 

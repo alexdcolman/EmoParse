@@ -37,9 +37,7 @@ STAGE_ORDER: tuple[str, ...] = EMOPARSE_DAG.toposort()
 MIN_USOS_HASHTAG = 1
 
 #: Stages que persisten en `discursos` (1 fila = 1 discurso).
-_DISCURSO_STAGES: frozenset[str] = frozenset(
-    {"summarizer", "metadata", "enunciation"}
-)
+_DISCURSO_STAGES: frozenset[str] = frozenset({"summarizer", "metadata", "enunciation"})
 
 #: Stages que persisten en `frases`, con su prefijo de columna.
 _FRASE_STAGE_COL: dict[str, str] = {
@@ -57,10 +55,16 @@ _EMOCION_STAGE_COLS: dict[str, tuple[str, str | None]] = {
 }
 
 #: Stages del corpus de posts: solo se listan si el run trae posts.
-_POST_STAGES: frozenset[str] = frozenset({
-    "technoparse", "reframing", "hashtag_semiotics", "tecno_usage",
-    "emoji_affect", "vision_describe",
-})
+_POST_STAGES: frozenset[str] = frozenset(
+    {
+        "technoparse",
+        "reframing",
+        "hashtag_semiotics",
+        "tecno_usage",
+        "emoji_affect",
+        "vision_describe",
+    }
+)
 
 #: Atributo de `mencion_canonico` que resuelve cada stage de referente.
 _REFERENTE_STAGE_ATTR: dict[str, str] = {"modalidad": "modalidad"}
@@ -107,6 +111,7 @@ class StageStatus:
 #  API
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def collect_stage_statuses(conn: sqlite3.Connection) -> list[StageStatus]:
     """Estado de todas las stages del pipeline, en orden topológico."""
     ejecutadas = _stages_ejecutadas(conn)
@@ -130,9 +135,7 @@ def collect_from_path(db_path: Path | str) -> list[StageStatus]:
         conn.close()
 
 
-def _status_de(
-    conn: sqlite3.Connection, stage: str, ejecutada: bool
-) -> StageStatus:
+def _status_de(conn: sqlite3.Connection, stage: str, ejecutada: bool) -> StageStatus:
     """Despacha el conteo de una stage según su granularidad."""
     if stage in _DISCURSO_STAGES:
         return _discurso_stage(conn, stage, ejecutada)
@@ -155,12 +158,13 @@ def _status_de(
 #  Conteos por granularidad
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _discurso_stage(
-    conn: sqlite3.Connection, stage: str, ejecutada: bool
-) -> StageStatus:
+
+def _discurso_stage(conn: sqlite3.Connection, stage: str, ejecutada: bool) -> StageStatus:
     """Stage que escribe un payload por discurso."""
     return _payload_stage(
-        conn, stage, ejecutada,
+        conn,
+        stage,
+        ejecutada,
         tabla="discursos",
         col_payload=f"{stage}_payload",
         col_error=f"{stage}_error",
@@ -169,13 +173,13 @@ def _discurso_stage(
     )
 
 
-def _frase_stage(
-    conn: sqlite3.Connection, stage: str, ejecutada: bool
-) -> StageStatus:
+def _frase_stage(conn: sqlite3.Connection, stage: str, ejecutada: bool) -> StageStatus:
     """Stage que escribe un payload por frase."""
     col = _FRASE_STAGE_COL[stage]
     return _payload_stage(
-        conn, stage, ejecutada,
+        conn,
+        stage,
+        ejecutada,
         tabla="frases",
         col_payload=f"{col}_payload",
         col_error=f"{col}_error",
@@ -211,13 +215,11 @@ def _payload_stage(
     )
     failed = _uno(
         conn,
-        f"SELECT COUNT(*) FROM {tabla} WHERE ({scope}) "
-        f"AND {col_error} IS NOT NULL",
+        f"SELECT COUNT(*) FROM {tabla} WHERE ({scope}) AND {col_error} IS NOT NULL",
     )
     completed = _uno(
         conn,
-        f"SELECT COUNT(*) FROM {tabla} WHERE ({scope}) "
-        f"AND {col_payload} IS NOT NULL",
+        f"SELECT COUNT(*) FROM {tabla} WHERE ({scope}) AND {col_payload} IS NOT NULL",
     )
     no_aplica = _uno(conn, f"SELECT COUNT(*) FROM {tabla} WHERE NOT ({scope})")
     codigos: list[str] = []
@@ -229,8 +231,13 @@ def _payload_stage(
             f"ORDER BY {col_codigo} LIMIT 50",
         )
     return StageStatus(
-        stage=stage, pending=pending, failed=failed, completed=completed,
-        no_aplica=no_aplica, ejecutada=ejecutada, unidad=unidad,
+        stage=stage,
+        pending=pending,
+        failed=failed,
+        completed=completed,
+        no_aplica=no_aplica,
+        ejecutada=ejecutada,
+        unidad=unidad,
         failed_codigos=codigos,
     )
 
@@ -248,13 +255,15 @@ def _explode_stage(conn: sqlite3.Connection, ejecutada: bool) -> StageStatus:
     completed = _uno(conn, "SELECT COUNT(DISTINCT codigo) FROM emociones")
     con_emociones = _uno(
         conn,
-        "SELECT COUNT(DISTINCT codigo) FROM frases "
-        f"WHERE {_TIENE_EMOCIONES_SQL}",
+        f"SELECT COUNT(DISTINCT codigo) FROM frases WHERE {_TIENE_EMOCIONES_SQL}",
     )
     pending = max(con_emociones - completed, 0)
     return StageStatus(
-        stage="explode_emotions", pending=pending, completed=completed,
-        no_aplica=max(total - completed - pending, 0), ejecutada=ejecutada,
+        stage="explode_emotions",
+        pending=pending,
+        completed=completed,
+        no_aplica=max(total - completed - pending, 0),
+        ejecutada=ejecutada,
         unidad="discursos",
     )
 
@@ -273,9 +282,7 @@ json_array_length(
 """.strip()
 
 
-def _emocion_stage(
-    conn: sqlite3.Connection, stage: str, ejecutada: bool
-) -> StageStatus:
+def _emocion_stage(conn: sqlite3.Connection, stage: str, ejecutada: bool) -> StageStatus:
     """Stage medida sobre la tabla `emociones` (1 fila = 1 emoción)."""
     col_p, col_e = _EMOCION_STAGE_COLS[stage]
     cols = _columnas(conn, "emociones")
@@ -287,21 +294,18 @@ def _emocion_stage(
         stage=stage,
         pending=_uno(
             conn,
-            f"SELECT COUNT(*) FROM emociones "
-            f"WHERE {col_p} IS NULL AND NOT ({err})",
+            f"SELECT COUNT(*) FROM emociones WHERE {col_p} IS NULL AND NOT ({err})",
         ),
-        failed=_uno(conn, f"SELECT COUNT(*) FROM emociones WHERE {err}")
-        if tiene_error else 0,
-        completed=_uno(
-            conn, f"SELECT COUNT(*) FROM emociones WHERE {col_p} IS NOT NULL"
-        ),
+        failed=_uno(conn, f"SELECT COUNT(*) FROM emociones WHERE {err}") if tiene_error else 0,
+        completed=_uno(conn, f"SELECT COUNT(*) FROM emociones WHERE {col_p} IS NOT NULL"),
         ejecutada=ejecutada,
         unidad="emociones",
         failed_codigos=_lista(
             conn,
-            f"SELECT DISTINCT codigo FROM emociones WHERE {err} "
-            "ORDER BY codigo LIMIT 50",
-        ) if tiene_error else [],
+            f"SELECT DISTINCT codigo FROM emociones WHERE {err} ORDER BY codigo LIMIT 50",
+        )
+        if tiene_error
+        else [],
     )
 
 
@@ -313,15 +317,14 @@ def _judge_stage(conn: sqlite3.Connection, ejecutada: bool) -> StageStatus:
     total = _uno(conn, "SELECT COUNT(*) FROM emociones")
     if "judgments" not in tablas:
         return StageStatus(stage="judge", pending=total, ejecutada=ejecutada)
-    completed = _uno(
-        conn, "SELECT COUNT(*) FROM judgments WHERE coherente IS NOT NULL"
-    )
-    failed = _uno(
-        conn, "SELECT COUNT(*) FROM judgments WHERE judge_error IS NOT NULL"
-    )
+    completed = _uno(conn, "SELECT COUNT(*) FROM judgments WHERE coherente IS NOT NULL")
+    failed = _uno(conn, "SELECT COUNT(*) FROM judgments WHERE judge_error IS NOT NULL")
     return StageStatus(
-        stage="judge", pending=max(total - completed - failed, 0),
-        failed=failed, completed=completed, ejecutada=ejecutada,
+        stage="judge",
+        pending=max(total - completed - failed, 0),
+        failed=failed,
+        completed=completed,
+        ejecutada=ejecutada,
         unidad="emociones",
         failed_codigos=_lista(
             conn,
@@ -331,9 +334,7 @@ def _judge_stage(conn: sqlite3.Connection, ejecutada: bool) -> StageStatus:
     )
 
 
-def _referente_stage(
-    conn: sqlite3.Connection, stage: str, ejecutada: bool
-) -> StageStatus:
+def _referente_stage(conn: sqlite3.Connection, stage: str, ejecutada: bool) -> StageStatus:
     """Stages que anotan referentes o vínculos marca↔referente."""
     tablas = _tablas(conn)
     if "mencion_canonico" not in tablas:
@@ -342,22 +343,23 @@ def _referente_stage(
     if stage == "semas":
         if "canonico_semas" not in tablas:
             return StageStatus(stage=stage, ejecutada=ejecutada)
-        total = _uno(
-            conn, "SELECT COUNT(DISTINCT canonical_id) FROM mencion_canonico"
-        )
-        completed = _uno(
-            conn, "SELECT COUNT(DISTINCT canonical_id) FROM canonico_semas"
-        )
+        total = _uno(conn, "SELECT COUNT(DISTINCT canonical_id) FROM mencion_canonico")
+        completed = _uno(conn, "SELECT COUNT(DISTINCT canonical_id) FROM canonico_semas")
         return StageStatus(
-            stage=stage, pending=max(total - completed, 0),
-            completed=completed, ejecutada=ejecutada, unidad="referentes",
+            stage=stage,
+            pending=max(total - completed, 0),
+            completed=completed,
+            ejecutada=ejecutada,
+            unidad="referentes",
         )
 
     if stage == "deixis":
         # La stage recorre todos los discursos, pero solo deja vínculos donde
         # hay marcas de 1ª/2ª persona que resolver: el resto no es pendiente.
         return _cobertura_barrida(
-            conn, stage, ejecutada,
+            conn,
+            stage,
+            ejecutada,
             total=_uno(conn, "SELECT COUNT(*) FROM discursos"),
             completed=_uno(
                 conn,
@@ -377,17 +379,12 @@ def _referente_stage(
     # tecno: barrido sin resultado no es trabajo pendiente. Sin ejecución, en
     # cambio, todo lo no rechazado sí está pendiente.
     aplica = "status != 'rejected'" if "status" in cols else "1"
-    en_alcance = _uno(
-        conn, f"SELECT COUNT(*) FROM mencion_canonico WHERE {aplica}"
-    )
+    en_alcance = _uno(conn, f"SELECT COUNT(*) FROM mencion_canonico WHERE {aplica}")
     completed = _uno(
         conn,
-        f"SELECT COUNT(*) FROM mencion_canonico "
-        f"WHERE ({aplica}) AND {attr} IS NOT NULL",
+        f"SELECT COUNT(*) FROM mencion_canonico WHERE ({aplica}) AND {attr} IS NOT NULL",
     )
-    rechazados = _uno(
-        conn, f"SELECT COUNT(*) FROM mencion_canonico WHERE NOT ({aplica})"
-    )
+    rechazados = _uno(conn, f"SELECT COUNT(*) FROM mencion_canonico WHERE NOT ({aplica})")
     sin_resultado = max(en_alcance - completed, 0)
     return StageStatus(
         stage=stage,
@@ -400,9 +397,7 @@ def _referente_stage(
     )
 
 
-def _post_stage(
-    conn: sqlite3.Connection, stage: str, ejecutada: bool
-) -> StageStatus:
+def _post_stage(conn: sqlite3.Connection, stage: str, ejecutada: bool) -> StageStatus:
     """Stages del corpus de posts, cada una a su granularidad."""
     tablas = _tablas(conn)
 
@@ -412,43 +407,48 @@ def _post_stage(
         # Determinista y de una sola pasada: los posts que no dejaron
         # entidades es porque no tenían tecnolingüísticos, no porque falten.
         return _cobertura_barrida(
-            conn, stage, ejecutada,
+            conn,
+            stage,
+            ejecutada,
             total=_uno(conn, "SELECT COUNT(*) FROM discursos"),
-            completed=_uno(
-                conn, "SELECT COUNT(DISTINCT codigo) FROM tecno_entidades"
-            ),
+            completed=_uno(conn, "SELECT COUNT(DISTINCT codigo) FROM tecno_entidades"),
         )
 
     if stage == "reframing":
         # Solo califican las citas y los reposts con comentario propio: el
         # resto del corpus nunca entra en esta stage.
         return _payload_stage(
-            conn, stage, ejecutada,
+            conn,
+            stage,
+            ejecutada,
             tabla="posts",
             col_payload="reframing_payload",
             col_error="reframing_error",
             col_codigo="post_id",
             unidad="posts que citan",
             scope="es_repost_puro = 0 AND (cita_a IS NOT NULL OR "
-                  "(reposteo_a IS NOT NULL AND TRIM(texto) != ''))",
+            "(reposteo_a IS NOT NULL AND TRIM(texto) != ''))",
         )
 
     if stage == "vision_describe":
         return _payload_stage(
-            conn, stage, ejecutada,
+            conn,
+            stage,
+            ejecutada,
             tabla="media",
             col_payload="descripcion_payload",
             col_error="descripcion_error",
             col_codigo=None,
             unidad="imágenes",
-            scope="tipo = 'imagen' AND "
-                  "(url IS NOT NULL OR path_local IS NOT NULL)",
+            scope="tipo = 'imagen' AND (url IS NOT NULL OR path_local IS NOT NULL)",
         )
 
     if stage == "hashtag_semiotics":
         # Los hashtags por debajo del umbral de usos no se analizan.
         return _payload_stage(
-            conn, stage, ejecutada,
+            conn,
+            stage,
+            ejecutada,
             tabla="hashtags",
             col_payload="analisis_payload",
             col_error="analisis_error",
@@ -524,6 +524,7 @@ def _cobertura_barrida(
 #  Helpers de lectura
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _stages_ejecutadas(conn: sqlite3.Connection) -> set[str]:
     """Stages con registro de ejecución en `run_metrics`."""
     if "run_metrics" not in _tablas(conn):
@@ -533,11 +534,7 @@ def _stages_ejecutadas(conn: sqlite3.Connection) -> set[str]:
 
 def _tablas(conn: sqlite3.Connection) -> set[str]:
     """Nombres de tabla existentes en la DB."""
-    return {
-        r[0] for r in conn.execute(
-            "SELECT name FROM sqlite_master WHERE type = 'table'"
-        )
-    }
+    return {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
 
 
 def _columnas(conn: sqlite3.Connection, tabla: str) -> set[str]:

@@ -20,14 +20,14 @@ from emoparse.viz import foria
 #: del simulacro, tipos de tecnolingüístico, modalidades referenciales). No es
 #: la paleta fórica: acá el color identifica, no evalúa.
 _HUES: dict[str, str] = {
-    "azul":    "#7c9ec8",
-    "verde":   "#6ec89a",
+    "azul": "#7c9ec8",
+    "verde": "#6ec89a",
     "violeta": "#b08ad0",
-    "oro":     "#c8a96e",
-    "rosa":    "#d28aa8",
+    "oro": "#c8a96e",
+    "rosa": "#d28aa8",
     "celeste": "#8ac6d0",
-    "terra":   "#cf8f6e",
-    "rojo":    "#c88a8a",
+    "terra": "#cf8f6e",
+    "rojo": "#c88a8a",
 }
 
 #: Tokens semánticos → matiz. Que el experienciador y el hashtag compartan el
@@ -35,21 +35,21 @@ _HUES: dict[str, str] = {
 #: tres archivos como estaba antes.
 _TOKENS: dict[str, str] = {
     # Roles del simulacro (tabs Simulacros, Búsqueda, Co-ocurrencia).
-    "rol-experienciador":        "azul",
-    "rol-emocion":               "violeta",
-    "rol-fuente":                "verde",
-    "rol-mediador":              "oro",
-    "rol-verif-normativo":       "rosa",
-    "rol-verif-observacional":   "celeste",
-    "rol-opmod":                 "terra",
+    "rol-experienciador": "azul",
+    "rol-emocion": "violeta",
+    "rol-fuente": "verde",
+    "rol-mediador": "oro",
+    "rol-verif-normativo": "rosa",
+    "rol-verif-observacional": "celeste",
+    "rol-opmod": "terra",
     # Tipos de tecnolingüístico (chips de la tab Revisión).
-    "tecno-hashtag":             "azul",
-    "tecno-mencion":             "verde",
-    "tecno-emoji":               "oro",
-    "tecno-url":                 "celeste",
-    "tecno-tecnografismo":       "rosa",
+    "tecno-hashtag": "azul",
+    "tecno-mencion": "verde",
+    "tecno-emoji": "oro",
+    "tecno-url": "celeste",
+    "tecno-tecnografismo": "rosa",
     # Modalidades referenciales (tab Referentes).
-    "mod-designacion":           "verde",
+    "mod-designacion": "verde",
     "mod-referencia_gramatical": "azul",
     "mod-identificacion_inferencial": "rojo",
 }
@@ -68,21 +68,22 @@ def var_soft(token: str) -> str:
 #: Variables CSS de foria, generadas desde la paleta canónica (`--euforico`,
 #: `--disforico`, ...) más su versión translúcida para fondos de chip.
 _FORIA_VARS = "\n".join(
-    f"    --{clave}: {color};\n"
-    f"    --{clave}-soft: {foria.rgba(color, 0.16)};"
+    f"    --{clave}: {color};\n    --{clave}-soft: {foria.rgba(color, 0.16)};"
     for clave, color in foria.FORIA_COLORS.items()
     if clave is not None
 )
 
 #: Matices categoriales y sus tokens semánticos, como variables CSS.
-_HUE_VARS = "\n".join(
-    f"    --hue-{nombre}: {color};\n"
-    f"    --hue-{nombre}-soft: {foria.rgba(color, 0.15)};"
-    for nombre, color in _HUES.items()
-) + "\n" + "\n".join(
-    f"    --{token}: var(--hue-{hue});\n"
-    f"    --{token}-soft: var(--hue-{hue}-soft);"
-    for token, hue in _TOKENS.items()
+_HUE_VARS = (
+    "\n".join(
+        f"    --hue-{nombre}: {color};\n    --hue-{nombre}-soft: {foria.rgba(color, 0.15)};"
+        for nombre, color in _HUES.items()
+    )
+    + "\n"
+    + "\n".join(
+        f"    --{token}: var(--hue-{hue});\n    --{token}-soft: var(--hue-{hue}-soft);"
+        for token, hue in _TOKENS.items()
+    )
 )
 
 #: Chips de la leyenda fija, en el orden de lectura de las forias.
@@ -97,10 +98,7 @@ _FORIA_CHIPS = "".join(
 #: semitransparente y sin capturar el puntero, para no tapar resultados ni
 #: interceptar clics; se opaca al pasar por encima.
 FORIA_LEGEND = (
-    "<div class='ep-legend'>"
-    "<span class='ep-legend-title'>foria</span>"
-    f"{_FORIA_CHIPS}"
-    "</div>"
+    f"<div class='ep-legend'><span class='ep-legend-title'>foria</span>{_FORIA_CHIPS}</div>"
 )
 
 
@@ -426,8 +424,6 @@ button[kind="secondary"]:hover { border-color: var(--accent) !important; }
 
 CSS = (
     "<style>"
-    + _BASE.replace("__FORIA_VARS__", _FORIA_VARS).replace(
-        "__HUE_VARS__", _HUE_VARS
-    )
+    + _BASE.replace("__FORIA_VARS__", _FORIA_VARS).replace("__HUE_VARS__", _HUE_VARS)
     + "</style>"
 )

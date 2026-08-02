@@ -44,11 +44,13 @@ def fig_red(
     if df_aristas.empty:
         return _fig_vacia("Sin aristas para este grafo.")
 
-    top = set(
-        df_metricas.sort_values("pagerank", ascending=False)["nodo"]
-        .head(max_nodos)
-        .astype(str)
-    ) if not df_metricas.empty else None
+    top = (
+        set(
+            df_metricas.sort_values("pagerank", ascending=False)["nodo"].head(max_nodos).astype(str)
+        )
+        if not df_metricas.empty
+        else None
+    )
 
     G = nx.Graph()
     for r in df_aristas.to_dict(orient="records"):
@@ -64,9 +66,7 @@ def fig_red(
         return _fig_vacia("Sin nodos tras el filtro.")
 
     pos = nx.spring_layout(G, seed=42, weight="weight")
-    metricas = (
-        df_metricas.set_index("nodo") if not df_metricas.empty else None
-    )
+    metricas = df_metricas.set_index("nodo") if not df_metricas.empty else None
 
     edge_x: list[float | None] = []
     edge_y: list[float | None] = []
@@ -87,52 +87,73 @@ def fig_red(
         encabezado = (etiquetas or {}).get(str(nodo)) or str(nodo)
         textos.append(
             f"{encabezado}<br>pagerank={pagerank:.4f}"
-            + (f"<br>comunidad={int(comunidad)}" if comunidad is not None
-               and not pd.isna(comunidad) else "")
+            + (
+                f"<br>comunidad={int(comunidad)}"
+                if comunidad is not None and not pd.isna(comunidad)
+                else ""
+            )
         )
-        colores.append(
-            _color_comunidad(comunidad) if comunidad is not None else DIM
-        )
+        colores.append(_color_comunidad(comunidad) if comunidad is not None else DIM)
         tamanios.append(8 + 60 * math.sqrt(pagerank))
 
     fig = go.Figure()
-    fig.add_trace(go.Scatter(
-        x=edge_x, y=edge_y, mode="lines",
-        line=dict(width=0.5, color=BORDER),
-        hoverinfo="none", showlegend=False,
-    ))
-    fig.add_trace(go.Scatter(
-        x=node_x, y=node_y, mode="markers",
-        marker=dict(size=tamanios, color=colores, line=dict(width=0)),
-        text=textos, hoverinfo="text", showlegend=False,
-    ))
-    fig.update_layout(**base_layout(
-        xaxis=dict(visible=False), yaxis=dict(visible=False),
-        margin=dict(l=10, r=10, t=10, b=10), height=620,
-    ))
+    fig.add_trace(
+        go.Scatter(
+            x=edge_x,
+            y=edge_y,
+            mode="lines",
+            line=dict(width=0.5, color=BORDER),
+            hoverinfo="none",
+            showlegend=False,
+        )
+    )
+    fig.add_trace(
+        go.Scatter(
+            x=node_x,
+            y=node_y,
+            mode="markers",
+            marker=dict(size=tamanios, color=colores, line=dict(width=0)),
+            text=textos,
+            hoverinfo="text",
+            showlegend=False,
+        )
+    )
+    fig.update_layout(
+        **base_layout(
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            margin=dict(l=10, r=10, t=10, b=10),
+            height=620,
+        )
+    )
     return fig
 
 
 def fig_matriz_forica(matrix: pd.DataFrame) -> go.Figure:
     """Heatmap de la matriz de transición fórica padre→respuesta."""
-    fig = go.Figure(go.Heatmap(
-        z=matrix.values,
-        x=list(matrix.columns),
-        y=list(matrix.index),
-        colorscale=[
-            [0.0, "#16181f"],
-            [0.5, foria.FORIA_COLORS["ambiforico"]],
-            [1.0, foria.FORIA_COLORS["disforico"]],
-        ],
-        text=matrix.values,
-        texttemplate="%{text}",
-    ))
-    fig.update_layout(**base_layout(
-        title=titulo("Transición fórica padre → respuesta"),
-        xaxis_title="foria de la respuesta",
-        yaxis_title="foria del post padre",
-        margin=dict(l=10, r=10, t=40, b=10), height=420,
-    ))
+    fig = go.Figure(
+        go.Heatmap(
+            z=matrix.values,
+            x=list(matrix.columns),
+            y=list(matrix.index),
+            colorscale=[
+                [0.0, "#16181f"],
+                [0.5, foria.FORIA_COLORS["ambiforico"]],
+                [1.0, foria.FORIA_COLORS["disforico"]],
+            ],
+            text=matrix.values,
+            texttemplate="%{text}",
+        )
+    )
+    fig.update_layout(
+        **base_layout(
+            title=titulo("Transición fórica padre → respuesta"),
+            xaxis_title="foria de la respuesta",
+            yaxis_title="foria del post padre",
+            margin=dict(l=10, r=10, t=40, b=10),
+            height=420,
+        )
+    )
     return fig
 
 
@@ -146,18 +167,25 @@ def fig_perfil_forico(perfil: pd.DataFrame) -> go.Figure:
 
     fig = go.Figure()
     for f in forias:
-        fig.add_trace(go.Bar(
-            x=agg[f], y=etiquetas, name=foria.etiqueta(f), orientation="h",
-            marker_color=foria.FORIA_COLORS[f],
-            hovertemplate="%{y}<br>" + f + ": %{x}<extra></extra>",
-        ))
-    fig.update_layout(**base_layout(
-        barmode="stack",
-        margin=dict(l=10, r=10, t=10, b=10),
-        height=max(260, 44 * len(agg)),
-        xaxis_title="emociones",
-        legend=dict(orientation="h", y=-0.2, font=dict(size=10)),
-    ))
+        fig.add_trace(
+            go.Bar(
+                x=agg[f],
+                y=etiquetas,
+                name=foria.etiqueta(f),
+                orientation="h",
+                marker_color=foria.FORIA_COLORS[f],
+                hovertemplate="%{y}<br>" + f + ": %{x}<extra></extra>",
+            )
+        )
+    fig.update_layout(
+        **base_layout(
+            barmode="stack",
+            margin=dict(l=10, r=10, t=10, b=10),
+            height=max(260, 44 * len(agg)),
+            xaxis_title="emociones",
+            legend=dict(orientation="h", y=-0.2, font=dict(size=10)),
+        )
+    )
     return fig
 
 
@@ -167,26 +195,40 @@ def fig_hashtags_top(df: pd.DataFrame, top: int = 25) -> go.Figure:
         return _fig_vacia("Sin hashtags en el corpus.")
     head = df.head(top).iloc[::-1]
     colores = [foria.color(f) for f in head["foria_entorno"]]
-    fig = go.Figure(go.Bar(
-        x=head["n_usos"], y=["#" + v for v in head["valor_norm"]],
-        orientation="h", marker_color=colores,
-        customdata=head[["funcion", "acoplamiento"]].fillna("-").values,
-        hovertemplate="%{y}: %{x} usos<br>función: %{customdata[0]}"
-                      "<br>%{customdata[1]}<extra></extra>",
-    ))
-    fig.update_layout(**base_layout(
-        margin=dict(l=10, r=10, t=10, b=10),
-        height=max(300, 22 * len(head)),
-        xaxis_title="usos",
-    ))
+    fig = go.Figure(
+        go.Bar(
+            x=head["n_usos"],
+            y=["#" + v for v in head["valor_norm"]],
+            orientation="h",
+            marker_color=colores,
+            customdata=head[["funcion", "acoplamiento"]].fillna("-").values,
+            hovertemplate="%{y}: %{x} usos<br>función: %{customdata[0]}"
+            "<br>%{customdata[1]}<extra></extra>",
+        )
+    )
+    fig.update_layout(
+        **base_layout(
+            margin=dict(l=10, r=10, t=10, b=10),
+            height=max(300, 22 * len(head)),
+            xaxis_title="usos",
+        )
+    )
     return fig
 
 
 def _color_comunidad(comunidad: Any) -> str:
     """Color estable por id de comunidad."""
     paleta = [
-        "#6c5ce7", "#2e9e6b", "#d1495b", "#c9a227", "#3d9be9",
-        "#e07be0", "#e6873c", "#4dd0c4", "#9e6b2e", "#8a8799",
+        "#6c5ce7",
+        "#2e9e6b",
+        "#d1495b",
+        "#c9a227",
+        "#3d9be9",
+        "#e07be0",
+        "#e6873c",
+        "#4dd0c4",
+        "#9e6b2e",
+        "#8a8799",
     ]
     try:
         return paleta[int(comunidad) % len(paleta)]
@@ -197,7 +239,11 @@ def _color_comunidad(comunidad: Any) -> str:
 def _fig_vacia(mensaje: str) -> go.Figure:
     fig = go.Figure()
     fig.add_annotation(text=mensaje, showarrow=False, font=dict(color=DIM))
-    fig.update_layout(**base_layout(
-        xaxis=dict(visible=False), yaxis=dict(visible=False), height=240,
-    ))
+    fig.update_layout(
+        **base_layout(
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            height=240,
+        )
+    )
     return fig

@@ -14,6 +14,7 @@ from pathlib import Path
 
 import streamlit as st
 
+from emoparse.app import data
 from emoparse.app.components import (
     run_selector,
     tab_actores,
@@ -29,9 +30,7 @@ from emoparse.app.components import (
     tab_simulacros,
     tab_tabla,
 )
-from emoparse.app import data
 from emoparse.app.styles import CSS, FORIA_LEGEND
-
 
 #: Directorio donde se almacenan los runs (.sqlite).
 #: Puede configurarse vía variable de entorno; el valor por defecto
@@ -103,6 +102,7 @@ def main() -> None:
 
     if seccion == "Ejecutar":
         from emoparse.app.components import tab_ejecutar
+
         tab_ejecutar.render(db_path)
         return
 
@@ -141,8 +141,20 @@ def main() -> None:
         labels += ["🧵 Hilos y citas", "#️⃣ Hashtags", "✳ Tecno"]
 
     tabs = st.tabs(labels)
-    (tab_curva_, tab_act, tab_tab, tab_comp, tab_busq, tab_corr, tab_sim,
-     tab_enun, tab_dx, tab_ref, tab_rev, tab_est) = tabs[:12]
+    (
+        tab_curva_,
+        tab_act,
+        tab_tab,
+        tab_comp,
+        tab_busq,
+        tab_corr,
+        tab_sim,
+        tab_enun,
+        tab_dx,
+        tab_ref,
+        tab_rev,
+        tab_est,
+    ) = tabs[:12]
 
     with tab_curva_:
         tab_curva.render(db_path)
@@ -171,6 +183,7 @@ def main() -> None:
 
     if idx_red is not None:
         from emoparse.app.components import tab_red
+
         with tabs[idx_red]:
             tab_red.render(db_path)
 
@@ -180,8 +193,9 @@ def main() -> None:
             tab_hilos,
             tab_tecno,
         )
+
         # Las tres tabs de posts van después de Red (que ya está en labels).
-        tab_hil, tab_hash, tab_tec = tabs[idx_red + 1:idx_red + 4]
+        tab_hil, tab_hash, tab_tec = tabs[idx_red + 1 : idx_red + 4]
         with tab_hil:
             tab_hilos.render(db_path)
         with tab_hash:
@@ -211,8 +225,7 @@ def _render_runbar(db_path: Path) -> None:
         campos.insert(1, ("corpus", "posts", False))
     pendientes, errores = _resumen_stages(db_path)
     partes = [
-        f"<span>{etiqueta} "
-        f"<b class='{'ep-runbar-id' if destacado else ''}'>{valor}</b></span>"
+        f"<span>{etiqueta} <b class='{'ep-runbar-id' if destacado else ''}'>{valor}</b></span>"
         for etiqueta, valor, destacado in campos
     ]
     if errores:
@@ -222,9 +235,7 @@ def _render_runbar(db_path: Path) -> None:
     else:
         partes.append("<span class='badge badge-ok'>sin pendientes</span>")
     st.markdown(
-        "<div class='ep-runbar'>"
-        + "<span class='ep-runbar-sep'>·</span>".join(partes)
-        + "</div>",
+        "<div class='ep-runbar'>" + "<span class='ep-runbar-sep'>·</span>".join(partes) + "</div>",
         unsafe_allow_html=True,
     )
 

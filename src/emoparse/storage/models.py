@@ -6,14 +6,15 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
+from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from typing import Any
 
 
 @dataclass(frozen=True, slots=True)
 class Versions:
     """Versions activas durante un run. Cada una invalida selectivamente."""
+
     knowledge: str | None = None
     prompt: str | None = None
     ontology: str | None = None
@@ -42,8 +43,9 @@ class RunContext:
         - El cache (decide hit/miss).
         - Los repositorios (saben qué run_id escribir).
     """
+
     run_id: str
     versions: Versions = field(default_factory=Versions)
-    started_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    started_at: datetime = field(default_factory=lambda: datetime.now(UTC))
     config: dict[str, Any] = field(default_factory=dict)
     notes: str = ""

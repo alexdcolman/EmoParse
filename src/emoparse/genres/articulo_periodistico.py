@@ -142,8 +142,7 @@ def get_genre() -> Genre:
                 "y por el encuadre de la nota."
             ),
             "fuente_referente": (
-                "actor citado, consultado o construido como fuente o referente "
-                "del acontecimiento."
+                "actor citado, consultado o construido como fuente o referente del acontecimiento."
             ),
         },
         tipos_discurso=(
@@ -158,12 +157,10 @@ def get_genre() -> Genre:
             "noticia": "presentación informativa de un acontecimiento de actualidad",
             "cronica": "relato temporal y situado de acontecimientos observados o reconstruidos",
             "entrevista": (
-                "organización centrada en preguntas, respuestas o "
-                "declaraciones de una fuente"
+                "organización centrada en preguntas, respuestas o declaraciones de una fuente"
             ),
             "analisis": (
-                "interpretación explicativa apoyada en antecedentes, datos o "
-                "voces expertas"
+                "interpretación explicativa apoyada en antecedentes, datos o voces expertas"
             ),
             "opinion": "toma de posición argumentada y atribuida a una firma o al medio",
             "otro_periodistico": "pieza periodística que no se ajusta a los tipos anteriores",

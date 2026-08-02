@@ -45,10 +45,7 @@ def handle(args: argparse.Namespace) -> int:
     if counts["incoherent"] == 0 and not getattr(args, "coherentes", False):
         return 0
 
-    judgments = (
-        repo.list_for_discurso(codigo) if codigo
-        else _list_all(db)
-    )
+    judgments = repo.list_for_discurso(codigo) if codigo else _list_all(db)
     incoherent = [j for j in judgments if j.get("coherente") is False]
 
     if incoherent:

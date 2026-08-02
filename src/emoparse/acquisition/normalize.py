@@ -9,8 +9,6 @@ from __future__ import annotations
 import re
 import unicodedata
 from datetime import date, datetime
-from typing import Optional
-
 
 # Boilerplates comunes.
 _BOILERPLATE_LINES: tuple[str, ...] = (
@@ -24,10 +22,19 @@ _BOILERPLATE_LINES: tuple[str, ...] = (
 
 #: Mapeo de meses en español a número.
 _MESES_ES: dict[str, int] = {
-    "enero": 1, "febrero": 2, "marzo": 3, "abril": 4,
-    "mayo": 5, "junio": 6, "julio": 7, "agosto": 8,
-    "septiembre": 9, "setiembre": 9, "octubre": 10,
-    "noviembre": 11, "diciembre": 12,
+    "enero": 1,
+    "febrero": 2,
+    "marzo": 3,
+    "abril": 4,
+    "mayo": 5,
+    "junio": 6,
+    "julio": 7,
+    "agosto": 8,
+    "septiembre": 9,
+    "setiembre": 9,
+    "octubre": 10,
+    "noviembre": 11,
+    "diciembre": 12,
 }
 
 
@@ -101,7 +108,7 @@ def normalize_date(raw: str) -> str:
     return ""
 
 
-def _try_parse_iso(raw: str) -> Optional[str]:
+def _try_parse_iso(raw: str) -> str | None:
     """Parsea ISO y devuelve 'YYYY-MM-DD' o None."""
     try:
         dt = datetime.fromisoformat(raw)
@@ -116,10 +123,7 @@ def _try_parse_iso(raw: str) -> Optional[str]:
 
 def _strip_accents(s: str) -> str:
     """Quita tildes para matching de meses."""
-    return "".join(
-        c for c in unicodedata.normalize("NFD", s)
-        if unicodedata.category(c) != "Mn"
-    )
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
 
 
 def normalize_url(url: str, base: str = "") -> str:

@@ -18,9 +18,9 @@
 from __future__ import annotations
 
 import argparse
+from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
-from typing import Iterator
 
 from loguru import logger
 
@@ -104,8 +104,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         type=parse_date,
         default=None,
         metavar="YYYY-MM-DD",
-        help="Solo posts con fecha >= esta. Best-effort si la fuente no "
-             "filtra por fecha.",
+        help="Solo posts con fecha >= esta. Best-effort si la fuente no filtra por fecha.",
     )
     p.add_argument(
         "--to",
@@ -135,20 +134,20 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--with-media",
         action="store_true",
         help="Descarga las imágenes adjuntas a <out>_media/ y registra "
-             "path_local en cada post (solo imágenes, con tope de tamaño).",
+        "path_local en cada post (solo imágenes, con tope de tamaño).",
     )
     p.add_argument(
         "--with-author-profile",
         action="store_true",
         help="Completa autor_bio/autor_seguidores/autor_siguiendo/autor_verificado "
-             "con una llamada extra por autor (cache en memoria). Solo si la "
-             "fuente lo soporta; se ignora con un warning si no.",
+        "con una llamada extra por autor (cache en memoria). Solo si la "
+        "fuente lo soporta; se ignora con un warning si no.",
     )
     p.add_argument(
         "--pseudonymize",
         action="store_true",
         help="Seudonimiza handles al escribir (sal persistida en "
-             "<out>.salt). Ver emoparse/acquisition/README.md.",
+        "<out>.salt). Ver emoparse/acquisition/README.md.",
     )
     p.add_argument(
         "--timeout",
@@ -188,24 +187,21 @@ def run(args: argparse.Namespace) -> int:
         logger.error("[acquire] --max-convs requiere --min-conv-posts.")
         return 2
 
-    pseudonymizer = (
-        Pseudonymizer(Path(f"{args.out}.salt")) if args.pseudonymize else None
-    )
+    pseudonymizer = Pseudonymizer(Path(f"{args.out}.salt")) if args.pseudonymize else None
     downloader = None
     if args.with_media:
         from emoparse.acquisition.media_download import MediaDownloader
-        downloader = MediaDownloader(
-            Path(args.out).parent / (Path(args.out).stem + "_media")
-        )
+
+        downloader = MediaDownloader(Path(args.out).parent / (Path(args.out).stem + "_media"))
     enricher = None
     if args.with_author_profile:
         if getattr(adapter, "supports_author_profile", False):
             from emoparse.acquisition.author_enrichment import AuthorEnricher
+
             enricher = AuthorEnricher(adapter)
         else:
             logger.warning(
-                f"[acquire] La fuente '{args.source}' no soporta "
-                "--with-author-profile, lo ignoro."
+                f"[acquire] La fuente '{args.source}' no soporta --with-author-profile, lo ignoro."
             )
     appender = JsonlAppender(args.out)
 
@@ -258,9 +254,7 @@ def run(args: argparse.Namespace) -> int:
     return 0
 
 
-def _iterate_conversaciones(
-    adapter, args: argparse.Namespace
-) -> Iterator[PostRecord]:
+def _iterate_conversaciones(adapter, args: argparse.Namespace) -> Iterator[PostRecord]:
     """Búsqueda filtrada por conversaciones de al menos N posts.
 
     Estrategia económica: itera la búsqueda; por cada post cuya conversación
@@ -289,17 +283,13 @@ def _iterate_conversaciones(
         try:
             posts = list(adapter.fetch_thread(raiz))
         except Exception as e:
-            logger.warning(
-                f"[acquire] No pude expandir la conversación {raiz!r}: {e}. "
-                "La salteo."
-            )
+            logger.warning(f"[acquire] No pude expandir la conversación {raiz!r}: {e}. La salteo.")
             continue
         if not posts:
             posts = [hit]
         if len(posts) < minimo:
             logger.debug(
-                f"[acquire] Conversación {raiz!r} con {len(posts)} post(s) "
-                f"< {minimo}: descartada."
+                f"[acquire] Conversación {raiz!r} con {len(posts)} post(s) < {minimo}: descartada."
             )
             continue
         adquiridas += 1

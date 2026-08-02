@@ -16,7 +16,6 @@ import pytest
 
 from emoparse.storage.db import Database
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  Fixtures
 # ══════════════════════════════════════════════════════════════════════════════
@@ -34,7 +33,6 @@ def db(tmp_path: Path) -> Database:
 
 
 class TestBasics:
-
     def test_db_file_created_on_first_use(self, tmp_path: Path) -> None:
         path = tmp_path / "subdir" / "new.sqlite"
         assert not path.parent.exists()
@@ -67,7 +65,6 @@ class TestBasics:
 
 
 class TestPragmas:
-
     def test_wal_mode_active(self, db: Database) -> None:
         row = db.execute("PRAGMA journal_mode").fetchone()
         assert row[0].lower() == "wal"
@@ -94,7 +91,6 @@ class TestPragmas:
 
 
 class TestTransactions:
-
     def test_transaction_commits_on_success(self, db: Database) -> None:
         db.execute("CREATE TABLE foo (a INT)")
         with db.transaction() as cur:
@@ -129,7 +125,6 @@ class TestTransactions:
 
 
 class TestThreadSafety:
-
     def test_separate_connections_per_thread(self, db: Database) -> None:
         """Cada hilo abre su propia conexión.
 

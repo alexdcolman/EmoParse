@@ -48,8 +48,10 @@ def handle(args: argparse.Namespace) -> int:
         # Indica cantidad de reusos totales, no el hit rate.
         if entries > 0:
             avg = hits / entries
-            print(f"  {alias:<{name_w}s} {entries:>5d} entradas, "
-                  f"{hits:>5d} hits acumulados (avg {avg:.1f} reusos/entrada)")
+            print(
+                f"  {alias:<{name_w}s} {entries:>5d} entradas, "
+                f"{hits:>5d} hits acumulados (avg {avg:.1f} reusos/entrada)"
+            )
         else:
             print(f"  {alias:<{name_w}s} (sin entradas)")
     print()

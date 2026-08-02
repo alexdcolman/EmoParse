@@ -42,7 +42,9 @@ def render(db_path: Path) -> None:
             hide_index=True,
             column_config={
                 "entidades": st.column_config.ProgressColumn(
-                    "entidades", format="%d", min_value=0,
+                    "entidades",
+                    format="%d",
+                    min_value=0,
                     max_value=int(por_tipo["entidades"].max() or 1),
                 ),
             },
@@ -93,7 +95,8 @@ def _detalle_tecnografismos(db_path: Path):
     df = df.assign(valor=df.apply(_display_tecnografismo, axis=1))
     return (
         df.groupby(["valor", "atributo"], as_index=False)
-        .size().rename(columns={"size": "n"})
+        .size()
+        .rename(columns={"size": "n"})
         .sort_values("n", ascending=False)
     )
 
@@ -111,17 +114,13 @@ def _render_usos(db_path: Path) -> None:
             "(requiere modelo asignado en el config)."
         )
         return
-    st.caption(
-        f"{len(resueltos)} de {len(df)} entidades con uso resuelto en contexto."
-    )
+    st.caption(f"{len(resueltos)} de {len(df)} entidades con uso resuelto en contexto.")
     for tipo, titulo, prefijo, key in (
         ("mencion", "Menciones", "@", "tecno_uso_men"),
         ("tecnografismo", "Tecnografismos", "", "tecno_uso_tec"),
         ("url", "Links", "", "tecno_uso_url"),
     ):
-        _render_uso_seccion(
-            resueltos[resueltos["tipo"] == tipo], titulo, prefijo, key
-        )
+        _render_uso_seccion(resueltos[resueltos["tipo"] == tipo], titulo, prefijo, key)
 
 
 def _render_uso_seccion(sub, titulo: str, prefijo: str, key: str) -> None:
@@ -137,7 +136,8 @@ def _render_uso_seccion(sub, titulo: str, prefijo: str, key: str) -> None:
         agrupado = sub.assign(valor=sub.apply(_display_tecnografismo, axis=1))
         resumen = (
             agrupado.groupby(["valor", "uso"], as_index=False)
-            .size().rename(columns={"size": "usos"})
+            .size()
+            .rename(columns={"size": "usos"})
             .sort_values("usos", ascending=False)
         )
     elif titulo == "Links":
@@ -145,13 +145,15 @@ def _render_uso_seccion(sub, titulo: str, prefijo: str, key: str) -> None:
         # distintas (parámetros de campaña, acortadores).
         resumen = (
             sub.groupby(["valor_norm", "uso"], as_index=False)
-            .size().rename(columns={"size": "usos", "valor_norm": "dominio"})
+            .size()
+            .rename(columns={"size": "usos", "valor_norm": "dominio"})
             .sort_values("usos", ascending=False)
         )
     else:
         resumen = (
             sub.groupby("uso", as_index=False)
-            .size().rename(columns={"size": "usos"})
+            .size()
+            .rename(columns={"size": "usos"})
             .sort_values("usos", ascending=False)
         )
     st.dataframe(
@@ -160,22 +162,23 @@ def _render_uso_seccion(sub, titulo: str, prefijo: str, key: str) -> None:
         hide_index=True,
         column_config={
             "usos": st.column_config.ProgressColumn(
-                "usos", format="%d", min_value=0,
+                "usos",
+                format="%d",
+                min_value=0,
                 max_value=int(resumen["usos"].max() or 1),
             ),
         },
     )
 
-    valores = [
-        f"{prefijo}{v}" for v in sub["valor_norm"].value_counts().index
-    ]
+    valores = [f"{prefijo}{v}" for v in sub["valor_norm"].value_counts().index]
     sel = st.selectbox(
         f"Ver posts de una entidad ({titulo.lower()})",
-        ["(elegir)"] + valores, key=key,
+        ["(elegir)"] + valores,
+        key=key,
     )
     if sel == "(elegir)":
         return
-    objetivo = sel[len(prefijo):] if prefijo and sel.startswith(prefijo) else sel
+    objetivo = sel[len(prefijo) :] if prefijo and sel.startswith(prefijo) else sel
     fila = sub[sub["valor_norm"].astype(str) == objetivo]
     for _, r in fila.head(40).iterrows():
         st.markdown(
@@ -186,9 +189,12 @@ def _render_uso_seccion(sub, titulo: str, prefijo: str, key: str) -> None:
             f"</span><span style='color:var(--dim);'> · {html.escape(str(r['codigo']))}"
             f"</span><br><span style='color:var(--text-soft);'>{html.escape(str(r['frase'] or ''))}"
             f"</span>"
-            + (f"<br><span style='color:var(--dim);font-style:italic;font-size:0.74rem;'>"
-               f"{html.escape(str(r['uso_justificacion']))}</span>"
-               if r.get("uso_justificacion") else "")
+            + (
+                f"<br><span style='color:var(--dim);font-style:italic;font-size:0.74rem;'>"
+                f"{html.escape(str(r['uso_justificacion']))}</span>"
+                if r.get("uso_justificacion")
+                else ""
+            )
             + "</div>",
             unsafe_allow_html=True,
         )
@@ -228,15 +234,16 @@ def _render_emojis(db_path: Path) -> None:
             # Rachas y ocurrencias miden cosas distintas (gestos vs
             # pulsaciones): la barra va sobre las rachas, que es la unidad.
             "rachas": st.column_config.ProgressColumn(
-                "rachas", format="%d", min_value=0,
+                "rachas",
+                format="%d",
+                min_value=0,
                 max_value=int(resumen["rachas"].max() or 1),
             ),
         },
     )
 
     emojis = resueltos["emoji"].value_counts().index.tolist()
-    sel = st.selectbox("Ver frases de un emoji", ["(elegir)"] + emojis,
-                       key="tecno_emoji_sel")
+    sel = st.selectbox("Ver frases de un emoji", ["(elegir)"] + emojis, key="tecno_emoji_sel")
     if sel == "(elegir)":
         return
     df_fr = data.get_frases_con_emoji(db_path, sel)
@@ -255,7 +262,9 @@ def _render_uso_emoji(emoji: str, r) -> None:
     n = int(r.get("repeticiones") or 1)
     multiplicador = (
         f"<span class='badge badge-dim' style='font-size:0.66rem;'>×{n} · "
-        f"{html.escape(str(r.get('intensidad') or ''))}</span>" if n > 1 else ""
+        f"{html.escape(str(r.get('intensidad') or ''))}</span>"
+        if n > 1
+        else ""
     )
     st.markdown(
         f"<div class='ep-post' style='border-left-color:{color};'>"
@@ -268,9 +277,11 @@ def _render_uso_emoji(emoji: str, r) -> None:
         f"<span>{html.escape(str(r['codigo']))}</span>"
         f"</div>"
         f"<div class='ep-post-texto'>{_resaltar_racha(r)}</div>"
-        + (f"<div class='ep-justif'>"
-           f"{html.escape(str(r['justificacion']))}</div>"
-           if r.get("justificacion") else "")
+        + (
+            f"<div class='ep-justif'>{html.escape(str(r['justificacion']))}</div>"
+            if r.get("justificacion")
+            else ""
+        )
         + "</div>",
         unsafe_allow_html=True,
     )
@@ -296,10 +307,10 @@ def _resaltar_racha(r) -> str:
     if inicio is None or fin is None or not 0 <= inicio < fin <= len(frase):
         return html.escape(frase)
     return (
-        html.escape(frase[:int(inicio)])
+        html.escape(frase[: int(inicio)])
         + "<mark style='background:rgba(200,169,110,0.28);color:inherit;"
         "border-radius:3px;padding:0 2px;'>"
-        + html.escape(frase[int(inicio):int(fin)])
+        + html.escape(frase[int(inicio) : int(fin)])
         + "</mark>"
-        + html.escape(frase[int(fin):])
+        + html.escape(frase[int(fin) :])
     )

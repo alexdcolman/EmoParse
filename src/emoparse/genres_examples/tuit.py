@@ -20,8 +20,7 @@ def get_genre() -> Genre:
             "oponente",
             "audiencia_general",
         ),
-        models={
-        },
+        models={},
         batch_size={
             "actors": 10,
             "emotions": 10,

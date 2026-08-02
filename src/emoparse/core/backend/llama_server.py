@@ -81,9 +81,7 @@ class LlamaServerBackend(LLMBackend):
         self.alias = alias
         self._cfg = dict(model_config)
 
-        self._base_url = str(
-            self._cfg.get("base_url") or "http://127.0.0.1:8080"
-        ).rstrip("/")
+        self._base_url = str(self._cfg.get("base_url") or "http://127.0.0.1:8080").rstrip("/")
         self._default_max_tokens = self._cfg.get("max_tokens", _DEFAULT_MAX_TOKENS)
         self._default_temperature = self._cfg.get("temperature", _DEFAULT_TEMPERATURE)
         self._default_seed = self._cfg.get("seed", _DEFAULT_SEED)
@@ -120,8 +118,7 @@ class LlamaServerBackend(LLMBackend):
         except httpx.HTTPError:
             return False
         try:
-            self._post_chat({"messages": [{"role": "user", "content": "ok"}],
-                             "max_tokens": 1})
+            self._post_chat({"messages": [{"role": "user", "content": "ok"}], "max_tokens": 1})
             return True
         except BackendError:
             return False
@@ -229,9 +226,7 @@ class LlamaServerBackend(LLMBackend):
         try:
             resp = self._http.post("/v1/chat/completions", json=payload)
         except httpx.TimeoutException as e:
-            raise BackendTimeoutError(
-                f"llama-server timeout tras {self._timeout}s: {e}"
-            ) from e
+            raise BackendTimeoutError(f"llama-server timeout tras {self._timeout}s: {e}") from e
         except httpx.HTTPError as e:
             raise BackendUnavailableError(
                 f"llama-server inaccesible en {self._base_url}: {e}"
@@ -246,9 +241,7 @@ class LlamaServerBackend(LLMBackend):
                     context_length=self._cfg.get("context_length"),
                     max_tokens=payload.get("max_tokens"),
                 )
-            raise BackendError(
-                f"llama-server HTTP {resp.status_code}: {texto}"
-            )
+            raise BackendError(f"llama-server HTTP {resp.status_code}: {texto}")
         try:
             return resp.json()
         except ValueError as e:
@@ -287,6 +280,7 @@ class LlamaServerBackend(LLMBackend):
 # ══════════════════════════════════════════════════════════════════════════════
 #  Contenido multimodal
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _user_content(user: str, images: list[str] | None) -> str | list[dict[str, Any]]:
     """Construye el contenido del mensaje de usuario.

@@ -18,10 +18,10 @@ from emoparse.core.backend.exceptions import (
     BackendUnhealthyError,
 )
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  Estado de salud por backend
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 @dataclass
 class _HealthState:
@@ -30,6 +30,7 @@ class _HealthState:
     consecutive_failures se resetea con cada éxito.
     is_open=True cuando supera el threshold.
     """
+
     consecutive_failures: int = 0
     last_error: str | None = None
     is_open: bool = False
@@ -59,9 +60,11 @@ class _HealthState:
 #  Configuración del registry
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 @dataclass(frozen=True)
 class RegistryConfig:
     """Parámetros de comportamiento del registry."""
+
     #: Número de fallos consecutivos para marcar backend unhealthy.
     failure_threshold: int = 5
     #: Si True, realiza healthcheck al instanciar cada backend.
@@ -72,6 +75,7 @@ class RegistryConfig:
 #  Factory
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def build_backend(alias: str, model_config: dict[str, Any]) -> LLMBackend:
     """Construye un backend LLM según model_config['backend'].
 
@@ -81,12 +85,15 @@ def build_backend(alias: str, model_config: dict[str, Any]) -> LLMBackend:
     backend_key = model_config.get("backend")
     if backend_key == "llama_cpp":
         from emoparse.core.backend.llamacpp import LlamaCppBackend
+
         return LlamaCppBackend(alias=alias, model_config=model_config)
     if backend_key == "lmstudio":
         from emoparse.core.backend.lmstudio import LMStudioBackend
+
         return LMStudioBackend(alias=alias, model_config=model_config)
     if backend_key == "llama_server":
         from emoparse.core.backend.llama_server import LlamaServerBackend
+
         return LlamaServerBackend(alias=alias, model_config=model_config)
     raise BackendConfigError(
         f"Backend '{backend_key}' no reconocido para alias '{alias}'. "
@@ -97,6 +104,7 @@ def build_backend(alias: str, model_config: dict[str, Any]) -> LLMBackend:
 # ══════════════════════════════════════════════════════════════════════════════
 #  Registry
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class BackendRegistry:
     """Registro lazy de backends LLM con circuit breaker.
@@ -111,9 +119,7 @@ class BackendRegistry:
     ) -> None:
         self._configs: dict[str, dict[str, Any]] = dict(models_config)
         self._instances: dict[str, LLMBackend] = {}
-        self._health: dict[str, _HealthState] = {
-            alias: _HealthState() for alias in self._configs
-        }
+        self._health: dict[str, _HealthState] = {alias: _HealthState() for alias in self._configs}
         self._cfg = registry_config or RegistryConfig()
 
     # ── Acceso ───────────────────────────────────────────────────────────────
@@ -125,8 +131,7 @@ class BackendRegistry:
         """
         if alias not in self._configs:
             raise KeyError(
-                f"Modelo '{alias}' no definido. "
-                f"Aliases disponibles: {sorted(self._configs)}"
+                f"Modelo '{alias}' no definido. Aliases disponibles: {sorted(self._configs)}"
             )
 
         health = self._health[alias]
@@ -141,9 +146,7 @@ class BackendRegistry:
             backend = build_backend(alias, self._configs[alias])
             if self._cfg.healthcheck_on_load:
                 if not backend.healthcheck():
-                    raise BackendConfigError(
-                        f"Backend '{alias}' falló healthcheck inicial"
-                    )
+                    raise BackendConfigError(f"Backend '{alias}' falló healthcheck inicial")
             self._instances[alias] = backend
 
         return self._instances[alias]
@@ -157,7 +160,7 @@ class BackendRegistry:
 
     def record_failure(self, alias: str, error: str) -> None:
         """Reporta una llamada fallida.
-        
+
         Si se cruza el threshold, el circuit se abre.
         """
         if alias not in self._health:
@@ -222,6 +225,4 @@ class BackendRegistry:
     def __repr__(self) -> str:
         loaded = self.loaded()
         unhealthy = [a for a, h in self._health.items() if h.is_open]
-        return (
-            f"<BackendRegistry loaded={loaded} unhealthy={unhealthy}>"
-        )
+        return f"<BackendRegistry loaded={loaded} unhealthy={unhealthy}>"

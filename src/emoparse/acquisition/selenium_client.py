@@ -38,8 +38,7 @@ class SeleniumClient:
             from selenium.webdriver.chrome.options import Options
         except ImportError as e:
             raise SeleniumNotInstalledError(
-                "Selenium no instalado. Instalá con:\n"
-                "  pip install 'emoparse[scraping_selenium]'"
+                "Selenium no instalado. Instalá con:\n  pip install 'emoparse[scraping_selenium]'"
             ) from e
 
         options = Options()
@@ -57,6 +56,7 @@ class SeleniumClient:
         try:
             from selenium.webdriver.chrome.service import Service
             from webdriver_manager.chrome import ChromeDriverManager
+
             self._driver = webdriver.Chrome(
                 service=Service(ChromeDriverManager().install()),
                 options=options,
@@ -91,8 +91,8 @@ class SeleniumClient:
         if self._driver is None:
             self.start()
         assert self._driver is not None
-        from selenium.webdriver.common.by import By
         from selenium.common.exceptions import NoSuchElementException
+        from selenium.webdriver.common.by import By
 
         try:
             boton = self._driver.find_element(By.XPATH, next_button_xpath)

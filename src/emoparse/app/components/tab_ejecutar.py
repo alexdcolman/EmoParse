@@ -58,6 +58,7 @@ def render(db_path: Path) -> None:
 #  Formularios por comando
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _form_run(db_path: Path) -> list[str]:
     """Comando `emoparse run`: config, input, género, stages."""
     generos = _generos_disponibles()
@@ -82,7 +83,7 @@ def _form_run(db_path: Path) -> list[str]:
             todas,
             default=default_stages,
             help="El orden lo resuelve el pipeline; elegí cuáles correr. "
-                 "Las dependencias duras se validan al ejecutar.",
+            "Las dependencias duras se validan al ejecutar.",
         )
 
     resume = st.checkbox(
@@ -125,24 +126,17 @@ def _form_network(db_path: Path) -> list[str]:
         grafos = st.multiselect(
             "Grafos de interacción",
             ["reply", "mention", "rt", "qt", "hashtag_co", "follow"],
-            default=["reply", "mention", "rt", "qt", "hashtag_co"]
-            if tiene_posts else [],
+            default=["reply", "mention", "rt", "qt", "hashtag_co"] if tiene_posts else [],
             help="Requieren corpus de posts. Para un corpus de discursos, "
-                 "dejá esto vacío y usá los análisis de similitud.",
+            "dejá esto vacío y usá los análisis de similitud.",
             disabled=not tiene_posts,
         )
-        cliques = st.checkbox("Cliques (vínculos recíprocos)",
-                              disabled=not tiene_posts)
-        flujo = st.checkbox("Flujo emocional entre comunidades",
-                            disabled=not tiene_posts)
+        cliques = st.checkbox("Cliques (vínculos recíprocos)", disabled=not tiene_posts)
+        flujo = st.checkbox("Flujo emocional entre comunidades", disabled=not tiene_posts)
     with col2:
         # Sin posts, la similitud es lo único que aplica: viene marcada.
-        similitud = st.checkbox(
-            "Agrupamiento narrativo (simulacros)", value=not tiene_posts
-        )
-        semantico = st.checkbox(
-            "Agrupamiento semántico (embeddings)", value=not tiene_posts
-        )
+        similitud = st.checkbox("Agrupamiento narrativo (simulacros)", value=not tiene_posts)
+        semantico = st.checkbox("Agrupamiento semántico (embeddings)", value=not tiene_posts)
         export = st.checkbox("Exportar a Gephi + CSV")
 
     cmd = ["emoparse", "network", "--db", str(db_path)]
@@ -159,10 +153,7 @@ def _form_network(db_path: Path) -> list[str]:
     if export:
         cmd += ["--export-dir", f"{db_path.stem}_export"]
     if not grafos and not (similitud or semantico):
-        st.warning(
-            "Sin grafos ni análisis: marcá al menos un grafo o un "
-            "agrupamiento."
-        )
+        st.warning("Sin grafos ni análisis: marcá al menos un grafo o un agrupamiento.")
     return cmd
 
 
@@ -176,8 +167,7 @@ def _form_follows(db_path: Path) -> list[str]:
     seudo = st.checkbox("Corpus seudonimizado")
     cmd = ["emoparse", "follows", "--db", str(db_path), "--source", fuente]
     if seudo:
-        cmd += ["--pseudonymize", "--salt", f"{db_path}.salt",
-                "--handles", "handles.txt"]
+        cmd += ["--pseudonymize", "--salt", f"{db_path}.salt", "--handles", "handles.txt"]
         st.caption(
             "Con seudonimización hacen falta los handles reales en un archivo "
             "(uno por línea): el alias es un hash y no se puede consultar."
@@ -206,6 +196,7 @@ def _form_retry(db_path: Path) -> list[str]:
 #  Salida
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _mostrar_comando(cmd: list[str]) -> None:
     """Muestra la línea final, lista para copiar."""
     st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
@@ -219,6 +210,7 @@ def _mostrar_comando(cmd: list[str]) -> None:
 # ══════════════════════════════════════════════════════════════════════════════
 #  Helpers de introspección (degradan sin romper la UI)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _titulo_comando(c: str) -> str:
     """Etiqueta legible de cada comando."""

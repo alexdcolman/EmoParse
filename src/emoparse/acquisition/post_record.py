@@ -32,7 +32,7 @@ class PostRecord:
     plataforma: str
     autor_handle: str
     texto: str
-    fecha: str | None = None          # ISO-8601
+    fecha: str | None = None  # ISO-8601
     lang: str | None = None
     tipo: PostTipo = "original"
     conversacion_id: str | None = None

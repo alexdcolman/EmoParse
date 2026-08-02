@@ -26,36 +26,40 @@ import pandas as pd
 #: Colores por foria. Claves normalizadas; `None` cubre el dato ausente
 #: (una emoción sin caracterizar no es lo mismo que una indeterminada).
 FORIA_COLORS: dict[str | None, str] = {
-    "euforico":      "#2c6e63",
-    "disforico":     "#a6412c",
-    "ambiforico":    "#9a7a2e",
-    "aforico":       "#7c7f79",
+    "euforico": "#2c6e63",
+    "disforico": "#a6412c",
+    "ambiforico": "#9a7a2e",
+    "aforico": "#7c7f79",
     "indeterminado": "#4a4d52",
-    None:            "#33363b",
+    None: "#33363b",
 }
 
 #: Etiquetas visibles de cada foria (femenino: concuerdan con "foria").
 FORIA_LABELS: dict[str, str] = {
-    "euforico":      "eufórica",
-    "disforico":     "disfórica",
-    "ambiforico":    "ambifórica",
-    "aforico":       "afórica",
+    "euforico": "eufórica",
+    "disforico": "disfórica",
+    "ambiforico": "ambifórica",
+    "aforico": "afórica",
     "indeterminado": "indeterminada",
 }
 
 #: Marcas tipográficas de foria para chips y listados compactos.
 FORIA_ICONS: dict[str, str] = {
-    "euforico":      "↑",
-    "disforico":     "↓",
-    "ambiforico":    "↕",
-    "aforico":       "–",
+    "euforico": "↑",
+    "disforico": "↓",
+    "ambiforico": "↕",
+    "aforico": "–",
     "indeterminado": "?",
 }
 
 #: Orden de lectura de las forias (positiva → mezcla → neutra → negativa).
 #: No es un continuo: agrupa por una propiedad ya analizada de cada emoción.
 FORIA_ORDEN: tuple[str, ...] = (
-    "euforico", "ambiforico", "aforico", "disforico", "indeterminado",
+    "euforico",
+    "ambiforico",
+    "aforico",
+    "disforico",
+    "indeterminado",
 )
 
 #: Cantidad de tonos por foria y amplitud del salto de luminosidad entre
@@ -190,6 +194,7 @@ def rgba(color_hex: str, alpha: float) -> str:
 #  Helpers internos
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _rgb(color_hex: str) -> tuple[int, int, int]:
     """Componentes enteros de un color `#rrggbb`."""
     c = str(color_hex).lstrip("#")
@@ -208,9 +213,7 @@ def _modular(color_hex: str, delta_luz: float) -> str:
     luz = min(max(luz + delta_luz, 0.18), 0.76)
     sat = min(max(sat * (1 + delta_luz * 0.6), 0.06), 1.0)
     r2, g2, b2 = colorsys.hls_to_rgb(h, luz, sat)
-    return "#%02x%02x%02x" % (
-        round(r2 * 255), round(g2 * 255), round(b2 * 255)
-    )
+    return "#%02x%02x%02x" % (round(r2 * 255), round(g2 * 255), round(b2 * 255))
 
 
 def _fold(s: object) -> str:

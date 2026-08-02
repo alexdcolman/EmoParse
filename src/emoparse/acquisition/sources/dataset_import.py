@@ -11,9 +11,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from datetime import date
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import pandas as pd
 
@@ -24,14 +25,19 @@ from emoparse.acquisition.post_record import PostRecord
 _DEFAULT_CANDIDATES: dict[str, tuple[str, ...]] = {
     "id": ("id", "tweet_id", "status_id", "post_id"),
     "texto": ("texto", "text", "tweet", "content", "full_text"),
-    "autor_handle": ("autor_handle", "username", "user", "screen_name",
-                     "user_screen_name", "author"),
+    "autor_handle": (
+        "autor_handle",
+        "username",
+        "user",
+        "screen_name",
+        "user_screen_name",
+        "author",
+    ),
     "autor_display": ("autor_display", "name", "user_name"),
     "fecha": ("fecha", "created_at", "date", "timestamp"),
     "lang": ("lang", "language"),
     "conversacion_id": ("conversacion_id", "conversation_id"),
-    "en_respuesta_a": ("en_respuesta_a", "in_reply_to_status_id",
-                       "in_reply_to_id", "reply_to_id"),
+    "en_respuesta_a": ("en_respuesta_a", "in_reply_to_status_id", "in_reply_to_id", "reply_to_id"),
     "cita_a": ("cita_a", "quoted_status_id", "quoted_id"),
     "reposteo_a": ("reposteo_a", "retweeted_status_id", "retweeted_id"),
     "url": ("url", "link", "tweet_url"),
@@ -65,8 +71,7 @@ class CsvImportAdapter(PostSourceAdapter):
             raise PostSourceError(f"Mapping inválido en {p}: {e}") from e
         if not isinstance(obj, dict):
             raise PostSourceError(
-                f"El mapping de {p} debe ser un objeto "
-                "{campo_normalizado: columna}."
+                f"El mapping de {p} debe ser un objeto {{campo_normalizado: columna}}."
             )
         return {str(k): str(v) for k, v in obj.items()}
 
@@ -117,8 +122,7 @@ class CsvImportAdapter(PostSourceAdapter):
     def _iter_all(self) -> Iterator[PostRecord]:
         try:
             df = pd.read_csv(self._path, encoding="utf-8", dtype=str)
-        except (UnicodeDecodeError, pd.errors.EmptyDataError,
-                pd.errors.ParserError) as e:
+        except (UnicodeDecodeError, pd.errors.EmptyDataError, pd.errors.ParserError) as e:
             raise PostSourceError(f"CSV ilegible en {self._path}: {e}") from e
 
         columns = self._resolve_columns(list(df.columns))
@@ -150,9 +154,7 @@ class CsvImportAdapter(PostSourceAdapter):
                 )
         return resolved
 
-    def _map_row(
-        self, row: dict[str, Any], columns: dict[str, str]
-    ) -> PostRecord | None:
+    def _map_row(self, row: dict[str, Any], columns: dict[str, str]) -> PostRecord | None:
         def get(field: str) -> str | None:
             column = columns.get(field)
             if column is None:

@@ -65,13 +65,23 @@ class PostsRepository:
                         updated_at      = CURRENT_TIMESTAMP
                     """,
                     (
-                        r["post_id"], r["plataforma"], r["autor_handle"],
-                        r["texto"], r.get("fecha"), r.get("lang"),
-                        r.get("tipo", "original"), r.get("conversacion_id"),
-                        r.get("en_respuesta_a"), r.get("cita_a"),
-                        r.get("reposteo_a"), int(r.get("es_repost_puro", 0)),
-                        int(r.get("huerfano", 0)), _int_or_none(r.get("profundidad")),
-                        r.get("url"), _j(r.get("metricas")), _j(r.get("raw")),
+                        r["post_id"],
+                        r["plataforma"],
+                        r["autor_handle"],
+                        r["texto"],
+                        r.get("fecha"),
+                        r.get("lang"),
+                        r.get("tipo", "original"),
+                        r.get("conversacion_id"),
+                        r.get("en_respuesta_a"),
+                        r.get("cita_a"),
+                        r.get("reposteo_a"),
+                        int(r.get("es_repost_puro", 0)),
+                        int(r.get("huerfano", 0)),
+                        _int_or_none(r.get("profundidad")),
+                        r.get("url"),
+                        _j(r.get("metricas")),
+                        _j(r.get("raw")),
                     ),
                 )
                 n += 1
@@ -103,11 +113,15 @@ class PostsRepository:
                         updated_at   = CURRENT_TIMESTAMP
                     """,
                     (
-                        r["plataforma"], r["handle"], r.get("display_name"),
-                        r.get("bio"), _int_or_none(r.get("verificado")),
+                        r["plataforma"],
+                        r["handle"],
+                        r.get("display_name"),
+                        r.get("bio"),
+                        _int_or_none(r.get("verificado")),
                         _int_or_none(r.get("seguidores")),
                         _int_or_none(r.get("siguiendo")),
-                        r.get("url"), _j(r.get("extras")),
+                        r.get("url"),
+                        _j(r.get("extras")),
                     ),
                 )
                 n += 1
@@ -129,13 +143,14 @@ class PostsRepository:
                     VALUES (?, ?, ?, ?, ?)
                     """,
                     (
-                        post_id, m.get("tipo", "otro"), m.get("url"),
-                        m.get("path_local"), m.get("alt") or m.get("alt_text"),
+                        post_id,
+                        m.get("tipo", "otro"),
+                        m.get("url"),
+                        m.get("path_local"),
+                        m.get("alt") or m.get("alt_text"),
                     ),
                 )
         return len(items)
-
-
 
     # ── Descripción multimodal de media ──────────────────────────────────────
 
@@ -165,8 +180,10 @@ class PostsRepository:
                 "descripcion_version = ?, descripcion_error = NULL, "
                 "ocr_text = ? WHERE id = ?",
                 (
-                    json.dumps(payload, ensure_ascii=False), version,
-                    payload.get("texto_en_imagen") or None, media_id,
+                    json.dumps(payload, ensure_ascii=False),
+                    version,
+                    payload.get("texto_en_imagen") or None,
+                    media_id,
                 ),
             )
 
@@ -181,8 +198,7 @@ class PostsRepository:
     def media_descripciones_of_post(self, post_id: str) -> list[dict[str, Any]]:
         """Descripciones generadas de los adjuntos de un post."""
         rows = self._db.execute(
-            "SELECT * FROM media WHERE post_id = ? "
-            "AND descripcion_payload IS NOT NULL ORDER BY id",
+            "SELECT * FROM media WHERE post_id = ? AND descripcion_payload IS NOT NULL ORDER BY id",
             (post_id,),
         ).fetchall()
         out = []
@@ -236,26 +252,20 @@ class PostsRepository:
     def clear_reframing_errors(self) -> int:
         """Limpia errores de reframing (para reintentar). Devuelve afectados."""
         with self._db.transaction() as cur:
-            cur.execute(
-                "UPDATE posts SET reframing_error = NULL "
-                "WHERE reframing_error IS NOT NULL"
-            )
+            cur.execute("UPDATE posts SET reframing_error = NULL WHERE reframing_error IS NOT NULL")
             return cur.rowcount
 
     # ── Lectura ──────────────────────────────────────────────────────────────
 
     def get_post(self, post_id: str) -> dict[str, Any] | None:
         """Devuelve un post por id, con `metricas`/`raw` parseados."""
-        row = self._db.execute(
-            "SELECT * FROM posts WHERE post_id = ?", (post_id,)
-        ).fetchone()
+        row = self._db.execute("SELECT * FROM posts WHERE post_id = ?", (post_id,)).fetchone()
         return _row_to_post(row) if row is not None else None
 
     def list_by_conversacion(self, conversacion_id: str) -> list[dict[str, Any]]:
         """Posts de una conversación, ordenados por fecha y luego por id."""
         rows = self._db.execute(
-            "SELECT * FROM posts WHERE conversacion_id = ? "
-            "ORDER BY fecha, post_id",
+            "SELECT * FROM posts WHERE conversacion_id = ? ORDER BY fecha, post_id",
             (conversacion_id,),
         ).fetchall()
         return [_row_to_post(r) for r in rows]
@@ -275,8 +285,7 @@ class PostsRepository:
         (determinista por orden de plataforma).
         """
         row = self._db.execute(
-            "SELECT * FROM autores WHERE handle = ? ORDER BY plataforma "
-            "LIMIT 1",
+            "SELECT * FROM autores WHERE handle = ? ORDER BY plataforma LIMIT 1",
             (str(handle).lstrip("@"),),
         ).fetchone()
         return dict(row) if row is not None else None
@@ -311,6 +320,7 @@ def _int_or_none(value: Any) -> int | None:
         return None
     try:
         import pandas as pd
+
         if pd.isna(value):
             return None
     except (TypeError, ValueError):
@@ -350,10 +360,7 @@ def cita_embebida(raw: Any) -> dict[str, str] | None:
     if not texto:
         return None
     autor = record.get("author")
-    handle = (
-        str(autor.get("handle") or "").lstrip("@")
-        if isinstance(autor, dict) else ""
-    )
+    handle = str(autor.get("handle") or "").lstrip("@") if isinstance(autor, dict) else ""
     return {
         "texto": texto,
         "autor_handle": handle or "?",

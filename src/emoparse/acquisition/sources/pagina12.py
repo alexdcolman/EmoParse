@@ -45,9 +45,7 @@ _LEGACY_ARTICLE_URL_RE = re.compile(r"/\d{5,}-[^/]+/?$")
 _URL_DATE_RE = re.compile(r"/(\d{4})/(\d{2})/(\d{2})/")
 _FUSION_GLOBAL_CONTENT_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"(?:window\.)?Fusion\.globalContent\s*=\s*"),
-    re.compile(
-        r"(?:window\.)?Fusion\[['\"]globalContent['\"]\]\s*=\s*"
-    ),
+    re.compile(r"(?:window\.)?Fusion\[['\"]globalContent['\"]\]\s*=\s*"),
 )
 _ANS_TEXT_ELEMENT_TYPES = frozenset({"text", "header", "quote", "correction"})
 
@@ -112,16 +110,14 @@ def _parse_html(html: str) -> BeautifulSoup:
         from bs4 import BeautifulSoup, FeatureNotFound
     except ImportError as e:
         raise RuntimeError(
-            "Beautiful Soup no está instalado. Instalá el extra: "
-            'pip install -e ".[scraping]"'
+            'Beautiful Soup no está instalado. Instalá el extra: pip install -e ".[scraping]"'
         ) from e
 
     try:
         return BeautifulSoup(html, "lxml")
     except FeatureNotFound as e:
         raise RuntimeError(
-            "El parser lxml no está instalado. Instalá el extra: "
-            'pip install -e ".[scraping]"'
+            'El parser lxml no está instalado. Instalá el extra: pip install -e ".[scraping]"'
         ) from e
 
 
@@ -141,9 +137,7 @@ class Pagina12Adapter(SourceAdapter):
         request_interval: float = 0.75,
     ) -> None:
         if mode == "selenium":
-            raise ValueError(
-                "La fuente pagina12 usa únicamente HTTP; elegí --mode http o auto."
-            )
+            raise ValueError("La fuente pagina12 usa únicamente HTTP; elegí --mode http o auto.")
         if request_interval < 0:
             raise ValueError("request_interval no puede ser negativo")
         self._mode = mode
@@ -197,13 +191,9 @@ class Pagina12Adapter(SourceAdapter):
         except (ValueError, requests.RequestException, TransientHttpError) as e:
             logger.warning(f"[Pagina12] No se pudo usar el sitemap: {e}")
 
-        valid_sitemap = [
-            item for item in sitemap_entries if _is_article_url(item[0])
-        ]
+        valid_sitemap = [item for item in sitemap_entries if _is_article_url(item[0])]
         if valid_sitemap:
-            logger.debug(
-                f"[Pagina12] Sitemap: {len(valid_sitemap)} URLs de artículos."
-            )
+            logger.debug(f"[Pagina12] Sitemap: {len(valid_sitemap)} URLs de artículos.")
             yield from valid_sitemap
         else:
             logger.warning(
@@ -217,12 +207,8 @@ class Pagina12Adapter(SourceAdapter):
             except (ValueError, requests.RequestException, TransientHttpError) as e:
                 logger.warning(f"[Pagina12] No se pudo usar RSS {feed_url}: {e}")
                 continue
-            valid_feed = [
-                item for item in feed_entries if _is_article_url(item[0])
-            ]
-            logger.debug(
-                f"[Pagina12] RSS {feed_url}: {len(valid_feed)} URLs de artículos."
-            )
+            valid_feed = [item for item in feed_entries if _is_article_url(item[0])]
+            logger.debug(f"[Pagina12] RSS {feed_url}: {len(valid_feed)} URLs de artículos.")
             yield from valid_feed
 
     def fetch_discurso(self, url: str) -> DiscursoRecord | None:
@@ -322,13 +308,9 @@ def parse_sitemap(xml: str) -> list[tuple[str, date | None]]:
         location = _child_text(url_node, "loc")
         if not location:
             continue
-        raw_date = _child_text(url_node, "publication_date") or _child_text(
-            url_node, "lastmod"
-        )
+        raw_date = _child_text(url_node, "publication_date") or _child_text(url_node, "lastmod")
         items.append((location, _parse_date(raw_date)))
     return items
-
-
 
 
 def parse_rss(xml: str) -> list[tuple[str, date | None]]:
@@ -410,8 +392,7 @@ def _is_article_url(url: str) -> bool:
     if parsed.netloc not in {"pagina12.com.ar", "www.pagina12.com.ar"}:
         return False
     return bool(
-        _DATED_ARTICLE_URL_RE.search(parsed.path)
-        or _LEGACY_ARTICLE_URL_RE.search(parsed.path)
+        _DATED_ARTICLE_URL_RE.search(parsed.path) or _LEGACY_ARTICLE_URL_RE.search(parsed.path)
     )
 
 

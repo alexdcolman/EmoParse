@@ -21,6 +21,7 @@ class BackendError(Exception):
 #  Errores transitorios — el retry puede ayudar
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class TransientBackendError(BackendError):
     """Categoría base para errores reintentables."""
 
@@ -36,6 +37,7 @@ class BackendUnavailableError(TransientBackendError):
 # ══════════════════════════════════════════════════════════════════════════════
 #  Errores permanentes — el retry no va a ayudar
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class PermanentBackendError(BackendError):
     """Categoría base para errores no reintentables."""
@@ -72,7 +74,7 @@ class ContextLengthExceededError(PermanentBackendError):
 
 class BackendConfigError(PermanentBackendError):
     """Configuración del backend inválida.
-    
+
     Ej.: alias inexistente, archivo no encontrado, parámetro fuera de rango).
     """
 
@@ -81,13 +83,13 @@ class BackendConfigError(PermanentBackendError):
 #  Estado del backend (no son errores de una llamada puntual)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class BackendUnhealthyError(BackendError):
     """Circuit breaker marcó al backend como degradado tras fallos consecutivos."""
 
     def __init__(self, alias: str, consecutive_failures: int) -> None:
         super().__init__(
-            f"Backend '{alias}' marcado unhealthy "
-            f"tras {consecutive_failures} fallos consecutivos"
+            f"Backend '{alias}' marcado unhealthy tras {consecutive_failures} fallos consecutivos"
         )
         self.alias = alias
         self.consecutive_failures = consecutive_failures

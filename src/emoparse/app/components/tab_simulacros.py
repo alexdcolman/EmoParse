@@ -11,14 +11,12 @@ from __future__ import annotations
 
 import html
 from pathlib import Path
-from typing import Any
 
 import pandas as pd
 import streamlit as st
 
+from emoparse.app import _knowledge, styles
 from emoparse.app import data as data_layer
-from emoparse.app import _knowledge
-from emoparse.app import styles
 from emoparse.app._textmatch import matches, normalize, parse_query
 
 #: Opciones tipadas de actantes, tomadas del esquema como fuente de verdad.
@@ -35,8 +33,10 @@ try:
     }
 except Exception:  # pragma: no cover — fallback defensivo
     _ACTANTE_OPTS = {
-        "mediador": [], "verificador_normativo": [],
-        "verificador_observacional": [], "operador_modificacion": [],
+        "mediador": [],
+        "verificador_normativo": [],
+        "verificador_observacional": [],
+        "operador_modificacion": [],
     }
 
 _ACTANTE_LABEL = {
@@ -68,10 +68,7 @@ def _color(role: str) -> str:
 
 def _lbl(text: str, role: str) -> str:
     """Etiqueta coloreada por rol para los selectores."""
-    return (
-        f"<span style='font-size:0.78rem;font-weight:600;"
-        f"color:{_color(role)};'>{text}</span>"
-    )
+    return f"<span style='font-size:0.78rem;font-weight:600;color:{_color(role)};'>{text}</span>"
 
 
 _PAGE = 20
@@ -96,9 +93,7 @@ def render(db_path: Path) -> None:
         return
 
     # ── Filtros ───────────────────────────────────────────────────────────────
-    emociones = sorted(
-        e for e in df["tipo_emocion_canonico"].dropna().unique() if str(e).strip()
-    )
+    emociones = sorted(e for e in df["tipo_emocion_canonico"].dropna().unique() if str(e).strip())
     semas_vocab = _knowledge.semas_list()
 
     query = st.text_input(
@@ -110,9 +105,7 @@ def render(db_path: Path) -> None:
     c1, c2 = st.columns(2)
     with c1:
         st.markdown(_lbl("Emoción", "emocion"), unsafe_allow_html=True)
-        emo_sel = st.multiselect(
-            "Emoción", emociones, key="sim_emo", label_visibility="collapsed"
-        )
+        emo_sel = st.multiselect("Emoción", emociones, key="sim_emo", label_visibility="collapsed")
     with c2:
         st.markdown(
             "<span style='font-size:0.78rem;color:var(--text-dim);'>Semas</span>",
@@ -120,16 +113,19 @@ def render(db_path: Path) -> None:
         )
         sc1, sc2 = st.columns(2)
         with sc1:
-            st.markdown(_lbl("Experienciador", "experienciador"),
-                        unsafe_allow_html=True)
+            st.markdown(_lbl("Experienciador", "experienciador"), unsafe_allow_html=True)
             exp_semas = st.multiselect(
-                "Experienciador", semas_vocab, key="sim_exp_semas",
+                "Experienciador",
+                semas_vocab,
+                key="sim_exp_semas",
                 label_visibility="collapsed",
             )
         with sc2:
             st.markdown(_lbl("Fuente", "fuente"), unsafe_allow_html=True)
             fte_semas = st.multiselect(
-                "Fuente", semas_vocab, key="sim_fte_semas",
+                "Fuente",
+                semas_vocab,
+                key="sim_fte_semas",
                 label_visibility="collapsed",
             )
 
@@ -144,7 +140,9 @@ def render(db_path: Path) -> None:
             st.markdown(_lbl(_ACTANTE_LABEL[key], key), unsafe_allow_html=True)
             opts = [_CUALQUIERA, *(_ACTANTE_OPTS[key] or [])]
             actante_sel[key] = st.selectbox(
-                _ACTANTE_LABEL[key], opts, key=f"sim_act_{key}",
+                _ACTANTE_LABEL[key],
+                opts,
+                key=f"sim_act_{key}",
                 label_visibility="collapsed",
             )
 
@@ -156,21 +154,22 @@ def render(db_path: Path) -> None:
         if val != _CUALQUIERA:
             mask &= df[key] == val
     if exp_semas:
-        mask &= df["experienciador_semas"].apply(
-            lambda xs: set(exp_semas).issubset(set(xs))
-        )
+        mask &= df["experienciador_semas"].apply(lambda xs: set(exp_semas).issubset(set(xs)))
     if fte_semas:
-        mask &= df["fuente_semas"].apply(
-            lambda xs: set(fte_semas).issubset(set(xs))
-        )
+        mask &= df["fuente_semas"].apply(lambda xs: set(fte_semas).issubset(set(xs)))
     if query.strip():
         matchers = parse_query(query)
         blob = (
-            df["frase"].fillna("") + " "
-            + df["experienciador"].fillna("") + " "
-            + df["experienciador_canonico"].fillna("") + " "
-            + df["fuente_inferencia"].fillna("") + " "
-            + df["fuente_canonico"].fillna("") + " "
+            df["frase"].fillna("")
+            + " "
+            + df["experienciador"].fillna("")
+            + " "
+            + df["experienciador_canonico"].fillna("")
+            + " "
+            + df["fuente_inferencia"].fillna("")
+            + " "
+            + df["fuente_canonico"].fillna("")
+            + " "
             + df["tipo_emocion_canonico"].fillna("")
         ).map(normalize)
         mask &= blob.map(lambda t: matches(t, matchers))
@@ -191,13 +190,11 @@ def render(db_path: Path) -> None:
     page = max(0, min(page, n_pages - 1))
     p1, p2, p3 = st.columns([1, 6, 1])
     with p1:
-        if st.button("◀", key="sim_prev", disabled=page == 0,
-                     use_container_width=True):
+        if st.button("◀", key="sim_prev", disabled=page == 0, use_container_width=True):
             st.session_state["sim_page"] = page - 1
             st.rerun()
     with p3:
-        if st.button("▶", key="sim_next", disabled=page >= n_pages - 1,
-                     use_container_width=True):
+        if st.button("▶", key="sim_next", disabled=page >= n_pages - 1, use_container_width=True):
             st.session_state["sim_page"] = page + 1
             st.rerun()
     with p2:
@@ -207,7 +204,7 @@ def render(db_path: Path) -> None:
             unsafe_allow_html=True,
         )
 
-    for _, row in res.iloc[page * _PAGE:(page + 1) * _PAGE].iterrows():
+    for _, row in res.iloc[page * _PAGE : (page + 1) * _PAGE].iterrows():
         _render_simulacro(row)
 
 
@@ -245,12 +242,11 @@ def _render_simulacro(row: pd.Series) -> None:
         )
         chips = (
             _chip("mediador", row["mediador"], "mediador")
-            + _chip("v.normativo", row["verificador_normativo"],
-                    "verificador_normativo")
-            + _chip("v.observacional", row["verificador_observacional"],
-                    "verificador_observacional")
-            + _chip("op.modificación", row["operador_modificacion"],
-                    "operador_modificacion")
+            + _chip("v.normativo", row["verificador_normativo"], "verificador_normativo")
+            + _chip(
+                "v.observacional", row["verificador_observacional"], "verificador_observacional"
+            )
+            + _chip("op.modificación", row["operador_modificacion"], "operador_modificacion")
         )
         exp_s = ", ".join(row["experienciador_semas"])
         fte_s = ", ".join(row["fuente_semas"])
@@ -259,8 +255,7 @@ def _render_simulacro(row: pd.Series) -> None:
         if fte_s:
             chips += _chip("fte.semas", fte_s, "fuente")
         if chips:
-            st.markdown(f"<div style='margin-top:0.35rem;'>{chips}</div>",
-                        unsafe_allow_html=True)
+            st.markdown(f"<div style='margin-top:0.35rem;'>{chips}</div>", unsafe_allow_html=True)
         if str(row["frase"]).strip():
             st.markdown(
                 f"<div style='margin-top:0.4rem;padding:0.45rem 0.7rem;"

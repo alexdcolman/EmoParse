@@ -15,13 +15,12 @@ from dotenv import load_dotenv
 load_dotenv()
 
 import argparse
-from typing import Callable
+from collections.abc import Callable
 
 from loguru import logger
 
 from emoparse.cli import logging_setup
 from emoparse.cli.commands import COMMANDS
-
 
 #: Handler de subcomando: recibe argparse.Namespace y devuelve exit code.
 HandlerFn = Callable[[argparse.Namespace], int]
@@ -58,12 +57,14 @@ def build_parser() -> argparse.ArgumentParser:
 def _add_global_flags(parser: argparse.ArgumentParser) -> None:
     """Flags que aplican a cualquier subcomando, leídas antes de despachar."""
     parser.add_argument(
-        "-v", "--verbose",
+        "-v",
+        "--verbose",
         action="store_true",
         help="Logging en DEBUG (más detalle).",
     )
     parser.add_argument(
-        "-q", "--quiet",
+        "-q",
+        "--quiet",
         action="store_true",
         help="Logging en WARNING (menos ruido).",
     )

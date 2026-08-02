@@ -39,17 +39,14 @@ def get_post_source(source_id: str, **kwargs: Any) -> PostSourceAdapter:
     """
     if source_id not in _POST_SOURCES:
         raise PostSourceError(
-            f"Fuente de posts desconocida: '{source_id}'. "
-            f"Disponibles: {', '.join(POST_SOURCE_IDS)}"
+            f"Fuente de posts desconocida: '{source_id}'. Disponibles: {', '.join(POST_SOURCE_IDS)}"
         )
     module_name, class_name, extra = _POST_SOURCES[source_id]
     try:
         module = importlib.import_module(module_name)
     except ImportError as e:
         hint = f' Instalá el extra: pip install -e ".[{extra}]"' if extra else ""
-        raise PostSourceError(
-            f"No pude importar la fuente '{source_id}': {e}.{hint}"
-        ) from e
+        raise PostSourceError(f"No pude importar la fuente '{source_id}': {e}.{hint}") from e
     cls = getattr(module, class_name)
 
     accepted = _accepted_params(cls)
@@ -57,9 +54,7 @@ def get_post_source(source_id: str, **kwargs: Any) -> PostSourceAdapter:
     try:
         adapter: PostSourceAdapter = cls(**filtered)
     except (TypeError, ValueError) as e:
-        raise PostSourceError(
-            f"No pude construir la fuente '{source_id}': {e}"
-        ) from e
+        raise PostSourceError(f"No pude construir la fuente '{source_id}': {e}") from e
     return adapter
 
 
@@ -69,6 +64,5 @@ def _accepted_params(cls: type) -> set[str]:
     return {
         name
         for name, p in sig.parameters.items()
-        if name != "self"
-        and p.kind in (p.POSITIONAL_OR_KEYWORD, p.KEYWORD_ONLY)
+        if name != "self" and p.kind in (p.POSITIONAL_OR_KEYWORD, p.KEYWORD_ONLY)
     }

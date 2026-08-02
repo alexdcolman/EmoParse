@@ -6,8 +6,8 @@ from emoparse.pipeline.runner import DEFAULT_ENABLED_STAGES, STAGE_ORDER, Pipeli
 from emoparse.pipeline.stages import (
     ActorsStage,
     CharacterizerStage,
-    EmotionsPass2Stage,
     DeixisStage,
+    EmotionsPass2Stage,
     EmotionsStage,
     EnunciationStage,
     ExplodeEmotionsStage,

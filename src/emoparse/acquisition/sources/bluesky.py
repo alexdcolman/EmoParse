@@ -12,8 +12,9 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from datetime import date
-from typing import Any, Iterator
+from typing import Any
 
 from loguru import logger
 
@@ -44,8 +45,7 @@ class BlueskyAdapter(PostSourceAdapter):
             from atproto import Client
         except ImportError as e:
             raise PostSourceError(
-                "El SDK atproto no está instalado. "
-                'Instalá el extra: pip install -e ".[bluesky]"'
+                'El SDK atproto no está instalado. Instalá el extra: pip install -e ".[bluesky]"'
             ) from e
 
         handle = handle or os.environ.get("BLUESKY_HANDLE")
@@ -152,15 +152,14 @@ class BlueskyAdapter(PostSourceAdapter):
             if not cursor:
                 return
 
-    def fetch_follows(
-        self, handle: str, max_items: int | None = None
-    ) -> Iterator[str]:
+    def fetch_follows(self, handle: str, max_items: int | None = None) -> Iterator[str]:
         """Itera los handles que sigue una cuenta (app.bsky.graph.getFollows)."""
         n = 0
         cursor: str | None = None
         while True:
             params: dict[str, Any] = {
-                "actor": handle.lstrip("@"), "limit": _PAGE_SIZE,
+                "actor": handle.lstrip("@"),
+                "limit": _PAGE_SIZE,
             }
             if cursor:
                 params["cursor"] = cursor
@@ -267,9 +266,7 @@ class BlueskyAdapter(PostSourceAdapter):
             raw=_raw_dict(post_view),
         )
 
-    def _map_repost(
-        self, post_view: Any, reason: Any, reposter_handle: str
-    ) -> PostRecord | None:
+    def _map_repost(self, post_view: Any, reason: Any, reposter_handle: str) -> PostRecord | None:
         """Mapea un repost del feed de un autor a un registro de circulación."""
         original_uri = getattr(post_view, "uri", None)
         if not original_uri:
@@ -290,6 +287,7 @@ class BlueskyAdapter(PostSourceAdapter):
 # ══════════════════════════════════════════════════════════════════════════════
 #  Helpers de mapeo
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _str_or_none(value: Any) -> str | None:
     """String no vacío o None."""
@@ -368,11 +366,13 @@ def _map_images(embed_view: Any) -> list[dict[str, Any]]:
         images = getattr(media_part, "images", None) if media_part is not None else None
     result: list[dict[str, Any]] = []
     for img in images or []:
-        result.append({
-            "tipo": "imagen",
-            "url": _str_or_none(getattr(img, "fullsize", None)),
-            "alt": _str_or_none(getattr(img, "alt", None)),
-        })
+        result.append(
+            {
+                "tipo": "imagen",
+                "url": _str_or_none(getattr(img, "fullsize", None)),
+                "alt": _str_or_none(getattr(img, "alt", None)),
+            }
+        )
     return result
 
 

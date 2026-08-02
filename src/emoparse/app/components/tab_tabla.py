@@ -19,23 +19,40 @@ import streamlit as st
 
 from emoparse.app import data as data_layer
 
-
 #: Niveles de granularidad disponibles para la vista tabular.
 _LEVELS = ("discursos", "frases", "emociones")
 
 #: Columnas del nivel emociones, en orden de lectura. Se muestran las que existan.
 _EMO_COLS = (
-    "codigo", "frase_idx", "emocion_idx",
-    "tipo_emocion", "tipo_emocion_canonico", "modo_existencia", "tipo_configuracion",
-    "experienciador", "experienciador_canonico", "experienciador_marca",
-    "fuente", "fuente_canonico", "fuente_marca",
-    "foria", "dominancia", "intensidad", "duracion",
-    "temporalidad", "aspecto", "tipo_atribucion",
+    "codigo",
+    "frase_idx",
+    "emocion_idx",
+    "tipo_emocion",
+    "tipo_emocion_canonico",
+    "modo_existencia",
+    "tipo_configuracion",
+    "experienciador",
+    "experienciador_canonico",
+    "experienciador_marca",
+    "fuente",
+    "fuente_canonico",
+    "fuente_marca",
+    "foria",
+    "dominancia",
+    "intensidad",
+    "duracion",
+    "temporalidad",
+    "aspecto",
+    "tipo_atribucion",
     "mediador",
-    "verificador_normativo", "verificador_normativo_evaluacion",
-    "verificador_observacional", "verificador_observacional_evaluacion",
-    "operador_modificacion", "polaridad",
-    "enunciador", "frase",
+    "verificador_normativo",
+    "verificador_normativo_evaluacion",
+    "verificador_observacional",
+    "verificador_observacional_evaluacion",
+    "operador_modificacion",
+    "polaridad",
+    "enunciador",
+    "frase",
 )
 
 
@@ -53,7 +70,8 @@ def render(db_path: Path) -> None:
     with col_llm:
         usar_llm = st.toggle(
             "Usar resultados de la inferencia de los LLMs",
-            value=False, key="tabla_usar_llm",
+            value=False,
+            key="tabla_usar_llm",
             help=(
                 "Solo aplica al nivel emociones: muestra el experienciador y la "
                 "fuente crudos del LLM en lugar de los canónicos (revisados en Referentes)."
@@ -71,11 +89,7 @@ def render(db_path: Path) -> None:
         f"<p style='font-size:0.8rem;color:var(--dim);'>{len(df_filtered)} filas</p>",
         unsafe_allow_html=True,
     )
-    metadata_labels = (
-        data_layer.get_input_metadata_display(db_path)
-        if level == "discursos"
-        else {}
-    )
+    metadata_labels = data_layer.get_input_metadata_display(db_path) if level == "discursos" else {}
     display_df = _rename_metadata_columns(df_filtered, metadata_labels)
     st.dataframe(display_df, use_container_width=True, height=480)
 
@@ -126,13 +140,20 @@ def _apply_filters(df: pd.DataFrame, level: str) -> pd.DataFrame:
 
     candidatos = {
         "discursos": [
-            "codigo", "metadata__tipo_discurso", "enunciation__enunciador",
+            "codigo",
+            "metadata__tipo_discurso",
+            "enunciation__enunciador",
             "summarizer__status",
         ],
-        "frases":    ["codigo"],
+        "frases": ["codigo"],
         "emociones": [
-            "codigo", "tipo_emocion", "experienciador", "fuente",
-            "modo_existencia", "foria", "polaridad",
+            "codigo",
+            "tipo_emocion",
+            "experienciador",
+            "fuente",
+            "modo_existencia",
+            "foria",
+            "polaridad",
         ],
     }.get(level, [])
 

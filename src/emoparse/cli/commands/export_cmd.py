@@ -47,10 +47,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     """Registra `export` como subcomando en el CLI principal."""
     p = subparsers.add_parser(
         "export",
-        help=(
-            "Exporta los resultados del run a CSVs, incluida la metadata "
-            "de género declarada."
-        ),
+        help=("Exporta los resultados del run a CSVs, incluida la metadata de género declarada."),
         description=(
             "Genera cuatro CSVs en el directorio de salida: discursos.csv, "
             "metadata_genero.csv, frases.csv y emociones.csv. La metadata "

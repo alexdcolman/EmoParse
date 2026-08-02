@@ -44,7 +44,7 @@ class TecnoUsageAgent(BaseBatchAgent[ListaTecnoUsosBatchSchema]):
         backend: LLMBackend,
         heuristicas: str | None = None,
         retry_config: Any | None = None,
-        genre: "Genre | None" = None,
+        genre: Genre | None = None,
     ) -> None:
         """
         Args:
@@ -83,8 +83,4 @@ class TecnoUsageAgent(BaseBatchAgent[ListaTecnoUsosBatchSchema]):
         item: TecnoUsoUnidadSchema,
         row: pd.Series,
     ) -> dict[str, Any]:
-        return {
-            "usos": json.dumps(
-                [u.model_dump() for u in item.usos], ensure_ascii=False
-            )
-        }
+        return {"usos": json.dumps([u.model_dump() for u in item.usos], ensure_ascii=False)}

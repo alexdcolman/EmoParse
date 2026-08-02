@@ -196,18 +196,14 @@ def export_metadata_genero_csv(db: Database, output_path: Path) -> int:
     antemano el schema de cada género.
     """
     presentation = _run_genre_presentation(db)
-    rows = db.execute(
-        "SELECT codigo, input FROM discursos ORDER BY codigo"
-    ).fetchall()
+    rows = db.execute("SELECT codigo, input FROM discursos ORDER BY codigo").fetchall()
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     records: list[dict[str, str]] = []
     if presentation is not None:
         for row in rows:
             payload = _json_or_empty(row["input"]) or {}
-            for item in presented_metadata(
-                presentation, payload, include_missing=True
-            ):
+            for item in presented_metadata(presentation, payload, include_missing=True):
                 records.append(
                     {
                         "codigo": str(row["codigo"] or ""),
@@ -230,13 +226,12 @@ def export_metadata_genero_csv(db: Database, output_path: Path) -> int:
             "[export_metadata_genero_csv] El run no contiene una declaración "
             "de presentación de género; se escribió un archivo sin filas."
         )
-    logger.info(
-        f"[export_metadata_genero_csv] {len(records)} filas → {output_path}"
-    )
+    logger.info(f"[export_metadata_genero_csv] {len(records)} filas → {output_path}")
     return len(records)
 
 
 # ── Export frases ─────────────────────────────────────────────────────────────
+
 
 def export_frases_csv(db: Database, output_path: Path) -> int:
     """Exporta la tabla `frases` a CSV."""
@@ -260,10 +255,18 @@ def export_frases_csv(db: Database, output_path: Path) -> int:
         return 0
 
     fieldnames = [
-        "codigo", "unit_idx", "frase",
-        "actores_payload", "actores_version", "actores_error",
-        "emociones_payload", "emociones_version", "emociones_error",
-        "emociones_pass2_payload", "emociones_pass2_version", "emociones_pass2_error",
+        "codigo",
+        "unit_idx",
+        "frase",
+        "actores_payload",
+        "actores_version",
+        "actores_error",
+        "emociones_payload",
+        "emociones_version",
+        "emociones_error",
+        "emociones_pass2_payload",
+        "emociones_pass2_version",
+        "emociones_pass2_error",
     ]
     fieldnames += ["created_at", "updated_at"]
 
@@ -296,16 +299,12 @@ def export_frases_csv(db: Database, output_path: Path) -> int:
 
 def _has_columns(db: Database, table: str, columns: tuple[str, ...]) -> bool:
     """True si la tabla tiene todas las columnas indicadas."""
-    existing = {
-        row["name"]
-        for row in db.execute(f"PRAGMA table_info({table})").fetchall()
-    }
+    existing = {row["name"] for row in db.execute(f"PRAGMA table_info({table})").fetchall()}
     return all(c in existing for c in columns)
 
 
-
-
 # ── Export emociones ──────────────────────────────────────────────────────────
+
 
 def export_emociones_csv(db: Database, output_path: Path) -> int:
     """Exporta la tabla `emociones` a CSV con caracterización flatten."""
@@ -315,7 +314,8 @@ def export_emociones_csv(db: Database, output_path: Path) -> int:
     has_tipo_conf = _has_columns(db, "emociones", ("tipo_configuracion",))
     has_canonico = _has_columns(db, "emociones", ("tipo_emocion_canonico",))
     has_actantes = _has_columns(
-        db, "emociones",
+        db,
+        "emociones",
         ("actantes_payload", "actantes_version", "actantes_error"),
     )
     has_exp_canonico = _has_columns(db, "emociones", ("experienciador_canonico",))
@@ -327,9 +327,7 @@ def export_emociones_csv(db: Database, output_path: Path) -> int:
     if has_canonico:
         extra_select += ", tipo_emocion_canonico"
     if has_actantes:
-        extra_select += (
-            ", actantes_payload, actantes_version, actantes_error"
-        )
+        extra_select += ", actantes_payload, actantes_version, actantes_error"
     if has_exp_canonico:
         extra_select += ", experienciador_canonico"
     if has_fte_canonico:
@@ -366,10 +364,17 @@ def export_emociones_csv(db: Database, output_path: Path) -> int:
     seen_keys: set[str] = set()
 
     base_keys = [
-        "codigo", "frase_idx", "emocion_idx",
-        "experienciador", "experienciador_marca", "experienciador_referente",
-        "tipo_emocion", "fuente_marca",
-        "fuente_inferencia", "fuente_referente", "modo_existencia",
+        "codigo",
+        "frase_idx",
+        "emocion_idx",
+        "experienciador",
+        "experienciador_marca",
+        "experienciador_referente",
+        "tipo_emocion",
+        "fuente_marca",
+        "fuente_inferencia",
+        "fuente_referente",
+        "modo_existencia",
     ]
     for k in base_keys:
         seen_keys.add(k)
@@ -386,20 +391,20 @@ def export_emociones_csv(db: Database, output_path: Path) -> int:
             "experienciador_referente": resolver_canonico(
                 exp_index.get(unidad),
                 row["experienciador_marca"],
-                override=(
-                    row["experienciador_canonico"] if has_exp_canonico else None
-                ),
+                override=(row["experienciador_canonico"] if has_exp_canonico else None),
                 inferencia=row["experienciador"],
             ),
             "tipo_emocion": row["tipo_emocion"] or "",
             "fuente_marca": row["fuente_marca"] or "",
             "fuente_inferencia": row["fuente_inferencia"] or "",
-            "fuente_referente": "; ".join(resolver_canonicos(
-                fte_index.get(unidad),
-                row["fuente_marca"],
-                override=row["fuente_canonico"] if has_fte_canonico else None,
-                inferencia=row["fuente_inferencia"],
-            )),
+            "fuente_referente": "; ".join(
+                resolver_canonicos(
+                    fte_index.get(unidad),
+                    row["fuente_marca"],
+                    override=row["fuente_canonico"] if has_fte_canonico else None,
+                    inferencia=row["fuente_inferencia"],
+                )
+            ),
             "modo_existencia": row["modo_existencia"] or "",
         }
 
@@ -411,9 +416,7 @@ def export_emociones_csv(db: Database, output_path: Path) -> int:
 
         if has_tipo_conf:
             record["tipo_configuracion"] = row["tipo_configuracion"] or ""
-            semiotizacion, identificacion = semiosis_from_config(
-                row["tipo_configuracion"]
-            )
+            semiotizacion, identificacion = semiosis_from_config(row["tipo_configuracion"])
             record["modo_semiotizacion"] = semiotizacion
             record["modo_identificacion"] = identificacion
         if has_canonico:
@@ -448,15 +451,12 @@ def export_emociones_csv(db: Database, output_path: Path) -> int:
 # ── Export full run ───────────────────────────────────────────────────────────
 
 
-
 def export_full_run(db: Database, output_dir: Path) -> dict[str, int]:
     """Corre los exporters y devuelve conteos."""
     output_dir.mkdir(parents=True, exist_ok=True)
     return {
         "discursos": export_discursos_csv(db, output_dir / "discursos.csv"),
-        "metadata_genero": export_metadata_genero_csv(
-            db, output_dir / "metadata_genero.csv"
-        ),
+        "metadata_genero": export_metadata_genero_csv(db, output_dir / "metadata_genero.csv"),
         "frases": export_frases_csv(db, output_dir / "frases.csv"),
         "emociones": export_emociones_csv(db, output_dir / "emociones.csv"),
     }

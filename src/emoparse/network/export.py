@@ -35,9 +35,7 @@ def export_graph(
         for nodo in G.nodes():
             if str(nodo) in indexed.index:
                 for col, val in indexed.loc[str(nodo)].items():
-                    if val is not None and not (
-                        isinstance(val, float) and pd.isna(val)
-                    ):
+                    if val is not None and not (isinstance(val, float) and pd.isna(val)):
                         G.nodes[nodo][str(col)] = _gexf_safe(val)
     if communities:
         for nodo in G.nodes():
@@ -62,9 +60,7 @@ def export_graph(
         nodes_csv = out / f"{nombre}_nodos.csv"
         df = node_attrs.copy()
         if communities:
-            df["comunidad"] = df["nodo"].map(
-                lambda n: communities.get(str(n))
-            )
+            df["comunidad"] = df["nodo"].map(lambda n: communities.get(str(n)))
         df.to_csv(nodes_csv, index=False, encoding="utf-8")
         paths.append(nodes_csv)
     return paths

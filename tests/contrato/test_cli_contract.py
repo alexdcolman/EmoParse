@@ -19,21 +19,14 @@ from emoparse.pipeline import STAGE_ORDER
 
 
 def _subcommands(parser: argparse.ArgumentParser) -> dict[str, argparse.ArgumentParser]:
-    action = next(
-        item
-        for item in parser._actions
-        if isinstance(item, argparse._SubParsersAction)
-    )
+    action = next(item for item in parser._actions if isinstance(item, argparse._SubParsersAction))
     return dict(action.choices)
 
 
 def test_parser_registers_every_command_module_once() -> None:
     parser = cli_main.build_parser()
     registered = tuple(_subcommands(parser))
-    expected = tuple(
-        module.__name__.rsplit(".", 1)[-1].removesuffix("_cmd")
-        for module in COMMANDS
-    )
+    expected = tuple(module.__name__.rsplit(".", 1)[-1].removesuffix("_cmd") for module in COMMANDS)
 
     assert registered == expected
     assert len(registered) == len(set(registered))

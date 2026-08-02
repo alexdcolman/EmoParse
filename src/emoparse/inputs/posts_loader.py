@@ -34,9 +34,22 @@ REQUIRED_POST_FIELDS: tuple[str, ...] = ("id", "texto", "autor_handle")
 
 #: Columnas del DataFrame de posts normalizado.
 POST_COLUMNS: tuple[str, ...] = (
-    "post_id", "plataforma", "autor_handle", "autor_display", "texto",
-    "fecha", "lang", "tipo", "conversacion_id", "en_respuesta_a",
-    "cita_a", "reposteo_a", "es_repost_puro", "url", "metricas", "media",
+    "post_id",
+    "plataforma",
+    "autor_handle",
+    "autor_display",
+    "texto",
+    "fecha",
+    "lang",
+    "tipo",
+    "conversacion_id",
+    "en_respuesta_a",
+    "cita_a",
+    "reposteo_a",
+    "es_repost_puro",
+    "url",
+    "metricas",
+    "media",
     "raw",
 )
 
@@ -48,6 +61,7 @@ class PostsBundle:
     `hilos` queda en None hasta que `pipeline.thread_builder.build_threads`
     reconstruye el árbol conversacional.
     """
+
     posts: pd.DataFrame
     autores: pd.DataFrame
     hilos: pd.DataFrame | None = None
@@ -65,9 +79,7 @@ def load_posts(path: Path | str) -> PostsBundle:
     elif ext == ".csv":
         rows = _load_csv(p)
     else:
-        raise InputError(
-            f"Extensión no soportada para posts: '{ext}'. Use .jsonl o .csv."
-        )
+        raise InputError(f"Extensión no soportada para posts: '{ext}'. Use .jsonl o .csv.")
 
     if not rows:
         raise InputError(f"{p} no contiene posts.")
@@ -99,31 +111,30 @@ def posts_to_discursos(df_posts: pd.DataFrame) -> pd.DataFrame:
     """
     df = df_posts[df_posts["es_repost_puro"] == 0].copy()
     if df.empty:
-        raise InputError(
-            "El corpus no contiene posts analizables: todos son reposts puros."
-        )
-    out = pd.DataFrame({
-        "codigo": df["post_id"].astype(str),
-        "contenido": df["texto"].astype(str),
-        "titulo": df.apply(
-            lambda r: f"@{r['autor_handle']}: {str(r['texto'])[:60]}", axis=1
-        ),
-        "fecha": df["fecha"],
-        "fuente": df["plataforma"],
-        "url": df["url"],
-        "autor": df["autor_handle"],
-        "autor_handle": df["autor_handle"],
-        "autor_display": df["autor_display"],
-        "tipo_post": df["tipo"],
-        "conversacion_id": df["conversacion_id"],
-        "lang": df["lang"],
-    })
+        raise InputError("El corpus no contiene posts analizables: todos son reposts puros.")
+    out = pd.DataFrame(
+        {
+            "codigo": df["post_id"].astype(str),
+            "contenido": df["texto"].astype(str),
+            "titulo": df.apply(lambda r: f"@{r['autor_handle']}: {str(r['texto'])[:60]}", axis=1),
+            "fecha": df["fecha"],
+            "fuente": df["plataforma"],
+            "url": df["url"],
+            "autor": df["autor_handle"],
+            "autor_handle": df["autor_handle"],
+            "autor_display": df["autor_display"],
+            "tipo_post": df["tipo"],
+            "conversacion_id": df["conversacion_id"],
+            "lang": df["lang"],
+        }
+    )
     return out.reset_index(drop=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Lectores por formato
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _load_jsonl(path: Path) -> list[dict[str, Any]]:
     """Lee un JSONL: un objeto post por línea (líneas vacías se ignoran)."""
@@ -137,9 +148,7 @@ def _load_jsonl(path: Path) -> list[dict[str, Any]]:
                 try:
                     obj = json.loads(line)
                 except json.JSONDecodeError as e:
-                    raise InputError(
-                        f"JSONL inválido en {path}:{lineno}: {e}"
-                    ) from e
+                    raise InputError(f"JSONL inválido en {path}:{lineno}: {e}") from e
                 if not isinstance(obj, dict):
                     raise InputError(
                         f"En {path}:{lineno}, la línea debe ser un objeto "
@@ -156,9 +165,7 @@ def _load_csv(path: Path) -> list[dict[str, Any]]:
     try:
         df = pd.read_csv(path, encoding="utf-8", dtype={"id": str})
     except UnicodeDecodeError as e:
-        raise InputError(
-            f"Encoding inválido en {path} (esperaba UTF-8): {e}."
-        ) from e
+        raise InputError(f"Encoding inválido en {path} (esperaba UTF-8): {e}.") from e
     except (pd.errors.EmptyDataError, pd.errors.ParserError) as e:
         raise InputError(f"CSV malformado en {path}: {e}") from e
     return df.to_dict(orient="records")
@@ -167,6 +174,7 @@ def _load_csv(path: Path) -> list[dict[str, Any]]:
 # ══════════════════════════════════════════════════════════════════════════════
 #  Normalización y validaciones
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _s(value: Any) -> str:
     """String seguro: None/NaN → ''."""
@@ -193,9 +201,7 @@ def _normalize_row(row: dict[str, Any], path: Path) -> dict[str, Any]:
     cita_a = _s(row.get("cita_a")) or None
     reposteo_a = _s(row.get("reposteo_a")) or None
 
-    tipo = _s(row.get("tipo")).lower() or _infer_tipo(
-        en_respuesta_a, cita_a, reposteo_a
-    )
+    tipo = _s(row.get("tipo")).lower() or _infer_tipo(en_respuesta_a, cita_a, reposteo_a)
     es_repost_puro = int(tipo == "repost" and not texto)
 
     metricas = row.get("metricas")
@@ -268,10 +274,12 @@ def _build_autores(df_posts: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for (plataforma, handle), grp in grouped:
         displays = [d for d in grp["autor_display"].tolist() if d]
-        rows.append({
-            "plataforma": plataforma,
-            "handle": handle,
-            "display_name": displays[0] if displays else None,
-            "n_posts": int(len(grp)),
-        })
+        rows.append(
+            {
+                "plataforma": plataforma,
+                "handle": handle,
+                "display_name": displays[0] if displays else None,
+                "n_posts": int(len(grp)),
+            }
+        )
     return pd.DataFrame(rows)

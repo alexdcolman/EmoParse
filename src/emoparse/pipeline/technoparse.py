@@ -38,7 +38,6 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Any
 
-
 try:
     import emoji as _emoji_lib
 except ImportError:
@@ -49,11 +48,11 @@ except ImportError:
 class TecnoEntidad:
     """Un tecnolingüístico localizado en el texto de una unidad."""
 
-    tipo: str          # 'hashtag'|'mencion'|'url'|'emoji'|'tecnografismo'
-    valor: str         # tal como aparece en el texto
-    valor_norm: str    # normalizado (ver docstring del módulo)
-    inicio: int        # offset inicial (inclusive)
-    fin: int           # offset final (exclusive)
+    tipo: str  # 'hashtag'|'mencion'|'url'|'emoji'|'tecnografismo'
+    valor: str  # tal como aparece en el texto
+    valor_norm: str  # normalizado (ver docstring del módulo)
+    inicio: int  # offset inicial (inclusive)
+    fin: int  # offset final (exclusive)
     extra: dict[str, Any] = field(default_factory=dict)
 
 
@@ -124,10 +123,10 @@ _PUNTUACION_RE = re.compile(r"(?:[!?]*[!?]{2,}[!?]*|\.{3,}|…+)")
 #: secuencias ZWJ compuestas; para eso está la librería `emoji`.
 _EMOJI_FALLBACK_RE = re.compile(
     "["
-    "\U0001F300-\U0001FAFF"   # símbolos, emoticones, transporte, suplementos
-    "\U00002600-\U000027BF"   # misc symbols + dingbats
-    "\U0001F1E6-\U0001F1FF"   # banderas (regional indicators)
-    "\u2764\u2B50\u2B06\u2B07"
+    "\U0001f300-\U0001faff"  # símbolos, emoticones, transporte, suplementos
+    "\U00002600-\U000027bf"  # misc symbols + dingbats
+    "\U0001f1e6-\U0001f1ff"  # banderas (regional indicators)
+    "\u2764\u2b50\u2b06\u2b07"
     "]+"
 )
 
@@ -135,6 +134,7 @@ _EMOJI_FALLBACK_RE = re.compile(
 # ══════════════════════════════════════════════════════════════════════════════
 #  API principal
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def parse_texto(texto: str) -> list[TecnoEntidad]:
     """Extrae todos los tecnolingüísticos de un texto, ordenados por inicio."""
@@ -156,7 +156,8 @@ def parse_texto(texto: str) -> list[TecnoEntidad]:
     # de por medio): truncado de plataforma, no gesto expresivo.
     fines_url = {fin for _, fin in url_spans}
     tecnografismos = [
-        e for e in tecnografismos
+        e
+        for e in tecnografismos
         if not (
             e.extra.get("subtipo") == "puntuacion"
             and e.valor_norm == "suspensivos"
@@ -186,6 +187,7 @@ def menciones_handles(entidades: list[TecnoEntidad]) -> list[TecnoEntidad]:
 #  Extractores
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def extract_urls(texto: str) -> list[TecnoEntidad]:
     """URLs http(s), normalizadas a su dominio."""
     out: list[TecnoEntidad] = []
@@ -195,10 +197,15 @@ def extract_urls(texto: str) -> list[TecnoEntidad]:
         trimmed = raw.rstrip(_URL_TRAIL)
         fin = m.start() + len(trimmed)
         dominio = _dominio(trimmed)
-        out.append(TecnoEntidad(
-            tipo="url", valor=trimmed, valor_norm=dominio,
-            inicio=m.start(), fin=fin,
-        ))
+        out.append(
+            TecnoEntidad(
+                tipo="url",
+                valor=trimmed,
+                valor_norm=dominio,
+                inicio=m.start(),
+                fin=fin,
+            )
+        )
     return out
 
 
@@ -214,14 +221,16 @@ def extract_hashtags(
         if _solapa(m.start(), m.end(), ocupado):
             continue
         funcion = "pospuesta" if m.start() >= cola_inicio else "integrada"
-        out.append(TecnoEntidad(
-            tipo="hashtag",
-            valor=m.group(0),
-            valor_norm=m.group(1).lower(),
-            inicio=m.start(),
-            fin=m.end(),
-            extra={"funcion_sintactica": funcion},
-        ))
+        out.append(
+            TecnoEntidad(
+                tipo="hashtag",
+                valor=m.group(0),
+                valor_norm=m.group(1).lower(),
+                inicio=m.start(),
+                fin=m.end(),
+                extra={"funcion_sintactica": funcion},
+            )
+        )
     return out
 
 
@@ -237,14 +246,16 @@ def extract_menciones(
         if _solapa(m.start(), m.end(), ocupado):
             continue
         posicion = "vocativo_inicial" if m.end() <= fin_vocativo else "integrada"
-        out.append(TecnoEntidad(
-            tipo="mencion",
-            valor=m.group(0),
-            valor_norm=m.group(1).lower(),
-            inicio=m.start(),
-            fin=m.end(),
-            extra={"posicion": posicion},
-        ))
+        out.append(
+            TecnoEntidad(
+                tipo="mencion",
+                valor=m.group(0),
+                valor_norm=m.group(1).lower(),
+                inicio=m.start(),
+                fin=m.end(),
+                extra={"posicion": posicion},
+            )
+        )
     return out
 
 
@@ -254,23 +265,30 @@ def extract_emojis(texto: str) -> list[TecnoEntidad]:
         out = []
         for item in _emoji_lib.emoji_list(texto):
             ch = item["emoji"]
-            out.append(TecnoEntidad(
-                tipo="emoji",
-                valor=ch,
-                valor_norm=_emoji_lib.demojize(ch, language="es").strip(":"),
-                inicio=item["match_start"],
-                fin=item["match_end"],
-            ))
+            out.append(
+                TecnoEntidad(
+                    tipo="emoji",
+                    valor=ch,
+                    valor_norm=_emoji_lib.demojize(ch, language="es").strip(":"),
+                    inicio=item["match_start"],
+                    fin=item["match_end"],
+                )
+            )
         return out
     # Fallback sin dependencia: rangos básicos, cada codepoint por separado.
     out = []
     for m in _EMOJI_FALLBACK_RE.finditer(texto):
         for offset, ch in enumerate(m.group(0)):
             nombre = unicodedata.name(ch, "emoji").lower().replace(" ", "_")
-            out.append(TecnoEntidad(
-                tipo="emoji", valor=ch, valor_norm=nombre,
-                inicio=m.start() + offset, fin=m.start() + offset + 1,
-            ))
+            out.append(
+                TecnoEntidad(
+                    tipo="emoji",
+                    valor=ch,
+                    valor_norm=nombre,
+                    inicio=m.start() + offset,
+                    fin=m.start() + offset + 1,
+                )
+            )
     return out
 
 
@@ -293,18 +311,21 @@ def extract_tecnografismos(
     out: list[TecnoEntidad] = []
 
     def _libre(inicio: int, fin: int) -> bool:
-        return not _solapa(inicio, fin, externos) and not _solapa(
-            inicio, fin, _spans(out)
-        )
+        return not _solapa(inicio, fin, externos) and not _solapa(inicio, fin, _spans(out))
 
     for m in _RISA_RE.finditer(texto):
         if len(m.group(0)) < 4 or not _libre(m.start(), m.end()):
             continue
-        out.append(TecnoEntidad(
-            tipo="tecnografismo", valor=m.group(0),
-            valor_norm="risa", inicio=m.start(), fin=m.end(),
-            extra={"subtipo": "risa"},
-        ))
+        out.append(
+            TecnoEntidad(
+                tipo="tecnografismo",
+                valor=m.group(0),
+                valor_norm="risa",
+                inicio=m.start(),
+                fin=m.end(),
+                extra={"subtipo": "risa"},
+            )
+        )
 
     out.extend(_extract_mayusculas(texto, externos, out))
 
@@ -314,21 +335,30 @@ def extract_tecnografismos(
         if any(ch.isdigit() for ch in m.group(0)):
             continue  # '2000', 'v1.000': repetición numérica, no expresiva
         colapsado = re.sub(r"(\w)\1{2,}", r"\1", m.group(0))
-        out.append(TecnoEntidad(
-            tipo="tecnografismo", valor=m.group(0),
-            valor_norm=colapsado.lower(), inicio=m.start(), fin=m.end(),
-            extra={"subtipo": "alargamiento"},
-        ))
+        out.append(
+            TecnoEntidad(
+                tipo="tecnografismo",
+                valor=m.group(0),
+                valor_norm=colapsado.lower(),
+                inicio=m.start(),
+                fin=m.end(),
+                extra={"subtipo": "alargamiento"},
+            )
+        )
 
     for m in _PUNTUACION_RE.finditer(texto):
         if not _libre(m.start(), m.end()):
             continue
-        out.append(TecnoEntidad(
-            tipo="tecnografismo", valor=m.group(0),
-            valor_norm=_norm_puntuacion(m.group(0)),
-            inicio=m.start(), fin=m.end(),
-            extra={"subtipo": "puntuacion"},
-        ))
+        out.append(
+            TecnoEntidad(
+                tipo="tecnografismo",
+                valor=m.group(0),
+                valor_norm=_norm_puntuacion(m.group(0)),
+                inicio=m.start(),
+                fin=m.end(),
+                extra={"subtipo": "puntuacion"},
+            )
+        )
     return out
 
 
@@ -350,14 +380,11 @@ def _extract_mayusculas(
     tecnografismos. Un token aislado con letra repetida se cede al extractor
     de alargamientos.
     """
-    def _libre(inicio: int, fin: int) -> bool:
-        return not _solapa(inicio, fin, externos) and not _solapa(
-            inicio, fin, _spans(previas)
-        )
 
-    tokens = [
-        m for m in _CAPS_TOKEN_RE.finditer(texto) if _libre(m.start(), m.end())
-    ]
+    def _libre(inicio: int, fin: int) -> bool:
+        return not _solapa(inicio, fin, externos) and not _solapa(inicio, fin, _spans(previas))
+
+    tokens = [m for m in _CAPS_TOKEN_RE.finditer(texto) if _libre(m.start(), m.end())]
     if not tokens:
         return []
 
@@ -377,19 +404,21 @@ def _extract_mayusculas(
     runs.append(actual)
 
     out: list[TecnoEntidad] = []
-    palabras = [
-        m for m in _PALABRA_RE.finditer(texto)
-        if not _solapa(m.start(), m.end(), externos)
-    ]
+    palabras = [m for m in _PALABRA_RE.finditer(texto) if not _solapa(m.start(), m.end(), externos)]
     n_caps = sum(len(r) for r in runs)
     if palabras and len(palabras) >= 4 and n_caps / len(palabras) >= 0.8:
         inicio = runs[0][0].start()
         fin = runs[-1][-1].end()
-        out.append(TecnoEntidad(
-            tipo="tecnografismo", valor=texto[inicio:fin],
-            valor_norm="mayusculas_sostenidas", inicio=inicio, fin=fin,
-            extra={"subtipo": "mayusculas", "alcance": "frase"},
-        ))
+        out.append(
+            TecnoEntidad(
+                tipo="tecnografismo",
+                valor=texto[inicio:fin],
+                valor_norm="mayusculas_sostenidas",
+                inicio=inicio,
+                fin=fin,
+                extra={"subtipo": "mayusculas", "alcance": "frase"},
+            )
+        )
         return out
 
     for run in runs:
@@ -398,12 +427,16 @@ def _extract_mayusculas(
             # con las siglas que contenga ("BASTA FMI" es un solo tecnografismo).
             inicio, fin = run[0].start(), run[-1].end()
             valor = texto[inicio:fin]
-            out.append(TecnoEntidad(
-                tipo="tecnografismo", valor=valor,
-                valor_norm=re.sub(r"[\s,]+", " ", valor).strip().lower(),
-                inicio=inicio, fin=fin,
-                extra={"subtipo": "mayusculas", "alcance": "expresion"},
-            ))
+            out.append(
+                TecnoEntidad(
+                    tipo="tecnografismo",
+                    valor=valor,
+                    valor_norm=re.sub(r"[\s,]+", " ", valor).strip().lower(),
+                    inicio=inicio,
+                    fin=fin,
+                    extra={"subtipo": "mayusculas", "alcance": "expresion"},
+                )
+            )
             continue
         _emitir_token_aislado(run[0], texto, out)
     return out
@@ -425,16 +458,22 @@ def _emitir_token_aislado(
         return  # "GOOOOL": lo toma el extractor de alargamientos
     if len(palabra) < 5 or not (_VOCALES & set(palabra)):
         return  # sigla probable (LLA, CFK, PAMI, FMI)
-    out.append(TecnoEntidad(
-        tipo="tecnografismo", valor=palabra,
-        valor_norm=palabra.lower(), inicio=m.start(), fin=m.end(),
-        extra={"subtipo": "mayusculas", "alcance": "palabra"},
-    ))
+    out.append(
+        TecnoEntidad(
+            tipo="tecnografismo",
+            valor=palabra,
+            valor_norm=palabra.lower(),
+            inicio=m.start(),
+            fin=m.end(),
+            extra={"subtipo": "mayusculas", "alcance": "palabra"},
+        )
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Helpers
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _url_raw_spans(texto: str) -> list[tuple[int, int]]:
     """Spans crudos de las URLs (match completo, sin recorte de puntuación)."""
@@ -499,17 +538,16 @@ def _inicio_bloque_final(texto: str) -> int:
     while True:
         recortado = resto.rstrip()
         recortado = re.sub(r"(?:#\w+)\Z", "", recortado, flags=re.UNICODE)
-        recortado = re.sub(f"(?:{_URL_RE.pattern})" + r"\Z", "", recortado,
-                           flags=re.UNICODE | re.IGNORECASE)
+        recortado = re.sub(
+            f"(?:{_URL_RE.pattern})" + r"\Z", "", recortado, flags=re.UNICODE | re.IGNORECASE
+        )
         recortado = re.sub(r"[\s.,;:!?…]+\Z", "", recortado)
         if _emoji_lib is not None:
             spans = _emoji_lib.emoji_list(recortado)
             if spans and spans[-1]["match_end"] == len(recortado):
                 recortado = recortado[: spans[-1]["match_start"]]
         else:
-            recortado = re.sub(
-                _EMOJI_FALLBACK_RE.pattern + r"\Z", "", recortado
-            )
+            recortado = re.sub(_EMOJI_FALLBACK_RE.pattern + r"\Z", "", recortado)
         if recortado == resto:
             return len(recortado)
         resto = recortado
@@ -517,9 +555,7 @@ def _inicio_bloque_final(texto: str) -> int:
 
 def _fin_bloque_vocativo(texto: str) -> int:
     """Offset donde termina la cadena inicial de @menciones (convención reply)."""
-    m = re.match(
-        r"(?:@[A-Za-z0-9_](?:[A-Za-z0-9_.\-]*[A-Za-z0-9_])?[\s,]*)+", texto
-    )
+    m = re.match(r"(?:@[A-Za-z0-9_](?:[A-Za-z0-9_.\-]*[A-Za-z0-9_])?[\s,]*)+", texto)
     return m.end() if m else 0
 
 

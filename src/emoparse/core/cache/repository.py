@@ -8,7 +8,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from loguru import logger
@@ -20,6 +20,7 @@ from emoparse.storage.db import Database
 @dataclass(frozen=True, slots=True)
 class CachedEntry:
     """Una entrada del cache. Resultado de un `get()`."""
+
     raw: str
     finish_reason: str | None
     prompt_tokens: int
@@ -65,7 +66,7 @@ class CacheRepository:
             finish_reason=row["finish_reason"],
             prompt_tokens=row["prompt_tokens"] or 0,
             completion_tokens=row["completion_tokens"] or 0,
-            latency_ms=row["latency_ms"],   # puede ser None en entradas viejas
+            latency_ms=row["latency_ms"],  # puede ser None en entradas viejas
             created_at=row["created_at"],
             hit_count=row["hit_count"] or 0,
         )
@@ -80,7 +81,7 @@ class CacheRepository:
                     last_hit_at = ?
                 WHERE cache_key = ?
                 """,
-                (datetime.now(timezone.utc), digest),
+                (datetime.now(UTC), digest),
             )
 
     # ── Escritura ────────────────────────────────────────────────────────────
@@ -126,7 +127,7 @@ class CacheRepository:
                     prompt_tokens,
                     completion_tokens,
                     latency_ms,
-                    datetime.now(timezone.utc),
+                    datetime.now(UTC),
                 ),
             )
 
@@ -134,9 +135,7 @@ class CacheRepository:
 
     def stats(self) -> dict[str, Any]:
         """Estadísticas del cache: sesión actual y agregadas de la tabla."""
-        total = self._db.execute(
-            "SELECT COUNT(*) AS n FROM llm_cache"
-        ).fetchone()["n"]
+        total = self._db.execute("SELECT COUNT(*) AS n FROM llm_cache").fetchone()["n"]
 
         by_model_rows = self._db.execute(
             """
@@ -151,9 +150,7 @@ class CacheRepository:
         }
 
         total_lookups = self._session_hits + self._session_misses
-        hit_rate = (
-            self._session_hits / total_lookups if total_lookups > 0 else 0.0
-        )
+        hit_rate = self._session_hits / total_lookups if total_lookups > 0 else 0.0
 
         return {
             "session_hits": self._session_hits,
@@ -203,8 +200,7 @@ class CacheRepository:
 
         if not conditions:
             raise ValueError(
-                "purge_by_versions requiere al menos un filtro. "
-                "Para borrar todo, usá purge_all()."
+                "purge_by_versions requiere al menos un filtro. Para borrar todo, usá purge_all()."
             )
 
         sql = f"DELETE FROM llm_cache WHERE {' AND '.join(conditions)}"

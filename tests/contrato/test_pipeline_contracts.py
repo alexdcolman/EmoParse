@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pandas as pd
 import pandera.pandas as pa
@@ -29,54 +29,68 @@ from emoparse.pipeline.contracts import (
     validate,
 )
 
-
 # ──────────────────────────────────────────────────────────────────────────────
 #  Helpers
 # ──────────────────────────────────────────────────────────────────────────────
 
 
 def _df_discurso_valido() -> pd.DataFrame:
-    return pd.DataFrame([
-        {"codigo": "D001", "contenido": "Texto del discurso."},
-        {"codigo": "D002", "contenido": "Otro texto.", "titulo": "Título opcional"},
-    ])
+    return pd.DataFrame(
+        [
+            {"codigo": "D001", "contenido": "Texto del discurso."},
+            {"codigo": "D002", "contenido": "Otro texto.", "titulo": "Título opcional"},
+        ]
+    )
 
 
 def _df_frase_valido() -> pd.DataFrame:
-    return pd.DataFrame([
-        {"codigo": "D001", "unit_idx": 0, "frase": "Primera frase."},
-        {"codigo": "D001", "unit_idx": 1, "frase": "Segunda frase."},
-    ])
+    return pd.DataFrame(
+        [
+            {"codigo": "D001", "unit_idx": 0, "frase": "Primera frase."},
+            {"codigo": "D001", "unit_idx": 1, "frase": "Segunda frase."},
+        ]
+    )
 
 
 def _df_frase_actores_valido() -> pd.DataFrame:
-    return pd.DataFrame([
-        {"codigo": "D001", "unit_idx": 0, "frase": "Frase.", "actores": '[{"nombre": "X"}]'},
-        {"codigo": "D001", "unit_idx": 1, "frase": "Otra frase.", "actores": None},
-    ])
+    return pd.DataFrame(
+        [
+            {"codigo": "D001", "unit_idx": 0, "frase": "Frase.", "actores": '[{"nombre": "X"}]'},
+            {"codigo": "D001", "unit_idx": 1, "frase": "Otra frase.", "actores": None},
+        ]
+    )
 
 
 def _df_frase_emociones_valido() -> pd.DataFrame:
-    return pd.DataFrame([
-        {"codigo": "D001", "unit_idx": 0, "frase": "Frase.", "emociones": '[{"tipo": "alegria"}]'},
-        {"codigo": "D001", "unit_idx": 1, "frase": "Otra.", "emociones": None},
-    ])
+    return pd.DataFrame(
+        [
+            {
+                "codigo": "D001",
+                "unit_idx": 0,
+                "frase": "Frase.",
+                "emociones": '[{"tipo": "alegria"}]',
+            },
+            {"codigo": "D001", "unit_idx": 1, "frase": "Otra.", "emociones": None},
+        ]
+    )
 
 
 def _df_emocion_valido() -> pd.DataFrame:
-    return pd.DataFrame([
-        {
-            "codigo": "D001",
-            "frase_idx": 0,
-            "emocion_idx": 0,
-            "experienciador": "hablante",
-            "tipo_emocion": "alegria",
-            "tipo_configuracion": "sostenido_en_sustantivos",
-            "modo_existencia": "actualizado",
-            "fuente_marca": "la riqueza",
-            "fuente_inferencia": "riqueza",
-        },
-    ])
+    return pd.DataFrame(
+        [
+            {
+                "codigo": "D001",
+                "frase_idx": 0,
+                "emocion_idx": 0,
+                "experienciador": "hablante",
+                "tipo_emocion": "alegria",
+                "tipo_configuracion": "sostenido_en_sustantivos",
+                "modo_existencia": "actualizado",
+                "fuente_marca": "la riqueza",
+                "fuente_inferencia": "riqueza",
+            },
+        ]
+    )
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -446,8 +460,11 @@ class TestContractActivoEnStages:
         mock_d_repo.get_payload.return_value = {}
 
         stage = EmotionsStage(
-            mock_backend, mock_d_repo, mock_f_repo,
-            ontologia="", heuristicas="",
+            mock_backend,
+            mock_d_repo,
+            mock_f_repo,
+            ontologia="",
+            heuristicas="",
         )
         stage.validate_contracts = True
 
@@ -512,24 +529,26 @@ class TestContractActivoEnStages:
         mock_d_repo.get_input.return_value = {}
         mock_d_repo.get_payload.return_value = {}
 
-        stage = CharacterizerStage(
-            mock_backend, mock_d_repo, mock_f_repo, mock_e_repo
-        )
+        stage = CharacterizerStage(mock_backend, mock_d_repo, mock_f_repo, mock_e_repo)
         stage.validate_contracts = True
 
         def bad_build_input_df(codigo: str, items: list) -> pd.DataFrame:
             # falta emocion_idx → viola EmocionExplodedContract
-            return pd.DataFrame([{
-                "codigo": "D001",
-                "frase_idx": 0,
-                "frase": "X",
-                "experienciador": "Y",
-                "tipo_emocion": "Z",
-                "tipo_configuracion": "sostenido_en_sustantivos",
-                "modo_existencia": "W",
-                "fuente_marca": "la riqueza",
-                "fuente_inferencia": "riqueza",
-            }])
+            return pd.DataFrame(
+                [
+                    {
+                        "codigo": "D001",
+                        "frase_idx": 0,
+                        "frase": "X",
+                        "experienciador": "Y",
+                        "tipo_emocion": "Z",
+                        "tipo_configuracion": "sostenido_en_sustantivos",
+                        "modo_existencia": "W",
+                        "fuente_marca": "la riqueza",
+                        "fuente_inferencia": "riqueza",
+                    }
+                ]
+            )
 
         stage._build_input_df = bad_build_input_df  # type: ignore[method-assign]
 
@@ -548,19 +567,26 @@ class TestContractActivoEnStages:
         mock_d_repo.get_input.return_value = {}
 
         stage = EmotionsPass2Stage(
-            mock_backend, mock_d_repo, mock_f_repo,
-            ontologia="", heuristicas="",
+            mock_backend,
+            mock_d_repo,
+            mock_f_repo,
+            ontologia="",
+            heuristicas="",
         )
         stage.validate_contracts = True
 
         # _build_full_df_with_rolling devuelve DF sin columna 'emociones'
         def bad_full_df(codigo: str) -> pd.DataFrame:
-            return pd.DataFrame([{
-                "codigo": "D001",
-                "unit_idx": 0,
-                "frase": "X",
-                # falta 'emociones' → viola FraseConEmocionesContract
-            }])
+            return pd.DataFrame(
+                [
+                    {
+                        "codigo": "D001",
+                        "unit_idx": 0,
+                        "frase": "X",
+                        # falta 'emociones' → viola FraseConEmocionesContract
+                    }
+                ]
+            )
 
         stage._build_full_df_with_rolling = bad_full_df  # type: ignore[method-assign]
 
@@ -572,12 +598,16 @@ class TestContractActivoEnStages:
         from emoparse.pipeline.stages import SummarizerStage
 
         mock_agent = MagicMock()
-        mock_agent.run.return_value = pd.DataFrame([{
-            "codigo": "D001",
-            "contenido": "x",
-            "resumen_global": None,
-            "resumen_fragmentos": None,
-        }])
+        mock_agent.run.return_value = pd.DataFrame(
+            [
+                {
+                    "codigo": "D001",
+                    "contenido": "x",
+                    "resumen_global": None,
+                    "resumen_fragmentos": None,
+                }
+            ]
+        )
         mock_repo = MagicMock()
         mock_repo.list_pending.return_value = ["D001"]
         # DF sin 'contenido' normalmente violaría el contrato

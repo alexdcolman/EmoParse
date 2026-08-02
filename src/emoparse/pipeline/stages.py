@@ -9,24 +9,48 @@ from __future__ import annotations
 import json
 import re
 import threading
-from collections import Counter
 from abc import ABC, abstractmethod
+from collections import Counter
+from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 import pandas as pd
 import pandera.pandas as pa
 from loguru import logger
 
-from emoparse.agents.actors import ActorsAgent
 from emoparse.agents.actants import ACTANTS_COMPONENTS, ActantsAgent
+from emoparse.agents.actors import ActorsAgent
+from emoparse.agents.characterizer import CharacterizerAgent
 from emoparse.agents.deixis import DeixisAgent
+from emoparse.agents.emotions import (
+    EmotionsAgent,
+    compute_emotion_full_summary,
+    compute_emotion_rolling_summary,
+    sanitize_emocion,
+)
+from emoparse.agents.emotions_pass2 import EmotionsAgentPass2
 from emoparse.agents.enunciation import format_repertorio_kb
+from emoparse.agents.judge import JudgeAgent
 from emoparse.agents.modalidad import ModalidadAgent
+from emoparse.agents.semas import SemasAgent
+from emoparse.core.backend.base import LLMBackend
+from emoparse.core.backend.retry import RetryConfig
 from emoparse.core.text import canonical_slug
+from emoparse.genres.base import Genre
+from emoparse.knowledge.normalization import build_emotion_alias_lookup
+from emoparse.pipeline.contracts import (
+    DiscursoInputContract,
+    EmocionExplodedContract,
+    FraseConActoresContract,
+    FraseConEmocionesContract,
+    FraseInputContract,
+)
+from emoparse.pipeline.contracts import (
+    validate as validate_contract,
+)
 from emoparse.pipeline.deixis import (
     is_deictic,
-    resolve_deictic_to_enunciador,
     resolver_rol_enunciativo,
 )
 from emoparse.pipeline.emoji_lexicon import resolve_emoji_afecto
@@ -36,42 +60,19 @@ from emoparse.pipeline.emoji_rachas import (
     marcar_racha,
     payload_repeticion,
 )
+from emoparse.pipeline.genre_context import GenreContextProvider
 from emoparse.pipeline.modalidad_nlp import ModalidadNLP
+from emoparse.pipeline.progress import ProgressReporter
 from emoparse.pipeline.technoparse import (
     TecnoEntidad,
     menciones_handles,
     parse_texto,
 )
-from emoparse.pipeline.contracts import (
-    DiscursoInputContract,
-    EmocionExplodedContract,
-    FraseConActoresContract,
-    FraseConEmocionesContract,
-    FraseInputContract,
-    FraseParaLinkingContract,
-    validate as validate_contract,
-)
-from emoparse.agents.characterizer import CharacterizerAgent
-from emoparse.agents.emotions import (
-    EmotionsAgent,
-    compute_emotion_rolling_summary,
-    compute_emotion_full_summary,
-    sanitize_emocion,
-)
-from emoparse.agents.emotions_pass2 import EmotionsAgentPass2
-from emoparse.agents.judge import JudgeAgent
-from emoparse.agents.semas import SemasAgent
-from emoparse.core.backend.base import LLMBackend
-from emoparse.core.backend.retry import RetryConfig
-from emoparse.genres.base import Genre
-from emoparse.pipeline.genre_context import GenreContextProvider
-from emoparse.pipeline.progress import ProgressReporter
-from emoparse.knowledge.normalization import build_emotion_alias_lookup
 from emoparse.storage.discursos import DiscursosRepository
 from emoparse.storage.emociones import EmocionesRepository
 from emoparse.storage.frases import FrasesRepository
-from emoparse.storage.judgments import JudgmentsRepository
 from emoparse.storage.hashtags import HashtagsRepository
+from emoparse.storage.judgments import JudgmentsRepository
 from emoparse.storage.menciones import MencionesRepository
 from emoparse.storage.metrics import StageMetricsAccumulator
 from emoparse.storage.posts import PostsRepository
@@ -96,9 +97,9 @@ class Stage(ABC):
     def _validate(
         self,
         contract: type[pa.DataFrameModel],
-        df: "pd.DataFrame",
+        df: pd.DataFrame,
         label: str = "",
-    ) -> "pd.DataFrame":
+    ) -> pd.DataFrame:
         """Valida df contra el contrato si validate_contracts está activo."""
         if not self.validate_contracts:
             return df
@@ -128,6 +129,7 @@ class Stage(ABC):
 # ══════════════════════════════════════════════════════════════════════════════
 #  Etapas a nivel discurso
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class _DiscursoStage(Stage):
     """Base para etapas que procesan discursos en la tabla discursos."""
@@ -168,9 +170,7 @@ class _DiscursoStage(Stage):
         """Input del discurso aumentado por la stage, o None si no hay input."""
         input_data = self._repo.get_input(codigo)
         if input_data is None:
-            logger.warning(
-                f"[Stage:{self.NAME}] {codigo}: sin input en DB, salteando"
-            )
+            logger.warning(f"[Stage:{self.NAME}] {codigo}: sin input en DB, salteando")
             return None
         return self._augment_input(codigo, {"codigo": codigo, **input_data})
 
@@ -183,9 +183,7 @@ class _DiscursoStage(Stage):
         try:
             df_out = self._agent.run(df_in)
         except Exception as e:
-            logger.error(
-                f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}"
-            )
+            logger.error(f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}")
             self._repo.set_error(codigo, self.STAGE_KEY, str(e))  # type: ignore[arg-type]
             self.metrics.record_item_failed()
             return 0
@@ -211,9 +209,7 @@ class _DiscursoStage(Stage):
         self.metrics.record_item_ok()
         return 1
 
-    def _augment_input(
-        self, codigo: str, row_dict: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _augment_input(self, codigo: str, row_dict: dict[str, Any]) -> dict[str, Any]:
         """Hook para enriquecer el input antes de construir el DF del agente.
 
         Por defecto no hace nada; las subclases pueden agregar columnas
@@ -240,9 +236,7 @@ class SummarizerStage(_DiscursoStage):
         super().__init__(agent, discursos_repo, agent_version=agent_version)
         self._genre_context = genre_context_provider
 
-    def _augment_input(
-        self, codigo: str, row_dict: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _augment_input(self, codigo: str, row_dict: dict[str, Any]) -> dict[str, Any]:
         return _inject_genre_context(
             row_dict,
             stage="summarizer",
@@ -279,12 +273,8 @@ class MetadataStage(_DiscursoStage):
         self._hilo_ctx = hilo_context_provider
         self._genre_context = genre_context_provider
 
-    def _augment_input(
-        self, codigo: str, row_dict: dict[str, Any]
-    ) -> dict[str, Any]:
-        row_dict = _contexto_cuenta(
-            codigo, row_dict, self._posts_repo, self._embed_ctx
-        )
+    def _augment_input(self, codigo: str, row_dict: dict[str, Any]) -> dict[str, Any]:
+        row_dict = _contexto_cuenta(codigo, row_dict, self._posts_repo, self._embed_ctx)
         row_dict = _inject_contexto_hilo(codigo, row_dict, self._hilo_ctx)
         return _inject_genre_context(
             row_dict,
@@ -391,9 +381,7 @@ class EnunciationStage(_DiscursoStage):
         )
         return ok
 
-    def _augment_input(
-        self, codigo: str, row_dict: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _augment_input(self, codigo: str, row_dict: dict[str, Any]) -> dict[str, Any]:
         # El tipo de discurso lo resuelve metadata (corre antes): habilita al
         # agente a listar en el prompt los roles enunciativos de ese tipo (más
         # los transversales) y a descartar post-hoc los que no correspondan.
@@ -410,9 +398,7 @@ class EnunciationStage(_DiscursoStage):
             if justificacion:
                 row_dict["enunciador_fijado_justificacion"] = justificacion
             repertorio = format_repertorio_kb(
-                (self._enunciacion_kb.get("enunciadores") or {}).get(
-                    canonical_slug(enunciador)
-                )
+                (self._enunciacion_kb.get("enunciadores") or {}).get(canonical_slug(enunciador))
             )
             if repertorio:
                 row_dict["repertorio_kb"] = repertorio
@@ -420,9 +406,7 @@ class EnunciationStage(_DiscursoStage):
             row_dict["auditorio_fijo"] = json.dumps(
                 _auditorio_predeterminado(row_dict), ensure_ascii=False
             )
-        row_dict = _contexto_cuenta(
-            codigo, row_dict, self._posts_repo, self._embed_ctx
-        )
+        row_dict = _contexto_cuenta(codigo, row_dict, self._posts_repo, self._embed_ctx)
         row_dict = _inject_contexto_hilo(codigo, row_dict, self._hilo_ctx)
         return _inject_genre_context(
             row_dict,
@@ -430,9 +414,7 @@ class EnunciationStage(_DiscursoStage):
             provider=self._genre_context,
         )
 
-    def _resolver_enunciador(
-        self, codigo: str, row_dict: dict[str, Any]
-    ) -> tuple[str, str]:
+    def _resolver_enunciador(self, codigo: str, row_dict: dict[str, Any]) -> tuple[str, str]:
         """Devuelve (enunciador, justificacion) fijados, o ('', '')."""
         if self._genre is not None and self._genre.enunciador_from_handle:
             # El handle tiene prioridad sobre el display: es único por cuenta
@@ -532,9 +514,7 @@ def _hidratar_desde_posts(
             row_dict["autor_handle"] = autor
     if posts_repo is None:
         return row_dict
-    if not _campo_input(row_dict, "autor_handle") or not _campo_input(
-        row_dict, "contenido"
-    ):
+    if not _campo_input(row_dict, "autor_handle") or not _campo_input(row_dict, "contenido"):
         try:
             post = posts_repo.get_post(codigo)
         except Exception:
@@ -634,10 +614,12 @@ def _auditorio_predeterminado(row_dict: dict[str, Any]) -> list[dict[str, str]]:
     """
     handle = _campo_input(row_dict, "autor_handle").lstrip("@")
     cuenta = f"@{handle}" if handle else "la cuenta"
-    entries: list[dict[str, str]] = [{
-        "actor": f"seguidores de {cuenta}",
-        "justificacion": "Auditorio estructural de la cuenta autora.",
-    }]
+    entries: list[dict[str, str]] = [
+        {
+            "actor": f"seguidores de {cuenta}",
+            "justificacion": "Auditorio estructural de la cuenta autora.",
+        }
+    ]
     entidades = parse_texto(_campo_input(row_dict, "contenido"))
     vistos: set[str] = set()
     for ent in entidades:
@@ -646,25 +628,30 @@ def _auditorio_predeterminado(row_dict: dict[str, Any]) -> list[dict[str, str]]:
         tag = str(ent.valor_norm or ent.valor).lstrip("#")
         if tag and tag.lower() not in vistos:
             vistos.add(tag.lower())
-            entries.append({
-                "actor": f"usuarios que navegan #{tag}",
-                "justificacion": f"Conversación pública del hashtag #{tag}.",
-            })
+            entries.append(
+                {
+                    "actor": f"usuarios que navegan #{tag}",
+                    "justificacion": f"Conversación pública del hashtag #{tag}.",
+                }
+            )
     vistos = set()
     for m in menciones_handles(entidades):
         h = str(m.valor_norm or m.valor).lstrip("@")
         if h and h.lower() not in vistos and h.lower() != handle.lower():
             vistos.add(h.lower())
-            entries.append({
-                "actor": f"@{h}",
-                "justificacion": "Destinatario directo por mención.",
-            })
+            entries.append(
+                {
+                    "actor": f"@{h}",
+                    "justificacion": "Destinatario directo por mención.",
+                }
+            )
     return entries
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Etapas a nivel frase
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class _FraseStage(Stage):
     """Base para etapas que procesan frases.
@@ -751,13 +738,14 @@ class _FraseStage(Stage):
         try:
             df_out = agent.run(df_in)
         except Exception as e:
-            logger.error(
-                f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}"
-            )
+            logger.error(f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}")
             with self._persist_lock:
                 for idx in pending_idxs:
                     self._f_repo.set_error(
-                        codigo, idx, self.STAGE_KEY, str(e)  # type: ignore[arg-type]
+                        codigo,
+                        idx,
+                        self.STAGE_KEY,
+                        str(e),  # type: ignore[arg-type]
                     )
                     self.metrics.record_item_failed()
             return 0
@@ -769,13 +757,17 @@ class _FraseStage(Stage):
                 payload_raw = self._extract_payload(row)
                 if payload_raw is None:
                     self._f_repo.set_error(
-                        codigo, idx, self.STAGE_KEY,  # type: ignore[arg-type]
+                        codigo,
+                        idx,
+                        self.STAGE_KEY,  # type: ignore[arg-type]
                         "Backend error (ver logs del agente)",
                     )
                     self.metrics.record_item_failed()
                     continue
                 self._f_repo.set_payload(
-                    codigo, idx, self.STAGE_KEY,  # type: ignore[arg-type]
+                    codigo,
+                    idx,
+                    self.STAGE_KEY,  # type: ignore[arg-type]
                     payload_raw,
                     version=self._version,
                 )
@@ -795,11 +787,13 @@ class _FraseStage(Stage):
             frase = self._f_repo.get_frase(codigo, idx)
             if frase is None:
                 continue
-            rows.append({
-                "codigo": codigo,
-                "unit_idx": idx,
-                "frase": frase,
-            })
+            rows.append(
+                {
+                    "codigo": codigo,
+                    "unit_idx": idx,
+                    "frase": frase,
+                }
+            )
         return pd.DataFrame(rows)
 
     def _input_contract(self) -> type[pa.DataFrameModel]:
@@ -832,9 +826,7 @@ class ActorsStage(_FraseStage):
         super().__init__(backend, discursos_repo, frases_repo, agent_version, retry_config, genre)
         self._heuristicas = heuristicas
 
-    def _build_agent(
-        self, input_data: dict[str, Any], codigo: str
-    ) -> ActorsAgent:
+    def _build_agent(self, input_data: dict[str, Any], codigo: str) -> ActorsAgent:
         # Los metadatos pueden no estar: usar defaults seguros.
         meta = self._d_repo.get_payload(codigo, "metadata") or {}
         enun = self._d_repo.get_payload(codigo, "enunciation") or {}
@@ -862,6 +854,7 @@ class ActorsStage(_FraseStage):
 # ══════════════════════════════════════════════════════════════════════════════
 #  EmotionsStage
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _format_enunciatarios(raw: Any) -> str:
     """Extrae los nombres de los enunciatarios desde el payload de enunciation.
@@ -946,9 +939,7 @@ class EmotionsStage(_FraseStage):
         self._media_ctx = media_context_provider
         self._genre_context = genre_context_provider
 
-    def _build_agent(
-        self, input_data: dict[str, Any], codigo: str
-    ) -> EmotionsAgent:
+    def _build_agent(self, input_data: dict[str, Any], codigo: str) -> EmotionsAgent:
         """Construye EmotionsAgent con ontología y heurísticas."""
         meta = self._d_repo.get_payload(codigo, "metadata") or {}
         enun = self._d_repo.get_payload(codigo, "enunciation") or {}
@@ -989,11 +980,7 @@ class EmotionsStage(_FraseStage):
             if frase is None:
                 continue
             actores = self._f_repo.get_payload(codigo, idx, "actores")
-            actores_str = (
-                json.dumps(actores, ensure_ascii=False)
-                if actores is not None
-                else None
-            )
+            actores_str = json.dumps(actores, ensure_ascii=False) if actores is not None else None
             row: dict[str, Any] = {
                 "codigo": codigo,
                 "unit_idx": idx,
@@ -1081,9 +1068,7 @@ def _desdoblar_emociones(emos: list[Any]) -> list[Any]:
         if len(exp_parts) < 2:
             out.append(emo)
             continue
-        marca_parts = split_coordinacion(
-            str(emo.get("experienciador_marca") or "").strip()
-        )
+        marca_parts = split_coordinacion(str(emo.get("experienciador_marca") or "").strip())
         aligned = marca_parts if len(marca_parts) == len(exp_parts) else None
         for k, parte in enumerate(exp_parts):
             nuevo = dict(emo)
@@ -1128,9 +1113,7 @@ def _expandir_posesivos(partes: list[str]) -> list[str]:
     if len(partes) < 2:
         return partes
     antecedente = partes[0]
-    return [partes[0]] + [
-        _resolver_posesivo(p, antecedente) for p in partes[1:]
-    ]
+    return [partes[0]] + [_resolver_posesivo(p, antecedente) for p in partes[1:]]
 
 
 def _partes_distintas(partes: list[str]) -> list[str]:
@@ -1226,44 +1209,40 @@ class ExplodeEmotionsStage(Stage):
         actores_by_unit: dict[int, Any] = {}
         for frase_idx, _frase_text in frases:
             if self._m_repo is not None:
-                actores_by_unit[frase_idx] = self._f_repo.get_payload(
-                    codigo, frase_idx, "actores"
-                )
+                actores_by_unit[frase_idx] = self._f_repo.get_payload(codigo, frase_idx, "actores")
             emos_payload = self._select_emociones_payload(codigo, frase_idx)
             if not isinstance(emos_payload, list):
                 continue
-            emos_payload = _resolver_roles_enunciativos(
-                emos_payload, enunciador, auditorio
-            )
+            emos_payload = _resolver_roles_enunciativos(emos_payload, enunciador, auditorio)
             emos_payload = _desdoblar_emociones(emos_payload)
             emociones_by_unit[frase_idx] = emos_payload
             for emo_idx, emo in enumerate(emos_payload):
                 if not isinstance(emo, dict):
                     continue
-                rows.append({
-                    "codigo": codigo,
-                    "frase_idx": frase_idx,
-                    "emocion_idx": emo_idx,
-                    "experienciador": emo.get("experienciador", ""),
-                    "experienciador_marca": emo.get("experienciador_marca", ""),
-                    "tipo_emocion": emo.get("tipo_emocion", ""),
-                    "modo_existencia": emo.get("modo_existencia", ""),
-                    "fuente_marca": emo.get("fuente_marca", ""),
-                    "fuente_inferencia": emo.get("fuente_inferencia", ""),
-                    "tipo_configuracion": emo.get("tipo_configuracion"),
-                    # Presentes solo cuando el desdoblamiento tuvo que fijar
-                    # el referente por emoción (la marca no lo distingue).
-                    "experienciador_canonico": emo.get("experienciador_canonico"),
-                    "fuente_canonico": emo.get("fuente_canonico"),
-                })
+                rows.append(
+                    {
+                        "codigo": codigo,
+                        "frase_idx": frase_idx,
+                        "emocion_idx": emo_idx,
+                        "experienciador": emo.get("experienciador", ""),
+                        "experienciador_marca": emo.get("experienciador_marca", ""),
+                        "tipo_emocion": emo.get("tipo_emocion", ""),
+                        "modo_existencia": emo.get("modo_existencia", ""),
+                        "fuente_marca": emo.get("fuente_marca", ""),
+                        "fuente_inferencia": emo.get("fuente_inferencia", ""),
+                        "tipo_configuracion": emo.get("tipo_configuracion"),
+                        # Presentes solo cuando el desdoblamiento tuvo que fijar
+                        # el referente por emoción (la marca no lo distingue).
+                        "experienciador_canonico": emo.get("experienciador_canonico"),
+                        "fuente_canonico": emo.get("fuente_canonico"),
+                    }
+                )
         if rows:
             df_rows = pd.DataFrame(rows)
             self._validate(EmocionExplodedContract, df_rows, "salida")
             self._e_repo.upsert_emociones(rows)
         if self._m_repo is not None:
-            self._m_repo.rebuild_for_codigo(
-                codigo, actores_by_unit, emociones_by_unit
-            )
+            self._m_repo.rebuild_for_codigo(codigo, actores_by_unit, emociones_by_unit)
             self._m_repo.propose_coref_equivalences(codigo)
             self._m_repo.add_deixis_suggestions(codigo, enunciador)
             self._m_repo.propose_kb_equivalences(codigo, self._referentes_kb)
@@ -1289,6 +1268,7 @@ class ExplodeEmotionsStage(Stage):
 # ══════════════════════════════════════════════════════════════════════════════
 #  Etapa de parsing tecnodiscursivo (determinista, sin LLM)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class TechnoparseStage(Stage):
     """Extrae los tecnolingüísticos de cada unidad y los persiste.
@@ -1340,11 +1320,13 @@ class TechnoparseStage(Stage):
             entidades = parse_texto(str(texto or ""))
             rows.extend(_entidad_row(unit_idx, e) for e in entidades)
             for m in menciones_handles(entidades):
-                seeds.append({
-                    "unit_idx": unit_idx,
-                    "marca": m.valor,
-                    "handle": m.valor_norm,
-                })
+                seeds.append(
+                    {
+                        "unit_idx": unit_idx,
+                        "marca": m.valor,
+                        "handle": m.valor_norm,
+                    }
+                )
         self._t_repo.replace_for_codigo(codigo, rows)
         if self._m_repo is not None and seeds:
             self._m_repo.seed_technoparse(codigo, seeds, self._naturaleza)
@@ -1368,6 +1350,7 @@ def _entidad_row(unit_idx: int, entidad: TecnoEntidad) -> dict[str, Any]:
 # ══════════════════════════════════════════════════════════════════════════════
 #  Etapa de reframing (redocumentación: citas y reposts con comentario)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class ReframingStage(Stage):
     """Clasifica la operación de recontextualización de posts que citan.
@@ -1412,9 +1395,7 @@ class ReframingStage(Stage):
         rows: list[dict[str, Any]] = []
         for post in pendientes:
             citado_id = post.get("cita_a") or post.get("reposteo_a")
-            citado = (
-                self._p_repo.get_post(str(citado_id)) if citado_id else None
-            )
+            citado = self._p_repo.get_post(str(citado_id)) if citado_id else None
             # Si el citado no fue muestreado, el propio citador trae una copia
             # de lo que cita: sin esto, la mayoría de las citas se clasifican
             # con el texto citado en blanco.
@@ -1436,24 +1417,24 @@ class ReframingStage(Stage):
             emociones_citadas = ""
             if citado is not None and self._emociones is not None:
                 emociones_citadas = self._emociones(str(citado["post_id"])) or ""
-            rows.append({
-                "codigo": str(post["post_id"]),
-                "unit_idx": 0,
-                "texto": str(post.get("texto") or ""),
-                "autor": str(post.get("autor_handle") or "?"),
-                "operatoria": "cita" if post.get("cita_a") else "repost_comentado",
-                "texto_citado": texto_citado,
-                "autor_citado": autor_citado,
-                "emociones_citadas": emociones_citadas,
-                # Sobre qué se clasificó, dicho por el código y no inferido:
-                # el análisis puede filtrar o ponderar por calidad de
-                # evidencia en vez de tratar todas las citas por igual.
-                "evidencia_citada": evidencia,
-            })
+            rows.append(
+                {
+                    "codigo": str(post["post_id"]),
+                    "unit_idx": 0,
+                    "texto": str(post.get("texto") or ""),
+                    "autor": str(post.get("autor_handle") or "?"),
+                    "operatoria": "cita" if post.get("cita_a") else "repost_comentado",
+                    "texto_citado": texto_citado,
+                    "autor_citado": autor_citado,
+                    "emociones_citadas": emociones_citadas,
+                    # Sobre qué se clasificó, dicho por el código y no inferido:
+                    # el análisis puede filtrar o ponderar por calidad de
+                    # evidencia en vez de tratar todas las citas por igual.
+                    "evidencia_citada": evidencia,
+                }
+            )
 
-        logger.info(
-            f"[Stage:{self.NAME}] Procesando {len(rows)} post(s) citadores."
-        )
+        logger.info(f"[Stage:{self.NAME}] Procesando {len(rows)} post(s) citadores.")
         agent = ReframingAgent(
             self._backend,
             heuristicas=self._heuristicas,
@@ -1481,16 +1462,11 @@ class ReframingStage(Stage):
                 # El agente deja el motivo en su columna reservada cuando
                 # rechaza un batch: sin esto el estado del run dice "backend
                 # error" para cualquier causa y no se sabe qué reintentar.
-                motivo = str(
-                    row.get(agent.ERROR_COLUMN)
-                    or "Backend error (ver logs del agente)"
-                )
+                motivo = str(row.get(agent.ERROR_COLUMN) or "Backend error (ver logs del agente)")
                 self._p_repo.set_reframing_error(post_id, motivo)
                 self.metrics.record_item_failed()
                 continue
-            payload["evidencia_citada"] = str(
-                row.get("evidencia_citada") or "ausente"
-            )
+            payload["evidencia_citada"] = str(row.get("evidencia_citada") or "ausente")
             self._p_repo.set_reframing(post_id, payload, version=self._version)
             total_ok += 1
             self.metrics.record_item_ok()
@@ -1502,6 +1478,7 @@ class ReframingStage(Stage):
 # ══════════════════════════════════════════════════════════════════════════════
 #  Etapa de afecto de emojis (híbrida: léxico primero, LLM para ambiguos)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class EmojiAffectStage(Stage):
     """Resuelve la contribución afectiva de los emojis del corpus.
@@ -1544,10 +1521,7 @@ class EmojiAffectStage(Stage):
         # gesto intensificado y se resuelve una vez. Dos rachas del mismo
         # emoji en el mismo post siguen siendo dos usos independientes.
         rachas = agrupar_rachas(pendientes)
-        logger.info(
-            f"[Stage:{self.NAME}] {len(pendientes)} uso(s) en "
-            f"{len(rachas)} racha(s)."
-        )
+        logger.info(f"[Stage:{self.NAME}] {len(pendientes)} uso(s) en {len(rachas)} racha(s).")
 
         resueltos = 0
         ambiguas: list[Racha] = []
@@ -1582,10 +1556,13 @@ class EmojiAffectStage(Stage):
     def _persistir(self, racha: Racha, afecto: dict[str, Any]) -> int:
         """Anota el afecto de la racha en cada una de sus ocurrencias."""
         for orden, uso in enumerate(racha.usos):
-            self._t_repo.set_extra_keys(int(uso["id"]), {
-                "afecto": afecto,
-                "repeticion": payload_repeticion(racha, orden),
-            })
+            self._t_repo.set_extra_keys(
+                int(uso["id"]),
+                {
+                    "afecto": afecto,
+                    "repeticion": payload_repeticion(racha, orden),
+                },
+            )
             self.metrics.record_item_ok()
         return racha.n
 
@@ -1593,9 +1570,7 @@ class EmojiAffectStage(Stage):
         """Registra el motivo del fallo en cada ocurrencia de la racha."""
         for uso in racha.usos:
             if motivo:
-                self._t_repo.set_extra_key(
-                    int(uso["id"]), "afecto_error", motivo[:300]
-                )
+                self._t_repo.set_extra_key(int(uso["id"]), "afecto_error", motivo[:300])
             self.metrics.record_item_failed()
 
     def _resolver_con_llm(self, rachas: list[Racha]) -> int:
@@ -1609,17 +1584,19 @@ class EmojiAffectStage(Stage):
             if isinstance(prior, dict):
                 cands = "/".join(prior.get("candidatos", []))
                 prior_str = f"candidatos: {cands}; foria: {prior.get('foria')}"
-            rows.append({
-                "codigo": racha.codigo,
-                "unit_idx": racha.unit_idx,
-                "racha_idx": idx,
-                "emoji": racha.emoji,
-                "repeticiones": racha.n,
-                # El post va con la racha delimitada: sin la marca, dos usos
-                # del mismo emoji en el mismo post son unidades idénticas.
-                "frase": marcar_racha(racha.frase, racha.inicio, racha.fin),
-                "prior": prior_str,
-            })
+            rows.append(
+                {
+                    "codigo": racha.codigo,
+                    "unit_idx": racha.unit_idx,
+                    "racha_idx": idx,
+                    "emoji": racha.emoji,
+                    "repeticiones": racha.n,
+                    # El post va con la racha delimitada: sin la marca, dos usos
+                    # del mismo emoji en el mismo post son unidades idénticas.
+                    "frase": marcar_racha(racha.frase, racha.inicio, racha.fin),
+                    "prior": prior_str,
+                }
+            )
         agent = EmojiAffectAgent(
             self._backend,
             heuristicas=self._heuristicas,
@@ -1658,6 +1635,7 @@ class EmojiAffectStage(Stage):
 # ══════════════════════════════════════════════════════════════════════════════
 #  Etapa de semiótica de hashtags (nivel corpus)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class HashtagSemioticsStage(Stage):
     """Caracteriza los hashtags frecuentes del corpus con muestras de uso."""
@@ -1728,16 +1706,19 @@ class HashtagSemioticsStage(Stage):
             )
             error: str | None = None
             for start in range(0, len(usos), agent.BATCH_SIZE):
-                chunk = usos[start:start + agent.BATCH_SIZE]
-                rows = [{
-                    "codigo": str(u["codigo"]),
-                    "unit_idx": int(u["unit_idx"]),
-                    "entidad_id": int(u["id"]),
-                    "hashtag": valor_norm,
-                    "n_usos": int(n_usos),
-                    "uso_texto": str(u.get("frase") or ""),
-                    "funciones_previas": _format_funciones(funciones),
-                } for u in chunk]
+                chunk = usos[start : start + agent.BATCH_SIZE]
+                rows = [
+                    {
+                        "codigo": str(u["codigo"]),
+                        "unit_idx": int(u["unit_idx"]),
+                        "entidad_id": int(u["id"]),
+                        "hashtag": valor_norm,
+                        "n_usos": int(n_usos),
+                        "uso_texto": str(u.get("frase") or ""),
+                        "funciones_previas": _format_funciones(funciones),
+                    }
+                    for u in chunk
+                ]
                 try:
                     df_out = agent.run(pd.DataFrame(rows))
                 except Exception as e:
@@ -1748,18 +1729,14 @@ class HashtagSemioticsStage(Stage):
                     if payload is None:
                         self.metrics.record_item_failed()
                         continue
-                    self._t_repo.set_extra_key(
-                        int(row["entidad_id"]), "funcion", payload
-                    )
+                    self._t_repo.set_extra_key(int(row["entidad_id"]), "funcion", payload)
                     f = str(payload.get("funcion") or "").strip()
                     if f:
                         funciones[f] += 1
                     total_ok += 1
                     self.metrics.record_item_ok()
             if error is not None:
-                logger.error(
-                    f"[Stage:{self.NAME}] #{valor_norm}: error inesperado: {error}"
-                )
+                logger.error(f"[Stage:{self.NAME}] #{valor_norm}: error inesperado: {error}")
                 self._h_repo.set_analisis_error(valor_norm, error)
                 self.metrics.record_item_failed()
                 continue
@@ -1778,7 +1755,7 @@ class HashtagSemioticsStage(Stage):
         return total_ok
 
 
-def _format_funciones(funciones: "Counter[str]") -> str:
+def _format_funciones(funciones: Counter[str]) -> str:
     """Formatea el conteo de funciones ya identificadas para el prompt."""
     if not funciones:
         return ""
@@ -1805,9 +1782,7 @@ def _agregar_analisis_hashtag(usos: list[dict[str, Any]]) -> dict[str, Any]:
     total = sum(funciones.values())
     if total:
         dominante, n_dom = funciones.most_common(1)[0]
-        funcion = (
-            dominante if n_dom * 2 >= total or len(funciones) == 1 else "mixto"
-        )
+        funcion = dominante if n_dom * 2 >= total or len(funciones) == 1 else "mixto"
     else:
         funcion, dominante = "mixto", ""
     foria = forias.most_common(1)[0][0] if forias else "indeterminado"
@@ -1826,7 +1801,8 @@ def _agregar_analisis_hashtag(usos: list[dict[str, Any]]) -> dict[str, Any]:
     dist = ", ".join(f"{f} ({n})" for f, n in funciones.most_common())
     justificacion = (
         f"Derivada de {total} uso(s) analizados. Funciones: {dist}."
-        if total else "Sin usos analizados."
+        if total
+        else "Sin usos analizados."
     )
     return {
         "modo": "agregado_por_uso",
@@ -1887,16 +1863,15 @@ class TecnoUsageStage(Stage):
                     attr = f"dominio: {dominio}" if dominio else ""
                 else:
                     attr = str(extra.get("posicion") or extra.get("subtipo") or "")
-                lineas.append(
-                    f"- {e['valor']} ({tipo}"
-                    + (f", {attr})" if attr else ")")
-                )
-            rows.append({
-                "codigo": u["codigo"],
-                "unit_idx": int(u["unit_idx"]),
-                "uso_texto": u["frase"],
-                "entidades_txt": "\n".join(lineas),
-            })
+                lineas.append(f"- {e['valor']} ({tipo}" + (f", {attr})" if attr else ")"))
+            rows.append(
+                {
+                    "codigo": u["codigo"],
+                    "unit_idx": int(u["unit_idx"]),
+                    "uso_texto": u["frase"],
+                    "entidades_txt": "\n".join(lineas),
+                }
+            )
 
         logger.info(
             f"[Stage:{self.NAME}] Procesando {len(rows)} unidad(es) con "
@@ -1920,38 +1895,34 @@ class TecnoUsageStage(Stage):
         finally:
             self.progress.finish()
 
-        por_unidad = {
-            (u["codigo"], int(u["unit_idx"])): list(u["entidades"])
-            for u in unidades
-        }
+        por_unidad = {(u["codigo"], int(u["unit_idx"])): list(u["entidades"]) for u in unidades}
         total_ok = 0
         for _, row in df_out.iterrows():
             usos = _parse_json_list_cell(row.get("usos"))
             if usos is None:
                 self.metrics.record_item_failed()
                 continue
-            entidades = por_unidad.get(
-                (str(row["codigo"]), int(row["unit_idx"])), []
-            )
+            entidades = por_unidad.get((str(row["codigo"]), int(row["unit_idx"])), [])
             asignados: set[int] = set()
             for uso in usos:
                 if not isinstance(uso, dict):
                     continue
-                ent = _match_entidad(str(uso.get("valor") or ""),
-                                     entidades, asignados)
+                ent = _match_entidad(str(uso.get("valor") or ""), entidades, asignados)
                 if ent is None:
                     continue
-                self._t_repo.set_extra_key(int(ent["id"]), "uso", {
-                    "uso": uso.get("uso"),
-                    "justificacion": uso.get("justificacion"),
-                })
+                self._t_repo.set_extra_key(
+                    int(ent["id"]),
+                    "uso",
+                    {
+                        "uso": uso.get("uso"),
+                        "justificacion": uso.get("justificacion"),
+                    },
+                )
                 asignados.add(int(ent["id"]))
             total_ok += 1
             self.metrics.record_item_ok()
 
-        logger.info(
-            f"[Stage:{self.NAME}] Completado: {total_ok} unidad(es) ok."
-        )
+        logger.info(f"[Stage:{self.NAME}] Completado: {total_ok} unidad(es) ok.")
         return total_ok
 
 
@@ -2008,6 +1979,7 @@ def _parse_json_cell(raw: Any) -> dict[str, Any] | None:
 #  Etapa de descripción multimodal (vision_describe)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class VisionDescribeStage(Stage):
     """Describe las imágenes adjuntas a posts con un modelo de visión.
 
@@ -2060,16 +2032,12 @@ class VisionDescribeStage(Stage):
                     images=[str(imagen)],
                 )
             except Exception as e:
-                logger.error(
-                    f"[Stage:{self.NAME}] media {media_id}: {e}"
-                )
+                logger.error(f"[Stage:{self.NAME}] media {media_id}: {e}")
                 self._p_repo.set_media_descripcion_error(media_id, str(e))
                 self.metrics.record_item_failed()
                 continue
             if response.parsed is None:
-                self._p_repo.set_media_descripcion_error(
-                    media_id, "Respuesta sin payload parseado"
-                )
+                self._p_repo.set_media_descripcion_error(media_id, "Respuesta sin payload parseado")
                 self.metrics.record_item_failed()
                 continue
             self._p_repo.set_media_descripcion(
@@ -2085,6 +2053,7 @@ class VisionDescribeStage(Stage):
 # ══════════════════════════════════════════════════════════════════════════════
 #  Etapa de resolución de deixis (LLM)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _parse_json_list(raw: Any) -> list[Any]:
     """Parsea un valor a lista JSON; devuelve [] ante cualquier problema."""
@@ -2161,10 +2130,7 @@ class DeixisStage(Stage):
 
     def run_pending(self) -> int:
         """Resuelve la deixis de los discursos que aún no la tienen."""
-        codigos = [
-            c for c in self._d_repo.list_codigos()
-            if not self._m_repo.has_deixis_llm(c)
-        ]
+        codigos = [c for c in self._d_repo.list_codigos() if not self._m_repo.has_deixis_llm(c)]
         if not codigos:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
@@ -2204,13 +2170,15 @@ class DeixisStage(Stage):
         marcas_unicas = sorted({m for m in marca_ids})
         # Una fila por chunk de marcas: acota contexto y salida del LLM.
         n = self._marcas_per_call
-        df_in = pd.DataFrame([
-            {
-                "codigo": codigo,
-                "marcas": "\n".join(f"- {m}" for m in marcas_unicas[i:i + n]),
-            }
-            for i in range(0, len(marcas_unicas), n)
-        ])
+        df_in = pd.DataFrame(
+            [
+                {
+                    "codigo": codigo,
+                    "marcas": "\n".join(f"- {m}" for m in marcas_unicas[i : i + n]),
+                }
+                for i in range(0, len(marcas_unicas), n)
+            ]
+        )
 
         agent = DeixisAgent(
             self._backend,
@@ -2282,7 +2250,9 @@ class ModalidadStage(Stage):
     MARCAS_PER_CALL = 8
     _RESUMEN_CHAR_LIMIT = 1500
     _VALID_MOD = {
-        "designacion", "referencia_gramatical", "identificacion_inferencial",
+        "designacion",
+        "referencia_gramatical",
+        "identificacion_inferencial",
     }
     _VALID_NAT = {"persona", "colectivo", "institucion", "objeto_proceso", "otro"}
 
@@ -2343,9 +2313,7 @@ class ModalidadStage(Stage):
             key = (int(lk["mencion_id"]), str(lk["canonical_id"]))
             nlp_guess[key] = g
             if g.confident:
-                self._m_repo.set_modalidad(
-                    key[0], key[1], g.modalidad, g.naturaleza, "nlp"
-                )
+                self._m_repo.set_modalidad(key[0], key[1], g.modalidad, g.naturaleza, "nlp")
                 done += 1
                 self.metrics.record_item_ok()
             else:
@@ -2358,9 +2326,7 @@ class ModalidadStage(Stage):
             for lk in ambiguous:
                 key = (int(lk["mencion_id"]), str(lk["canonical_id"]))
                 g = nlp_guess[key]
-                self._m_repo.set_modalidad(
-                    key[0], key[1], g.modalidad, g.naturaleza, "nlp"
-                )
+                self._m_repo.set_modalidad(key[0], key[1], g.modalidad, g.naturaleza, "nlp")
                 done += 1
                 self.metrics.record_item_ok()
             return done
@@ -2396,7 +2362,7 @@ class ModalidadStage(Stage):
                 "vinculos": "\n".join(
                     f'- marca: "{c["marca"]}" · referente: {c["canonical_id"]} '
                     f'· frase: "{str(c.get("frase") or "").strip()}"'
-                    for c in items[i:i + n]
+                    for c in items[i : i + n]
                 ),
             }
             for i in range(0, len(items), n)
@@ -2471,6 +2437,7 @@ class ModalidadStage(Stage):
 #  Etapa normalización de emociones
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class NormalizeEmotionsStage(Stage):
     """Mapea tipo_emocion (texto libre del LLM) a canónico vía ontología.
 
@@ -2503,16 +2470,16 @@ class NormalizeEmotionsStage(Stage):
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
 
-        for codigo, frase_idx, emocion_idx in self.progress.track(
-            pending, "emociones"
-        ):
+        for codigo, frase_idx, emocion_idx in self.progress.track(pending, "emociones"):
             row = self._repo.get_emocion(codigo, frase_idx, emocion_idx)
             if row is None:
                 continue
             tipo_raw = row.get("tipo_emocion") or ""
             canonico = self._lookup.get(tipo_raw.lower().strip())
             self._repo.set_normalized_emotion(
-                codigo, frase_idx, emocion_idx,
+                codigo,
+                frase_idx,
+                emocion_idx,
                 tipo_emocion_canonico=canonico,  # None si no matchea → queda NULL
                 version=self._version,
             )
@@ -2524,6 +2491,7 @@ class NormalizeEmotionsStage(Stage):
 # ══════════════════════════════════════════════════════════════════════════════
 #  Etapa de caracterización
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class CharacterizerStage(Stage):
     """Caracteriza emociones individuales."""
@@ -2585,13 +2553,9 @@ class CharacterizerStage(Stage):
             try:
                 df_out = agent.run(df_in)
             except Exception as e:
-                logger.error(
-                    f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}"
-                )
+                logger.error(f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}")
                 for frase_idx, emo_idx in items:
-                    self._e_repo.set_caracterizacion_error(
-                        codigo, frase_idx, emo_idx, str(e)
-                    )
+                    self._e_repo.set_caracterizacion_error(codigo, frase_idx, emo_idx, str(e))
                     self.metrics.record_item_failed()
                 continue
 
@@ -2601,13 +2565,17 @@ class CharacterizerStage(Stage):
                 emo_idx = int(row["emocion_idx"])
                 if payload is None:
                     self._e_repo.set_caracterizacion_error(
-                        codigo, frase_idx, emo_idx,
+                        codigo,
+                        frase_idx,
+                        emo_idx,
                         "Backend error (ver logs)",
                     )
                     self.metrics.record_item_failed()
                     continue
                 self._e_repo.set_caracterizacion(
-                    codigo, frase_idx, emo_idx,
+                    codigo,
+                    frase_idx,
+                    emo_idx,
                     payload=payload,
                     version=self._version,
                 )
@@ -2629,9 +2597,7 @@ class CharacterizerStage(Stage):
         exp_map = self._e_repo.resolve_canonico_map(
             codigo, "experienciador", "experienciador_marca"
         )
-        fte_map = self._e_repo.resolve_canonicos_map(
-            codigo, "fuente", "fuente_marca"
-        )
+        fte_map = self._e_repo.resolve_canonicos_map(codigo, "fuente", "fuente_marca")
         rows: list[dict[str, Any]] = []
         for frase_idx, emo_idx in items:
             emo = index.get((frase_idx, emo_idx))
@@ -2670,6 +2636,7 @@ class CharacterizerStage(Stage):
 # ══════════════════════════════════════════════════════════════════════════════
 #  EmotionsPass2Stage
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class EmotionsPass2Stage(Stage):
     """Pase 2 del análisis de emociones."""
@@ -2776,9 +2743,7 @@ class EmotionsPass2Stage(Stage):
 
         df_full = self._build_full_df_with_rolling(codigo)
         if df_full.empty:
-            logger.info(
-                f"[Stage:{self.NAME}] {codigo}: sin pase 1 procesado, salteando"
-            )
+            logger.info(f"[Stage:{self.NAME}] {codigo}: sin pase 1 procesado, salteando")
             return 0
 
         df_pending = df_full[df_full["unit_idx"].isin(pending_idxs)].reset_index(drop=True)
@@ -2809,13 +2774,14 @@ class EmotionsPass2Stage(Stage):
         try:
             df_out = agent.run(df_pending)
         except Exception as e:
-            logger.error(
-                f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}"
-            )
+            logger.error(f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}")
             with self._persist_lock:
                 for idx in pending_idxs:
                     self._f_repo.set_error(
-                        codigo, idx, self.STAGE_KEY, str(e)  # type: ignore[arg-type]
+                        codigo,
+                        idx,
+                        self.STAGE_KEY,
+                        str(e),  # type: ignore[arg-type]
                     )
                     self.metrics.record_item_failed()
             return 0
@@ -2827,7 +2793,9 @@ class EmotionsPass2Stage(Stage):
                 emociones_str = row.get("emociones")
                 if pd.isna(emociones_str):
                     self._f_repo.set_error(
-                        codigo, idx, self.STAGE_KEY,  # type: ignore[arg-type]
+                        codigo,
+                        idx,
+                        self.STAGE_KEY,  # type: ignore[arg-type]
                         "Backend error (ver logs del agente)",
                     )
                     self.metrics.record_item_failed()
@@ -2836,13 +2804,17 @@ class EmotionsPass2Stage(Stage):
                     payload = json.loads(emociones_str)
                 except (json.JSONDecodeError, TypeError):
                     self._f_repo.set_error(
-                        codigo, idx, self.STAGE_KEY,  # type: ignore[arg-type]
+                        codigo,
+                        idx,
+                        self.STAGE_KEY,  # type: ignore[arg-type]
                         "Output del agente no parseable como JSON",
                     )
                     self.metrics.record_item_failed()
                     continue
                 self._f_repo.set_payload(
-                    codigo, idx, self.STAGE_KEY,  # type: ignore[arg-type]
+                    codigo,
+                    idx,
+                    self.STAGE_KEY,  # type: ignore[arg-type]
                     payload,
                     version=self._version,
                 )
@@ -2873,12 +2845,10 @@ class EmotionsPass2Stage(Stage):
                 # `emociones` tiene que ser JSON string para que su parser
                 # interno funcione.
                 "emociones": (
-                    json.dumps(emos_pass1, ensure_ascii=False)
-                    if emos_pass1 is not None else None
+                    json.dumps(emos_pass1, ensure_ascii=False) if emos_pass1 is not None else None
                 ),
                 "actores": (
-                    json.dumps(actores, ensure_ascii=False)
-                    if actores is not None else None
+                    json.dumps(actores, ensure_ascii=False) if actores is not None else None
                 ),
             }
             if contexto_hilo:
@@ -2901,9 +2871,7 @@ class EmotionsPass2Stage(Stage):
             df = compute_emotion_rolling_summary(df, window=self._rolling_window)
         return self._merge_hilo_emotion_context(codigo, df)
 
-    def _merge_hilo_emotion_context(
-        self, codigo: str, df: pd.DataFrame
-    ) -> pd.DataFrame:
+    def _merge_hilo_emotion_context(self, codigo: str, df: pd.DataFrame) -> pd.DataFrame:
         """Antepone al rolling las emociones detectadas en los posts padre.
 
         Solo actúa si hay provider de hilo configurado y el post tiene
@@ -2919,9 +2887,11 @@ class EmotionsPass2Stage(Stage):
             return df
 
         def _merge(valor: Any) -> str:
-            s = "" if valor is None or (
-                isinstance(valor, float) and pd.isna(valor)
-            ) else str(valor).strip()
+            s = (
+                ""
+                if valor is None or (isinstance(valor, float) and pd.isna(valor))
+                else str(valor).strip()
+            )
             if not s or s.startswith("(sin emociones previas"):
                 return ctx
             return f"{ctx}\n{s}"
@@ -2934,6 +2904,7 @@ class EmotionsPass2Stage(Stage):
 # ══════════════════════════════════════════════════════════════════════════════
 #  Etapa de análisis actancial
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class ActantsStage(Stage):
     """Analiza la configuración actancial de las emociones detectadas.
@@ -3017,13 +2988,9 @@ class ActantsStage(Stage):
             try:
                 df_out = agent.run(df_in)
             except Exception as e:
-                logger.error(
-                    f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}"
-                )
+                logger.error(f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}")
                 for frase_idx, emo_idx in items:
-                    self._e_repo.set_actantes_error(
-                        codigo, frase_idx, emo_idx, str(e)
-                    )
+                    self._e_repo.set_actantes_error(codigo, frase_idx, emo_idx, str(e))
                     self.metrics.record_item_failed()
                 continue
 
@@ -3033,13 +3000,17 @@ class ActantsStage(Stage):
                 emo_idx = int(row["emocion_idx"])
                 if payload is None:
                     self._e_repo.set_actantes_error(
-                        codigo, frase_idx, emo_idx,
+                        codigo,
+                        frase_idx,
+                        emo_idx,
                         "Backend error (ver logs)",
                     )
                     self.metrics.record_item_failed()
                     continue
                 self._e_repo.set_actantes(
-                    codigo, frase_idx, emo_idx,
+                    codigo,
+                    frase_idx,
+                    emo_idx,
                     payload=payload,
                     version=self._version,
                 )
@@ -3061,9 +3032,7 @@ class ActantsStage(Stage):
         exp_map = self._e_repo.resolve_canonico_map(
             codigo, "experienciador", "experienciador_marca"
         )
-        fte_map = self._e_repo.resolve_canonicos_map(
-            codigo, "fuente", "fuente_marca"
-        )
+        fte_map = self._e_repo.resolve_canonicos_map(codigo, "fuente", "fuente_marca")
         rows: list[dict[str, Any]] = []
         for frase_idx, emo_idx in items:
             emo = index.get((frase_idx, emo_idx))
@@ -3273,11 +3242,12 @@ def _format_actantes_for_judge(actantes: dict[str, Any]) -> str:
 #  Judge
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class JudgeStage(Stage):
     """Juzga la coherencia de las caracterizaciones de emociones."""
- 
+
     NAME = "judge"
- 
+
     def __init__(
         self,
         backend: LLMBackend,
@@ -3310,23 +3280,23 @@ class JudgeStage(Stage):
         # corrió) explicita la operación de recontextualización.
         self._hilo_ctx = hilo_context_provider
         self._reframing = reframing_provider
- 
+
     def run_pending(self) -> int:
         """Procesa emociones caracterizadas y guarda veredictos."""
         pending = self._j_repo.list_pending()
         if not pending:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
- 
+
         by_codigo: dict[str, list[tuple[int, int]]] = {}
         for codigo, frase_idx, emo_idx in pending:
             by_codigo.setdefault(codigo, []).append((frase_idx, emo_idx))
- 
+
         logger.info(
             f"[Stage:{self.NAME}] Procesando {len(by_codigo)} discurso(s) "
             f"con {sum(len(v) for v in by_codigo.values())} emociones pendientes."
         )
- 
+
         total_ok = 0
         self.progress.start(len(pending), "emociones")
         for codigo, items in by_codigo.items():
@@ -3346,36 +3316,38 @@ class JudgeStage(Stage):
                 retry_config=self._retry_config,
                 genre=self._genre,
             )
- 
+
             df_in = self._build_input_df(codigo, items)
             if df_in.empty:
                 continue
- 
+
             try:
                 df_out = agent.run(df_in)
             except Exception as e:
-                logger.error(
-                    f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}"
-                )
+                logger.error(f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}")
                 for frase_idx, emo_idx in items:
                     self._j_repo.set_error(codigo, frase_idx, emo_idx, str(e))
                     self.metrics.record_item_failed()
                 continue
- 
+
             for _, row in df_out.iterrows():
                 frase_idx = int(row["frase_idx"])
                 emo_idx = int(row["emocion_idx"])
                 # Columnas del agente: coherente, issues, confianza.
                 if pd.isna(row.get("coherente")):
                     self._j_repo.set_error(
-                        codigo, frase_idx, emo_idx,
+                        codigo,
+                        frase_idx,
+                        emo_idx,
                         "Backend error (ver logs del agente)",
                     )
                     self.metrics.record_item_failed()
                     continue
                 sug = row.get("sugerencias")
                 self._j_repo.set_judgment(
-                    codigo, frase_idx, emo_idx,
+                    codigo,
+                    frase_idx,
+                    emo_idx,
                     coherente=bool(row["coherente"]),
                     issues=str(row["issues"]),
                     confianza=str(row["confianza"]),
@@ -3384,10 +3356,10 @@ class JudgeStage(Stage):
                 )
                 total_ok += 1
                 self.metrics.record_item_ok()
- 
+
         logger.info(f"[Stage:{self.NAME}] Completado: {total_ok} ok.")
         return total_ok
- 
+
     def _build_input_df(
         self,
         codigo: str,
@@ -3399,9 +3371,7 @@ class JudgeStage(Stage):
         exp_map = self._e_repo.resolve_canonico_map(
             codigo, "experienciador", "experienciador_marca"
         )
-        fte_map = self._e_repo.resolve_canonicos_map(
-            codigo, "fuente", "fuente_marca"
-        )
+        fte_map = self._e_repo.resolve_canonicos_map(codigo, "fuente", "fuente_marca")
 
         rows: list[dict[str, Any]] = []
         for frase_idx, emo_idx in items:
@@ -3415,7 +3385,7 @@ class JudgeStage(Stage):
                 carac = json.loads(carac_raw)
             except (json.JSONDecodeError, TypeError):
                 continue
- 
+
             frase_text = self._f_repo.get_frase(codigo, frase_idx) or ""
             prev_ctx, post_ctx = self._frase_window(codigo, frase_idx)
             if self._hilo_ctx is not None:
@@ -3427,17 +3397,19 @@ class JudgeStage(Stage):
                         partes.append(reframing_ctx)
                 prev_ctx = "\n".join(partes)
             actantes = _parse_json_safe(emo.get("actantes_payload"))
-            rows.append({
-                **emo,
-                "frase": frase_text,
-                "ventana_previa": prev_ctx,
-                "ventana_posterior": post_ctx,
-                "experienciador": _effective_experiencer(emo, exp_map),
-                "fuente_inferencia": _effective_fuente(emo, fte_map),
-                # Del characterizer, el juez solo revisa la temporalidad.
-                "temporalidad": carac.get("temporalidad", ""),
-                "actantes_texto": _format_actantes_for_judge(actantes),
-            })
+            rows.append(
+                {
+                    **emo,
+                    "frase": frase_text,
+                    "ventana_previa": prev_ctx,
+                    "ventana_posterior": post_ctx,
+                    "experienciador": _effective_experiencer(emo, exp_map),
+                    "fuente_inferencia": _effective_fuente(emo, fte_map),
+                    # Del characterizer, el juez solo revisa la temporalidad.
+                    "temporalidad": carac.get("temporalidad", ""),
+                    "actantes_texto": _format_actantes_for_judge(actantes),
+                }
+            )
         df = pd.DataFrame(rows)
         self._validate(EmocionExplodedContract, df, "entrada")
         return df
@@ -3465,6 +3437,7 @@ class JudgeStage(Stage):
 # ══════════════════════════════════════════════════════════════════════════════
 #  SemasStage — asignación de semas a referentes canónicos
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _format_semas_vocabulario(vocab: dict[str, Any]) -> str:
     """Formatea el vocabulario de semas por dimensión para el prompt."""
@@ -3516,24 +3489,23 @@ class SemasStage(Stage):
     def run_pending(self) -> int:
         """Propone semas para los referentes que aún no tienen ninguno."""
         ya = self._m_repo.canonicos_con_semas()
-        pendientes = [
-            c for c in self._m_repo.list_canonicos()
-            if c["canonical_id"] not in ya
-        ]
+        pendientes = [c for c in self._m_repo.list_canonicos() if c["canonical_id"] not in ya]
         if not pendientes:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
 
         allowed = _semas_allowed(self._vocab)
         vocab_str = _format_semas_vocabulario(self._vocab)
-        df = pd.DataFrame([
-            {
-                "canonical_id": c["canonical_id"],
-                "display": c["canonical_id"],
-                "marcas": c["marcas"],
-            }
-            for c in pendientes
-        ])
+        df = pd.DataFrame(
+            [
+                {
+                    "canonical_id": c["canonical_id"],
+                    "display": c["canonical_id"],
+                    "marcas": c["marcas"],
+                }
+                for c in pendientes
+            ]
+        )
 
         agent = SemasAgent(
             self._backend,
@@ -3565,8 +3537,5 @@ class SemasStage(Stage):
                 allowed=allowed,
                 origin="llm",
             )
-        logger.info(
-            f"[Stage:{self.NAME}] {len(pendientes)} referentes, "
-            f"{total} semas propuestos."
-        )
+        logger.info(f"[Stage:{self.NAME}] {len(pendientes)} referentes, {total} semas propuestos.")
         return total

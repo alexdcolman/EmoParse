@@ -48,8 +48,8 @@ from emoparse.inputs.posts_loader import (
 )
 from emoparse.knowledge import KnowledgeLoader
 from emoparse.pipeline import (
-    STAGE_ORDER,
     DEFAULT_ENABLED_STAGES,
+    STAGE_ORDER,
     PipelineRunner,
 )
 from emoparse.pipeline.thread_builder import build_threads
@@ -68,14 +68,10 @@ def handle(args: argparse.Namespace) -> int:
     try:
         if args.genre is None:
             genre = default_genre()
-            logger.info(
-                f"[run] Género: {genre.genre_id} ({genre.display_name}) [default]"
-            )
+            logger.info(f"[run] Género: {genre.genre_id} ({genre.display_name}) [default]")
         else:
             genre = get_genre(args.genre)
-            logger.info(
-                f"[run] Género: {genre.genre_id} ({genre.display_name})"
-            )
+            logger.info(f"[run] Género: {genre.genre_id} ({genre.display_name})")
     except GenreRegistryError as e:
         logger.error(f"Género inválido: {e}")
         return 1
@@ -133,16 +129,13 @@ def handle(args: argparse.Namespace) -> int:
     if not genre.summarizer and "summarizer" in enabled:
         enabled = tuple(s for s in enabled if s != "summarizer")
         logger.info(
-            f"[run] Género '{genre.genre_id}' desactiva summarizer "
-            f"(genre.summarizer=False)."
+            f"[run] Género '{genre.genre_id}' desactiva summarizer (genre.summarizer=False)."
         )
 
     if genre.technoparse and not args.stages:
         # Solo sobre los defaults: un --stages explícito se respeta tal cual.
         # emoji_affect degrada a léxico-only si no tiene modelo asignado.
-        agregar = tuple(
-            s for s in ("technoparse", "emoji_affect") if s not in enabled
-        )
+        agregar = tuple(s for s in ("technoparse", "emoji_affect") if s not in enabled)
         if agregar:
             enabled = (*agregar, *enabled)
             logger.info(
@@ -187,10 +180,7 @@ def handle(args: argparse.Namespace) -> int:
     print(f"DB:    {db_path}")
     print(f"Género: {genre.genre_id} ({genre.display_name})")
     if resumen_seleccion:
-        print(
-            f"Alcance: {len(df_input)} de {n_input} unidades del input "
-            f"({resumen_seleccion})"
-        )
+        print(f"Alcance: {len(df_input)} de {n_input} unidades del input ({resumen_seleccion})")
     print()
     print("Stages procesadas (items ok):")
     for stage_name in STAGE_ORDER:
@@ -217,9 +207,7 @@ def _registrar_alcance(
     así que un fallo acá no aborta el run.
     """
     try:
-        RunsRepository(Database(db_path)).registrar_alcance(
-            seleccion, n_input, n_en_alcance
-        )
+        RunsRepository(Database(db_path)).registrar_alcance(seleccion, n_input, n_en_alcance)
     except Exception as e:  # noqa: BLE001
         logger.warning(f"[run] No pude registrar el alcance de la corrida: {e}")
 
@@ -239,6 +227,7 @@ def _resolver_db_existente(db_path: Path, args: argparse.Namespace) -> str:
     if getattr(args, "resume", False):
         return "reanudar"
     import sys
+
     if not sys.stdin.isatty():
         logger.error(
             f"La DB ya existe: {db_path}. Elegí explícitamente: --resume "
@@ -255,9 +244,11 @@ def _resolver_db_existente(db_path: Path, args: argparse.Namespace) -> str:
         if eleccion in ("r", "reanudar"):
             return "reanudar"
         if eleccion in ("s", "sobrescribir"):
-            confirmar = input(
-                f"Se elimina {db_path.name} y todo su análisis. ¿Seguro? [s/N]: "
-            ).strip().lower()
+            confirmar = (
+                input(f"Se elimina {db_path.name} y todo su análisis. ¿Seguro? [s/N]: ")
+                .strip()
+                .lower()
+            )
             if confirmar in ("s", "si", "sí", "y", "yes"):
                 return "sobrescribir"
         elif eleccion in ("c", "cancelar", ""):
@@ -335,10 +326,7 @@ def _parse_stages(raw: str) -> tuple[str, ...]:
         raise ValueError("--stages vacío.")
     unknown = [s for s in parts if s not in STAGE_ORDER]
     if unknown:
-        raise ValueError(
-            f"Stages desconocidas: {unknown}. "
-            f"Válidas: {', '.join(STAGE_ORDER)}"
-        )
+        raise ValueError(f"Stages desconocidas: {unknown}. Válidas: {', '.join(STAGE_ORDER)}")
     return tuple(parts)
 
 

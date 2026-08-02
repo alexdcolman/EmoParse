@@ -55,7 +55,7 @@ class ReframingAgent(BaseBatchAgent[ListaReframingsBatchSchema]):
         backend: LLMBackend,
         heuristicas: str | None = None,
         retry_config: Any | None = None,
-        genre: "Genre | None" = None,
+        genre: Genre | None = None,
     ) -> None:
         """
         Args:
@@ -98,8 +98,7 @@ class ReframingAgent(BaseBatchAgent[ListaReframingsBatchSchema]):
             operatoria = str(row.get("operatoria", "cita"))
             emociones = str(row.get("emociones_citadas") or "").strip()
             linea_emociones = (
-                f"\nEMOCIONES DETECTADAS EN LO CITADO: {emociones}"
-                if emociones else ""
+                f"\nEMOCIONES DETECTADAS EN LO CITADO: {emociones}" if emociones else ""
             )
             # El ancla va rotulada y literal junto al índice: pedirle al
             # modelo que la extraiga de otra línea es pedirle que interprete
@@ -119,8 +118,4 @@ class ReframingAgent(BaseBatchAgent[ListaReframingsBatchSchema]):
         item: ReframingBatchItemSchema,
         row: pd.Series,
     ) -> dict[str, Any]:
-        return {
-            "reframing": json.dumps(
-                item.reframing.model_dump(), ensure_ascii=False
-            )
-        }
+        return {"reframing": json.dumps(item.reframing.model_dump(), ensure_ascii=False)}

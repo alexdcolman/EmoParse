@@ -49,12 +49,15 @@ def base_layout(**kwargs) -> dict:
         xaxis=dict(gridcolor=BORDER, zerolinecolor=BORDER),
         yaxis=dict(gridcolor=BORDER, zerolinecolor=BORDER),
         legend=dict(
-            bgcolor=SURFACE, bordercolor=BORDER, borderwidth=1,
+            bgcolor=SURFACE,
+            bordercolor=BORDER,
+            borderwidth=1,
             font=dict(size=10),
         ),
         margin=dict(l=10, r=10, t=40, b=10),
         hoverlabel=dict(
-            bgcolor=SURFACE, bordercolor=BORDER,
+            bgcolor=SURFACE,
+            bordercolor=BORDER,
             font=dict(family=FONT, size=11),
         ),
     )
@@ -77,19 +80,26 @@ def _registrar() -> None:
             plot_bgcolor=SURFACE,
             font=dict(family=FONT, color=TEXT_DIM, size=11),
             xaxis=dict(
-                gridcolor=BORDER, zerolinecolor=BORDER, linecolor=BORDER,
+                gridcolor=BORDER,
+                zerolinecolor=BORDER,
+                linecolor=BORDER,
                 tickfont=dict(family=FONT, size=10),
             ),
             yaxis=dict(
-                gridcolor=BORDER, zerolinecolor=BORDER, linecolor=BORDER,
+                gridcolor=BORDER,
+                zerolinecolor=BORDER,
+                linecolor=BORDER,
                 tickfont=dict(family=FONT, size=10),
             ),
             legend=dict(
-                bgcolor=SURFACE, bordercolor=BORDER, borderwidth=1,
+                bgcolor=SURFACE,
+                bordercolor=BORDER,
+                borderwidth=1,
                 font=dict(family=FONT, size=10),
             ),
             hoverlabel=dict(
-                bgcolor=SURFACE, bordercolor=BORDER,
+                bgcolor=SURFACE,
+                bordercolor=BORDER,
                 font=dict(family=FONT, size=11),
             ),
             colorway=[ACCENT, ACCENT2, TEXT_DIM, DIM],

@@ -17,7 +17,6 @@ from emoparse.config.models import RunConfig
 from emoparse.pipeline.dag import EMOPARSE_DAG
 from emoparse.storage.db import Database
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  Stages soportadas por policies
 # ══════════════════════════════════════════════════════════════════════════════
@@ -113,9 +112,7 @@ class RetryPolicyFilter(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     field: str = Field(
-        description=(
-            "Path con notación punto sobre el payload JSON de la stage."
-        ),
+        description=("Path con notación punto sobre el payload JSON de la stage."),
     )
     op: FilterOp = Field(default="eq")
     value: Any = Field(
@@ -141,9 +138,7 @@ class RetryPolicyFilter(BaseModel):
                 f"Para chequear NULL, usá 'is_null' / 'is_not_null'."
             )
         if self.op == "in" and not isinstance(self.value, list):
-            raise ValueError(
-                f"Op 'in' requiere 'value' lista, got {type(self.value).__name__}."
-            )
+            raise ValueError(f"Op 'in' requiere 'value' lista, got {type(self.value).__name__}.")
         return self
 
 
@@ -228,6 +223,7 @@ def load_policy_file(path: Path | str) -> RetryPolicyFile:
 #  RetryPolicyApplier
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class PolicyApplicationResult(BaseModel):
     """Resultado de aplicar una policy."""
 
@@ -251,9 +247,7 @@ class RetryPolicyApplier:
     ) -> tuple[list[PolicyApplicationResult], RunConfig | None]:
         """Aplica todas las policies y devuelve resultados + config overrideado."""
         results: list[PolicyApplicationResult] = []
-        new_config = (
-            base_config.model_copy(deep=True) if base_config is not None else None
-        )
+        new_config = base_config.model_copy(deep=True) if base_config is not None else None
 
         for policy in policy_file.policies:
             result = self._apply_one(policy)
@@ -279,9 +273,7 @@ class RetryPolicyApplier:
             policy.target, payload_col, error_col
         )
 
-        filter_clauses, filter_params = self._where_for_filters(
-            policy.filters, payload_col
-        )
+        filter_clauses, filter_params = self._where_for_filters(policy.filters, payload_col)
 
         if (
             policy.target == "failed"
@@ -330,8 +322,7 @@ class RetryPolicyApplier:
             affected = cur.rowcount
 
         logger.info(
-            "[RetryPolicy] Policy sobre '{}' (target={}): {} fila(s) "
-            "marcadas pending.{}",
+            "[RetryPolicy] Policy sobre '{}' (target={}): {} fila(s) marcadas pending.{}",
             policy.stage,
             policy.target,
             affected,
@@ -357,9 +348,7 @@ class RetryPolicyApplier:
         if target == "completed":
             return [f"{payload_col} IS NOT NULL"], []
         if target == "all":
-            return [
-                f"({error_col} IS NOT NULL OR {payload_col} IS NOT NULL)"
-            ], []
+            return [f"({error_col} IS NOT NULL OR {payload_col} IS NOT NULL)"], []
         raise ValueError(f"target inválido: {target}")
 
     @staticmethod
@@ -395,12 +384,7 @@ class RetryPolicyApplier:
                 params.extend(f.value)
             elif f.op == "contains":
                 # SQLite por default no escapa; se utiliza un ESCAPE clause.
-                escaped = (
-                    str(f.value)
-                    .replace("\\", "\\\\")
-                    .replace("%", "\\%")
-                    .replace("_", "\\_")
-                )
+                escaped = str(f.value).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
                 clauses.append(f"{extracted} LIKE ? ESCAPE '\\'")
                 params.append(f"%{escaped}%")
             elif f.op == "is_null":
@@ -440,6 +424,7 @@ class RetryPolicyApplier:
 
 
 # ── Helpers privados ────────────────────────────────────────────────────────
+
 
 def _filters_only_payload_null(filters: list[RetryPolicyFilter]) -> bool:
     """True si todos los filtros usan is_null sobre el payload."""

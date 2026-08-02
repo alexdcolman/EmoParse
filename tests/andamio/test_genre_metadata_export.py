@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from emoparse.genres.articulo_periodistico import get_genre
 from emoparse.genres.presentation import attach_genre_presentation
@@ -24,7 +24,7 @@ def _build_db(tmp_path, *, with_presentation: bool = True) -> Database:
     RunsRepository(db).bootstrap(
         RunContext(
             run_id="run_metadata",
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
             config=config,
         )
     )
@@ -122,7 +122,7 @@ def test_resume_adds_snapshot_without_overwriting_user_config(tmp_path) -> None:
     repo.bootstrap(
         RunContext(
             run_id="run_metadata",
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
             config=attach_genre_presentation(
                 {"pipeline": {"parallel": 99}},
                 get_genre(),
@@ -134,7 +134,5 @@ def test_resume_adds_snapshot_without_overwriting_user_config(tmp_path) -> None:
 
     assert run is not None
     assert run.config["pipeline"] == {"parallel": 1}
-    assert run.config["_emoparse"]["genre"]["genre_id"] == (
-        "articulo_periodistico"
-    )
+    assert run.config["_emoparse"]["genre"]["genre_id"] == ("articulo_periodistico")
     db.close_thread_connection()

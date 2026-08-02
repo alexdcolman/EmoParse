@@ -20,7 +20,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence
+from collections.abc import Sequence
+from typing import Any
 
 import pandas as pd
 
@@ -109,10 +110,11 @@ def knn_pairs(
                     pares[clave] = sim
     if not pares:
         return pd.DataFrame(columns=["i", "j", "similitud"])
-    return pd.DataFrame(
-        [{"i": i, "j": j, "similitud": round(s, 4)}
-         for (i, j), s in pares.items()]
-    ).sort_values("similitud", ascending=False).reset_index(drop=True)
+    return (
+        pd.DataFrame([{"i": i, "j": j, "similitud": round(s, 4)} for (i, j), s in pares.items()])
+        .sort_values("similitud", ascending=False)
+        .reset_index(drop=True)
+    )
 
 
 def agrupar_por_contenido(
@@ -132,7 +134,8 @@ def agrupar_por_contenido(
     from emoparse.network.metrics import _nx
 
     registros = [
-        r for r in df_posts.to_dict(orient="records")
+        r
+        for r in df_posts.to_dict(orient="records")
         if len(str(r.get("texto") or "").strip()) >= MIN_CARACTERES
     ]
     if len(registros) < 2:
@@ -144,11 +147,13 @@ def agrupar_por_contenido(
     if pares.empty:
         return pd.DataFrame(columns=["origen", "destino", "peso"]), {}
 
-    aristas = pd.DataFrame({
-        "origen": [ids[int(i)] for i in pares["i"]],
-        "destino": [ids[int(j)] for j in pares["j"]],
-        "peso": pares["similitud"].astype(float),
-    })
+    aristas = pd.DataFrame(
+        {
+            "origen": [ids[int(i)] for i in pares["i"]],
+            "destino": [ids[int(j)] for j in pares["j"]],
+            "peso": pares["similitud"].astype(float),
+        }
+    )
 
     nx = _nx()
     G = nx.Graph()
@@ -179,14 +184,14 @@ def terminos_por_comunidad(
     from collections import Counter
 
     texto_por_post = {
-        str(r["post_id"]): str(r.get("texto") or "")
-        for r in df_posts.to_dict(orient="records")
+        str(r["post_id"]): str(r.get("texto") or "") for r in df_posts.to_dict(orient="records")
     }
     por_comunidad: dict[int, Counter] = {}
     global_counts: Counter = Counter()
     for post_id, comunidad in comunidades.items():
         tokens = [
-            t for t in re.findall(r"\w+", texto_por_post.get(post_id, "").lower())
+            t
+            for t in re.findall(r"\w+", texto_por_post.get(post_id, "").lower())
             if len(t) >= min_longitud and not t.isdigit()
         ]
         por_comunidad.setdefault(int(comunidad), Counter()).update(set(tokens))
@@ -197,15 +202,14 @@ def terminos_por_comunidad(
         n = sum(counts.values()) or 1
         total = sum(global_counts.values()) or 1
         puntuados = sorted(
-            (
-                (t, c, (c / n) / (global_counts[t] / total))
-                for t, c in counts.items() if c >= 2
-            ),
+            ((t, c, (c / n) / (global_counts[t] / total)) for t, c in counts.items() if c >= 2),
             key=lambda x: (-x[2], -x[1]),
         )
-        filas.append({
-            "comunidad": comunidad,
-            "posts": len([1 for v in comunidades.values() if v == comunidad]),
-            "terminos": ", ".join(t for t, _c, _s in puntuados[:top]),
-        })
+        filas.append(
+            {
+                "comunidad": comunidad,
+                "posts": len([1 for v in comunidades.values() if v == comunidad]),
+                "terminos": ", ".join(t for t, _c, _s in puntuados[:top]),
+            }
+        )
     return pd.DataFrame(filas)

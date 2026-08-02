@@ -32,11 +32,7 @@ def filtrar_ontologia_por_genero(
     emociones = ontologia.get("emociones")
     if not isinstance(emociones, dict):
         return ontologia
-    filtradas = {
-        nombre: entry
-        for nombre, entry in emociones.items()
-        if _visible(entry, genre_id)
-    }
+    filtradas = {nombre: entry for nombre, entry in emociones.items() if _visible(entry, genre_id)}
     out = dict(ontologia)
     out["emociones"] = filtradas
     return out

@@ -38,18 +38,13 @@ def attach_run(db_path: Path | str, alias: str = "run") -> Any:
         import duckdb
     except ImportError as e:
         raise AnalyticsUnavailableError(
-            "DuckDB no está instalado. Instalá el extra: "
-            'pip install -e ".[analytics]"'
+            'DuckDB no está instalado. Instalá el extra: pip install -e ".[analytics]"'
         ) from e
     try:
         con = duckdb.connect(database=":memory:")
-        con.execute(
-            f"ATTACH '{p.as_posix()}' AS {alias} (TYPE SQLITE, READ_ONLY)"
-        )
+        con.execute(f"ATTACH '{p.as_posix()}' AS {alias} (TYPE SQLITE, READ_ONLY)")
     except Exception as e:  # duckdb expone jerarquías propias según versión
-        raise AnalyticsUnavailableError(
-            f"No pude attachear {p} en DuckDB: {e}"
-        ) from e
+        raise AnalyticsUnavailableError(f"No pude attachear {p} en DuckDB: {e}") from e
     return con
 
 

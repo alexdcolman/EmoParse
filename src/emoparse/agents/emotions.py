@@ -27,23 +27,24 @@
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING, Any, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
 
 import pandas as pd
 
 from emoparse.agents.base import BaseBatchAgent
 from emoparse.core.backend.base import LLMBackend
-from emoparse.genres.schema_factory import emociones_batch_schema
 from emoparse.core.prompts import emotions as prompts
-from emoparse.core.text import (
-    sanitize_emotion_label,
-    sanitize_referent_label,
-)
 from emoparse.core.schemas import (
     CONFIGURACION_POR_ID,
     EmocionesBatchItemSchema,
     ListaEmocionesBatchSchema,
 )
+from emoparse.core.text import (
+    sanitize_emotion_label,
+    sanitize_referent_label,
+)
+from emoparse.genres.schema_factory import emociones_batch_schema
 
 if TYPE_CHECKING:
     from emoparse.genres.base import Genre
@@ -186,7 +187,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         contexto_genero: str = "",
         emotion_scope: tuple[str, ...] | None = None,
         retry_config: Any | None = None,
-        genre: "Genre | None" = None,
+        genre: Genre | None = None,
     ) -> None:
         """
         Args:
@@ -292,9 +293,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         row: pd.Series,
     ) -> dict[str, Any]:
         emociones_json = json.dumps(
-            dedupe_emociones(
-                [sanitize_emocion(e.model_dump()) for e in item.emociones]
-            ),
+            dedupe_emociones([sanitize_emocion(e.model_dump()) for e in item.emociones]),
             ensure_ascii=False,
         )
         return {"emociones": emociones_json}
@@ -303,9 +302,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
 
     def _alcance_text(self) -> str:
         """Frase legible del alcance, o cadena vacía si no hay restricción."""
-        return alcance_text(
-            self._emotion_scope, self._enunciador, self._enunciatarios
-        )
+        return alcance_text(self._emotion_scope, self._enunciador, self._enunciatarios)
 
     @staticmethod
     def _format_actores(actores_raw: Any) -> str:
@@ -352,6 +349,7 @@ def _opt_str(value: Any) -> str:
 #  Utilidades para construir contexto emocional determinístico
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def compute_emotion_rolling_summary(
     df_with_emotions: pd.DataFrame,
     *,
@@ -371,9 +369,9 @@ def compute_emotion_rolling_summary(
         out["emotion_rolling"] = pd.Series(dtype="object")
         return out
 
-    sorted_df = df_with_emotions.sort_values(
-        ["codigo", "unit_idx"], kind="stable"
-    ).reset_index(drop=True)
+    sorted_df = df_with_emotions.sort_values(["codigo", "unit_idx"], kind="stable").reset_index(
+        drop=True
+    )
 
     rollings: list[str] = []
     history: list[str] = []
@@ -427,9 +425,9 @@ def compute_emotion_full_summary(
         out["emotion_rolling"] = pd.Series(dtype="object")
         return out
 
-    sorted_df = df_with_emotions.sort_values(
-        ["codigo", "unit_idx"], kind="stable"
-    ).reset_index(drop=True)
+    sorted_df = df_with_emotions.sort_values(["codigo", "unit_idx"], kind="stable").reset_index(
+        drop=True
+    )
 
     summaries: list[str] = []
     history: list[str] = []

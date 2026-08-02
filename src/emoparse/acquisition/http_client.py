@@ -6,20 +6,18 @@
 
 from __future__ import annotations
 
+import logging
 from typing import Any
 
 import requests
 from loguru import logger
 from tenacity import (
+    before_sleep_log,
     retry,
     retry_if_exception_type,
     stop_after_attempt,
     wait_exponential,
-    before_sleep_log,
 )
-
-import logging
-
 
 #: UA de un Chrome reciente.
 DEFAULT_USER_AGENT = (
@@ -38,6 +36,7 @@ class TransientHttpError(Exception):
 
 class _LoguruAdapter(logging.Logger):
     """Adaptador para usar loguru con tenacity."""
+
     def __init__(self) -> None:
         super().__init__("scraping.http_client")
 
@@ -47,9 +46,12 @@ class _LoguruAdapter(logging.Logger):
 
 def _level_to_loguru(level: int) -> str:
     """Mapea nivel stdlib a string loguru."""
-    if level >= logging.ERROR:   return "ERROR"
-    if level >= logging.WARNING: return "WARNING"
-    if level >= logging.INFO:    return "INFO"
+    if level >= logging.ERROR:
+        return "ERROR"
+    if level >= logging.WARNING:
+        return "WARNING"
+    if level >= logging.INFO:
+        return "INFO"
     return "DEBUG"
 
 
@@ -70,14 +72,17 @@ class HttpClient:
         self._timeout = timeout
         self._max_retries = max_retries
         self._session = requests.Session()
-        self._session.headers.update({
-            "User-Agent": user_agent,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-            "Accept-Language": "es-AR,es;q=0.9,en;q=0.8",
-        })
+        self._session.headers.update(
+            {
+                "User-Agent": user_agent,
+                "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+                "Accept-Language": "es-AR,es;q=0.9,en;q=0.8",
+            }
+        )
 
     def get(self, url: str, **kwargs: Any) -> requests.Response:
         """GET con retries. Lanza HTTPError o TransientHttpError."""
+
         @retry(
             retry=retry_if_exception_type(TransientHttpError),
             stop=stop_after_attempt(self._max_retries + 1),
@@ -91,9 +96,7 @@ class HttpClient:
             except (requests.ConnectionError, requests.Timeout) as e:
                 raise TransientHttpError(f"red caída para {url}: {e}") from e
             if resp.status_code in _RETRYABLE_HTTP:
-                raise TransientHttpError(
-                    f"HTTP {resp.status_code} para {url}"
-                )
+                raise TransientHttpError(f"HTTP {resp.status_code} para {url}")
             return resp
 
         return _do_get()

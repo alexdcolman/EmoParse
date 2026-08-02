@@ -43,7 +43,7 @@ class SemasAgent(BaseBatchAgent[ListaSemasBatchSchema]):
         titulo: str = "",
         tipo_discurso: str = "",
         retry_config: Any | None = None,
-        genre: "Genre | None" = None,
+        genre: Genre | None = None,
     ) -> None:
         """
         Args:
@@ -83,9 +83,7 @@ class SemasAgent(BaseBatchAgent[ListaSemasBatchSchema]):
                 marcas_str = "; ".join(str(x) for x in marcas)
             else:
                 marcas_str = str(marcas or "")
-            bloques.append(
-                f"REFERENTE [{i}] ({disp}):\n  Marcas: {marcas_str}"
-            )
+            bloques.append(f"REFERENTE [{i}] ({disp}):\n  Marcas: {marcas_str}")
         return prompts.render_user("\n\n".join(bloques))
 
     def _map_item_to_columns(

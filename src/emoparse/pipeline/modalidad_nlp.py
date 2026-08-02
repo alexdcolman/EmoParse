@@ -28,27 +28,72 @@ from dataclasses import dataclass
 from typing import Any
 
 #: Etiquetas válidas (deben coincidir con el schema/persistencia).
-MODALIDADES = frozenset({
-    "designacion",
-    "referencia_gramatical",
-    "identificacion_inferencial",
-})
-NATURALEZAS = frozenset({
-    "persona", "colectivo", "institucion", "objeto_proceso", "otro",
-})
+MODALIDADES = frozenset(
+    {
+        "designacion",
+        "referencia_gramatical",
+        "identificacion_inferencial",
+    }
+)
+NATURALEZAS = frozenset(
+    {
+        "persona",
+        "colectivo",
+        "institucion",
+        "objeto_proceso",
+        "otro",
+    }
+)
 
 #: Modelo spaCy por defecto (ES). Se puede overridear al construir el clasificador.
 DEFAULT_MODEL = "es_core_news_md"
 _FALLBACK_MODELS = ("es_core_news_md", "es_core_news_sm", "es_core_news_lg")
 
 #: Pronombres/determinantes deícticos frecuentes (respaldo si el POS falla).
-_PRONOUNS = frozenset({
-    "yo", "mi", "me", "conmigo", "mio", "mia", "mios", "mias",
-    "nosotros", "nosotras", "nos", "nuestro", "nuestra", "nuestros", "nuestras",
-    "vos", "tu", "te", "ti", "usted", "ustedes", "ud", "uds",
-    "vosotros", "vosotras", "os", "su", "sus", "le", "les", "el", "ella",
-    "ellos", "ellas", "esto", "eso", "aquello", "este", "ese", "aquel",
-})
+_PRONOUNS = frozenset(
+    {
+        "yo",
+        "mi",
+        "me",
+        "conmigo",
+        "mio",
+        "mia",
+        "mios",
+        "mias",
+        "nosotros",
+        "nosotras",
+        "nos",
+        "nuestro",
+        "nuestra",
+        "nuestros",
+        "nuestras",
+        "vos",
+        "tu",
+        "te",
+        "ti",
+        "usted",
+        "ustedes",
+        "ud",
+        "uds",
+        "vosotros",
+        "vosotras",
+        "os",
+        "su",
+        "sus",
+        "le",
+        "les",
+        "el",
+        "ella",
+        "ellos",
+        "ellas",
+        "esto",
+        "eso",
+        "aquello",
+        "este",
+        "ese",
+        "aquel",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -58,6 +103,7 @@ class ModalidadGuess:
     `confident=True` significa que el caso es claro y no necesita LLM.
     `modalidad`/`naturaleza` pueden ser None si no se pudo determinar.
     """
+
     modalidad: str | None
     naturaleza: str | None
     confident: bool
@@ -71,7 +117,7 @@ def _strip_accents(s: str) -> str:
 
 def _normalize(s: str) -> str:
     s = _strip_accents(s).lower()
-    s = re.sub(r"\(.*?\)", "", s)          # quita parentéticos
+    s = re.sub(r"\(.*?\)", "", s)  # quita parentéticos
     return s.strip().strip("'\"").strip()
 
 
@@ -100,9 +146,7 @@ class ModalidadNLP:
         except Exception:
             self._ok = False
             return
-        candidates = [self._model_name] + [
-            m for m in _FALLBACK_MODELS if m != self._model_name
-        ]
+        candidates = [self._model_name] + [m for m in _FALLBACK_MODELS if m != self._model_name]
         for name in candidates:
             try:
                 self._nlp = spacy.load(name, disable=["lemmatizer"])
@@ -143,8 +187,7 @@ class ModalidadNLP:
         has_propn = "PROPN" in pos
         has_noun = "NOUN" in pos
         has_finite_verb = any(
-            t.pos_ in ("VERB", "AUX") and t.morph.get("VerbForm") != ["Inf"]
-            for t in toks
+            t.pos_ in ("VERB", "AUX") and t.morph.get("VerbForm") != ["Inf"] for t in toks
         )
         only_pron = all(t.pos_ in ("PRON", "DET") for t in toks)
 
@@ -157,9 +200,7 @@ class ModalidadNLP:
 
         # 2) Nombre propio como núcleo → designación (caso claro).
         if has_propn and not has_finite_verb:
-            return ModalidadGuess(
-                "designacion", naturaleza or "persona", confident=True
-            )
+            return ModalidadGuess("designacion", naturaleza or "persona", confident=True)
 
         # 3) Verbo finito sin núcleo nominal → referencia predicativa/gramatical.
         if has_finite_verb and not has_noun and not has_propn:

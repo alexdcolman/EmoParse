@@ -23,21 +23,41 @@ MarcaMap = dict[str, dict[str, tuple[int, int, int]]]
 MarcaIndex = dict[tuple[str, int], MarcaMap]
 
 #: Valores que cuentan como "sin referente" y no generan canónico.
-_DESCONOCIDO = frozenset({
-    "", "no identificado", "no_identificado", "no identificada",
-    "no se identifica", "no_se_identifica", "ninguno", "ninguna", "?",
-    "desconocido", "desconocida",
-})
+_DESCONOCIDO = frozenset(
+    {
+        "",
+        "no identificado",
+        "no_identificado",
+        "no identificada",
+        "no se identifica",
+        "no_se_identifica",
+        "ninguno",
+        "ninguna",
+        "?",
+        "desconocido",
+        "desconocida",
+    }
+)
 
 #: Prefijos de slug que delatan un deíctico o una etiqueta de rol enunciativo
 #: devueltos como si fueran un referente ("enunciador", "los enunciatarios",
 #: "nosotros_enunciador_nacion_pueblo"). Nombran una posición, no designan a
 #: nadie: el referente concreto lo resuelve `pipeline.deixis` o la revisión.
 _PREFIJOS_ROL: tuple[str, ...] = (
-    "nosotros", "nosotras", "nuestro", "nuestra",
-    "enunciador", "enunciadora", "enunciante",
-    "enunciatario", "enunciataria", "enunciatarios", "enunciatarias",
-    "auditorio", "destinatario", "destinatarios",
+    "nosotros",
+    "nosotras",
+    "nuestro",
+    "nuestra",
+    "enunciador",
+    "enunciadora",
+    "enunciante",
+    "enunciatario",
+    "enunciataria",
+    "enunciatarios",
+    "enunciatarias",
+    "auditorio",
+    "destinatario",
+    "destinatarios",
 )
 
 #: Grupo de un vínculo según su procedencia. Los deícticos son sugerencias
@@ -58,8 +78,13 @@ _STATUS_RANK = {"accepted": 0, "proposed": 1}
 
 #: Prelación por procedencia, dentro de un mismo grupo y estado.
 _ORIGIN_RANK = {
-    "human": 0, "technoparse": 1, "llm": 2, "coref": 3, "auto": 4,
-    "deixis_llm": 5, "deixis": 6,
+    "human": 0,
+    "technoparse": 1,
+    "llm": 2,
+    "coref": 3,
+    "auto": 4,
+    "deixis_llm": 5,
+    "deixis": 6,
 }
 
 #: Prelación de un vínculo con estado u origen no reconocidos.
@@ -72,11 +97,11 @@ _TABLAS_MARCAS = ("menciones", "mencion_funcion", "mencion_canonico")
 class Executor(Protocol):
     """Acceso a la DB con `execute`: `storage.db.Database` o `sqlite3.Connection`."""
 
-    def execute(self, sql: str, params: Any = ...) -> Any:
-        ...
+    def execute(self, sql: str, params: Any = ...) -> Any: ...
 
 
 # ── Identidad referencial ────────────────────────────────────────────────────
+
 
 def es_referente_desconocido(value: str | None) -> bool:
     """True si la marca o la inferencia no aporta referente."""
@@ -111,17 +136,27 @@ _CONJ_RE = re.compile(r"\s*(?:,|\by\b|\be\b|\bo\b|\bu\b)\s*", re.IGNORECASE)
 _HAS_CONJ_RE = re.compile(r"\b(?:y|e|o|u)\b", re.IGNORECASE)
 
 #: Segmentos triviales (solo artículo/determinante) que no son entidad.
-_ARTICULOS = frozenset({
-    "el", "la", "los", "las", "un", "una", "unos", "unas", "lo", "su", "sus",
-})
+_ARTICULOS = frozenset(
+    {
+        "el",
+        "la",
+        "los",
+        "las",
+        "un",
+        "una",
+        "unos",
+        "unas",
+        "lo",
+        "su",
+        "sus",
+    }
+)
 
 #: Preposiciones que introducen un complemento capaz de llevarse toda una
 #: enumeración: "encuentro entre Sánchez, Mamdani, Trump y Milei" nombra un
 #: referente (el encuentro), no cuatro. Si el primer segmento trae una, la
 #: coordinación no es del nivel superior y el texto no se parte.
-_PREP_REGENTE_RE = re.compile(
-    r"\b(?:entre|con|contra|junto a|frente a)\s+\S", re.IGNORECASE
-)
+_PREP_REGENTE_RE = re.compile(r"\b(?:entre|con|contra|junto a|frente a)\s+\S", re.IGNORECASE)
 
 
 def split_coordinacion(text: str | None) -> list[str]:
@@ -156,6 +191,7 @@ def split_coordinacion(text: str | None) -> list[str]:
 
 
 # ── Índice de marcas ─────────────────────────────────────────────────────────
+
 
 def hay_base_de_marcas(db: Executor) -> bool:
     """True si el run ya materializó la base de marcas discursivas."""
@@ -201,20 +237,20 @@ def marca_canonicos_index(
         if not cid or not marca:
             continue
         prelacion = (
-            _GRUPO_RECHAZADO if row["status"] == "rejected"
+            _GRUPO_RECHAZADO
+            if row["status"] == "rejected"
             else _ORIGIN_GRUPO.get(row["origin"], 0),
             _STATUS_RANK.get(row["status"], _SIN_PRELACION[1]),
             _ORIGIN_RANK.get(row["origin"], _SIN_PRELACION[2]),
         )
-        entrada = index.setdefault(
-            (row["codigo"], int(row["unit_idx"])), {}
-        ).setdefault(marca, {})
+        entrada = index.setdefault((row["codigo"], int(row["unit_idx"])), {}).setdefault(marca, {})
         if prelacion < entrada.get(cid, _SIN_PRELACION):
             entrada[cid] = prelacion
     return index
 
 
 # ── Resolución ───────────────────────────────────────────────────────────────
+
 
 def _candidatos_de_marca(
     marca_map: MarcaMap | None, marca: str | None
@@ -234,7 +270,8 @@ def _candidatos_de_marca(
         candidatos = [(objetivo, marca_map[objetivo])]
     else:
         candidatos = [
-            (texto, cids) for texto, cids in marca_map.items()
+            (texto, cids)
+            for texto, cids in marca_map.items()
             if texto in objetivo or objetivo in texto
         ]
     mejor: dict[str, tuple[int, ...]] = {}
@@ -261,7 +298,8 @@ def canonicos_de_marca(marca_map: MarcaMap | None, marca: str | None) -> list[st
     atribución por emoción.
     """
     candidatos = [
-        (cid, clave) for cid, clave in _candidatos_de_marca(marca_map, marca)
+        (cid, clave)
+        for cid, clave in _candidatos_de_marca(marca_map, marca)
         if clave[0] != _GRUPO_RECHAZADO
     ]
     if not candidatos:
@@ -276,8 +314,7 @@ def canonicos_de_marca(marca_map: MarcaMap | None, marca: str | None) -> list[st
 def rechazados_de_marca(marca_map: MarcaMap | None, marca: str | None) -> set[str]:
     """Canónicos descartados para una marca."""
     return {
-        cid for cid, clave in _candidatos_de_marca(marca_map, marca)
-        if clave[0] == _GRUPO_RECHAZADO
+        cid for cid, clave in _candidatos_de_marca(marca_map, marca) if clave[0] == _GRUPO_RECHAZADO
     }
 
 
@@ -369,7 +406,5 @@ def resolver_canonico(
     marca queda ligada a varios referentes aceptados, la emoción se desdobla
     (una por referente) en la capa de datos antes de llegar acá.
     """
-    resueltos = resolver_canonicos(
-        marca_map, marca, override=override, inferencia=inferencia
-    )
+    resueltos = resolver_canonicos(marca_map, marca, override=override, inferencia=inferencia)
     return resueltos[0] if resueltos else ""

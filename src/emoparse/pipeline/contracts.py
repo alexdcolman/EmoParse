@@ -31,9 +31,7 @@ class PostInputContract(DataFrameModel):
     plataforma: Series[str] = pa.Field(nullable=False)
     autor_handle: Series[str] = pa.Field(nullable=False)
     texto: Series[str] = pa.Field(nullable=False)  # '' solo en reposts puros
-    tipo: Series[str] = pa.Field(
-        nullable=False, isin=["original", "reply", "quote", "repost"]
-    )
+    tipo: Series[str] = pa.Field(nullable=False, isin=["original", "reply", "quote", "repost"])
     es_repost_puro: Series[int] = pa.Field(nullable=False, isin=[0, 1])
 
     class Config:

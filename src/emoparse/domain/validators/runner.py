@@ -149,8 +149,7 @@ class ValidationRunner:
                 issues.extend(disc_issues)
             except Exception as e:
                 logger.warning(
-                    f"[ValidationRunner] {validator.VALIDATOR_ID} falló en "
-                    f"{codigo}: {e}"
+                    f"[ValidationRunner] {validator.VALIDATOR_ID} falló en {codigo}: {e}"
                 )
 
         return issues
@@ -167,9 +166,7 @@ class ValidationRunner:
         ).fetchall()
         return [r["codigo"] for r in rows]
 
-    def _load_emociones_con_caracterizacion(
-        self, codigo: str
-    ) -> list[dict[str, Any]]:
+    def _load_emociones_con_caracterizacion(self, codigo: str) -> list[dict[str, Any]]:
         """Carga emociones con sus caracterizaciones para un discurso."""
         rows = self._db.execute(
             """
@@ -200,19 +197,21 @@ class ValidationRunner:
                 )
                 continue
 
-            result.append({
-                "frase_idx": row["frase_idx"],
-                "emocion_idx": row["emocion_idx"],
-                "experienciador": row["experienciador"] or "",
-                "experienciador_marca": row["experienciador_marca"] or "",
-                "tipo_emocion": row["tipo_emocion"] or "",
-                "modo_existencia": row["modo_existencia"] or "",
-                "foria": caract.get("foria", ""),
-                "dominancia": caract.get("dominancia", ""),
-                "intensidad": caract.get("intensidad", ""),
-                "fuente_marca": caract.get("fuente_marca", ""),
-                "fuente_inferencia": caract.get("fuente_inferencia", ""),
-            })
+            result.append(
+                {
+                    "frase_idx": row["frase_idx"],
+                    "emocion_idx": row["emocion_idx"],
+                    "experienciador": row["experienciador"] or "",
+                    "experienciador_marca": row["experienciador_marca"] or "",
+                    "tipo_emocion": row["tipo_emocion"] or "",
+                    "modo_existencia": row["modo_existencia"] or "",
+                    "foria": caract.get("foria", ""),
+                    "dominancia": caract.get("dominancia", ""),
+                    "intensidad": caract.get("intensidad", ""),
+                    "fuente_marca": caract.get("fuente_marca", ""),
+                    "fuente_inferencia": caract.get("fuente_inferencia", ""),
+                }
+            )
 
         return result
 

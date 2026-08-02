@@ -32,7 +32,6 @@ from emoparse.core.prompts import summarizer as prompts
 from emoparse.genres.base import Genre
 from emoparse.pipeline.chunking import split_into_sentences
 
-
 #: Tamaño objetivo de cada chunk en caracteres.
 #: Se usa longitud de texto y no tokens para evitar acoplamiento con
 #: tokenizers específicos del backend.
@@ -109,9 +108,7 @@ class SummarizerAgent:
 
         Propaga BackendError en caso de fallo del backend.
         """
-        joined = "\n\n".join(
-            f"[{i + 1}] {r}" for i, r in enumerate(resumenes_parciales)
-        )
+        joined = "\n\n".join(f"[{i + 1}] {r}" for i, r in enumerate(resumenes_parciales))
         response = self._backend.generate(
             system=prompts.SYSTEM_GLOBAL,
             user=prompts.render_user_global(
@@ -160,20 +157,13 @@ class SummarizerAgent:
                 # Paso 1: chunks → parciales.
                 chunks = self._get_chunks(row)
                 if not chunks:
-                    logger.warning(
-                        f"[{self.NAME}] {codigo}: sin contenido para resumir"
-                    )
+                    logger.warning(f"[{self.NAME}] {codigo}: sin contenido para resumir")
                     results.append(row_out)
                     continue
 
                 contexto_genero = _opt_text(row.get("contexto_genero"))
-                parciales = [
-                    self.summarize_fragment(ch, contexto_genero)
-                    for ch in chunks
-                ]
-                row_out["resumen_fragmentos"] = json.dumps(
-                    parciales, ensure_ascii=False
-                )
+                parciales = [self.summarize_fragment(ch, contexto_genero) for ch in chunks]
+                row_out["resumen_fragmentos"] = json.dumps(parciales, ensure_ascii=False)
 
                 # Paso 2: parciales → global. Si solo hay un parcial,
                 # ese es el global (evita una llamada redundante).
@@ -190,9 +180,7 @@ class SummarizerAgent:
                     )
 
             except BackendError as e:
-                logger.warning(
-                    f"[{self.NAME}] {codigo}: {type(e).__name__}: {e}"
-                )
+                logger.warning(f"[{self.NAME}] {codigo}: {type(e).__name__}: {e}")
 
             results.append(row_out)
 

@@ -18,9 +18,10 @@ from __future__ import annotations
 
 import os
 import time
-from datetime import date, datetime, timezone
+from collections.abc import Iterator
+from datetime import UTC, date, datetime
 from html.parser import HTMLParser
-from typing import Any, Iterator
+from typing import Any
 from urllib.parse import urlparse
 
 import httpx
@@ -50,10 +51,10 @@ class MastodonAdapter(PostSourceAdapter):
         timeout: float = 20.0,
     ) -> None:
         base = (
-            instance
-            or os.environ.get("MASTODON_INSTANCE")
-            or "https://mastodon.social"
-        ).strip().rstrip("/")
+            (instance or os.environ.get("MASTODON_INSTANCE") or "https://mastodon.social")
+            .strip()
+            .rstrip("/")
+        )
         if not base.startswith(("http://", "https://")):
             base = "https://" + base
         self._base = base
@@ -87,13 +88,9 @@ class MastodonAdapter(PostSourceAdapter):
         """
         q = query.strip()
         if q.startswith("#"):
-            yield from self._search_tag(
-                q.lstrip("#"), max_items, from_date, to_date, lang
-            )
+            yield from self._search_tag(q.lstrip("#"), max_items, from_date, to_date, lang)
         else:
-            yield from self._search_statuses(
-                q, max_items, from_date, to_date, lang
-            )
+            yield from self._search_statuses(q, max_items, from_date, to_date, lang)
 
     def fetch_thread(self, root_id: str) -> Iterator[PostRecord]:
         """Itera los posts de un hilo (status + su contexto).
@@ -147,9 +144,7 @@ class MastodonAdapter(PostSourceAdapter):
             if not max_id:
                 return
 
-    def fetch_follows(
-        self, handle: str, max_items: int | None = None
-    ) -> Iterator[str]:
+    def fetch_follows(self, handle: str, max_items: int | None = None) -> Iterator[str]:
         """Itera los handles que sigue una cuenta (/api/v1/accounts/:id/following).
 
         La instancia puede restringir el listado aunque el perfil sea
@@ -319,9 +314,7 @@ class MastodonAdapter(PostSourceAdapter):
                 ) from e
             raise
         if not isinstance(payload, dict) or not payload.get("id"):
-            raise PostSourceError(
-                f"[mastodon] Cuenta no encontrada en {self._host}: {handle}"
-            )
+            raise PostSourceError(f"[mastodon] Cuenta no encontrada en {self._host}: {handle}")
         return payload
 
     # ── Mapeo status → PostRecord ────────────────────────────────────────────
@@ -397,6 +390,7 @@ class MastodonAdapter(PostSourceAdapter):
 #  Helpers de mapeo
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class _HtmlText(HTMLParser):
     """Extrae el texto plano del HTML de un status (párrafos y br → saltos)."""
 
@@ -466,7 +460,7 @@ def _rate_limit_wait(reset_header: str | None) -> float:
         pass
     try:
         dt = datetime.fromisoformat(reset_header.replace("Z", "+00:00"))
-        return max(5.0, (dt - datetime.now(timezone.utc)).total_seconds())
+        return max(5.0, (dt - datetime.now(UTC)).total_seconds())
     except ValueError:
         return 60.0
 
@@ -477,12 +471,12 @@ def _map_attachments(attachments: Any) -> list[dict[str, Any]]:
     for m in attachments or []:
         if not isinstance(m, dict):
             continue
-        tipo = {"image": "imagen", "video": "video", "gifv": "gif"}.get(
-            str(m.get("type")), "otro"
+        tipo = {"image": "imagen", "video": "video", "gifv": "gif"}.get(str(m.get("type")), "otro")
+        result.append(
+            {
+                "tipo": tipo,
+                "url": _str_or_none(m.get("url") or m.get("preview_url")),
+                "alt": _str_or_none(m.get("description")),
+            }
         )
-        result.append({
-            "tipo": tipo,
-            "url": _str_or_none(m.get("url") or m.get("preview_url")),
-            "alt": _str_or_none(m.get("description")),
-        })
     return result

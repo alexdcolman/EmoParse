@@ -27,9 +27,7 @@ def handle(args: argparse.Namespace) -> int:
         return 2
 
     if not args.reset:
-        logger.error(
-            "[semas] Nada que hacer: pasá --reset para limpiar los semas existentes."
-        )
+        logger.error("[semas] Nada que hacer: pasá --reset para limpiar los semas existentes.")
         return 1
 
     db = Database(db_path)
@@ -61,9 +59,6 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     p.add_argument(
         "--reset",
         action="store_true",
-        help=(
-            "Borra todos los semas existentes (propuestos y humanos). "
-            "No hay vuelta atrás."
-        ),
+        help=("Borra todos los semas existentes (propuestos y humanos). No hay vuelta atrás."),
     )
     p.set_defaults(handler=handle)

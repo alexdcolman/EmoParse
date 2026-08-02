@@ -27,9 +27,10 @@ class GenreRegistryError(LookupError):
 #  Estado interno (singleton-like)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class _State:
-    discovered: dict[str, "Genre"] | None = None  # None = no escaneado aún.
-    programmatic: dict[str, "Genre"] = {}
+    discovered: dict[str, Genre] | None = None  # None = no escaneado aún.
+    programmatic: dict[str, Genre] = {}
 
     @classmethod
     def clear(cls) -> None:
@@ -42,15 +43,16 @@ class _State:
 #  Descubrimiento
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _discover() -> dict[str, "Genre"]:
+
+def _discover() -> dict[str, Genre]:
     """Escanea entry-points y construye mapa genre_id → Genre."""
-    found: dict[str, "Genre"] = {}
+    found: dict[str, Genre] = {}
 
     eps: tuple[EntryPoint, ...] = tuple(entry_points(group=_ENTRY_POINT_GROUP))
 
     for ep in eps:
         try:
-            factory: "GenreFactory" = ep.load()
+            factory: GenreFactory = ep.load()
         except Exception as e:
             logger.warning(
                 f"[genres] Entry-point '{ep.name}' falló al cargar: "
@@ -92,25 +94,23 @@ def _discover() -> dict[str, "Genre"]:
 #  API pública
 # ══════════════════════════════════════════════════════════════════════════════
 
-def all_genres() -> dict[str, "Genre"]:
+
+def all_genres() -> dict[str, Genre]:
     """Devuelve géneros conocidos (descubiertos + programáticos)."""
     if _State.discovered is None:
         _State.discovered = _discover()
     return {**_State.discovered, **_State.programmatic}
 
 
-def get_genre(genre_id: str) -> "Genre":
+def get_genre(genre_id: str) -> Genre:
     """Resuelve un genre_id a su Genre."""
     genres = all_genres()
     if genre_id not in genres:
-        raise GenreRegistryError(
-            f"Género desconocido: '{genre_id}'. "
-            f"Disponibles: {sorted(genres)}"
-        )
+        raise GenreRegistryError(f"Género desconocido: '{genre_id}'. Disponibles: {sorted(genres)}")
     return genres[genre_id]
 
 
-def register(genre: "Genre") -> None:
+def register(genre: Genre) -> None:
     """Registra un Genre programáticamente."""
     _State.programmatic[genre.genre_id] = genre
 
@@ -127,7 +127,7 @@ def reset_for_tests() -> None:
 DEFAULT_GENRE_ID = "discurso_presidencial"
 
 
-def default_genre() -> "Genre":
+def default_genre() -> Genre:
     """Devuelve el género default ('discurso_presidencial')."""
     try:
         return get_genre(DEFAULT_GENRE_ID)

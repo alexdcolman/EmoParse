@@ -13,7 +13,6 @@ from __future__ import annotations
 import csv
 import json
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -26,10 +25,10 @@ from emoparse.io.exporters import (
 from emoparse.storage.db import Database
 from emoparse.storage.schema import ALL_TABLES_DDL
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  Fixtures
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _init_db(path: Path) -> Database:
     """Crea DB con schema completo."""
@@ -66,7 +65,9 @@ def _insert_discurso(
                 input_json,
                 json.dumps(summarizer_payload, ensure_ascii=False) if summarizer_payload else None,
                 json.dumps(metadata_payload, ensure_ascii=False) if metadata_payload else None,
-                json.dumps(enunciation_payload, ensure_ascii=False) if enunciation_payload else None,
+                json.dumps(enunciation_payload, ensure_ascii=False)
+                if enunciation_payload
+                else None,
                 metadata_error,
             ),
         )
@@ -87,7 +88,9 @@ def _insert_frase(
             VALUES (?, ?, ?, ?, ?)
             """,
             (
-                codigo, unit_idx, frase,
+                codigo,
+                unit_idx,
+                frase,
                 json.dumps(actores_payload, ensure_ascii=False) if actores_payload else None,
                 json.dumps(emociones_payload, ensure_ascii=False) if emociones_payload else None,
             ),
@@ -118,10 +121,18 @@ def _insert_emocion(
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
-                codigo, frase_idx, emocion_idx,
-                experienciador, experienciador_marca, tipo_emocion, modo_existencia,
-                fuente_inferencia, fuente_marca,
-                json.dumps(caracterizacion_payload, ensure_ascii=False) if caracterizacion_payload else None,
+                codigo,
+                frase_idx,
+                emocion_idx,
+                experienciador,
+                experienciador_marca,
+                tipo_emocion,
+                modo_existencia,
+                fuente_inferencia,
+                fuente_marca,
+                json.dumps(caracterizacion_payload, ensure_ascii=False)
+                if caracterizacion_payload
+                else None,
             ),
         )
 
@@ -137,7 +148,8 @@ def populated_db(tmp_path: Path) -> Database:
     db = _init_db(tmp_path / "test.sqlite")
 
     _insert_discurso(
-        db, "D1",
+        db,
+        "D1",
         contenido="Compatriotas, hoy comienza una nueva etapa.",
         summarizer_payload={"resumen": "Resumen del discurso."},
         metadata_payload={
@@ -155,19 +167,39 @@ def populated_db(tmp_path: Path) -> Database:
     )
 
     _insert_frase(
-        db, "D1", 0, "Compatriotas, hoy comienza una nueva etapa.",
-        actores_payload=[{"actor": "Pueblo", "tipo": "colectivo", "modo": "explicito", "justificacion": "j"}],
-        emociones_payload=[{"experienciador": "Pueblo", "experienciador_marca": "el pueblo", "tipo_emocion": "esperanza", "modo_existencia": "realizada",
-                            "fuente_marca": "marca de prueba", "fuente_inferencia": "inferencia de prueba", "justificacion": "j"}],
+        db,
+        "D1",
+        0,
+        "Compatriotas, hoy comienza una nueva etapa.",
+        actores_payload=[
+            {"actor": "Pueblo", "tipo": "colectivo", "modo": "explicito", "justificacion": "j"}
+        ],
+        emociones_payload=[
+            {
+                "experienciador": "Pueblo",
+                "experienciador_marca": "el pueblo",
+                "tipo_emocion": "esperanza",
+                "modo_existencia": "realizada",
+                "fuente_marca": "marca de prueba",
+                "fuente_inferencia": "inferencia de prueba",
+                "justificacion": "j",
+            }
+        ],
     )
     _insert_frase(
-        db, "D1", 1, "Vamos a trabajar juntos.",
+        db,
+        "D1",
+        1,
+        "Vamos a trabajar juntos.",
         actores_payload=[],
         emociones_payload=None,
     )
 
     _insert_emocion(
-        db, "D1", 0, 0,
+        db,
+        "D1",
+        0,
+        0,
         experienciador="Pueblo",
         experienciador_marca="el pueblo",
         tipo_emocion="esperanza",
@@ -184,7 +216,10 @@ def populated_db(tmp_path: Path) -> Database:
         },
     )
     _insert_emocion(
-        db, "D1", 0, 1,
+        db,
+        "D1",
+        0,
+        1,
         experienciador="Presidente",
         experienciador_marca="el presidente",
         tipo_emocion="orgullo",
@@ -201,8 +236,8 @@ def populated_db(tmp_path: Path) -> Database:
 #  export_discursos_csv
 # ══════════════════════════════════════════════════════════════════════════════
 
-class TestExportDiscursosCsv:
 
+class TestExportDiscursosCsv:
     def test_produces_file(self, populated_db: Database, tmp_path: Path) -> None:
         out = tmp_path / "out" / "discursos.csv"
         n = export_discursos_csv(populated_db, out)
@@ -251,7 +286,9 @@ class TestExportDiscursosCsv:
         assert "summarizer__resumen" in row
         assert row["summarizer__resumen"] == "Resumen del discurso."
 
-    def test_enunciation_nested_dict_as_json_string(self, populated_db: Database, tmp_path: Path) -> None:
+    def test_enunciation_nested_dict_as_json_string(
+        self, populated_db: Database, tmp_path: Path
+    ) -> None:
         """El enunciador es un dict anidado: debe estar como JSON string."""
         out = tmp_path / "discursos.csv"
         export_discursos_csv(populated_db, out)
@@ -328,7 +365,6 @@ class TestExportDiscursosCsv:
 
 
 class TestExportFrasesCsv:
-
     def test_produces_file(self, populated_db: Database, tmp_path: Path) -> None:
         out = tmp_path / "frases.csv"
         n = export_frases_csv(populated_db, out)
@@ -352,11 +388,20 @@ class TestExportFrasesCsv:
             rows = list(csv.DictReader(f))
 
         expected = {
-            "codigo", "unit_idx", "frase",
-            "actores_payload", "actores_version", "actores_error",
-            "emociones_payload", "emociones_version", "emociones_error",
-            "emociones_pass2_payload", "emociones_pass2_version", "emociones_pass2_error",
-            "created_at", "updated_at",
+            "codigo",
+            "unit_idx",
+            "frase",
+            "actores_payload",
+            "actores_version",
+            "actores_error",
+            "emociones_payload",
+            "emociones_version",
+            "emociones_error",
+            "emociones_pass2_payload",
+            "emociones_pass2_version",
+            "emociones_pass2_error",
+            "created_at",
+            "updated_at",
         }
 
         assert expected.issubset(set(rows[0].keys()))
@@ -374,7 +419,9 @@ class TestExportFrasesCsv:
         assert isinstance(parsed, list)
         assert parsed[0]["actor"] == "Pueblo"
 
-    def test_null_payload_exported_as_empty_string(self, populated_db: Database, tmp_path: Path) -> None:
+    def test_null_payload_exported_as_empty_string(
+        self, populated_db: Database, tmp_path: Path
+    ) -> None:
         out = tmp_path / "frases.csv"
         export_frases_csv(populated_db, out)
 
@@ -415,7 +462,6 @@ class TestExportFrasesCsv:
 
 
 class TestExportEmocionesCsv:
-
     def test_produces_file(self, populated_db: Database, tmp_path: Path) -> None:
         out = tmp_path / "emociones.csv"
         n = export_emociones_csv(populated_db, out)
@@ -439,8 +485,17 @@ class TestExportEmocionesCsv:
         with out.open(encoding="utf-8") as f:
             rows = list(csv.DictReader(f))
 
-        base = {"codigo", "frase_idx", "emocion_idx", "experienciador", "experienciador_marca",
-                "tipo_emocion", "fuente_inferencia", "fuente_marca", "modo_existencia"}
+        base = {
+            "codigo",
+            "frase_idx",
+            "emocion_idx",
+            "experienciador",
+            "experienciador_marca",
+            "tipo_emocion",
+            "fuente_inferencia",
+            "fuente_marca",
+            "modo_existencia",
+        }
 
         assert base.issubset(set(rows[0].keys()))
 
@@ -459,7 +514,9 @@ class TestExportEmocionesCsv:
         assert em0["caracterizacion__dominancia"] == "cognoscitiva"
         assert em0["caracterizacion__intensidad"] == "alta"
 
-    def test_missing_caracterizacion_is_empty_string(self, populated_db: Database, tmp_path: Path) -> None:
+    def test_missing_caracterizacion_is_empty_string(
+        self, populated_db: Database, tmp_path: Path
+    ) -> None:
         out = tmp_path / "emociones.csv"
         export_emociones_csv(populated_db, out)
 
@@ -507,8 +564,8 @@ class TestExportEmocionesCsv:
 #  export_full_run
 # ══════════════════════════════════════════════════════════════════════════════
 
-class TestExportFullRun:
 
+class TestExportFullRun:
     def test_creates_declared_files(self, populated_db: Database, tmp_path: Path) -> None:
         out_dir = tmp_path / "csvs"
         counts = export_full_run(populated_db, out_dir)

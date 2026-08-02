@@ -15,7 +15,6 @@ from pydantic import BaseModel, ValidationError
 
 from emoparse.genres.base import Genre, GenreContextBlock, StageName
 
-
 #: Aproximación conservadora e independiente del tokenizer. En español, usar
 #: tres caracteres por token evita que el presupuesto declarado subestime de
 #: forma sistemática el costo de palabras, signos y acentos.
@@ -49,18 +48,14 @@ class GenreContextProvider:
         se recorta con su presupuesto antes de concatenarlo.
         """
         blocks = tuple(
-            block
-            for block in self._genre.context_blocks
-            if stage in block.stage_token_budgets
+            block for block in self._genre.context_blocks if stage in block.stage_token_budgets
         )
         if not blocks:
             return None
 
         metadata = self._validate_metadata(input_payload)
         rendered = [
-            text
-            for block in blocks
-            if (text := self._render_block(block, metadata, stage))
+            text for block in blocks if (text := self._render_block(block, metadata, stage))
         ]
         return "\n\n".join(rendered) or None
 
@@ -68,13 +63,9 @@ class GenreContextProvider:
         model = self._genre.input_metadata_model
         if model is None:
             raise GenreContextError(
-                f"El género '{self._genre.genre_id}' declara contexto sin "
-                "input_metadata_model"
+                f"El género '{self._genre.genre_id}' declara contexto sin input_metadata_model"
             )
-        payload = {
-            field: input_payload.get(field)
-            for field in model.model_fields
-        }
+        payload = {field: input_payload.get(field) for field in model.model_fields}
         try:
             return model.model_validate(payload)
         except ValidationError as exc:
@@ -161,9 +152,7 @@ def _format_value(value: Any) -> str:
         return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
     if isinstance(value, Sequence) and not isinstance(value, (bytes, bytearray)):
         parts = [
-            rendered
-            for item in value
-            if item is not None and (rendered := _format_value(item))
+            rendered for item in value if item is not None and (rendered := _format_value(item))
         ]
         return "; ".join(parts)
     return str(value).strip()

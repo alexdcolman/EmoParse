@@ -22,9 +22,7 @@ def test_article_genre_declares_paragraph_unit_and_charaudeau_roles() -> None:
         "instancia_blanco",
         "fuente_referente",
     )
-    assert set(genre.input_metadata_display) == set(
-        ArticuloPeriodisticoMetadata.model_fields
-    )
+    assert set(genre.input_metadata_display) == set(ArticuloPeriodisticoMetadata.model_fields)
 
 
 def test_loader_validates_and_normalizes_article_metadata(tmp_path) -> None:
@@ -57,9 +55,7 @@ def test_article_genre_is_declared_as_builtin_entry_point() -> None:
 
 
 def test_authorship_accepts_json_and_explicit_delimiters() -> None:
-    from_json = ArticuloPeriodisticoMetadata(
-        autoria=json.dumps(["Ana Pérez", "Luis Gómez"])
-    )
+    from_json = ArticuloPeriodisticoMetadata(autoria=json.dumps(["Ana Pérez", "Luis Gómez"]))
     from_text = ArticuloPeriodisticoMetadata(autoria="Ana Pérez; Luis Gómez")
 
     expected = ("Ana Pérez", "Luis Gómez")

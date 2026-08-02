@@ -86,15 +86,16 @@ def commit_experiencers_overlay(
         n_emos += 1
         vals = _canon_values(overrides.get("experienciador_canonico"))
         if len(vals) >= 2:
-            res = emo.split_por_experienciadores(
-                codigo, frase_idx, emocion_idx, vals
-            )
+            res = emo.split_por_experienciadores(codigo, frase_idx, emocion_idx, vals)
             orig_changed = bool(res["changed"])
             changed = orig_changed or bool(res["nuevos"])
         else:
             orig_changed = changed = emo.set_experienciador_canonico_at(
-                codigo, frase_idx, emocion_idx,
-                vals[0] if vals else None, version=version,
+                codigo,
+                frase_idx,
+                emocion_idx,
+                vals[0] if vals else None,
+                version=version,
             )
         if changed:
             n_changed += 1
@@ -184,9 +185,7 @@ def emocion_set_fuente_at(
     emo = EmocionesRepository(db)
     version = _run_prompt_version(db)
     value = (canonical_id or "").strip() or None
-    return emo.set_fuente_canonico_at(
-        codigo, frase_idx, emocion_idx, value, version=version
-    )
+    return emo.set_fuente_canonico_at(codigo, frase_idx, emocion_idx, value, version=version)
 
 
 def emocion_split_experiencers(
@@ -212,9 +211,7 @@ def emocion_split_experiencers(
     RunsRepository(db).ensure_migrations()
     emo = EmocionesRepository(db)
     judg = JudgmentsRepository(db) if db.table_exists("judgments") else None
-    res = emo.split_por_experienciadores(
-        codigo, frase_idx, emocion_idx, canonicals, modos
-    )
+    res = emo.split_por_experienciadores(codigo, frase_idx, emocion_idx, canonicals, modos)
     if res["changed"]:
         emo.invalidate_downstream(codigo, frase_idx, emocion_idx)
         if judg is not None:
@@ -237,7 +234,10 @@ def emocion_set_fuentes_at(
     juntos en `fuente_canonico`. Devuelve True si cambió.
     """
     return emocion_set_fuente_at(
-        db_path, codigo, frase_idx, emocion_idx,
+        db_path,
+        codigo,
+        frase_idx,
+        emocion_idx,
         "; ".join(str(c).strip() for c in canonicals if str(c).strip()),
     )
 
@@ -246,12 +246,12 @@ def emocion_set_fuentes_at(
 #  Edición directa de la KB de actores (revisión manual desde el dashboard)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _cleanup_kb_if_orphan(db_path: Path, canonical_id: str) -> None:
     """Si el canónico ya no tiene vínculos aceptados en la DB, lo elimina de la KB."""
     db = Database(Path(db_path))
     row = db.execute(
-        "SELECT COUNT(*) AS n FROM mencion_canonico "
-        "WHERE canonical_id = ? AND status = 'accepted'",
+        "SELECT COUNT(*) AS n FROM mencion_canonico WHERE canonical_id = ? AND status = 'accepted'",
         (canonical_id,),
     ).fetchone()
     if row and int(row["n"]) == 0:
@@ -275,22 +275,16 @@ def mencion_reject(db_path: Path, mencion_id: int, canonical_id: str) -> None:
 
 def mencion_add_link(db_path: Path, mencion_id: int, canonical_id: str) -> None:
     """Agrega un vínculo marca↔canónico creado por el analista (aceptado)."""
-    MencionesRepository(Database(Path(db_path))).add_human_link(
-        mencion_id, canonical_id
-    )
+    MencionesRepository(Database(Path(db_path))).add_human_link(mencion_id, canonical_id)
 
 
 def mencion_remove_link(db_path: Path, mencion_id: int, canonical_id: str) -> None:
     """Elimina un vínculo marca↔canónico y limpia la KB si el canónico queda huérfano."""
-    MencionesRepository(Database(Path(db_path))).remove_link(
-        mencion_id, canonical_id
-    )
+    MencionesRepository(Database(Path(db_path))).remove_link(mencion_id, canonical_id)
     _cleanup_kb_if_orphan(db_path, canonical_id)
 
 
-def bulk_set_link_status(
-    db_path: Path, pairs: list[tuple[int, str]], status: str
-) -> int:
+def bulk_set_link_status(db_path: Path, pairs: list[tuple[int, str]], status: str) -> int:
     """Acepta/rechaza en lote (status='accepted'|'rejected'). Limpia KB huérfana
     solo en rechazos masivos. Devuelve cuántos vínculos se afectaron."""
     repo = MencionesRepository(Database(Path(db_path)))
@@ -336,15 +330,11 @@ def _atomic_write_json(path: Path, data: dict) -> None:
             path.read_text(encoding="utf-8"), encoding="utf-8"
         )
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(
-        json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
-    )
+    tmp.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     tmp.replace(path)
 
 
-def promote_referentes(
-    db_path: Path, kb_path: Path | None = None
-) -> dict[str, int]:
+def promote_referentes(db_path: Path, kb_path: Path | None = None) -> dict[str, int]:
     """Materializa los referentes aceptados del run en `referentes_kb.json`.
 
     Agrega los canónicos nuevos, completa `display_name` si estaba vacío, y
@@ -411,6 +401,7 @@ def promote_referentes(
 #  Promoción de estructura enunciativa → enunciacion_kb.json
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _default_enunciacion_kb_path() -> Path:
     """Ruta por defecto del enunciacion_kb (configurable por entorno)."""
     base = os.environ.get("EMOPARSE_KNOWLEDGE_DIR", "knowledge")
@@ -439,9 +430,7 @@ def promote_enunciacion_to_kb(
     enunciador = str(payload.get("enunciador") or "").strip()
     cid = canonical_slug(enunciador)
     if not cid or enunciador.lower() == "no identificado":
-        raise RuntimeError(
-            f"El discurso {codigo!r} no tiene un enunciador identificable."
-        )
+        raise RuntimeError(f"El discurso {codigo!r} no tiene un enunciador identificable.")
 
     kb_path = Path(kb_path) if kb_path else _default_enunciacion_kb_path()
     data: dict = {"version": "1", "enunciadores": {}}
@@ -451,9 +440,7 @@ def promote_enunciacion_to_kb(
             if isinstance(loaded, dict):
                 data = loaded
         except json.JSONDecodeError:
-            logger.warning(
-                "[promote_enunciacion] enunciacion_kb ilegible; se recrea."
-            )
+            logger.warning("[promote_enunciacion] enunciacion_kb ilegible; se recrea.")
     enunciadores = data.setdefault("enunciadores", {})
     entry = enunciadores.setdefault(
         cid,
@@ -474,7 +461,8 @@ def promote_enunciacion_to_kb(
     kb_col = entry.setdefault("colectivos", [])
     vistos_c = {
         (str(c.get("nombre", "")).strip().lower(), str(c.get("clase", "")).strip())
-        for c in kb_col if isinstance(c, dict)
+        for c in kb_col
+        if isinstance(c, dict)
     }
     for c in _parse("colectivos_identificacion"):
         nombre = str(c.get("nombre") or "").strip()
@@ -485,16 +473,11 @@ def promote_enunciacion_to_kb(
             n_col += 1
 
     _atomic_write_json(kb_path, data)
-    logger.info(
-        f"[promote_enunciacion] {codigo} → {cid}: "
-        f"{n_col} colectivo(s) nuevos en KB."
-    )
+    logger.info(f"[promote_enunciacion] {codigo} → {cid}: {n_col} colectivo(s) nuevos en KB.")
     return {"colectivos_added": n_col}
 
 
-def remove_referente_from_kb(
-    canonical_id: str, kb_path: Path | None = None
-) -> bool:
+def remove_referente_from_kb(canonical_id: str, kb_path: Path | None = None) -> bool:
     """Elimina un referente canónico de `referentes_kb.json`.
 
     No toca la DB del run: solo elimina la entrada de la KB.
@@ -584,9 +567,8 @@ def rename_canonical(
 #  Lectura y edición directa de entradas de la KB
 # ══════════════════════════════════════════════════════════════════════════════
 
-def get_kb_entry(
-    canonical_id: str, kb_path: Path | None = None
-) -> dict | None:
+
+def get_kb_entry(canonical_id: str, kb_path: Path | None = None) -> dict | None:
     """Devuelve la entrada de un canónico en la KB, o None si no existe."""
     kb_path = Path(kb_path) if kb_path else _default_referentes_kb_path()
     if not kb_path.is_file():
@@ -622,9 +604,9 @@ def update_kb_entry(
         except (json.JSONDecodeError, OSError):
             pass
     referentes = data.setdefault("referentes", {})
-    entry = referentes.setdefault(canonical_id, {
-        "display_name": "", "clase": "", "tipo": "", "notas": ""
-    })
+    entry = referentes.setdefault(
+        canonical_id, {"display_name": "", "clase": "", "tipo": "", "notas": ""}
+    )
     changed = False
     if display_name is not None and entry.get("display_name") != display_name:
         entry["display_name"] = display_name
@@ -672,6 +654,7 @@ def delete_canonical(
 #  Merge de canónicos
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def merge_canonicals(
     db_path: Path,
     src_id: str,
@@ -705,9 +688,7 @@ def merge_canonicals(
         )
         # Repuntar el resto a dst SIN tocar el status (se conserva tal cual).
         cur.execute(
-            "UPDATE mencion_canonico "
-            "SET canonical_id = ?, origin = 'human' "
-            "WHERE canonical_id = ?",
+            "UPDATE mencion_canonico SET canonical_id = ?, origin = 'human' WHERE canonical_id = ?",
             (dst_id, src_id),
         )
         links_merged = cur.rowcount
@@ -719,9 +700,7 @@ def merge_canonicals(
             (dst_id, src_id),
         )
         semas_merged = cur.rowcount
-        cur.execute(
-            "DELETE FROM canonico_semas WHERE canonical_id = ?", (src_id,)
-        )
+        cur.execute("DELETE FROM canonico_semas WHERE canonical_id = ?", (src_id,))
 
     remove_referente_from_kb(src_id, kb_path)
     logger.info(
@@ -735,13 +714,12 @@ def merge_canonicals(
 #  Semas de referentes (tab Referentes)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def referente_set_sema(
     db_path: Path, canonical_id: str, sema: str, status: str = "accepted"
 ) -> None:
     """Agrega/acepta/rechaza un sema de un referente (decisión humana)."""
-    MencionesRepository(Database(Path(db_path))).set_sema(
-        canonical_id, sema, status
-    )
+    MencionesRepository(Database(Path(db_path))).set_sema(canonical_id, sema, status)
 
 
 def referente_remove_sema(db_path: Path, canonical_id: str, sema: str) -> None:
@@ -753,6 +731,7 @@ def referente_remove_sema(db_path: Path, canonical_id: str, sema: str) -> None:
 #  Deixis (tab Deixis)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def deixis_accept(db_path: Path, mencion_id: int, canonical_id: str) -> None:
     """Acepta un referente deíctico para una marca.
 
@@ -761,9 +740,7 @@ def deixis_accept(db_path: Path, mencion_id: int, canonical_id: str) -> None:
     concreta (reemplazando su canónico o sumándose a él) es una decisión por
     simulacro: `deixis_aplicar_a_emocion`.
     """
-    MencionesRepository(Database(Path(db_path))).accept_deixis_link(
-        mencion_id, canonical_id
-    )
+    MencionesRepository(Database(Path(db_path))).accept_deixis_link(mencion_id, canonical_id)
 
 
 def deixis_reject(db_path: Path, mencion_id: int, canonical_id: str) -> int:
@@ -775,15 +752,11 @@ def deixis_reject(db_path: Path, mencion_id: int, canonical_id: str) -> int:
     y apuntan al referente descartado; las que quedan sin ninguna vuelven a
     resolverse por marca. Devuelve cuántas emociones se limpiaron.
     """
-    MencionesRepository(Database(Path(db_path))).reject_deixis_link(
-        mencion_id, canonical_id
-    )
+    MencionesRepository(Database(Path(db_path))).reject_deixis_link(mencion_id, canonical_id)
     return _limpiar_atribuciones(db_path, mencion_id, canonical_id)
 
 
-def _limpiar_atribuciones(
-    db_path: Path, mencion_id: int, canonical_id: str
-) -> int:
+def _limpiar_atribuciones(db_path: Path, mencion_id: int, canonical_id: str) -> int:
     """Quita un referente de las atribuciones por emoción de una marca."""
     db = Database(Path(db_path))
     row = db.execute(
@@ -815,10 +788,7 @@ def _limpiar_atribuciones(
                 continue
             if str(e.get(marca_field) or "").strip().lower() != marca:
                 continue
-            quedan = [
-                c for c in canonicos_de_override(e.get(canonico_field))
-                if c != cid
-            ]
+            quedan = [c for c in canonicos_de_override(e.get(canonico_field)) if c != cid]
             if quedan == canonicos_de_override(e.get(canonico_field)):
                 continue
             if rol == "fuente":
@@ -833,9 +803,7 @@ def _limpiar_atribuciones(
     return limpiadas
 
 
-def emocion_delete(
-    db_path: Path, codigo: str, frase_idx: int, emocion_idx: int
-) -> bool:
+def emocion_delete(db_path: Path, codigo: str, frase_idx: int, emocion_idx: int) -> bool:
     """Elimina un simulacro de la base. Devuelve True si existía.
 
     Escotilla de salida para las emociones que sobran: duplicadas por una
@@ -856,9 +824,7 @@ def deixis_restore(db_path: Path, mencion_id: int, canonical_id: str) -> None:
     )
 
 
-def deixis_add(
-    db_path: Path, mencion_id: int, canonical_id: str, deixis_tipo: str
-) -> None:
+def deixis_add(db_path: Path, mencion_id: int, canonical_id: str, deixis_tipo: str) -> None:
     """Agrega a mano un referente deíctico (del discurso) a una marca.
 
     Como `deixis_accept`, solo inscribe el vínculo marca↔referente.
@@ -872,11 +838,16 @@ def deixis_add(
 #: inferencia, columna canónica por emoción).
 _CAMPOS_ROL = {
     "experienciador": (
-        "experienciador", "experienciador_marca", "experienciador",
+        "experienciador",
+        "experienciador_marca",
+        "experienciador",
         "experienciador_canonico",
     ),
     "fuente": (
-        "fuente", "fuente_marca", "fuente_inferencia", "fuente_canonico",
+        "fuente",
+        "fuente_marca",
+        "fuente_inferencia",
+        "fuente_canonico",
     ),
 }
 
@@ -938,29 +909,19 @@ def deixis_aplicar_a_emocion(
     # Los referentes que hoy rigen el simulacro se leen ANTES de inscribir el
     # vínculo: inscribirlo mete al entrante en la resolución de la marca, y
     # "añadir" lo confundiría con algo que ya estaba y terminaría reemplazando.
-    actuales = canonicos_actuales_de_emocion(
-        db_path, codigo, frase_idx, emocion_idx, rol
-    )
+    actuales = canonicos_actuales_de_emocion(db_path, codigo, frase_idx, emocion_idx, rol)
     if mencion_id is not None:
-        MencionesRepository(Database(Path(db_path))).accept_deixis_link(
-            mencion_id, cid
-        )
+        MencionesRepository(Database(Path(db_path))).accept_deixis_link(mencion_id, cid)
     if rol == "fuente":
-        nuevas = [cid] if modo == "reemplazar" else [
-            *(c for c in actuales if c != cid), cid
-        ]
+        nuevas = [cid] if modo == "reemplazar" else [*(c for c in actuales if c != cid), cid]
         emocion_set_fuentes_at(db_path, codigo, frase_idx, emocion_idx, nuevas)
         return {"nuevos": [], "duplicada": False}
 
     if modo == "reemplazar" or cid in actuales or not actuales:
         emocion_set_experiencer_at(db_path, codigo, frase_idx, emocion_idx, cid)
         if modo_existencia:
-            emocion_set_modo_at(
-                db_path, codigo, frase_idx, emocion_idx, modo_existencia
-            )
-        EmocionesRepository(Database(Path(db_path))).colapsar_duplicados(
-            codigo, frase_idx
-        )
+            emocion_set_modo_at(db_path, codigo, frase_idx, emocion_idx, modo_existencia)
+        EmocionesRepository(Database(Path(db_path))).colapsar_duplicados(codigo, frase_idx)
         return {"nuevos": [], "duplicada": False}
 
     # El desdoblamiento conserva el modo de la emoción original en la primera
@@ -973,20 +934,14 @@ def deixis_aplicar_a_emocion(
     res = emocion_split_experiencers(
         db_path, codigo, frase_idx, emocion_idx, [*actuales, cid], modos
     )
-    caidos = EmocionesRepository(Database(Path(db_path))).colapsar_duplicados(
-        codigo, frase_idx
-    )
+    caidos = EmocionesRepository(Database(Path(db_path))).colapsar_duplicados(codigo, frase_idx)
     nuevos = [i for i in res["nuevos"] if i not in caidos]
     return {"nuevos": nuevos, "duplicada": bool(nuevos)}
 
 
-def _modo_de_emocion(
-    db_path: Path, codigo: str, frase_idx: int, emocion_idx: int
-) -> str:
+def _modo_de_emocion(db_path: Path, codigo: str, frase_idx: int, emocion_idx: int) -> str:
     """Modo de existencia actual de una emoción, o "" si no existe."""
-    emo = EmocionesRepository(Database(Path(db_path))).get_emocion(
-        codigo, frase_idx, emocion_idx
-    )
+    emo = EmocionesRepository(Database(Path(db_path))).get_emocion(codigo, frase_idx, emocion_idx)
     return str((emo or {}).get("modo_existencia") or "")
 
 
@@ -998,14 +953,13 @@ def emocion_set_modo_at(
     if not db.table_exists("emociones"):
         raise RuntimeError("DB sin tabla emociones.")
     RunsRepository(db).ensure_migrations()
-    return EmocionesRepository(db).set_modo_existencia_at(
-        codigo, frase_idx, emocion_idx, modo
-    )
+    return EmocionesRepository(db).set_modo_existencia_at(codigo, frase_idx, emocion_idx, modo)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Enunciación (tab Enunciación)
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _names_from_json(value: Any, key: str) -> list[str]:
     """Nombres de una sublista del payload (JSON string) por clave."""
@@ -1052,8 +1006,7 @@ def save_enunciation(db_path: Path, codigo: str, payload: dict) -> int:
     if enunciador:
         moved += m.repoint_deixis_in_discurso(codigo, "enunciador", enunciador)
 
-    for tipo, key in (("auditorio", "actor"),
-                      ("colectivo_identificacion", "nombre")):
+    for tipo, key in (("auditorio", "actor"), ("colectivo_identificacion", "nombre")):
         new_key = "colectivos_identificacion" if tipo == "colectivo_identificacion" else tipo
         new_names = _names_from_json(payload.get(new_key), key)
         new_slugs = {canonical_slug(n) for n in new_names if canonical_slug(n)}

@@ -29,6 +29,7 @@ DIMENSIONES: tuple[str, ...] = ("tipo", "experienciador", "modo_existencia", "fo
 @dataclass
 class MatchReport:
     """Resultado agregado de la comparación golden vs run."""
+
     tp: int = 0
     fp: int = 0
     fn: int = 0
@@ -92,6 +93,7 @@ def match_units(
 #  Emparejamiento por unidad
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _match_one_unit(
     key: tuple[str, int],
     golds: list[dict[str, Any]],
@@ -148,16 +150,21 @@ def _score_dim(
     if correcto:
         report.dim_correctas[dim] = report.dim_correctas.get(dim, 0) + 1
     elif len(report.desacuerdos) < 200:
-        report.desacuerdos.append({
-            "codigo": key[0], "unit_idx": key[1], "dimension": dim,
-            "golden": g.get(dim if dim != "tipo" else "tipo_emocion"),
-            "prediccion": p.get(dim if dim != "tipo" else "tipo_emocion"),
-        })
+        report.desacuerdos.append(
+            {
+                "codigo": key[0],
+                "unit_idx": key[1],
+                "dimension": dim,
+                "golden": g.get(dim if dim != "tipo" else "tipo_emocion"),
+                "prediccion": p.get(dim if dim != "tipo" else "tipo_emocion"),
+            }
+        )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Igualdades
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _tipo_eq(g: dict[str, Any], p: dict[str, Any], alias_map: dict[str, str]) -> bool:
     g_tipo = _canonico(str(g.get("tipo_emocion") or ""), alias_map)
@@ -171,9 +178,7 @@ def _tipo_eq(g: dict[str, Any], p: dict[str, Any], alias_map: dict[str, str]) ->
 def _exp_eq(g: dict[str, Any], p: dict[str, Any]) -> bool:
     """Igualdad laxa de experienciador: solapamiento de tokens de contenido."""
     g_toks = _tokens(str(g.get("experienciador") or ""))
-    p_toks = _tokens(
-        str(p.get("experienciador_canonico") or p.get("experienciador") or "")
-    )
+    p_toks = _tokens(str(p.get("experienciador_canonico") or p.get("experienciador") or ""))
     if not g_toks or not p_toks:
         return False
     inter = g_toks & p_toks
@@ -189,10 +194,7 @@ _STOP = {"el", "la", "los", "las", "un", "una", "de", "del", "al", "y", "e"}
 
 
 def _tokens(valor: str) -> set[str]:
-    return {
-        t for t in re.split(r"[^\w@]+", _norm_token(valor))
-        if t and t not in _STOP
-    }
+    return {t for t in re.split(r"[^\w@]+", _norm_token(valor)) if t and t not in _STOP}
 
 
 def _norm_token(valor: str) -> str:

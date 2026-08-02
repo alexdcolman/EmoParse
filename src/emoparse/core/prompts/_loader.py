@@ -11,7 +11,6 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, Template
 
-
 #: Path al directorio templates/.
 _TEMPLATES_DIR: Path = Path(__file__).parent / "templates"
 

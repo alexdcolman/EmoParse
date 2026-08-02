@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import statistics
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from emoparse.storage.db import Database
@@ -107,6 +107,7 @@ def _compute_percentiles(values: list[float]) -> tuple[float | None, float | Non
 #  Repositorio
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 class MetricsRepository:
     """Repositorio de métricas de run."""
 
@@ -144,7 +145,7 @@ class MetricsRepository:
                     snapshot.total_completion_tokens,
                     snapshot.cache_hits,
                     snapshot.cache_misses,
-                    datetime.now(timezone.utc),
+                    datetime.now(UTC),
                 ),
             )
 

@@ -72,15 +72,14 @@ class LMStudioBackend(LLMBackend):
         self._timeout = self._cfg.get("timeout", _DEFAULT_TIMEOUT)
 
         from openai import OpenAI as _OpenAI
+
         self._client: OpenAI = _OpenAI(
             base_url=self._base_url,
             # LM Studio no valida la api_key pero el SDK la requiere.
             api_key=self._cfg.get("api_key", "lm-studio"),
             timeout=self._timeout,
         )
-        logger.info(
-            f"[LMStudio:{alias}] Configurado → {self._base_url} / {self._model_id}"
-        )
+        logger.info(f"[LMStudio:{alias}] Configurado → {self._base_url} / {self._model_id}")
 
     # ── Health check ─────────────────────────────────────────────────────────
 
@@ -144,22 +143,16 @@ class LMStudioBackend(LLMBackend):
 
         # Salida estructurada vía JSON Schema (modo estándar OpenAI).
         if schema is not None:
-            kwargs["response_format"] = self._make_response_format(
-                schema, max_items=max_items
-            )
+            kwargs["response_format"] = self._make_response_format(schema, max_items=max_items)
 
         # Inferencia.
         t_start = time.perf_counter()
         try:
             output = self._client.chat.completions.create(**kwargs)
         except APITimeoutError as e:
-            raise BackendTimeoutError(
-                f"LM Studio timeout después de {self._timeout}s"
-            ) from e
+            raise BackendTimeoutError(f"LM Studio timeout después de {self._timeout}s") from e
         except APIConnectionError as e:
-            raise BackendUnavailableError(
-                f"LM Studio inalcanzable en {self._base_url}: {e}"
-            ) from e
+            raise BackendUnavailableError(f"LM Studio inalcanzable en {self._base_url}: {e}") from e
         except BadRequestError as e:
             # 400: context length o schema no soportado.
             msg = str(e).lower()
@@ -168,9 +161,7 @@ class LMStudioBackend(LLMBackend):
                     max_tokens=eff_max_tokens,
                 ) from e
             if "schema" in msg or "response_format" in msg:
-                raise SchemaViolationError(
-                    f"LM Studio rechazó el schema: {e}"
-                ) from e
+                raise SchemaViolationError(f"LM Studio rechazó el schema: {e}") from e
             raise BackendError(f"LM Studio bad request: {e}") from e
         except Exception as e:
             raise BackendError(f"LM Studio error: {e}") from e
@@ -204,8 +195,7 @@ class LMStudioBackend(LLMBackend):
                 parsed = schema.model_validate_json(raw)
             except ValidationError as e:
                 raise SchemaViolationError(
-                    f"LM Studio response no valida contra {schema.__name__}: {e}\n"
-                    f"raw={raw[:300]!r}"
+                    f"LM Studio response no valida contra {schema.__name__}: {e}\nraw={raw[:300]!r}"
                 ) from e
 
         return LLMResponse(
@@ -253,7 +243,7 @@ class LMStudioBackend(LLMBackend):
 
 def _add_strict_flags(node: dict[str, Any]) -> None:
     """Agrega additionalProperties:false a todos los type:object.
-    
+
     Para strict mode de OpenAI.
     """
     if not isinstance(node, dict):

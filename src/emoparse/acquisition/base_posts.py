@@ -7,8 +7,9 @@
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from collections.abc import Iterator
 from datetime import date
-from typing import Any, Iterator
+from typing import Any
 
 from emoparse.acquisition.post_record import PostRecord
 
@@ -35,9 +36,7 @@ class PostSourceAdapter(ABC):
     #: True si la fuente puede listar a quién sigue una cuenta (`emoparse follows`).
     supports_follows: bool = False
 
-    def fetch_follows(
-        self, handle: str, max_items: int | None = None
-    ) -> Iterator[str]:
+    def fetch_follows(self, handle: str, max_items: int | None = None) -> Iterator[str]:
         """Itera los handles que una cuenta sigue.
 
         Solo el lado saliente: la arista A→B se captura desde la lista de A,
@@ -45,9 +44,7 @@ class PostSourceAdapter(ABC):
         cuentas grandes es dos órdenes de magnitud mayor y no aporta ninguna
         arista que esta no dé.
         """
-        raise NotImplementedError(
-            f"La fuente '{self.source_id}' no soporta fetch_follows."
-        )
+        raise NotImplementedError(f"La fuente '{self.source_id}' no soporta fetch_follows.")
 
     def fetch_author_profile(self, handle: str) -> dict[str, Any] | None:
         """Perfil de un autor (autor_bio/autor_seguidores/autor_siguiendo/autor_verificado).
@@ -55,9 +52,7 @@ class PostSourceAdapter(ABC):
         Llamada extra por autor, fuera del flujo normal de iteración; solo se
         invoca si `supports_author_profile` es True.
         """
-        raise NotImplementedError(
-            f"La fuente '{self.source_id}' no soporta fetch_author_profile."
-        )
+        raise NotImplementedError(f"La fuente '{self.source_id}' no soporta fetch_author_profile.")
 
     @abstractmethod
     def search(
@@ -89,7 +84,7 @@ class PostSourceAdapter(ABC):
 
     # ── Context manager ──────────────────────────────────────────────────────
 
-    def __enter__(self) -> "PostSourceAdapter":
+    def __enter__(self) -> PostSourceAdapter:
         return self
 
     def __exit__(self, *exc: object) -> None:

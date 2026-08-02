@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from emoparse.storage.db import Database
@@ -45,7 +45,7 @@ class FrasesRepository:
                     frase = excluded.frase,
                     updated_at = ?
                 """,
-                (codigo, unit_idx, frase, datetime.now(timezone.utc)),
+                (codigo, unit_idx, frase, datetime.now(UTC)),
             )
 
     def upsert_frases(
@@ -53,7 +53,7 @@ class FrasesRepository:
         rows: Iterable[tuple[str, int, str]],
     ) -> None:
         """Bulk insert/update de frases."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         params = [(codigo, idx, frase, now) for codigo, idx, frase in rows]
         with self._db.transaction() as cur:
             cur.executemany(
@@ -97,7 +97,7 @@ class FrasesRepository:
                 (
                     payload_str,
                     version,
-                    datetime.now(timezone.utc),
+                    datetime.now(UTC),
                     codigo,
                     unit_idx,
                 ),
@@ -127,7 +127,7 @@ class FrasesRepository:
                 """,
                 (
                     error_message,
-                    datetime.now(timezone.utc),
+                    datetime.now(UTC),
                     codigo,
                     unit_idx,
                 ),
@@ -191,9 +191,7 @@ class FrasesRepository:
         if codigo is None:
             rows = self._db.execute(base_sql).fetchall()
         else:
-            rows = self._db.execute(
-                base_sql + " AND codigo = ?", (codigo,)
-            ).fetchall()
+            rows = self._db.execute(base_sql + " AND codigo = ?", (codigo,)).fetchall()
         return [(row["codigo"], row["unit_idx"]) for row in rows]
 
     def clear_errors(
@@ -217,6 +215,4 @@ class FrasesRepository:
     def _validate_stage(stage: str) -> None:
         """Valida que el nombre de etapa sea correcto."""
         if stage not in _VALID_STAGES:
-            raise ValueError(
-                f"Stage '{stage}' inválida. Válidas: {_VALID_STAGES}"
-            )
+            raise ValueError(f"Stage '{stage}' inválida. Válidas: {_VALID_STAGES}")

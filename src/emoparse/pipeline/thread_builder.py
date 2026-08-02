@@ -41,9 +41,7 @@ def build_threads(df_posts: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
       derivado (las plataformas lo calculan con el árbol completo).
     """
     df = df_posts.copy().reset_index(drop=True)
-    by_id: dict[str, dict] = {
-        str(r["post_id"]): r for r in df.to_dict(orient="records")
-    }
+    by_id: dict[str, dict] = {str(r["post_id"]): r for r in df.to_dict(orient="records")}
 
     conv_ids: list[str] = []
     profundidades: list[int | None] = []
@@ -66,6 +64,7 @@ def build_threads(df_posts: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
 # ══════════════════════════════════════════════════════════════════════════════
 #  Resolución por post
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _resolve(
     row: dict,
@@ -115,6 +114,7 @@ def _clean(value: object) -> str | None:
 #  Agregación de hilos
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _aggregate_hilos(df: pd.DataFrame) -> pd.DataFrame:
     """Agrega una fila por conversación."""
     rows = []
@@ -124,13 +124,15 @@ def _aggregate_hilos(df: pd.DataFrame) -> pd.DataFrame:
         participantes = sorted(set(grp["autor_handle"].astype(str).tolist()))
         # La raíz es el post cuyo id coincide con la conversación; si no fue
         # capturada, el id de conversación sigue apuntándola.
-        rows.append({
-            "conversacion_id": str(conv_id),
-            "post_raiz": str(conv_id),
-            "n_posts": int(len(grp)),
-            "profundidad_max": max(profundidades) if profundidades else 0,
-            "participantes": json.dumps(participantes, ensure_ascii=False),
-            "fecha_inicio": fechas[0] if fechas else None,
-            "fecha_fin": fechas[-1] if fechas else None,
-        })
+        rows.append(
+            {
+                "conversacion_id": str(conv_id),
+                "post_raiz": str(conv_id),
+                "n_posts": int(len(grp)),
+                "profundidad_max": max(profundidades) if profundidades else 0,
+                "participantes": json.dumps(participantes, ensure_ascii=False),
+                "fecha_inicio": fechas[0] if fechas else None,
+                "fecha_fin": fechas[-1] if fechas else None,
+            }
+        )
     return pd.DataFrame(rows)

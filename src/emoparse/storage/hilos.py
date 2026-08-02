@@ -42,10 +42,13 @@ class HilosRepository:
                         updated_at      = CURRENT_TIMESTAMP
                     """,
                     (
-                        r["conversacion_id"], r["post_raiz"],
+                        r["conversacion_id"],
+                        r["post_raiz"],
                         int(r.get("n_posts", 1)),
                         int(r.get("profundidad_max", 0)),
-                        participantes, r.get("fecha_inicio"), r.get("fecha_fin"),
+                        participantes,
+                        r.get("fecha_inicio"),
+                        r.get("fecha_fin"),
                     ),
                 )
                 n += 1
@@ -70,8 +73,7 @@ class HilosRepository:
     def list_hilos(self, min_posts: int = 1) -> list[dict[str, Any]]:
         """Hilos del corpus, los más largos primero."""
         rows = self._db.execute(
-            "SELECT * FROM hilos WHERE n_posts >= ? "
-            "ORDER BY n_posts DESC, conversacion_id",
+            "SELECT * FROM hilos WHERE n_posts >= ? ORDER BY n_posts DESC, conversacion_id",
             (min_posts,),
         ).fetchall()
         return [dict(r) for r in rows]

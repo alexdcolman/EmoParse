@@ -71,6 +71,7 @@ class CacheKey:
 
     digest es el PK en llm_cache; otros campos sirven para debug, queries y cleanup.
     """
+
     digest: str
     model_alias: str
     schema_qualname: str | None

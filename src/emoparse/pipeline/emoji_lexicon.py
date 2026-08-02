@@ -17,9 +17,7 @@ from typing import Any
 #: piel (Fitzpatrick) y el selector de variación de presentación. El léxico
 #: registra la forma base, así que 💪🏽 debe resolver por 💪 antes de gastar
 #: una inferencia en desambiguarlo.
-_MODIFICADORES = frozenset(
-    [chr(c) for c in range(0x1F3FB, 0x1F400)] + ["\ufe0f", "\ufe0e"]
-)
+_MODIFICADORES = frozenset([chr(c) for c in range(0x1F3FB, 0x1F400)] + ["\ufe0f", "\ufe0e"])
 
 
 def _base(emoji: str) -> str:

@@ -10,8 +10,6 @@ from typing import Any
 
 from pydantic import BaseModel
 
-import string
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  Reglas primitivas reutilizables
 # ══════════════════════════════════════════════════════════════════════════════
@@ -53,14 +51,13 @@ number ::= ("-"? ([0-9] | [1-9] [0-9]*)) ("." [0-9]+)? ([eE] [-+]? [0-9]+)?
 """.strip()
 
 #: Caracteres válidos en un nombre de regla GBNF. llama.cpp NO admite '_'.
-_ALLOWED_RULE_CHARS = frozenset(
-    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-"
-)
+_ALLOWED_RULE_CHARS = frozenset("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-")
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Errores
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class GrammarError(ValueError):
     """Schema no traducible a GBNF. Incluye path problemático para debugging."""
@@ -69,6 +66,7 @@ class GrammarError(ValueError):
 # ══════════════════════════════════════════════════════════════════════════════
 #  API pública
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def schema_to_gbnf(
     schema: type[BaseModel],
@@ -102,6 +100,7 @@ def schema_to_gbnf(
 # ══════════════════════════════════════════════════════════════════════════════
 #  Builder interno
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 class _GrammarBuilder:
     """Construcción de gramática GBNF a partir de JSON Schema.
@@ -262,9 +261,7 @@ class _GrammarBuilder:
         if items is None:
             raise GrammarError(f"Array sin `items` en {path}: no soportado")
         if isinstance(items, list):
-            raise GrammarError(
-                f"Array con `prefixItems`/tuple en {path}: no soportado"
-            )
+            raise GrammarError(f"Array con `prefixItems`/tuple en {path}: no soportado")
 
         item_rule = self._visit(items, path=f"{path}/items")
         # Bound opcional: si el schema declara `maxItems` (Pydantic
@@ -287,7 +284,7 @@ class _GrammarBuilder:
             #   "[" ws ( item (ws "," ws item)* )? ws "]"
             body = (
                 r'"[" ws '
-                r'( ' + item_rule + r' (ws "," ws ' + item_rule + r')* )? '
+                r"( " + item_rule + r' (ws "," ws ' + item_rule + r")* )? "
                 r'ws "]"'
             )
         if reserved is not None:
@@ -314,9 +311,7 @@ class _GrammarBuilder:
         lo = max(0, int(min_items))
         hi = int(max_items)
         if hi < lo:
-            raise GrammarError(
-                f"Array con maxItems ({hi}) < minItems ({lo}): inconsistente"
-            )
+            raise GrammarError(f"Array con maxItems ({hi}) < minItems ({lo}): inconsistente")
         if hi == 0:
             return r'"[" ws "]"'
 
@@ -326,19 +321,19 @@ class _GrammarBuilder:
             # k elementos adicionales opcionales, anidados (contiguos).
             if k <= 0:
                 return ""
-            return r'( ' + sep_item + r' ' + opt_tail(k - 1) + r' )?'
+            return r"( " + sep_item + r" " + opt_tail(k - 1) + r" )?"
 
         if lo == 0:
             # Cero-o-más, hasta hi: head opcional + cola opcional.
-            inner = item_rule + r' ' + opt_tail(hi - 1)
+            inner = item_rule + r" " + opt_tail(hi - 1)
             return r'"[" ws ( ' + inner + r' )? ws "]"'
 
         # head requerido de `lo` elementos, luego cola opcional hasta hi.
         head = item_rule
         for _ in range(lo - 1):
-            head += r' ' + sep_item
+            head += r" " + sep_item
         tail = opt_tail(hi - lo)
-        return r'"[" ws ' + head + r' ' + tail + r' ws "]"'
+        return r'"[" ws ' + head + r" " + tail + r' ws "]"'
 
     @staticmethod
     def _min_array_body(item_rule: str, min_items: int) -> str:
@@ -380,9 +375,7 @@ class _GrammarBuilder:
         lo = max(0, int(min_len))
         hi = int(max_len)
         if hi < lo:
-            raise GrammarError(
-                f"String con maxLength ({hi}) < minLength ({lo}): inconsistente"
-            )
+            raise GrammarError(f"String con maxLength ({hi}) < minLength ({lo}): inconsistente")
         rule_name = f"string-max-{lo}-{hi}"
         if rule_name in self._rules:
             return rule_name
@@ -399,8 +392,7 @@ class _GrammarBuilder:
                 f"consecutivos. Bajá minLength o subí maxLength."
             )
         cuerpo = (
-            r'strchar ( strsep? strchar ){' + f"{minimo},{grupos}" + r'}'
-            if grupos else "strchar"
+            r"strchar ( strsep? strchar ){" + f"{minimo},{grupos}" + r"}" if grupos else "strchar"
         )
         self._rules[rule_name] = r'"\"" ' + cuerpo + r' "\""'
         return rule_name
@@ -425,8 +417,7 @@ class _GrammarBuilder:
                 alternatives.append(f'"{v}"')
             else:
                 raise GrammarError(
-                    f"Enum con valor no soportado en {path}: {v!r} "
-                    f"({type(v).__name__})"
+                    f"Enum con valor no soportado en {path}: {v!r} ({type(v).__name__})"
                 )
         return f"({' | '.join(alternatives)})"
 
@@ -435,7 +426,7 @@ class _GrammarBuilder:
     def _visit_anyof(self, options: list[dict[str, Any]], *, path: str) -> str:
         """Genera regla GBNF para anyOf.
 
-        Caso especial: [T, null] → campo opcional nullable.  
+        Caso especial: [T, null] → campo opcional nullable.
         Caso general: alternativas entre todas las opciones.
         """
         non_null = [o for o in options if o.get("type") != "null"]
@@ -459,7 +450,7 @@ class _GrammarBuilder:
         if not ref.startswith(prefix):
             raise GrammarError(f"$ref no-local en {path}: {ref}")
 
-        def_name = ref[len(prefix):]
+        def_name = ref[len(prefix) :]
         if def_name not in self._defs:
             raise GrammarError(f"$ref a definición inexistente en {path}: {ref}")
 
@@ -497,9 +488,7 @@ class _GrammarBuilder:
             base = _sanitize_rule_name(title)
         else:
             # Path tipo "#/properties/name" → "properties-name".
-            base = _sanitize_rule_name(
-                path.replace("#/", "").replace("/", "-") or prefix
-            )
+            base = _sanitize_rule_name(path.replace("#/", "").replace("/", "-") or prefix)
             base = f"{prefix}-{base}"
 
         # Garantiza unicidad si ya existe (sufijo con '-', no '_').
@@ -525,6 +514,7 @@ class _GrammarBuilder:
 # ══════════════════════════════════════════════════════════════════════════════
 #  Helpers
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _sanitize_rule_name(name: str) -> str:
     """Convierte un nombre arbitrario en un identificador de regla GBNF válido."""

@@ -9,7 +9,6 @@ from pathlib import Path
 import pytest
 from loguru import logger
 
-
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "src"
 if str(SRC) not in sys.path:

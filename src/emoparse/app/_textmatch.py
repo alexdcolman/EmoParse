@@ -37,7 +37,7 @@ def _expand_optionals(phrase: str) -> list[str]:
     last = 0
     for m in re.finditer(r"[\(\[]([^\)\]]*)[\)\]]", phrase):
         if m.start() > last:
-            parts.append((phrase[last:m.start()], False))
+            parts.append((phrase[last : m.start()], False))
         parts.append((m.group(1), True))
         last = m.end()
     if last < len(phrase):
@@ -47,10 +47,7 @@ def _expand_optionals(phrase: str) -> list[str]:
     variants: list[str] = []
     for combo in itertools.product([True, False], repeat=len(optional_idx)):
         keep = dict(zip(optional_idx, combo))
-        chunks = [
-            txt for i, (txt, opt) in enumerate(parts)
-            if not opt or keep.get(i, False)
-        ]
+        chunks = [txt for i, (txt, opt) in enumerate(parts) if not opt or keep.get(i, False)]
         variants.append(normalize("".join(chunks)))
         if len(variants) >= _MAX_VARIANTS:
             break
@@ -90,7 +87,4 @@ def matches(text_norm: str, matchers: list[list[str]]) -> bool:
     """True si `text_norm` (ya normalizado) satisface todos los matchers."""
     if not matchers:
         return False
-    return all(
-        any(v and v in text_norm for v in matcher)
-        for matcher in matchers
-    )
+    return all(any(v and v in text_norm for v in matcher) for matcher in matchers)

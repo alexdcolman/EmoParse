@@ -18,7 +18,6 @@
 from __future__ import annotations
 
 import argparse
-import sys
 from datetime import date, datetime
 from pathlib import Path
 
@@ -62,7 +61,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         default=None,
         metavar="YYYY-MM-DD",
         help="Solo discursos con fecha >= esta. Best-effort si la fuente "
-             "no expone fechas en el listado.",
+        "no expone fechas en el listado.",
     )
     p.add_argument(
         "--to",
@@ -76,10 +75,10 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--max-after-filter",
         action="store_true",
         help="Si se usa junto con --from/--to, --max cuenta discursos ya "
-             "filtrados por fecha (no el listado crudo del adapter). Por "
-             "defecto --max se pasa tal cual al adapter, que puede cortar "
-             "el listado antes de que se aplique el filtro de fechas, "
-             "dando menos resultados de los esperados.",
+        "filtrados por fecha (no el listado crudo del adapter). Por "
+        "defecto --max se pasa tal cual al adapter, que puede cortar "
+        "el listado antes de que se aplique el filtro de fechas, "
+        "dando menos resultados de los esperados.",
     )
     p.add_argument(
         "--mode",

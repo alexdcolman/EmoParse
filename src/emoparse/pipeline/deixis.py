@@ -17,17 +17,51 @@ import unicodedata
 from typing import Any
 
 #: Deícticos de 1ª persona que refieren al enunciador del discurso.
-FIRST_PERSON_DEICTICS = frozenset({
-    "yo", "mi", "me", "conmigo", "mio", "mia", "mios", "mias",
-    "nosotros", "nosotras", "nos", "nuestro", "nuestra", "nuestros", "nuestras",
-})
+FIRST_PERSON_DEICTICS = frozenset(
+    {
+        "yo",
+        "mi",
+        "me",
+        "conmigo",
+        "mio",
+        "mia",
+        "mios",
+        "mias",
+        "nosotros",
+        "nosotras",
+        "nos",
+        "nuestro",
+        "nuestra",
+        "nuestros",
+        "nuestras",
+    }
+)
 
 #: Deícticos de 2ª persona (refieren al auditorio / enunciatario).
-SECOND_PERSON_DEICTICS = frozenset({
-    "vos", "tu", "te", "ti", "contigo", "tuyo", "tuya", "tuyos", "tuyas",
-    "usted", "ustedes", "ud", "uds", "vosotros", "vosotras", "os",
-    "su", "sus", "le", "les",
-})
+SECOND_PERSON_DEICTICS = frozenset(
+    {
+        "vos",
+        "tu",
+        "te",
+        "ti",
+        "contigo",
+        "tuyo",
+        "tuya",
+        "tuyos",
+        "tuyas",
+        "usted",
+        "ustedes",
+        "ud",
+        "uds",
+        "vosotros",
+        "vosotras",
+        "os",
+        "su",
+        "sus",
+        "le",
+        "les",
+    }
+)
 
 #: Sufijos verbales típicos de 1ª persona del plural ("tenemos", "vamos",
 #: "logramos"). Recall-oriented: la stage LLM filtra los falsos positivos.
@@ -78,14 +112,29 @@ def is_deictic(mencion: str) -> bool:
 #: referentes ("el enunciador", "los enunciatarios"). Nombran una posición del
 #: dispositivo, no designan a nadie: el referente concreto está en la
 #: estructura enunciativa del discurso.
-_ROL_ENUNCIADOR = frozenset({
-    "enunciador", "enunciadora", "enunciante", "el que enuncia",
-})
-_ROL_ENUNCIATARIO = frozenset({
-    "enunciatario", "enunciataria", "enunciatarios", "enunciatarias",
-    "auditorio", "destinatario", "destinatarios", "destinataria",
-    "destinatarias", "publico", "audiencia",
-})
+_ROL_ENUNCIADOR = frozenset(
+    {
+        "enunciador",
+        "enunciadora",
+        "enunciante",
+        "el que enuncia",
+    }
+)
+_ROL_ENUNCIATARIO = frozenset(
+    {
+        "enunciatario",
+        "enunciataria",
+        "enunciatarios",
+        "enunciatarias",
+        "auditorio",
+        "destinatario",
+        "destinatarios",
+        "destinataria",
+        "destinatarias",
+        "publico",
+        "audiencia",
+    }
+)
 
 #: Determinantes iniciales que no cambian el rol nombrado ("el enunciador").
 _DETERMINANTE_RE = re.compile(r"^(?:el|la|los|las|un|una|unos|unas)\s+")

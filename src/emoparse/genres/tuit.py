@@ -8,7 +8,6 @@ from __future__ import annotations
 
 from emoparse.genres.base import Genre
 
-
 #: Roles del dispositivo, presentes potencialmente en cualquier tipo de post:
 #: la cuenta interpelada técnicamente vía @ y el público indeterminado del
 #: archivo buscable. Se cruzan con los roles del tipo de discurso.
@@ -62,48 +61,47 @@ _ENUNCIATARIOS_POR_TIPO: dict[str, tuple[str, ...]] = {
 #: Descripción breve por rol (transversales + por tipo), para el prompt.
 _ROLES_DESCRIPCIONES: dict[str, str] = {
     "destinatario_mencionado": "cuenta concreta interpelada técnicamente por el "
-        "dispositivo (@mención, respuesta directa); puede superponerse con "
-        "cualquier otro rol.",
+    "dispositivo (@mención, respuesta directa); puede superponerse con "
+    "cualquier otro rol.",
     "audiencia_ambiente": "público indeterminado del archivo buscable ante el "
-        "cual el post también se enuncia (hashtags de alcance amplio, "
-        "apelaciones genéricas, sin destinatario individualizado).",
+    "cual el post también se enuncia (hashtags de alcance amplio, "
+    "apelaciones genéricas, sin destinatario individualizado).",
     "prodestinatario": "el ya convencido que comparte la creencia; el post "
-        "refuerza la comunión (nosotros inclusivo, consignas, afiliación).",
+    "refuerza la comunión (nosotros inclusivo, consignas, afiliación).",
     "paradestinatario": "el indeciso al que se busca persuadir con argumentos o "
-        "datos, sin presuponer adhesión.",
+    "datos, sin presuponer adhesión.",
     "contradestinatario": "el adversario excluido del colectivo de "
-        "identificación; se lo ataca, ironiza o refuta.",
+    "identificación; se lo ataca, ironiza o refuta.",
     "lector_ciudadano": "el público ciudadano amplio al que informa la nota "
-        "(instancia-público), sin vocativo, en registro informativo.",
+    "(instancia-público), sin vocativo, en registro informativo.",
     "instancia_blanco": "el destinatario calculado por la estrategia editorial "
-        "del medio; se reconoce por el ángulo de la nota más que por marcas.",
+    "del medio; se reconoce por el ángulo de la nota más que por marcas.",
     "fuente_referente": "el actor citado o etiquetado como fuente o protagonista "
-        "de la noticia, interpelado o mencionado.",
+    "de la noticia, interpelado o mencionado.",
     "ciudadano_usuario": "el interlocutor válido o beneficiario del servicio o la "
-        "información (trámite, cortesía institucional).",
+    "información (trámite, cortesía institucional).",
     "comunidad_interna": "miembros, afiliados o funcionarios de la propia "
-        "institución (pertenencia interna, áreas, jerarquía).",
+    "institución (pertenencia interna, áreas, jerarquía).",
     "rendicion_cuentas": "prensa y opinión pública que vigilan la legitimidad "
-        "institucional (transparencia, balance de gestión, aclaraciones).",
+    "institucional (transparencia, balance de gestión, aclaraciones).",
     "comunidad_sentido": "los iniciados que decodifican la referencia o el "
-        "código (jerga, intertextualidad sin glosa, formato de meme).",
+    "código (jerga, intertextualidad sin glosa, formato de meme).",
     "no_iniciado": "el lector que queda fuera del código y no entiende el "
-        "chiste; se infiere por contraste, sin marca positiva.",
+    "chiste; se infiere por contraste, sin marca positiva.",
     "blanco_burla": "el destinatario-objeto de la ironía cuando el humor es "
-        "agresivo (mención, parodia, apodo despectivo).",
+    "agresivo (mención, parodia, apodo despectivo).",
     "circulo_afectivo": "el destinatario íntimo imaginado (amigos, conocidos, "
-        "seguidores cercanos); registro coloquial, referencias privadas.",
+    "seguidores cercanos); registro coloquial, referencias privadas.",
     "autodestinatario": "el propio yo como destinatario (función de "
-        "diario/registro), sin interpelar a otro.",
+    "diario/registro), sin interpelar a otro.",
     "testigo_indeseado": "audiencia de riesgo por context collapse (familia, "
-        "empleadores, desconocidos) que accede a un enunciado pensado para un "
-        "círculo restringido; se infiere por contraste.",
+    "empleadores, desconocidos) que accede a un enunciado pensado para un "
+    "círculo restringido; se infiere por contraste.",
     "enunciatario_target": "el consumidor ideal construido discursivamente "
-        "(imperativos de venta, léxico de beneficio).",
-    "comunidad_marca": "clientes o seguidores ya fidelizados a quienes se retiene "
-        "o refuerza.",
+    "(imperativos de venta, léxico de beneficio).",
+    "comunidad_marca": "clientes o seguidores ya fidelizados a quienes se retiene o refuerza.",
     "prescriptor_amplificador": "el destinatario cuya función es resharear o "
-        "viralizar (llamados a compartir, etiquetar, RT, concursos).",
+    "viralizar (llamados a compartir, etiquetar, RT, concursos).",
 }
 
 
@@ -152,19 +150,16 @@ def get_genre() -> Genre:
         ),
         tipos_discurso_descripciones={
             "politico": "enunciación partidaria, gubernamental o militante, "
-                        "incluida la de campaña electoral",
+            "incluida la de campaña electoral",
             "periodistico_informativo": "difusión de noticias o información "
-                                        "de actualidad (medios, periodistas, "
-                                        "cuentas de cobertura)",
+            "de actualidad (medios, periodistas, "
+            "cuentas de cobertura)",
             "institucional": "comunicación oficial de organizaciones "
-                             "(organismos, empresas, ONG) no reductible a lo "
-                             "político-partidario",
-            "humor_meme": "función predominantemente humorística, paródica o "
-                          "memética",
-            "personal_cotidiano": "experiencia personal, opinión no militante "
-                                  "o vida cotidiana",
-            "promocional": "publicidad, venta o autopromoción de productos, "
-                           "servicios o contenidos",
+            "(organismos, empresas, ONG) no reductible a lo "
+            "político-partidario",
+            "humor_meme": "función predominantemente humorística, paródica o memética",
+            "personal_cotidiano": "experiencia personal, opinión no militante o vida cotidiana",
+            "promocional": "publicidad, venta o autopromoción de productos, servicios o contenidos",
             "otro": "no se ajusta a ninguno de los anteriores",
         },
         models={},

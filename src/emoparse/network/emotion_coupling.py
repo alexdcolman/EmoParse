@@ -22,7 +22,11 @@ import pandas as pd
 
 #: Orden canónico de forias en las matrices.
 FORIAS: tuple[str, ...] = (
-    "euforico", "disforico", "aforico", "ambiforico", "indeterminado",
+    "euforico",
+    "disforico",
+    "aforico",
+    "ambiforico",
+    "indeterminado",
 )
 
 #: Etiqueta para posts sin emociones caracterizadas.
@@ -107,33 +111,33 @@ def community_emotion_profile(
         comunidad = communities.get(autor)
         if comunidad is None:
             continue
-        tipo = (
-            _clean(r.get("tipo_emocion_canonico"))
-            or _clean(r.get("tipo_emocion"))
-            or "?"
+        tipo = _clean(r.get("tipo_emocion_canonico")) or _clean(r.get("tipo_emocion")) or "?"
+        rows.append(
+            {
+                "comunidad": int(comunidad),
+                "tipo_emocion": str(tipo),
+                "foria": _extract_foria(r.get("caracterizacion_payload")),
+            }
         )
-        rows.append({
-            "comunidad": int(comunidad),
-            "tipo_emocion": str(tipo),
-            "foria": _extract_foria(r.get("caracterizacion_payload")),
-        })
     if not rows:
-        return pd.DataFrame(
-            columns=["comunidad", "tipo_emocion", "n", *FORIAS]
-        )
+        return pd.DataFrame(columns=["comunidad", "tipo_emocion", "n", *FORIAS])
     df = pd.DataFrame(rows)
     out = []
     for (comunidad, tipo), grp in df.groupby(["comunidad", "tipo_emocion"]):
         counts = Counter(grp["foria"])
-        out.append({
-            "comunidad": comunidad,
-            "tipo_emocion": tipo,
-            "n": int(len(grp)),
-            **{f: int(counts.get(f, 0)) for f in FORIAS},
-        })
-    return pd.DataFrame(out).sort_values(
-        ["comunidad", "n"], ascending=[True, False]
-    ).reset_index(drop=True)
+        out.append(
+            {
+                "comunidad": comunidad,
+                "tipo_emocion": tipo,
+                "n": int(len(grp)),
+                **{f: int(counts.get(f, 0)) for f in FORIAS},
+            }
+        )
+    return (
+        pd.DataFrame(out)
+        .sort_values(["comunidad", "n"], ascending=[True, False])
+        .reset_index(drop=True)
+    )
 
 
 def _clean(value: Any) -> str | None:
@@ -146,9 +150,7 @@ def _clean(value: Any) -> str | None:
 
 def _extract_foria(payload_raw: Any) -> str:
     """Extrae la foria del payload de caracterización (o 'indeterminado')."""
-    if payload_raw is None or (
-        isinstance(payload_raw, float) and pd.isna(payload_raw)
-    ):
+    if payload_raw is None or (isinstance(payload_raw, float) and pd.isna(payload_raw)):
         return "indeterminado"
     payload = payload_raw
     if isinstance(payload_raw, str):

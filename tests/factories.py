@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from enum import Enum
 from types import NoneType, UnionType
 from typing import Annotated, Any, Literal, Union, get_args, get_origin
@@ -54,7 +54,11 @@ def minimal_value(annotation: Any, *, collection_length: int = 1) -> Any:
         return args[0]
     if origin in (Union, UnionType):
         candidates = [arg for arg in args if arg is not NoneType]
-        return minimal_value(candidates[0], collection_length=collection_length) if candidates else None
+        return (
+            minimal_value(candidates[0], collection_length=collection_length)
+            if candidates
+            else None
+        )
     if origin in (list, set, frozenset):
         item = minimal_value(args[0] if args else Any)
         values = [item for _ in range(max(1, collection_length))]
@@ -83,7 +87,7 @@ def minimal_value(annotation: Any, *, collection_length: int = 1) -> Any:
     if annotation is bool:
         return True
     if annotation is datetime:
-        return datetime(2026, 1, 1, tzinfo=timezone.utc)
+        return datetime(2026, 1, 1, tzinfo=UTC)
     if annotation is date:
         return date(2026, 1, 1)
 

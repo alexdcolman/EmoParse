@@ -37,10 +37,7 @@ def tipos_por_post(df_emociones: pd.DataFrame) -> dict[str, set[str]]:
     """
     out: dict[str, set[str]] = {}
     for r in df_emociones.to_dict(orient="records"):
-        tipo = (
-            _clean(r.get("tipo_emocion_canonico"))
-            or _clean(r.get("tipo_emocion"))
-        )
+        tipo = _clean(r.get("tipo_emocion_canonico")) or _clean(r.get("tipo_emocion"))
         if tipo:
             out.setdefault(str(r["codigo"]), set()).add(tipo)
     return out
@@ -49,6 +46,7 @@ def tipos_por_post(df_emociones: pd.DataFrame) -> dict[str, set[str]]:
 # ══════════════════════════════════════════════════════════════════════════════
 #  Contagio por tipo de emoción
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def contagion_lift(
     df_posts: pd.DataFrame,
@@ -70,8 +68,15 @@ def contagion_lift(
     pares = _pares_respuesta(df_posts)
     if not pares:
         return pd.DataFrame(
-            columns=["tipo_emocion", "pares", "pares_con_padre",
-                     "replicas", "p_condicional", "p_base", "lift"]
+            columns=[
+                "tipo_emocion",
+                "pares",
+                "pares_con_padre",
+                "replicas",
+                "p_condicional",
+                "p_base",
+                "lift",
+            ]
         )
 
     total = len(pares)
@@ -85,28 +90,40 @@ def contagion_lift(
         base = sum(1 for _, h in pares if tipo in tipos.get(h, ()))
         p_cond = replicas / len(con_padre)
         p_base = base / total
-        filas.append({
-            "tipo_emocion": tipo,
-            "pares": total,
-            "pares_con_padre": len(con_padre),
-            "replicas": replicas,
-            "p_condicional": round(p_cond, 4),
-            "p_base": round(p_base, 4),
-            "lift": round(p_cond / p_base, 3) if p_base else None,
-        })
+        filas.append(
+            {
+                "tipo_emocion": tipo,
+                "pares": total,
+                "pares_con_padre": len(con_padre),
+                "replicas": replicas,
+                "p_condicional": round(p_cond, 4),
+                "p_base": round(p_base, 4),
+                "lift": round(p_cond / p_base, 3) if p_base else None,
+            }
+        )
     if not filas:
         return pd.DataFrame(
-            columns=["tipo_emocion", "pares", "pares_con_padre",
-                     "replicas", "p_condicional", "p_base", "lift"]
+            columns=[
+                "tipo_emocion",
+                "pares",
+                "pares_con_padre",
+                "replicas",
+                "p_condicional",
+                "p_base",
+                "lift",
+            ]
         )
-    return pd.DataFrame(filas).sort_values(
-        "lift", ascending=False, na_position="last"
-    ).reset_index(drop=True)
+    return (
+        pd.DataFrame(filas)
+        .sort_values("lift", ascending=False, na_position="last")
+        .reset_index(drop=True)
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Transición fórica por alcance
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def foria_transition_by_scope(
     df_posts: pd.DataFrame,
@@ -126,8 +143,7 @@ def foria_transition_by_scope(
     autor = _autor_por_post(df_posts)
     labels = list(FORIAS)
     out = {
-        alcance: pd.DataFrame(0, index=labels, columns=labels, dtype=int)
-        for alcance in ALCANCES
+        alcance: pd.DataFrame(0, index=labels, columns=labels, dtype=int) for alcance in ALCANCES
     }
     for padre, hijo in _pares_respuesta(df_posts):
         alcance = _alcance(padre, hijo, autor, comunidades)
@@ -168,8 +184,7 @@ def flujo_entre_comunidades(
 
     if not acumulado:
         return pd.DataFrame(
-            columns=["comunidad_origen", "comunidad_destino", "alcance",
-                     "respuestas", *FORIAS]
+            columns=["comunidad_origen", "comunidad_destino", "alcance", "respuestas", *FORIAS]
         )
     filas = [
         {
@@ -183,14 +198,13 @@ def flujo_entre_comunidades(
         }
         for (c_padre, c_hijo), counts in acumulado.items()
     ]
-    return pd.DataFrame(filas).sort_values(
-        "respuestas", ascending=False
-    ).reset_index(drop=True)
+    return pd.DataFrame(filas).sort_values("respuestas", ascending=False).reset_index(drop=True)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Helpers
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _pares_respuesta(df_posts: pd.DataFrame) -> list[tuple[str, str]]:
     """Pares (post padre, respuesta) con ambos extremos en el corpus."""

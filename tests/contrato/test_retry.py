@@ -4,11 +4,11 @@
 
 from __future__ import annotations
 
-import pytest
-from unittest.mock import MagicMock, call, patch
-
 import sys
 import types
+from unittest.mock import MagicMock, call
+
+import pytest
 
 loguru_mod = types.ModuleType("loguru")
 logger_stub = MagicMock()
@@ -24,11 +24,21 @@ try:
         TransientBackendError,
     )
 except ModuleNotFoundError:
-    class BackendError(Exception): pass
-    class TransientBackendError(BackendError): pass
-    class PermanentBackendError(BackendError): pass
-    class BackendTimeoutError(TransientBackendError): pass
-    class SchemaViolationError(PermanentBackendError): pass
+
+    class BackendError(Exception):
+        pass
+
+    class TransientBackendError(BackendError):
+        pass
+
+    class PermanentBackendError(BackendError):
+        pass
+
+    class BackendTimeoutError(TransientBackendError):
+        pass
+
+    class SchemaViolationError(PermanentBackendError):
+        pass
 
     exc_mod = types.ModuleType("emoparse.core.backend.exceptions")
     exc_mod.BackendError = BackendError
@@ -43,8 +53,8 @@ except ModuleNotFoundError:
 
 from emoparse.core.backend.retry import RetryConfig, retry_with_backoff
 
-
 # ── RetryConfig ──────────────────────────────────────────────────────────────
+
 
 class TestRetryConfig:
     def test_valid(self):
@@ -72,8 +82,8 @@ class TestRetryConfig:
 
 # ── retry_with_backoff ───────────────────────────────────────────────────────
 
-class TestRetryWithBackoff:
 
+class TestRetryWithBackoff:
     def _cfg(self, max_retries=3, delays=None):
         return RetryConfig(
             max_retries=max_retries,
@@ -94,11 +104,13 @@ class TestRetryWithBackoff:
 
     def test_retries_on_transient(self):
         """Falla 2 veces con Transient, luego éxito → 3 llamadas totales."""
-        fn = MagicMock(side_effect=[
-            TransientBackendError("timeout"),
-            TransientBackendError("timeout"),
-            "success",
-        ])
+        fn = MagicMock(
+            side_effect=[
+                TransientBackendError("timeout"),
+                TransientBackendError("timeout"),
+                "success",
+            ]
+        )
         sleep = MagicMock()
         result = retry_with_backoff(fn, self._cfg(max_retries=3), _sleep=sleep)
         assert result == "success"
@@ -107,23 +119,27 @@ class TestRetryWithBackoff:
 
     def test_delays_respected(self):
         """Los delays usados son los de la config en orden."""
-        fn = MagicMock(side_effect=[
-            TransientBackendError("a"),
-            TransientBackendError("b"),
-            "ok",
-        ])
+        fn = MagicMock(
+            side_effect=[
+                TransientBackendError("a"),
+                TransientBackendError("b"),
+                "ok",
+            ]
+        )
         sleep = MagicMock()
         retry_with_backoff(fn, self._cfg(delays=[5, 10, 20]), _sleep=sleep)
         assert sleep.call_args_list == [call(5.0), call(10.0)]
 
     def test_last_delay_repeated_when_fewer_delays_than_retries(self):
         """Si hay menos delays que reintentos, se repite el último."""
-        fn = MagicMock(side_effect=[
-            TransientBackendError("a"),
-            TransientBackendError("b"),
-            TransientBackendError("c"),
-            "ok",
-        ])
+        fn = MagicMock(
+            side_effect=[
+                TransientBackendError("a"),
+                TransientBackendError("b"),
+                TransientBackendError("c"),
+                "ok",
+            ]
+        )
         sleep = MagicMock()
         cfg = RetryConfig(max_retries=4, delays_seconds=[2, 8])
         retry_with_backoff(fn, cfg, _sleep=sleep)
@@ -172,10 +188,12 @@ class TestRetryWithBackoff:
 
     def test_retries_on_transient_subclass(self):
         """BackendTimeoutError (subclase Transient) se reintenta."""
-        fn = MagicMock(side_effect=[
-            BackendTimeoutError("timeout"),
-            "ok",
-        ])
+        fn = MagicMock(
+            side_effect=[
+                BackendTimeoutError("timeout"),
+                "ok",
+            ]
+        )
         sleep = MagicMock()
         result = retry_with_backoff(fn, self._cfg(max_retries=2), _sleep=sleep)
         assert result == "ok"

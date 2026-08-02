@@ -55,9 +55,7 @@ class KnowledgeLoader:
             # El filtro opera sobre `{"emociones": {...}}`; se envuelven las
             # definiciones ya extraídas para cubrir también archivos cuyo
             # mapping de entradas es el nivel superior del JSON.
-            defs = filtrar_ontologia_por_genero(
-                {"emociones": defs}, genre_id
-            )["emociones"]
+            defs = filtrar_ontologia_por_genero({"emociones": defs}, genre_id)["emociones"]
         formatted = self._format_definitions(defs)
 
         self._cache[cache_key] = formatted
@@ -225,8 +223,7 @@ class KnowledgeLoader:
         configs = data.get("configuraciones") or {}
         if not isinstance(configs, dict) or not configs:
             raise KnowledgeError(
-                f"El JSON de {path} no contiene una clave 'configuraciones' "
-                f"con entradas válidas."
+                f"El JSON de {path} no contiene una clave 'configuraciones' con entradas válidas."
             )
 
         lines: list[str] = []
@@ -295,9 +292,7 @@ class KnowledgeLoader:
         if len(data) == 1:
             only_key = next(iter(data))
             value = data[only_key]
-            if isinstance(value, dict) and all(
-                isinstance(v, dict) for v in value.values()
-            ):
+            if isinstance(value, dict) and all(isinstance(v, dict) for v in value.values()):
                 return value
 
         if all(isinstance(v, dict) for v in data.values()):
@@ -325,6 +320,6 @@ class KnowledgeLoader:
             if descripcion:
                 line += f": {descripcion}"
             if ejemplo:
-                line += f' Ej: {ejemplo}'
+                line += f" Ej: {ejemplo}"
             lines.append(line)
         return "\n".join(lines)

@@ -6,12 +6,12 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from math import isnan
-from typing import Any, Mapping
+from typing import Any
 
 from emoparse.genres.base import Genre
-
 
 #: Sección reservada dentro de ``runs.config`` para metadata calculada por
 #: EmoParse y no proveniente del archivo YAML del usuario.
@@ -44,8 +44,7 @@ class GenrePresentation:
             "genre_id": self.genre_id,
             "display_name": self.display_name,
             "input_metadata": [
-                {"name": field.name, "label": field.label}
-                for field in self.input_metadata
+                {"name": field.name, "label": field.label} for field in self.input_metadata
             ],
         }
 

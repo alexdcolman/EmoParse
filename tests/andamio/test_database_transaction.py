@@ -74,9 +74,8 @@ def test_begin_error_is_not_replaced_by_rollback_error(tmp_path: Path) -> None:
     )
     db = _database_with_connection(tmp_path, conn)
 
-    with pytest.raises(sqlite3.OperationalError, match="database is locked"):
-        with db.transaction():
-            pytest.fail("el cuerpo no debe ejecutarse")
+    with pytest.raises(sqlite3.OperationalError, match="database is locked"), db.transaction():
+        pytest.fail("el cuerpo no debe ejecutarse")
 
     assert conn.statements == ["BEGIN IMMEDIATE"]
 
@@ -86,9 +85,8 @@ def test_body_error_rolls_back_and_closes_cursor(tmp_path: Path) -> None:
     conn = _Connection()
     db = _database_with_connection(tmp_path, conn)
 
-    with pytest.raises(ValueError, match="fallo del cuerpo"):
-        with db.transaction():
-            raise ValueError("fallo del cuerpo")
+    with pytest.raises(ValueError, match="fallo del cuerpo"), db.transaction():
+        raise ValueError("fallo del cuerpo")
 
     assert conn.statements == ["BEGIN IMMEDIATE", "ROLLBACK"]
     assert conn.cursor_instance.closed is True
@@ -102,9 +100,8 @@ def test_commit_error_attempts_rollback_without_masking_original(tmp_path: Path)
     )
     db = _database_with_connection(tmp_path, conn)
 
-    with pytest.raises(sqlite3.OperationalError, match="disk I/O error"):
-        with db.transaction():
-            pass
+    with pytest.raises(sqlite3.OperationalError, match="disk I/O error"), db.transaction():
+        pass
 
     assert conn.statements == ["BEGIN IMMEDIATE", "COMMIT", "ROLLBACK"]
     assert conn.cursor_instance.closed is True

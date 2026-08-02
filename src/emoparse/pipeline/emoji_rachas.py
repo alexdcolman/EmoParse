@@ -35,8 +35,8 @@ class Racha:
     codigo: str
     unit_idx: int
     frase: str
-    inicio: int   # offset inicial de la racha en `frase`
-    fin: int      # offset final de la racha (exclusive)
+    inicio: int  # offset inicial de la racha en `frase`
+    fin: int  # offset final de la racha (exclusive)
     usos: tuple[Mapping[str, Any], ...]
 
     @property
@@ -99,10 +99,7 @@ def marcar_racha(frase: str, inicio: int, fin: int) -> str:
     texto = str(frase or "")
     if not texto or not 0 <= inicio < fin <= len(texto):
         return texto
-    return (
-        f"{texto[:inicio]}{MARCA_INICIO}{texto[inicio:fin]}"
-        f"{MARCA_FIN}{texto[fin:]}"
-    )
+    return f"{texto[:inicio]}{MARCA_INICIO}{texto[inicio:fin]}{MARCA_FIN}{texto[fin:]}"
 
 
 def payload_repeticion(racha: Racha, orden: int) -> dict[str, Any]:
@@ -125,6 +122,7 @@ def payload_repeticion(racha: Racha, orden: int) -> dict[str, Any]:
 # ══════════════════════════════════════════════════════════════════════════════
 #  Helpers internos
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _continua(previo: Mapping[str, Any], actual: Mapping[str, Any]) -> bool:
     """True si `actual` prolonga la racha que viene de `previo`."""

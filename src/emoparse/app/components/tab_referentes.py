@@ -10,9 +10,9 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from emoparse.app import _knowledge
 from emoparse.app import actions as actions_layer
 from emoparse.app import data as data_layer
-from emoparse.app import _knowledge
 
 _SIN_CANONICO = "— sin canónico —"
 _STATUS = {
@@ -49,12 +49,16 @@ try:
     _MODOS_EXISTENCIA: list[str] = list(get_args(_sc.ModoExistenciaEmocion))
 except Exception:  # pragma: no cover — fallback defensivo
     _MODOS_EXISTENCIA = [
-        "realizada", "potencial", "actual", "virtual", "inducida_proyectada",
+        "realizada",
+        "potencial",
+        "actual",
+        "virtual",
+        "inducida_proyectada",
     ]
 _NAT_OPCIONES = ["persona", "colectivo", "institucion", "objeto_proceso", "otro"]
 _MAX_MARCAS = 30
-_MARCAS_PER_PAGE = 15           # marcas por página dentro de un referente
-_MPAGE_KEY = "ref_marca_page"   # página de marcas (plain key, no widget)
+_MARCAS_PER_PAGE = 15  # marcas por página dentro de un referente
+_MPAGE_KEY = "ref_marca_page"  # página de marcas (plain key, no widget)
 _MPAGE_CID_KEY = "ref_marca_page_cid"  # referente al que pertenece la página
 
 # Única fuente de verdad de posición: el cid activo guardado en el state del
@@ -63,9 +67,9 @@ _MPAGE_CID_KEY = "ref_marca_page_cid"  # referente al que pertenece la página
 # sin romper la selección. prev/next/índice mutan `_SEL_KEY` y reran.
 _SEL_KEY = "ref_active_cid"
 _PENDING_KEY = "ref_pending_cid"  # navegación diferida (se aplica al próximo run)
-_LAST_IDX_KEY = "ref_last_idx"    # índice previo (para caer al vecino, no al 1º)
-_INITIAL_KEY = "ref_initial"     # filtro por inicial (índice alfabético)
-_NONE_CID = "\x00sin_canonico"   # sentinel para el bucket "— sin canónico —"
+_LAST_IDX_KEY = "ref_last_idx"  # índice previo (para caer al vecino, no al 1º)
+_INITIAL_KEY = "ref_initial"  # filtro por inicial (índice alfabético)
+_NONE_CID = "\x00sin_canonico"  # sentinel para el bucket "— sin canónico —"
 
 
 def _enc(cid: str | None) -> str:
@@ -124,27 +128,37 @@ def render(db_path: Path) -> None:
         codigo_sel = st.selectbox("Discurso", codigos, key="ref_codigo")
     codigo = None if codigo_sel == "(todos)" else codigo_sel
     with f2:
-        query = st.text_input(
-            "Buscar referente", key="ref_query",
-            placeholder="filtrar por canónico…",
-        ).strip().lower()
+        query = (
+            st.text_input(
+                "Buscar referente",
+                key="ref_query",
+                placeholder="filtrar por canónico…",
+            )
+            .strip()
+            .lower()
+        )
     func_filter = st.multiselect(
-        "Función", ["actor", "experienciador", "fuente"],
+        "Función",
+        ["actor", "experienciador", "fuente"],
         key="ref_func_filter",
         placeholder="filtrar por función (todas)",
     )
     mod_filter = st.multiselect(
-        "Modalidad", _MOD_OPCIONES,
+        "Modalidad",
+        _MOD_OPCIONES,
         key="ref_mod_filter",
         format_func=lambda m: _MOD_LABEL.get(m, m),
         placeholder="filtrar por modalidad referencial (todas)",
     )
     with f3:
         st.markdown("<div style='height:1.6rem;'></div>", unsafe_allow_html=True)
-        if st.button("⤴ Promover → KB", key="ref_promote",
-                     help="Sincroniza referentes aceptados en referentes_kb.json "
-                          "(agrega nuevos, elimina los que ya no tienen vínculos "
-                          "aceptados; no pisa tipo/notas editados a mano)."):
+        if st.button(
+            "⤴ Promover → KB",
+            key="ref_promote",
+            help="Sincroniza referentes aceptados en referentes_kb.json "
+            "(agrega nuevos, elimina los que ya no tienen vínculos "
+            "aceptados; no pisa tipo/notas editados a mano).",
+        ):
             res = actions_layer.promote_referentes(db_path)
             removed = res.get("removed", 0)
             removed_txt = f", {removed} eliminados" if removed else ""
@@ -184,14 +198,12 @@ def render(db_path: Path) -> None:
     if func_filter:
         fset = set(func_filter)
         func_map = data_layer.get_referente_funciones(db_path, codigo)
-        items = [it for it in items
-                 if it[0] and (func_map.get(it[0], set()) & fset)]
+        items = [it for it in items if it[0] and (func_map.get(it[0], set()) & fset)]
 
     if mod_filter:
         mset = set(mod_filter)
         mod_map = data_layer.get_referente_modalidades(db_path, codigo)
-        items = [it for it in items
-                 if it[0] and (mod_map.get(it[0], set()) & mset)]
+        items = [it for it in items if it[0] and (mod_map.get(it[0], set()) & mset)]
 
     if query:
         items = [it for it in items if it[0] and query in it[0].lower()]
@@ -201,19 +213,20 @@ def render(db_path: Path) -> None:
     iniciales = sorted({_initial_of(c) for c, _ in items if c is not None})
     if iniciales:
         st.markdown(
-            "<p style='color:var(--dim);font-size:0.72rem;margin:0.3rem 0 0.1rem;'>"
-            "Índice</p>", unsafe_allow_html=True,
+            "<p style='color:var(--dim);font-size:0.72rem;margin:0.3rem 0 0.1rem;'>Índice</p>",
+            unsafe_allow_html=True,
         )
         fichas = ["Todos", *iniciales]
         per_row = 14
         for start in range(0, len(fichas), per_row):
-            fila = fichas[start:start + per_row]
+            fila = fichas[start : start + per_row]
             cols = st.columns(len(fila))
             for col, letra in zip(cols, fila):
                 es_todos = letra == "Todos"
                 activa = (es_todos and not inicial_sel) or (letra == inicial_sel)
                 if col.button(
-                    letra, key=f"ref_ini_{letra}",
+                    letra,
+                    key=f"ref_ini_{letra}",
                     use_container_width=True,
                     type="primary" if activa else "secondary",
                 ):
@@ -252,20 +265,19 @@ def render(db_path: Path) -> None:
     )
     nprev, nsel, nnext = st.columns([1, 8, 1])
     with nprev:
-        if st.button("◀", key="ref_prev", disabled=cur == 0,
-                     use_container_width=True):
+        if st.button("◀", key="ref_prev", disabled=cur == 0, use_container_width=True):
             _set_active(cids[cur - 1])
             st.rerun()
     with nnext:
-        if st.button("▶", key="ref_next", disabled=cur >= len(cids) - 1,
-                     use_container_width=True):
+        if st.button("▶", key="ref_next", disabled=cur >= len(cids) - 1, use_container_width=True):
             _set_active(cids[cur + 1])
             st.rerun()
     with nsel:
         # El selectbox ES la fuente de verdad: opciones = cids estables,
         # format_func para el label. Su key (_SEL_KEY) se mantiene sincronizada.
         st.selectbox(
-            f"Referente {cur + 1} de {len(cids)}", sel_cids,
+            f"Referente {cur + 1} de {len(cids)}",
+            sel_cids,
             format_func=lambda s: label_by_sel.get(s, s),
             key=_SEL_KEY,
             label_visibility="collapsed",
@@ -281,9 +293,7 @@ def render(db_path: Path) -> None:
 _BULK_PAIRS_KEY = "ref_bulk_pairs"
 
 
-def _render_bulk_panel(
-    db_path: Path, codigo: str | None, all_cids: list[str]
-) -> None:
+def _render_bulk_panel(db_path: Path, codigo: str | None, all_cids: list[str]) -> None:
     """Panel de aceptación/rechazo MASIVO de vínculos marca↔referente.
 
     Filtra por estado, modalidad, función (inclusiva y NEGATIVA) y referentes
@@ -298,53 +308,69 @@ def _render_bulk_panel(
         c1, c2 = st.columns(2)
         with c1:
             status_src = st.selectbox(
-                "Estado a afectar", ["proposed", "accepted", "rejected"],
+                "Estado a afectar",
+                ["proposed", "accepted", "rejected"],
                 format_func=lambda s: {
-                    "proposed": "pendientes", "accepted": "aceptados",
+                    "proposed": "pendientes",
+                    "accepted": "aceptados",
                     "rejected": "rechazados",
                 }[s],
                 key="bulk_status_src",
             )
             mods = st.multiselect(
-                "Modalidad", _MOD_OPCIONES,
+                "Modalidad",
+                _MOD_OPCIONES,
                 format_func=lambda m: _MOD_LABEL.get(m, m),
-                key="bulk_mod", placeholder="cualquiera",
+                key="bulk_mod",
+                placeholder="cualquiera",
             )
         with c2:
             inc_f = st.multiselect(
-                "Función incluye", ["actor", "experienciador", "fuente"],
-                key="bulk_incf", placeholder="cualquiera",
+                "Función incluye",
+                ["actor", "experienciador", "fuente"],
+                key="bulk_incf",
+                placeholder="cualquiera",
             )
             exc_f = st.multiselect(
-                "Función NO incluye", ["actor", "experienciador", "fuente"],
-                key="bulk_excf", placeholder="ninguna",
+                "Función NO incluye",
+                ["actor", "experienciador", "fuente"],
+                key="bulk_excf",
+                placeholder="ninguna",
             )
         exc_ref = st.multiselect(
-            "Excluir referentes (no tocar)", all_cids,
+            "Excluir referentes (no tocar)",
+            all_cids,
             key="bulk_excref",
             placeholder="p. ej. javier_milei, mercado",
         )
         inc_ref = st.multiselect(
-            "Limitar a estos referentes (opcional)", all_cids,
-            key="bulk_incref", placeholder="cualquiera",
+            "Limitar a estos referentes (opcional)",
+            all_cids,
+            key="bulk_incref",
+            placeholder="cualquiera",
         )
 
         if st.button("🔎 Calcular coincidencias", key="bulk_calc"):
             st.session_state[_BULK_PAIRS_KEY] = data_layer.bulk_links(
-                db_path, codigo, status_src, mods or None,
-                inc_f or None, exc_f or None, inc_ref or None, exc_ref or None,
+                db_path,
+                codigo,
+                status_src,
+                mods or None,
+                inc_f or None,
+                exc_f or None,
+                inc_ref or None,
+                exc_ref or None,
             )
         pairs = st.session_state.get(_BULK_PAIRS_KEY, [])
         n = len(pairs)
         st.markdown(
-            f"<span style='color:var(--text-soft);'>Coincidencias: <b>{n}</b> "
-            f"vínculo(s).</span>", unsafe_allow_html=True,
+            f"<span style='color:var(--text-soft);'>Coincidencias: <b>{n}</b> vínculo(s).</span>",
+            unsafe_allow_html=True,
         )
         if n:
             b1, b2, b3 = st.columns([1.2, 1.2, 1.6])
             with b1:
-                if st.button(f"✓ Aceptar {n}", key="bulk_acc",
-                             use_container_width=True):
+                if st.button(f"✓ Aceptar {n}", key="bulk_acc", use_container_width=True):
                     actions_layer.bulk_set_link_status(db_path, pairs, "accepted")
                     st.session_state.pop(_BULK_PAIRS_KEY, None)
                     st.toast(f"{n} vínculos aceptados.", icon="✅")
@@ -352,8 +378,12 @@ def _render_bulk_panel(
             with b3:
                 confirm = st.checkbox("confirmar", key="bulk_confirm")
             with b2:
-                if st.button(f"✗ Rechazar {n}", key="bulk_rej",
-                             disabled=not confirm, use_container_width=True):
+                if st.button(
+                    f"✗ Rechazar {n}",
+                    key="bulk_rej",
+                    disabled=not confirm,
+                    use_container_width=True,
+                ):
                     actions_layer.bulk_set_link_status(db_path, pairs, "rejected")
                     st.session_state.pop(_BULK_PAIRS_KEY, None)
                     st.toast(f"{n} vínculos rechazados.", icon="🗑")
@@ -363,9 +393,7 @@ def _render_bulk_panel(
 _MERGE_SUGG_KEY = "ref_merge_sugg"
 
 
-def _render_merge_suggestions(
-    db_path: Path, codigo: str | None, all_cids: list[str]
-) -> None:
+def _render_merge_suggestions(db_path: Path, codigo: str | None, all_cids: list[str]) -> None:
     """Panel de fusiones sugeridas de referentes casi-duplicados (escalable).
 
     Usa `data.suggest_referent_merges` (blocking + similitud, sin LLM). Cada
@@ -379,29 +407,37 @@ def _render_merge_suggestions(
         )
         cc1, cc2 = st.columns([3, 1])
         with cc1:
-            thr = st.slider("Umbral léxico", 0.50, 0.95, 0.62, 0.01,
-                            key="merge_thr")
+            thr = st.slider("Umbral léxico", 0.50, 0.95, 0.62, 0.01, key="merge_thr")
         with cc2:
-            st.markdown("<div style='height:1.6rem;'></div>",
-                        unsafe_allow_html=True)
-            if st.button("🔎 Buscar", key="merge_scan",
-                         use_container_width=True):
-                st.session_state[_MERGE_SUGG_KEY] = \
-                    data_layer.suggest_referent_merges(
-                        db_path, codigo, threshold=thr,
-                        use_embeddings=st.session_state.get("merge_emb", True),
-                        embed_threshold=st.session_state.get("merge_embthr", 0.80),
-                    )
+            st.markdown("<div style='height:1.6rem;'></div>", unsafe_allow_html=True)
+            if st.button("🔎 Buscar", key="merge_scan", use_container_width=True):
+                st.session_state[_MERGE_SUGG_KEY] = data_layer.suggest_referent_merges(
+                    db_path,
+                    codigo,
+                    threshold=thr,
+                    use_embeddings=st.session_state.get("merge_emb", True),
+                    embed_threshold=st.session_state.get("merge_embthr", 0.80),
+                )
         e1, e2 = st.columns([1, 2])
         with e1:
-            st.checkbox("Semántico (embeddings)", value=True, key="merge_emb",
-                        help="Suma candidatos por similitud semántica (vectores "
-                             "spaCy md/lg). Capta sinónimos sin palabras en común; "
-                             "revisá con cuidado (puede acercar entidades distintas).")
+            st.checkbox(
+                "Semántico (embeddings)",
+                value=True,
+                key="merge_emb",
+                help="Suma candidatos por similitud semántica (vectores "
+                "spaCy md/lg). Capta sinónimos sin palabras en común; "
+                "revisá con cuidado (puede acercar entidades distintas).",
+            )
         with e2:
-            st.slider("Umbral semántico", 0.70, 0.95, 0.80, 0.01,
-                      key="merge_embthr",
-                      disabled=not st.session_state.get("merge_emb", True))
+            st.slider(
+                "Umbral semántico",
+                0.70,
+                0.95,
+                0.80,
+                0.01,
+                key="merge_embthr",
+                disabled=not st.session_state.get("merge_emb", True),
+            )
         groups = st.session_state.get(_MERGE_SUGG_KEY)
         if groups is None:
             return
@@ -423,14 +459,16 @@ def _render_merge_suggestions(
                 incluidos: list[str] = []
                 for k, m in enumerate(members):
                     with cols[k % len(cols)]:
-                        if st.checkbox(f"{m} ({nm.get(m, 0)})", value=True,
-                                       key=f"merge_chk_{gid}_{m}"):
+                        if st.checkbox(
+                            f"{m} ({nm.get(m, 0)})", value=True, key=f"merge_chk_{gid}_{m}"
+                        ):
                             incluidos.append(m)
                 # (b) agregar otros referentes (fuera del grupo sugerido).
                 extra = st.multiselect(
                     "agregar otros referentes a la fusión",
                     [c for c in all_cids if c not in members],
-                    key=f"merge_add_{gid}", placeholder="opcional",
+                    key=f"merge_add_{gid}",
+                    placeholder="opcional",
                 )
                 seleccion = incluidos + extra
                 opciones = seleccion or members
@@ -439,24 +477,28 @@ def _render_merge_suggestions(
                 m1, m2, m3 = st.columns([2, 2, 1])
                 with m1:
                     target = st.selectbox(
-                        "fusionar en", opciones,
+                        "fusionar en",
+                        opciones,
                         index=opciones.index(default_t),
                         key=f"merge_tgt_{gid}",
                     )
                 with m2:
                     # (c) nombre canónico resultante (default = destino).
                     final_name = st.text_input(
-                        "nombre resultante", value=target,
+                        "nombre resultante",
+                        value=target,
                         key=f"merge_name_{gid}",
                     ).strip()
                 with m3:
-                    st.markdown("<div style='height:1.7rem;'></div>",
-                                unsafe_allow_html=True)
+                    st.markdown("<div style='height:1.7rem;'></div>", unsafe_allow_html=True)
                     n_src = len([m for m in seleccion if m != target])
                     rename = bool(final_name) and final_name != target
-                    if st.button("Fusionar", key=f"merge_do_{gid}",
-                                 use_container_width=True,
-                                 disabled=(n_src == 0 and not rename)):
+                    if st.button(
+                        "Fusionar",
+                        key=f"merge_do_{gid}",
+                        use_container_width=True,
+                        disabled=(n_src == 0 and not rename),
+                    ):
                         for m in seleccion:
                             if m != target:
                                 actions_layer.merge_canonicals(db_path, m, target)
@@ -465,14 +507,16 @@ def _render_merge_suggestions(
                             # slugifica; si el slug coincide, es no-op).
                             actions_layer.merge_canonicals(db_path, target, final_name)
                         st.session_state[_MERGE_SUGG_KEY] = [
-                            x for x in (st.session_state.get(_MERGE_SUGG_KEY) or [])
+                            x
+                            for x in (st.session_state.get(_MERGE_SUGG_KEY) or [])
                             if "-".join(x["members"]) != gid
                         ]
                         st.toast(f"Fusionado → «{final_name or target}».", icon="✅")
                         st.rerun()
                 if st.button("descartar grupo", key=f"merge_skip_{gid}"):
                     st.session_state[_MERGE_SUGG_KEY] = [
-                        x for x in (st.session_state.get(_MERGE_SUGG_KEY) or [])
+                        x
+                        for x in (st.session_state.get(_MERGE_SUGG_KEY) or [])
                         if "-".join(x["members"]) != gid
                     ]
                     st.rerun()
@@ -516,7 +560,9 @@ def _render_referente(
         st.session_state[_MPAGE_CID_KEY] = cid_tok
 
     only_pending = st.toggle(
-        "Solo sin aceptar", value=False, key="ref_marca_only_pending",
+        "Solo sin aceptar",
+        value=False,
+        key="ref_marca_only_pending",
         help="Muestra solo las marcas que todavía no aceptaste.",
     )
     if only_pending and "status" in marks.columns:
@@ -537,13 +583,18 @@ def _render_referente(
     if n_pages > 1:
         pp1, pp2, pp3 = st.columns([1, 3, 1])
         with pp1:
-            if st.button("◀ anterior", key="ref_mprev", disabled=page == 0,
-                         use_container_width=True):
+            if st.button(
+                "◀ anterior", key="ref_mprev", disabled=page == 0, use_container_width=True
+            ):
                 st.session_state[_MPAGE_KEY] = page - 1
                 st.rerun()
         with pp3:
-            if st.button("siguiente ▶", key="ref_mnext",
-                         disabled=page >= n_pages - 1, use_container_width=True):
+            if st.button(
+                "siguiente ▶",
+                key="ref_mnext",
+                disabled=page >= n_pages - 1,
+                use_container_width=True,
+            ):
                 st.session_state[_MPAGE_KEY] = page + 1
                 st.rerun()
         with pp2:
@@ -555,7 +606,7 @@ def _render_referente(
             )
 
     emo_brief = data_layer.get_frase_emociones_brief(db_path)
-    for _, row in marks.iloc[page * per:(page + 1) * per].iterrows():
+    for _, row in marks.iloc[page * per : (page + 1) * per].iterrows():
         _render_marca_card(db_path, canonical_id, row, items, all_cids, emo_brief)
 
 
@@ -571,7 +622,6 @@ def _render_kb_panel(
     kb_entry = actions_layer.get_kb_entry(canonical_id)
 
     with st.expander("⚙ Editar en KB / Renombrar / Eliminar", expanded=False):
-
         # ── Edición de campos KB (un solo Guardar) ────────────────────────────
         st.markdown(
             "<span style='font-size:0.78rem;color:var(--text-dim);'>display_name</span>",
@@ -637,8 +687,7 @@ def _render_kb_panel(
         ).strip()
         with rn_btn:
             st.markdown("<div style='height:0.35rem;'></div>", unsafe_allow_html=True)
-            if st.button("Renombrar", key=f"rename_btn_{canonical_id}",
-                         use_container_width=True):
+            if st.button("Renombrar", key=f"rename_btn_{canonical_id}", use_container_width=True):
                 if nuevo_id and nuevo_id != canonical_id:
                     res = actions_layer.rename_canonical(db_path, canonical_id, nuevo_id)
                     st.toast(
@@ -669,14 +718,10 @@ def _render_kb_panel(
                 label_visibility="collapsed",
             )
             with mg_btn:
-                st.markdown("<div style='height:0.35rem;'></div>",
-                            unsafe_allow_html=True)
-                if st.button("Mergear", key=f"merge_btn_{canonical_id}",
-                             use_container_width=True):
+                st.markdown("<div style='height:0.35rem;'></div>", unsafe_allow_html=True)
+                if st.button("Mergear", key=f"merge_btn_{canonical_id}", use_container_width=True):
                     if destino_merge != "— elegir destino —":
-                        res = actions_layer.merge_canonicals(
-                            db_path, canonical_id, destino_merge
-                        )
+                        res = actions_layer.merge_canonicals(db_path, canonical_id, destino_merge)
                         st.toast(
                             f"«{canonical_id}» → «{destino_merge}» "
                             f"({res.get('links_merged', 0)} vínculos).",
@@ -697,8 +742,7 @@ def _render_kb_panel(
             "Eliminar canónico (quita todos sus vínculos de la DB y lo borra de la KB)</span>",
             unsafe_allow_html=True,
         )
-        if st.button("🗑 Eliminar canónico", key=f"del_canon_{canonical_id}",
-                     type="primary"):
+        if st.button("🗑 Eliminar canónico", key=f"del_canon_{canonical_id}", type="primary"):
             actions_layer.delete_canonical(db_path, canonical_id)
             next_cid = _next_canonical(cur_idx, items)
             _set_active(next_cid)
@@ -718,7 +762,8 @@ def _render_semas_panel(db_path: Path, canonical_id: str) -> None:
     with st.expander("🏷 Semas del referente", expanded=False):
         # Semas vigentes (no rechazados; `no_aplica` es relleno, se oculta).
         vig = [
-            s for s in data_layer.list_canonico_semas(db_path, canonical_id)
+            s
+            for s in data_layer.list_canonico_semas(db_path, canonical_id)
             if s.get("status") != "rejected"
             and str(s.get("sema") or "").strip()
             and str(s.get("sema")) != "no_aplica"
@@ -743,8 +788,11 @@ def _render_semas_panel(db_path: Path, canonical_id: str) -> None:
         sobrantes = sorted(asignados - claimed)
         if sobrantes:
             _render_sema_dim(
-                db_path, canonical_id, "otros",
-                [by_sema[s] for s in sobrantes], muted=True,
+                db_path,
+                canonical_id,
+                "otros",
+                [by_sema[s] for s in sobrantes],
+                muted=True,
             )
 
         # ── Agregar: valores aplicables no asignados, etiquetados por dimensión ─
@@ -759,21 +807,23 @@ def _render_semas_panel(db_path: Path, canonical_id: str) -> None:
             st.divider()
             ac1, ac2 = st.columns([5, 1])
             nuevos = ac1.multiselect(
-                "agregar semas", opciones,
+                "agregar semas",
+                opciones,
                 key=f"sema_add_{canonical_id}",
                 label_visibility="collapsed",
                 format_func=lambda v: etiqueta.get(v, v),
                 placeholder="agregar semas del vocabulario…",
             )
             with ac2:
-                st.markdown("<div style='height:0.35rem;'></div>",
-                            unsafe_allow_html=True)
-                if st.button("＋", key=f"sema_addbtn_{canonical_id}",
-                             use_container_width=True, disabled=not nuevos):
+                st.markdown("<div style='height:0.35rem;'></div>", unsafe_allow_html=True)
+                if st.button(
+                    "＋",
+                    key=f"sema_addbtn_{canonical_id}",
+                    use_container_width=True,
+                    disabled=not nuevos,
+                ):
                     for sema in nuevos:
-                        actions_layer.referente_set_sema(
-                            db_path, canonical_id, sema, "accepted"
-                        )
+                        actions_layer.referente_set_sema(db_path, canonical_id, sema, "accepted")
                     st.toast(f"{len(nuevos)} sema(s) agregado(s).", icon="✅")
                     st.rerun()
 
@@ -811,16 +861,15 @@ def _render_sema_dim(
             f" · {html.escape(origin)}</span>",
             unsafe_allow_html=True,
         )
-        if c2.button("✗", key=f"sema_rm_{canonical_id}_{sema}",
-                     help="Quitar sema", use_container_width=True):
+        if c2.button(
+            "✗", key=f"sema_rm_{canonical_id}_{sema}", help="Quitar sema", use_container_width=True
+        ):
             actions_layer.referente_remove_sema(db_path, canonical_id, sema)
             st.toast(f"Sema «{sema}» quitado.", icon="🗑")
             st.rerun()
 
 
-def _next_canonical(
-    cur_idx: int, items: list[tuple[str | None, str]]
-) -> str | None:
+def _next_canonical(cur_idx: int, items: list[tuple[str | None, str]]) -> str | None:
     """Devuelve el canonical_id al que ir tras eliminar el actual."""
     # Preferir el siguiente; si era el último, ir al anterior
     if cur_idx + 1 < len(items):
@@ -831,6 +880,7 @@ def _next_canonical(
 
 
 # ── Tarjeta de una marca ──────────────────────────────────────────────────────
+
 
 def _render_marca_card(
     db_path: Path,
@@ -872,9 +922,7 @@ def _render_marca_card(
         mcol = _MOD_COLOR.get(modalidad, "var(--text-dim)")
         mlbl = _MOD_LABEL.get(modalidad, str(modalidad))
         nat_txt = f" · {html.escape(str(naturaleza))}" if naturaleza else ""
-        orig_txt = {"human": " ✎", "llm": " ᴸᴸᴹ", "nlp": " ᴺᴸᴾ"}.get(
-            str(mod_origin), ""
-        )
+        orig_txt = {"human": " ✎", "llm": " ᴸᴸᴹ", "nlp": " ᴺᴸᴾ"}.get(str(mod_origin), "")
         mod_badge = (
             f"<span style='font-size:0.68rem;color:{mcol};"
             f"border:1px solid {mcol}55;border-radius:4px;"
@@ -897,7 +945,7 @@ def _render_marca_card(
                 for b in briefs
             ]
             texto = "Emociones de la frase:\n" + "\n".join(lineas)
-            tip_attr = " title=\"" + html.escape(texto, quote=True).replace("\n", "&#10;") + "\""
+            tip_attr = ' title="' + html.escape(texto, quote=True).replace("\n", "&#10;") + '"'
             tip_hint = (
                 "<span style='color:var(--dim);font-size:0.7rem;margin-left:6px;'>"
                 "🛈 emociones</span>"
@@ -926,16 +974,15 @@ def _render_marca_card(
         # La posición vive en _SEL_KEY (que estas acciones no tocan), así que el
         # rerun refleja el cambio al instante sin perder el referente activo.
         if cid:
-            if a1.button("✓ aceptar", key=f"acc_{mencion_id}_{cid}",
-                         use_container_width=True):
+            if a1.button("✓ aceptar", key=f"acc_{mencion_id}_{cid}", use_container_width=True):
                 actions_layer.mencion_accept(db_path, mencion_id, cid)
                 st.rerun()
-            if a2.button("✗ rechazar", key=f"rej_{mencion_id}_{cid}",
-                         use_container_width=True):
+            if a2.button("✗ rechazar", key=f"rej_{mencion_id}_{cid}", use_container_width=True):
                 actions_layer.mencion_reject(db_path, mencion_id, cid)
                 st.rerun()
-            if a3.button("🗑", key=f"del_{mencion_id}_{cid}",
-                         help="Quitar vínculo", use_container_width=True):
+            if a3.button(
+                "🗑", key=f"del_{mencion_id}_{cid}", help="Quitar vínculo", use_container_width=True
+            ):
                 actions_layer.mencion_remove_link(db_path, mencion_id, cid)
                 st.rerun()
 
@@ -959,8 +1006,7 @@ def _render_marca_card(
             destino = nuevo_libre or (
                 sel_existing if sel_existing != "— elegir existente —" else ""
             )
-            if destino and st.button("＋ asignar",
-                                     key=f"add_{mencion_id}_{canonical_id}"):
+            if destino and st.button("＋ asignar", key=f"add_{mencion_id}_{canonical_id}"):
                 actions_layer.mencion_add_link(db_path, mencion_id, destino)
                 st.toast(f"Marca «{marca}» asignada a «{destino}».", icon="✅")
                 st.rerun()
@@ -975,22 +1021,28 @@ def _render_marca_card(
                 mc1, mc2, mc3 = st.columns([2, 2, 1])
                 with mc1:
                     new_mod = st.selectbox(
-                        "modalidad", mopts, index=m_idx,
+                        "modalidad",
+                        mopts,
+                        index=m_idx,
                         format_func=lambda m: _MOD_LABEL.get(m, m),
                         key=f"mod_{mencion_id}_{cid}",
                     )
                 with mc2:
                     new_nat = st.selectbox(
-                        "naturaleza", nopts, index=n_idx,
+                        "naturaleza",
+                        nopts,
+                        index=n_idx,
                         key=f"nat_{mencion_id}_{cid}",
                     )
                 with mc3:
-                    st.markdown("<div style='height:1.7rem;'></div>",
-                                unsafe_allow_html=True)
-                    if st.button("guardar", key=f"modsave_{mencion_id}_{cid}",
-                                 use_container_width=True):
+                    st.markdown("<div style='height:1.7rem;'></div>", unsafe_allow_html=True)
+                    if st.button(
+                        "guardar", key=f"modsave_{mencion_id}_{cid}", use_container_width=True
+                    ):
                         actions_layer.mencion_set_modalidad(
-                            db_path, mencion_id, cid,
+                            db_path,
+                            mencion_id,
+                            cid,
                             None if new_mod == "(sin)" else new_mod,
                             None if new_nat == "(sin)" else new_nat,
                         )
@@ -1026,7 +1078,8 @@ def _render_marca_card(
                         )
                     with ec2:
                         sel = st.multiselect(
-                            "nuevo experienciador", all_cids,
+                            "nuevo experienciador",
+                            all_cids,
                             key=f"expat_sel_{mencion_id}_{eidx}",
                             label_visibility="collapsed",
                             placeholder="elegí uno o más experienciadores",
@@ -1036,23 +1089,29 @@ def _render_marca_card(
                         modo_actual = str(b.get("modo") or "")
                         idx_def = (
                             _MODOS_EXISTENCIA.index(modo_actual)
-                            if modo_actual in _MODOS_EXISTENCIA else 0
+                            if modo_actual in _MODOS_EXISTENCIA
+                            else 0
                         )
                         mcols = st.columns(min(len(sel), 4))
                         for k, cid in enumerate(sel):
                             with mcols[k % len(mcols)]:
-                                modos_sel.append(st.selectbox(
-                                    f"modo · {cid}", _MODOS_EXISTENCIA,
-                                    index=idx_def,
-                                    key=f"expat_modo_{mencion_id}_{eidx}_{k}",
-                                ))
+                                modos_sel.append(
+                                    st.selectbox(
+                                        f"modo · {cid}",
+                                        _MODOS_EXISTENCIA,
+                                        index=idx_def,
+                                        key=f"expat_modo_{mencion_id}_{eidx}_{k}",
+                                    )
+                                )
                     bc1, bc2, _ = st.columns([1, 1, 3])
                     with bc1:
-                        if st.button("asignar", key=f"expat_btn_{mencion_id}_{eidx}",
-                                     use_container_width=True):
+                        if st.button(
+                            "asignar",
+                            key=f"expat_btn_{mencion_id}_{eidx}",
+                            use_container_width=True,
+                        ):
                             if not sel:
-                                st.toast("Elegí al menos un experienciador.",
-                                         icon="⚠️")
+                                st.toast("Elegí al menos un experienciador.", icon="⚠️")
                             elif len(sel) == 1:
                                 actions_layer.emocion_set_experiencer_at(
                                     db_path, codigo, int(unit), eidx, sel[0]
@@ -1064,8 +1123,12 @@ def _render_marca_card(
                                 st.rerun()
                             else:
                                 res = actions_layer.emocion_split_experiencers(
-                                    db_path, codigo, int(unit), eidx,
-                                    sel, modos_sel,
+                                    db_path,
+                                    codigo,
+                                    int(unit),
+                                    eidx,
+                                    sel,
+                                    modos_sel,
                                 )
                                 st.toast(
                                     f"Emoción #{eidx} desdoblada: "
@@ -1074,14 +1137,16 @@ def _render_marca_card(
                                 )
                                 st.rerun()
                     with bc2:
-                        if st.button("limpiar", key=f"expat_clr_{mencion_id}_{eidx}",
-                                     use_container_width=True,
-                                     help="Volver a resolver por marca."):
+                        if st.button(
+                            "limpiar",
+                            key=f"expat_clr_{mencion_id}_{eidx}",
+                            use_container_width=True,
+                            help="Volver a resolver por marca.",
+                        ):
                             actions_layer.emocion_set_experiencer_at(
                                 db_path, codigo, int(unit), eidx, None
                             )
-                            st.toast(f"Emoción #{eidx}: experienciador limpiado.",
-                                     icon="✅")
+                            st.toast(f"Emoción #{eidx}: experienciador limpiado.", icon="✅")
                             st.rerun()
 
         # ── Atribución de fuente por emoción (desarticular) ───────────────────
@@ -1109,15 +1174,19 @@ def _render_marca_card(
                         )
                     with fc2:
                         sel = st.multiselect(
-                            "nueva fuente", all_cids,
+                            "nueva fuente",
+                            all_cids,
                             key=f"fteat_sel_{mencion_id}_{eidx}",
                             label_visibility="collapsed",
                             placeholder="elegí una o más fuentes",
                         )
                     bc1, bc2, _ = st.columns([1, 1, 3])
                     with bc1:
-                        if st.button("asignar", key=f"fteat_btn_{mencion_id}_{eidx}",
-                                     use_container_width=True):
+                        if st.button(
+                            "asignar",
+                            key=f"fteat_btn_{mencion_id}_{eidx}",
+                            use_container_width=True,
+                        ):
                             if not sel:
                                 st.toast("Elegí al menos una fuente.", icon="⚠️")
                             else:
@@ -1125,20 +1194,21 @@ def _render_marca_card(
                                     db_path, codigo, int(unit), eidx, sel
                                 )
                                 st.toast(
-                                    f"Emoción #{eidx}: fuente → "
-                                    f"«{'; '.join(sel)}».",
+                                    f"Emoción #{eidx}: fuente → «{'; '.join(sel)}».",
                                     icon="✅",
                                 )
                                 st.rerun()
                     with bc2:
-                        if st.button("limpiar", key=f"fteat_clr_{mencion_id}_{eidx}",
-                                     use_container_width=True,
-                                     help="Volver a resolver por marca."):
+                        if st.button(
+                            "limpiar",
+                            key=f"fteat_clr_{mencion_id}_{eidx}",
+                            use_container_width=True,
+                            help="Volver a resolver por marca.",
+                        ):
                             actions_layer.emocion_set_fuente_at(
                                 db_path, codigo, int(unit), eidx, None
                             )
-                            st.toast(f"Emoción #{eidx}: fuente limpiada.",
-                                     icon="✅")
+                            st.toast(f"Emoción #{eidx}: fuente limpiada.", icon="✅")
                             st.rerun()
 
 
@@ -1155,6 +1225,5 @@ def _highlight(frase: str, marca: str) -> str:
     return (
         f[:idx]
         + "<mark style='background:var(--accent-dark);color:var(--accent-bright);padding:0 2px;"
-        f"border-radius:3px;'>{f[idx:idx + len(m)]}</mark>"
-        + f[idx + len(m):]
+        f"border-radius:3px;'>{f[idx : idx + len(m)]}</mark>" + f[idx + len(m) :]
     )

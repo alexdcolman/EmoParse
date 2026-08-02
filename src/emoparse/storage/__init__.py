@@ -4,9 +4,9 @@ Expone repositorios y modelos principales.
 """
 
 from emoparse.storage.db import Database
-from emoparse.storage.discursos import DiscursoStage, DiscursosRepository
+from emoparse.storage.discursos import DiscursosRepository, DiscursoStage
 from emoparse.storage.emociones import EmocionesRepository
-from emoparse.storage.frases import FraseStage, FrasesRepository
+from emoparse.storage.frases import FrasesRepository, FraseStage
 from emoparse.storage.judgments import JudgmentsRepository
 from emoparse.storage.metrics import (
     MetricsRepository,

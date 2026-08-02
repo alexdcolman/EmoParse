@@ -12,15 +12,13 @@ from __future__ import annotations
 import html
 import json
 from pathlib import Path
-from typing import Any
 
 import pandas as pd
 import streamlit as st
 
+from emoparse.app import _knowledge
 from emoparse.app import actions as actions_layer
 from emoparse.app import data as data_layer
-from emoparse.app import _knowledge
-from emoparse.core.text import canonical_slug
 
 _DEST_DEFAULT = ["prodestinatario", "paradestinatario", "contradestinatario"]
 
@@ -34,9 +32,7 @@ def render(db_path: Path) -> None:
         st.info("No hay discursos en este run.")
         return
 
-    labels = {
-        (f"{cod} — {tit}" if tit else cod): cod for cod, tit in discursos
-    }
+    labels = {(f"{cod} — {tit}" if tit else cod): cod for cod, tit in discursos}
     sel = st.selectbox("Discurso", list(labels), key="enun_disc")
     codigo = labels[sel]
 
@@ -61,9 +57,11 @@ def render(db_path: Path) -> None:
 
     canonicos = data_layer.list_canonicos(db_path)
     if canonicos:
-        st.caption("Referentes existentes (podés reusar estos nombres): "
-                   + ", ".join(canonicos[:60])
-                   + (" …" if len(canonicos) > 60 else ""))
+        st.caption(
+            "Referentes existentes (podés reusar estos nombres): "
+            + ", ".join(canonicos[:60])
+            + (" …" if len(canonicos) > 60 else "")
+        )
 
     st.divider()
 
@@ -81,27 +79,30 @@ def render(db_path: Path) -> None:
     )
     with pe2:
         st.markdown("<div style='height:1.8rem;'></div>", unsafe_allow_html=True)
-        if st.button("usar", key=f"enun_euse_{codigo}",
-                     use_container_width=True, disabled=existente == "—"):
+        if st.button(
+            "usar", key=f"enun_euse_{codigo}", use_container_width=True, disabled=existente == "—"
+        ):
             st.session_state[e_key] = existente
             st.rerun()
 
     e1, e2 = st.columns([2, 3])
     enunciador = e1.text_input("Enunciador", key=e_key)
     just = e2.text_input(
-        "Justificación", value=data["enunciador_justificacion"],
+        "Justificación",
+        value=data["enunciador_justificacion"],
         key=f"enun_ej_{codigo}",
     )
 
     # ── Enunciatarios ─────────────────────────────────────────────────────────
     st.markdown("#### Enunciatarios")
     tipo_opts = sorted(
-        {str(e.get("tipo")) for e in data["enunciatarios"] if e.get("tipo")}
-        | set(_DEST_DEFAULT)
+        {str(e.get("tipo")) for e in data["enunciatarios"] if e.get("tipo")} | set(_DEST_DEFAULT)
     )
     edited_enun = st.data_editor(
         _to_df(data["enunciatarios"], ["actor", "tipo", "justificacion"]),
-        num_rows="dynamic", hide_index=True, use_container_width=True,
+        num_rows="dynamic",
+        hide_index=True,
+        use_container_width=True,
         key=f"enun_eds_{codigo}",
         column_config={
             "actor": st.column_config.TextColumn("actor"),
@@ -114,7 +115,9 @@ def render(db_path: Path) -> None:
     st.markdown("#### Auditorio (destinatario directo)")
     edited_aud = st.data_editor(
         _to_df(data["auditorio"], ["actor", "justificacion"]),
-        num_rows="dynamic", hide_index=True, use_container_width=True,
+        num_rows="dynamic",
+        hide_index=True,
+        use_container_width=True,
         key=f"enun_aud_{codigo}",
         column_config={
             "actor": st.column_config.TextColumn("auditorio"),
@@ -130,7 +133,9 @@ def render(db_path: Path) -> None:
     )
     edited_col = st.data_editor(
         _to_df(data["colectivos"], ["nombre", "clase", "justificacion"]),
-        num_rows="dynamic", hide_index=True, use_container_width=True,
+        num_rows="dynamic",
+        hide_index=True,
+        use_container_width=True,
         key=f"enun_col_{codigo}",
         column_config={
             "nombre": st.column_config.TextColumn("nombre"),
@@ -142,10 +147,8 @@ def render(db_path: Path) -> None:
     st.divider()
     b1, b2 = st.columns([1, 1])
     with b1:
-        if st.button("💾 Guardar enunciación", type="primary",
-                     key=f"enun_save_{codigo}"):
-            _save(db_path, codigo, data, enunciador, just,
-                  edited_enun, edited_aud, edited_col)
+        if st.button("💾 Guardar enunciación", type="primary", key=f"enun_save_{codigo}"):
+            _save(db_path, codigo, data, enunciador, just, edited_enun, edited_aud, edited_col)
     with b2:
         if st.button(
             "⬆ Promover a KB de enunciación",
@@ -172,6 +175,7 @@ def render(db_path: Path) -> None:
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def _cell(rec: dict, col: str) -> str:
     v = rec.get(col)
     if v is None or (isinstance(v, float) and pd.isna(v)):
@@ -180,10 +184,7 @@ def _cell(rec: dict, col: str) -> str:
 
 
 def _to_df(items: list, cols: list[str]) -> pd.DataFrame:
-    rows = [
-        {c: str(it.get(c, "") or "") for c in cols}
-        for it in items if isinstance(it, dict)
-    ]
+    rows = [{c: str(it.get(c, "") or "") for c in cols} for it in items if isinstance(it, dict)]
     return pd.DataFrame(rows, columns=cols)
 
 
@@ -196,8 +197,7 @@ def _records(df: pd.DataFrame, key_col: str, cols: list[str]) -> list[dict]:
     return out
 
 
-def _save(db_path, codigo, old, enunciador, just,
-          edited_enun, edited_aud, edited_col) -> None:
+def _save(db_path, codigo, old, enunciador, just, edited_enun, edited_aud, edited_col) -> None:
     enunciatarios = _records(edited_enun, "actor", ["actor", "tipo", "justificacion"])
     auditorio = _records(edited_aud, "actor", ["actor", "justificacion"])
     colectivos = _records(edited_col, "nombre", ["nombre", "clase", "justificacion"])

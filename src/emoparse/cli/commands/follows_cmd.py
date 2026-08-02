@@ -73,21 +73,20 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         type=Path,
         default=None,
         help="Archivo con un handle por línea. Necesario cuando el corpus "
-             "está seudonimizado: la DB guarda alias, que no se pueden "
-             "consultar en la plataforma.",
+        "está seudonimizado: la DB guarda alias, que no se pueden "
+        "consultar en la plataforma.",
     )
     p.add_argument(
         "--pseudonymize",
         action="store_true",
         help="Escribe las aristas con los alias de --salt, para que el grafo "
-             "quede en los mismos términos que un corpus seudonimizado.",
+        "quede en los mismos términos que un corpus seudonimizado.",
     )
     p.add_argument(
         "--salt",
         type=Path,
         default=None,
-        help="Archivo de sal de la seudonimización (el mismo que usó "
-             "`acquire --pseudonymize`).",
+        help="Archivo de sal de la seudonimización (el mismo que usó `acquire --pseudonymize`).",
     )
     p.add_argument(
         "--seed",
@@ -106,8 +105,8 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--rehacer",
         action="store_true",
         help="Descarta el grafo persistido y vuelve a consultar todas las "
-             "cuentas. Sin esta flag, se reanuda: solo se consultan las que "
-             "todavía no tienen aristas.",
+        "cuentas. Sin esta flag, se reanuda: solo se consultan las que "
+        "todavía no tienen aristas.",
     )
     p.add_argument(
         "--timeout",
@@ -151,17 +150,14 @@ def run(args: argparse.Namespace) -> int:
         return 2
     if not getattr(adapter, "supports_follows", False):
         logger.error(
-            f"[follows] La fuente '{args.source}' no expone el seguimiento "
-            "de las cuentas."
+            f"[follows] La fuente '{args.source}' no expone el seguimiento de las cuentas."
         )
         adapter.close()
         return 2
 
     alias = Pseudonymizer(args.salt).alias if args.pseudonymize else None
     previas = pd.DataFrame() if args.rehacer else red_repo.load_edges(GRAFO_FOLLOW)
-    ya_resueltas = (
-        set(previas["origen"].astype(str).str.lower()) if not previas.empty else set()
-    )
+    ya_resueltas = set(previas["origen"].astype(str).str.lower()) if not previas.empty else set()
     if ya_resueltas:
         logger.info(
             f"[follows] Reanudo: {len(ya_resueltas)} cuenta(s) ya tenían "
@@ -175,9 +171,7 @@ def run(args: argparse.Namespace) -> int:
             for handle, clave in consultables:
                 if (alias(handle) if alias else handle).lower() in ya_resueltas:
                     continue
-                nuevas = _follows_de(
-                    adapter, handle, clave, corpus, alias, args.max_follows
-                )
+                nuevas = _follows_de(adapter, handle, clave, corpus, alias, args.max_follows)
                 filas.extend(nuevas)
                 consultadas += 1
                 logger.info(
@@ -205,9 +199,8 @@ def run(args: argparse.Namespace) -> int:
 #  Helpers
 # ══════════════════════════════════════════════════════════════════════════════
 
-def _medir_y_persistir(
-    red_repo: RedRepository, df: "pd.DataFrame", seed: int
-) -> tuple[int, int]:
+
+def _medir_y_persistir(red_repo: RedRepository, df: pd.DataFrame, seed: int) -> tuple[int, int]:
     """Calcula métricas y comunidades del grafo de follows y las persiste.
 
     El grafo de seguimiento es dirigido (A sigue a B no implica B sigue a A);
@@ -302,14 +295,16 @@ def _follows_de(
         destino_clave = alias(destino).lower() if alias else destino
         if destino_clave not in corpus or destino_clave == clave:
             continue
-        filas.append({
-            "grafo": GRAFO_FOLLOW,
-            "origen": clave,
-            "destino": destino_clave,
-            # El seguimiento no se materializa en ningún post ni tiene fecha
-            # que la plataforma exponga: son aristas de estado, no de acto.
-            "post_id": None,
-            "peso": 1.0,
-            "fecha": None,
-        })
+        filas.append(
+            {
+                "grafo": GRAFO_FOLLOW,
+                "origen": clave,
+                "destino": destino_clave,
+                # El seguimiento no se materializa en ningún post ni tiene fecha
+                # que la plataforma exponga: son aristas de estado, no de acto.
+                "post_id": None,
+                "peso": 1.0,
+                "fecha": None,
+            }
+        )
     return filas

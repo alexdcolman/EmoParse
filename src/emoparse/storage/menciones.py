@@ -17,8 +17,10 @@
 
 from __future__ import annotations
 
+from datetime import UTC
 from typing import Any
 
+from emoparse.core.text import canonical_slug
 from emoparse.pipeline.deixis import is_first_person_deictic
 from emoparse.storage.db import Database
 from emoparse.storage.referencia import (
@@ -26,7 +28,6 @@ from emoparse.storage.referencia import (
     es_referente_desconocido,
     split_coordinacion,
 )
-from emoparse.core.text import canonical_slug
 
 
 def _norm(s: Any) -> str:
@@ -71,9 +72,7 @@ def _acumular_single(
         if not _es_desconocido(inferencia):
             entry["llm_inferencia"] = inferencia
             propuesto = canonical_slug(inferencia)
-            entry["canonical_proposed"] = (
-                None if es_canonico_invalido(propuesto) else propuesto
-            )
+            entry["canonical_proposed"] = None if es_canonico_invalido(propuesto) else propuesto
     entry["funciones"].add(funcion)
 
 
@@ -104,13 +103,19 @@ def _acumular(
     i_parts = split_coordinacion(_norm(inferencia))
     if len(m_parts) < 2 or len(i_parts) != len(m_parts):
         _acumular_single(
-            acc, unit_idx=unit_idx, marca=marca, funcion=funcion,
+            acc,
+            unit_idx=unit_idx,
+            marca=marca,
+            funcion=funcion,
             inferencia=inferencia,
         )
         return
     for idx, mp in enumerate(m_parts):
         _acumular_single(
-            acc, unit_idx=unit_idx, marca=mp, funcion=funcion,
+            acc,
+            unit_idx=unit_idx,
+            marca=mp,
+            funcion=funcion,
             inferencia=i_parts[idx],
         )
 
@@ -210,15 +215,13 @@ class MencionesRepository:
         counts = {"menciones": 0, "funciones": 0, "canonicos": 0}
         with self._db.transaction() as cur:
             cur.execute(
-                "DELETE FROM menciones "
-                "WHERE codigo = ? AND origin != 'technoparse'",
+                "DELETE FROM menciones WHERE codigo = ? AND origin != 'technoparse'",
                 (codigo,),
             )
             preservadas = {
                 (row["unit_idx"], row["marca"]): row["id"]
                 for row in cur.execute(
-                    "SELECT id, unit_idx, marca FROM menciones "
-                    "WHERE codigo = ?",
+                    "SELECT id, unit_idx, marca FROM menciones WHERE codigo = ?",
                     (codigo,),
                 ).fetchall()
             }
@@ -276,8 +279,7 @@ class MencionesRepository:
         counts = {"menciones": 0, "canonicos": 0}
         with self._db.transaction() as cur:
             cur.execute(
-                "DELETE FROM menciones "
-                "WHERE codigo = ? AND origin = 'technoparse'",
+                "DELETE FROM menciones WHERE codigo = ? AND origin = 'technoparse'",
                 (codigo,),
             )
             for s in seeds:
@@ -286,8 +288,7 @@ class MencionesRepository:
                 if not canonical:
                     continue
                 cur.execute(
-                    "SELECT id FROM menciones "
-                    "WHERE codigo = ? AND unit_idx = ? AND marca = ?",
+                    "SELECT id FROM menciones WHERE codigo = ? AND unit_idx = ? AND marca = ?",
                     (codigo, s["unit_idx"], s["marca"]),
                 )
                 row = cur.fetchone()
@@ -345,6 +346,7 @@ class MencionesRepository:
             cluster_mentions_within_discurso,
             pick_representative,
         )
+
         rows = self._db.execute(
             "SELECT id, unit_idx, marca, llm_inferencia FROM menciones "
             "WHERE codigo = ? ORDER BY unit_idx, id",
@@ -445,8 +447,7 @@ class MencionesRepository:
     def list_marcas_for_deixis(self, codigo: str) -> list[dict[str, Any]]:
         """Marcas del discurso candidatas para resolución deíctica (id + marca)."""
         rows = self._db.execute(
-            "SELECT id, unit_idx, marca FROM menciones WHERE codigo = ? "
-            "ORDER BY unit_idx, id",
+            "SELECT id, unit_idx, marca FROM menciones WHERE codigo = ? ORDER BY unit_idx, id",
             (codigo,),
         ).fetchall()
         return [dict(r) for r in rows]
@@ -502,9 +503,9 @@ class MencionesRepository:
         hechos a mano (`origin='human'`) y los demás referentes deícticos
         (que se revisan por separado).
         """
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with self._db.transaction() as cur:
             cur.execute(
                 "UPDATE mencion_canonico SET status = 'accepted', reviewed_at = ? "
@@ -514,9 +515,9 @@ class MencionesRepository:
 
     def reject_deixis_link(self, mencion_id: int, canonical_id: str) -> None:
         """Rechaza un referente deíctico propuesto para una marca."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with self._db.transaction() as cur:
             cur.execute(
                 "UPDATE mencion_canonico SET status = 'rejected', reviewed_at = ? "
@@ -524,9 +525,7 @@ class MencionesRepository:
                 (now, mencion_id, canonical_id),
             )
 
-    def add_deixis_referente(
-        self, mencion_id: int, canonical_id: str, deixis_tipo: str
-    ) -> None:
+    def add_deixis_referente(self, mencion_id: int, canonical_id: str, deixis_tipo: str) -> None:
         """Agrega a mano un referente deíctico a una marca (lo deja aceptado).
 
         Inscribe la marca en el referente concreto, sin desplazar a los otros
@@ -534,12 +533,12 @@ class MencionesRepository:
         rechaza la sugerencia del LLM y se quiere asignar otro referente del
         discurso.
         """
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         canonical_id = canonical_slug(canonical_id)
         if not canonical_id:
             return
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with self._db.transaction() as cur:
             cur.execute(
                 "INSERT INTO mencion_canonico "
@@ -625,8 +624,10 @@ class MencionesRepository:
         added = 0
         with self._db.transaction() as cur:
             for r in rows:
-                for cand in (canonical_slug(r["llm_inferencia"] or ""),
-                             canonical_slug(r["marca"] or "")):
+                for cand in (
+                    canonical_slug(r["llm_inferencia"] or ""),
+                    canonical_slug(r["marca"] or ""),
+                ):
                     target = known_map.get(cand) if cand else None
                     if target:
                         cur.execute(
@@ -639,26 +640,24 @@ class MencionesRepository:
         return added
 
     # ── Revisión (escritura) ───────────────────────────────────────────────
-    def set_link_status(
-        self, mencion_id: int, canonical_id: str, status: str
-    ) -> None:
+    def set_link_status(self, mencion_id: int, canonical_id: str, status: str) -> None:
         """Acepta o rechaza un vínculo marca↔canónico ('accepted'|'rejected'|'proposed')."""
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         with self._db.transaction() as cur:
             cur.execute(
                 "UPDATE mencion_canonico SET status = ?, reviewed_at = ? "
                 "WHERE mencion_id = ? AND canonical_id = ?",
-                (status, datetime.now(timezone.utc), mencion_id, canonical_id),
+                (status, datetime.now(UTC), mencion_id, canonical_id),
             )
 
-    def bulk_set_status(
-        self, pairs: list[tuple[int, str]], status: str
-    ) -> int:
+    def bulk_set_status(self, pairs: list[tuple[int, str]], status: str) -> int:
         """Acepta/rechaza en lote una lista de vínculos (mencion_id, canonical_id)."""
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         if not pairs:
             return 0
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         with self._db.transaction() as cur:
             cur.executemany(
                 "UPDATE mencion_canonico SET status = ?, reviewed_at = ? "
@@ -721,7 +720,8 @@ class MencionesRepository:
 
     def add_human_link(self, mencion_id: int, canonical_id: str) -> None:
         """Agrega (o acepta) un vínculo creado por el analista."""
-        from datetime import datetime, timezone
+        from datetime import datetime
+
         canonical_id = canonical_slug(canonical_id)
         if not canonical_id:
             return
@@ -732,15 +732,14 @@ class MencionesRepository:
                 "VALUES (?, ?, 'accepted', 'human', ?) "
                 "ON CONFLICT(mencion_id, canonical_id) DO UPDATE SET "
                 "status = 'accepted', reviewed_at = excluded.reviewed_at",
-                (mencion_id, canonical_id, datetime.now(timezone.utc)),
+                (mencion_id, canonical_id, datetime.now(UTC)),
             )
 
     def remove_link(self, mencion_id: int, canonical_id: str) -> None:
         """Elimina un vínculo marca↔canónico."""
         with self._db.transaction() as cur:
             cur.execute(
-                "DELETE FROM mencion_canonico "
-                "WHERE mencion_id = ? AND canonical_id = ?",
+                "DELETE FROM mencion_canonico WHERE mencion_id = ? AND canonical_id = ?",
                 (mencion_id, canonical_id),
             )
 
@@ -775,9 +774,7 @@ class MencionesRepository:
                 added += cur.rowcount
         return added
 
-    def set_sema(
-        self, canonical_id: str, sema: str, status: str = "accepted"
-    ) -> None:
+    def set_sema(self, canonical_id: str, sema: str, status: str = "accepted") -> None:
         """Acepta/rechaza o agrega (humano) un sema de un referente."""
         canonical_id = canonical_slug(canonical_id)
         sema = (sema or "").strip().lower()
@@ -803,19 +800,15 @@ class MencionesRepository:
     def list_semas(self, canonical_id: str) -> list[dict[str, Any]]:
         """Semas de un referente con su estado y origen."""
         rows = self._db.execute(
-            "SELECT sema, status, origin FROM canonico_semas "
-            "WHERE canonical_id = ? ORDER BY sema",
+            "SELECT sema, status, origin FROM canonico_semas WHERE canonical_id = ? ORDER BY sema",
             (canonical_slug(canonical_id),),
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def canonicos_by_sema(
-        self, sema: str, status: str = "accepted"
-    ) -> set[str]:
+    def canonicos_by_sema(self, sema: str, status: str = "accepted") -> set[str]:
         """Canónicos que tienen un sema dado (por defecto, aceptado)."""
         rows = self._db.execute(
-            "SELECT canonical_id FROM canonico_semas "
-            "WHERE sema = ? AND status = ?",
+            "SELECT canonical_id FROM canonico_semas WHERE sema = ? AND status = ?",
             ((sema or "").strip().lower(), status),
         ).fetchall()
         return {r["canonical_id"] for r in rows}
@@ -840,9 +833,7 @@ class MencionesRepository:
 
     def canonicos_con_semas(self) -> set[str]:
         """Canónicos que ya tienen algún sema (para no re-proponer)."""
-        rows = self._db.execute(
-            "SELECT DISTINCT canonical_id FROM canonico_semas"
-        ).fetchall()
+        rows = self._db.execute("SELECT DISTINCT canonical_id FROM canonico_semas").fetchall()
         return {r["canonical_id"] for r in rows}
 
     def reset_semas(self) -> int:
@@ -888,11 +879,13 @@ class MencionesRepository:
                 clase = "referente"
             marcas = [x for x in (r["marcas"] or "").split(",") if x]
             display = max(marcas, key=len) if marcas else r["canonical_id"]
-            out.append({
-                "canonical_id": r["canonical_id"],
-                "clase": clase,
-                "display_name": display,
-            })
+            out.append(
+                {
+                    "canonical_id": r["canonical_id"],
+                    "clase": clase,
+                    "display_name": display,
+                }
+            )
         return out
 
     # ── Lookup ─────────────────────────────────────────────────────────────────

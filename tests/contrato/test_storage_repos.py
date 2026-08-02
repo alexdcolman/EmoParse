@@ -33,7 +33,6 @@ def db(tmp_path: Path) -> Database:
 
 
 class TestDiscursosUpsert:
-
     def test_upsert_input_creates_row(self, db: Database) -> None:
         repo = DiscursosRepository(db)
         repo.upsert_input("DISC_A", {"titulo": "Asunción", "contenido": "texto"})
@@ -51,16 +50,17 @@ class TestDiscursosUpsert:
 
     def test_upsert_inputs_bulk(self, db: Database) -> None:
         repo = DiscursosRepository(db)
-        repo.upsert_inputs([
-            ("DISC_A", {"x": 1}),
-            ("DISC_B", {"x": 2}),
-            ("DISC_C", {"x": 3}),
-        ])
+        repo.upsert_inputs(
+            [
+                ("DISC_A", {"x": 1}),
+                ("DISC_B", {"x": 2}),
+                ("DISC_C", {"x": 3}),
+            ]
+        )
         assert sorted(repo.list_codigos()) == ["DISC_A", "DISC_B", "DISC_C"]
 
 
 class TestDiscursosStages:
-
     def test_set_payload_marks_completed(self, db: Database) -> None:
         repo = DiscursosRepository(db)
         repo.upsert_input("A", {"x": 1})
@@ -126,7 +126,6 @@ class TestDiscursosStages:
 
 
 class TestDiscursosResumability:
-
     def test_partial_completion(self, db: Database) -> None:
         """5 discursos, 2 procesados, 3 pendientes."""
         repo = DiscursosRepository(db)
@@ -145,7 +144,6 @@ class TestDiscursosResumability:
 
 
 class TestFrases:
-
     def test_upsert_and_get(self, db: Database) -> None:
         DiscursosRepository(db).upsert_input("A", {})
         repo = FrasesRepository(db)
@@ -156,11 +154,13 @@ class TestFrases:
     def test_bulk_insert(self, db: Database) -> None:
         DiscursosRepository(db).upsert_input("A", {})
         repo = FrasesRepository(db)
-        repo.upsert_frases([
-            ("A", 0, "frase 0"),
-            ("A", 1, "frase 1"),
-            ("A", 2, "frase 2"),
-        ])
+        repo.upsert_frases(
+            [
+                ("A", 0, "frase 0"),
+                ("A", 1, "frase 1"),
+                ("A", 2, "frase 2"),
+            ]
+        )
         frases = repo.list_frases_of_discurso("A")
         assert frases == [(0, "frase 0"), (1, "frase 1"), (2, "frase 2")]
 
@@ -182,10 +182,13 @@ class TestFrases:
         f_repo = FrasesRepository(db)
         d_repo.upsert_input("A", {})
         d_repo.upsert_input("B", {})
-        f_repo.upsert_frases([
-            ("A", 0, "a0"), ("A", 1, "a1"),
-            ("B", 0, "b0"),
-        ])
+        f_repo.upsert_frases(
+            [
+                ("A", 0, "a0"),
+                ("A", 1, "a1"),
+                ("B", 0, "b0"),
+            ]
+        )
         f_repo.set_payload("A", 0, "actores", [], version="v1")
 
         # Sin filtro: 2 pending (A:1, B:0).
@@ -212,7 +215,6 @@ class TestFrases:
 
 
 class TestEmociones:
-
     @pytest.fixture
     def emos_setup(self, db: Database) -> Database:
         """Setup con un discurso, una frase, dos emociones explotadas."""
@@ -224,21 +226,32 @@ class TestEmociones:
 
     def test_explode_emotions(self, emos_setup: Database) -> None:
         repo = EmocionesRepository(emos_setup)
-        repo.upsert_emociones([
-            {
-                "codigo": "A", "frase_idx": 0, "emocion_idx": 0,
-                "experienciador": "orador", "experienciador_marca": "yo", 
-                "tipo_emocion": "miedo",
-                "modo_existencia": "realizada",
-                "fuente_marca": "marca", "fuente_inferencia": "inferencia",
-            },
-            {
-                "codigo": "A", "frase_idx": 0, "emocion_idx": 1,
-                "experienciador": "pueblo", "experienciador_marca": "ellos", "tipo_emocion": "esperanza",
-                "modo_existencia": "potencial",
-                "fuente_marca": "marca", "fuente_inferencia": "inferencia",
-            },
-        ])
+        repo.upsert_emociones(
+            [
+                {
+                    "codigo": "A",
+                    "frase_idx": 0,
+                    "emocion_idx": 0,
+                    "experienciador": "orador",
+                    "experienciador_marca": "yo",
+                    "tipo_emocion": "miedo",
+                    "modo_existencia": "realizada",
+                    "fuente_marca": "marca",
+                    "fuente_inferencia": "inferencia",
+                },
+                {
+                    "codigo": "A",
+                    "frase_idx": 0,
+                    "emocion_idx": 1,
+                    "experienciador": "pueblo",
+                    "experienciador_marca": "ellos",
+                    "tipo_emocion": "esperanza",
+                    "modo_existencia": "potencial",
+                    "fuente_marca": "marca",
+                    "fuente_inferencia": "inferencia",
+                },
+            ]
+        )
         emos = repo.list_emociones_of_discurso("A")
         assert len(emos) == 2
         assert emos[0]["tipo_emocion"] == "miedo"
@@ -246,16 +259,28 @@ class TestEmociones:
 
     def test_caracterizacion_pending(self, emos_setup: Database) -> None:
         repo = EmocionesRepository(emos_setup)
-        repo.upsert_emociones([
-            {"codigo": "A", "frase_idx": 0, "emocion_idx": 0,
-             "experienciador": "x", "experienciador_marca": "yo", "tipo_emocion": "miedo",
-             "modo_existencia": "realizada", "fuente_marca": "marca", "fuente_inferencia": "inferencia"},
-        ])
+        repo.upsert_emociones(
+            [
+                {
+                    "codigo": "A",
+                    "frase_idx": 0,
+                    "emocion_idx": 0,
+                    "experienciador": "x",
+                    "experienciador_marca": "yo",
+                    "tipo_emocion": "miedo",
+                    "modo_existencia": "realizada",
+                    "fuente_marca": "marca",
+                    "fuente_inferencia": "inferencia",
+                },
+            ]
+        )
         pending = repo.list_pending_caracterizacion("A")
         assert pending == [("A", 0, 0)]
 
         repo.set_caracterizacion(
-            "A", 0, 0,
+            "A",
+            0,
+            0,
             payload={"foria": "disforico"},
             version="v1",
         )
@@ -263,15 +288,26 @@ class TestEmociones:
 
     def test_set_caracterizacion_round_trip(self, emos_setup: Database) -> None:
         repo = EmocionesRepository(emos_setup)
-        repo.upsert_emociones([
-            {"codigo": "A", "frase_idx": 0, "emocion_idx": 0,
-             "experienciador": "x", "experienciador_marca": "yo", "tipo_emocion": "miedo",
-             "modo_existencia": "realizada", "fuente_marca": "marca", "fuente_inferencia": "inferencia"},
-        ])
+        repo.upsert_emociones(
+            [
+                {
+                    "codigo": "A",
+                    "frase_idx": 0,
+                    "emocion_idx": 0,
+                    "experienciador": "x",
+                    "experienciador_marca": "yo",
+                    "tipo_emocion": "miedo",
+                    "modo_existencia": "realizada",
+                    "fuente_marca": "marca",
+                    "fuente_inferencia": "inferencia",
+                },
+            ]
+        )
         payload = {"foria": "disforico", "intensidad": "alta"}
         repo.set_caracterizacion("A", 0, 0, payload=payload, version="v1")
 
         emos = repo.list_emociones_of_discurso("A")
         import json
+
         loaded = json.loads(emos[0]["caracterizacion_payload"])
         assert loaded == payload

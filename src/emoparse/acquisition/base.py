@@ -29,6 +29,7 @@ class DiscursoRecord:
     `frozen=True` para que sean hashables y comparables: dedupe trivial
     con `set(records)`.
     """
+
     codigo: str
     url: str
     titulo: str
@@ -43,12 +44,12 @@ class DiscursoRecord:
         Claves en conflicto se guardan con prefijo `extra__`.
         """
         d: dict[str, Any] = {
-            "codigo":    self.codigo,
-            "url":       self.url,
-            "titulo":    self.titulo,
-            "fecha":     self.fecha,
+            "codigo": self.codigo,
+            "url": self.url,
+            "titulo": self.titulo,
+            "fecha": self.fecha,
             "contenido": self.contenido,
-            "fuente":    self.fuente,
+            "fuente": self.fuente,
         }
         nativos = set(d.keys())
         for k, v in self.extras:

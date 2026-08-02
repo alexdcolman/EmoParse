@@ -52,9 +52,7 @@ def handle(args: argparse.Namespace) -> int:
         return 1
 
     if not has_stage and not has_policy:
-        logger.error(
-            "Falta argumento: --stage <name> o --policy <file.yaml>."
-        )
+        logger.error("Falta argumento: --stage <name> o --policy <file.yaml>.")
         return 1
 
     if has_policy:
@@ -67,10 +65,7 @@ def handle(args: argparse.Namespace) -> int:
 
 def _handle_stage_mode(args: argparse.Namespace, db_path: Path) -> int:
     if args.stage not in _STAGE_DISPATCH:
-        logger.error(
-            f"Stage desconocida: '{args.stage}'. "
-            f"Válidas: {', '.join(_STAGE_DISPATCH)}"
-        )
+        logger.error(f"Stage desconocida: '{args.stage}'. Válidas: {', '.join(_STAGE_DISPATCH)}")
         return 1
 
     db = Database(db_path)
@@ -91,7 +86,7 @@ def _handle_stage_mode(args: argparse.Namespace, db_path: Path) -> int:
         print(f"No había errors en stage '{args.stage}'. Nada que reintentar.")
     else:
         print(f"Limpiados {n} error(s) en stage '{args.stage}'.")
-        print(f"En el próximo `emoparse run` se reintentarán.")
+        print("En el próximo `emoparse run` se reintentarán.")
     return 0
 
 
@@ -226,8 +221,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     p.add_argument(
         "--policy",
         help=(
-            "Modo policy: path al YAML de retry policies declarativas. "
-            "Incompatible con --stage."
+            "Modo policy: path al YAML de retry policies declarativas. Incompatible con --stage."
         ),
     )
     p.add_argument(

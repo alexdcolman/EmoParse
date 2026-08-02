@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Iterable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Literal
 
 from emoparse.storage.db import Database
@@ -38,7 +38,7 @@ class DiscursosRepository:
                     input = excluded.input,
                     updated_at = ?
                 """,
-                (codigo, payload_str, datetime.now(timezone.utc)),
+                (codigo, payload_str, datetime.now(UTC)),
             )
 
     def upsert_inputs(
@@ -46,7 +46,7 @@ class DiscursosRepository:
         rows: Iterable[tuple[str, dict[str, Any]]],
     ) -> None:
         """Bulk insert/update de inputs."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         params = [
             (codigo, json.dumps(payload, ensure_ascii=False, default=str), now)
             for codigo, payload in rows
@@ -89,7 +89,7 @@ class DiscursosRepository:
                     updated_at    = ?
                 WHERE codigo = ?
                 """,
-                (payload_str, version, datetime.now(timezone.utc), codigo),
+                (payload_str, version, datetime.now(UTC), codigo),
             )
 
     def set_error(
@@ -114,7 +114,7 @@ class DiscursosRepository:
                     updated_at    = ?
                 WHERE codigo = ?
                 """,
-                (error_message, datetime.now(timezone.utc), codigo),
+                (error_message, datetime.now(UTC), codigo),
             )
 
     # ── Lookup ───────────────────────────────────────────────────────────────
@@ -147,8 +147,7 @@ class DiscursosRepository:
     def list_codigos(self) -> list[str]:
         """Todos los discursos en la DB."""
         return [
-            row["codigo"]
-            for row in self._db.execute("SELECT codigo FROM discursos").fetchall()
+            row["codigo"] for row in self._db.execute("SELECT codigo FROM discursos").fetchall()
         ]
 
     def list_pending(self, stage: DiscursoStage) -> list[str]:
@@ -157,8 +156,7 @@ class DiscursosRepository:
         col_payload = f"{stage}_payload"
         col_error = f"{stage}_error"
         rows = self._db.execute(
-            f"SELECT codigo FROM discursos "
-            f"WHERE {col_payload} IS NULL AND {col_error} IS NULL"
+            f"SELECT codigo FROM discursos WHERE {col_payload} IS NULL AND {col_error} IS NULL"
         ).fetchall()
         return [row["codigo"] for row in rows]
 
@@ -176,10 +174,7 @@ class DiscursosRepository:
         self._validate_stage(stage)
         col_error = f"{stage}_error"
         with self._db.transaction() as cur:
-            cur.execute(
-                f"UPDATE discursos SET {col_error} = NULL "
-                f"WHERE {col_error} IS NOT NULL"
-            )
+            cur.execute(f"UPDATE discursos SET {col_error} = NULL WHERE {col_error} IS NOT NULL")
             return cur.rowcount
 
     def list_completed(self, stage: DiscursoStage) -> list[str]:
@@ -197,6 +192,4 @@ class DiscursosRepository:
     def _validate_stage(stage: str) -> None:
         """Valida que el nombre de etapa sea correcto."""
         if stage not in _VALID_STAGES:
-            raise ValueError(
-                f"Stage '{stage}' inválida. Válidas: {_VALID_STAGES}"
-            )
+            raise ValueError(f"Stage '{stage}' inválida. Válidas: {_VALID_STAGES}")

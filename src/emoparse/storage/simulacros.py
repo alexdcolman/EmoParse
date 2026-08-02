@@ -20,9 +20,10 @@ from __future__ import annotations
 
 import json
 import sqlite3
+from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import pandas as pd
 from loguru import logger
@@ -49,9 +50,12 @@ def _ro_connect(db_path: Path) -> Iterator[sqlite3.Connection]:
 
 def _table_cols(conn: sqlite3.Connection, table: str) -> set[str]:
     """Columnas de una tabla, o conjunto vacío si la tabla no existe."""
-    if conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
-    ).fetchone() is None:
+    if (
+        conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", (table,)
+        ).fetchone()
+        is None
+    ):
         return set()
     return {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
 
@@ -120,9 +124,12 @@ def _build_filter_sql(
 
 
 def _menciones_exists(conn: sqlite3.Connection) -> bool:
-    return conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='menciones'"
-    ).fetchone() is not None
+    return (
+        conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='menciones'"
+        ).fetchone()
+        is not None
+    )
 
 
 def _canon_col(cols: set[str], name: str) -> str:
@@ -148,9 +155,12 @@ def _resolve_marca_canonicos(
     """
     out: dict[tuple[int, int], list[str]] = {}
     with _ro_connect(db_path) as conn:
-        if conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='emociones'"
-        ).fetchone() is None:
+        if (
+            conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='emociones'"
+            ).fetchone()
+            is None
+        ):
             return out
         per = _frase_mention_canonicos(conn, funcion, codigo)
         cols = {r["name"] for r in conn.execute("PRAGMA table_info(emociones)")}
@@ -190,9 +200,12 @@ def _canonico_semas_map(
 ) -> dict[str, set[str]]:
     """Mapa canonical_id → conjunto de semas (no rechazados)."""
     out: dict[str, set[str]] = {}
-    if conn.execute(
-        "SELECT 1 FROM sqlite_master WHERE type='table' AND name='canonico_semas'"
-    ).fetchone() is None:
+    if (
+        conn.execute(
+            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='canonico_semas'"
+        ).fetchone()
+        is None
+    ):
         return out
     for r in conn.execute(
         "SELECT canonical_id, sema FROM canonico_semas WHERE status != 'rejected'"
@@ -245,16 +258,16 @@ def get_emociones(
     """
     sql, params = _build_filter_sql(
         base="SELECT e.codigo, e.frase_idx, e.emocion_idx, "
-             "e.experienciador, e.experienciador_marca, "
-             "e.tipo_emocion, e.tipo_emocion_canonico, "
-             "e.fuente_marca, e.fuente_inferencia, "
-             "e.modo_existencia, "
-             "e.caracterizacion_payload, e.caracterizacion_error, "
-             "f.frase, "
-             "d.input "
-             "FROM emociones e "
-             "LEFT JOIN frases f ON e.codigo = f.codigo AND e.frase_idx = f.unit_idx "
-             "LEFT JOIN discursos d ON e.codigo = d.codigo",
+        "e.experienciador, e.experienciador_marca, "
+        "e.tipo_emocion, e.tipo_emocion_canonico, "
+        "e.fuente_marca, e.fuente_inferencia, "
+        "e.modo_existencia, "
+        "e.caracterizacion_payload, e.caracterizacion_error, "
+        "f.frase, "
+        "d.input "
+        "FROM emociones e "
+        "LEFT JOIN frases f ON e.codigo = f.codigo AND e.frase_idx = f.unit_idx "
+        "LEFT JOIN discursos d ON e.codigo = d.codigo",
         column="e.codigo",
         values=codigos,
         order_by="e.codigo, e.frase_idx, e.emocion_idx",
@@ -269,18 +282,18 @@ def get_emociones(
     records: list[dict[str, Any]] = []
     for row in rows:
         rec: dict[str, Any] = {
-            "codigo":                  row["codigo"],
-            "frase_idx":               row["frase_idx"],
-            "emocion_idx":             row["emocion_idx"],
-            "experienciador":          row["experienciador"],
-            "experienciador_marca":    row["experienciador_marca"],
-            "tipo_emocion":            row["tipo_emocion"],
-            "tipo_emocion_canonico":   row["tipo_emocion_canonico"],
-            "modo_existencia":         row["modo_existencia"],
-            "fuente_marca":            row["fuente_marca"],
-            "fuente_inferencia":       row["fuente_inferencia"],
-            "frase":                   row["frase"],
-            "caracterizacion_error":   row["caracterizacion_error"],
+            "codigo": row["codigo"],
+            "frase_idx": row["frase_idx"],
+            "emocion_idx": row["emocion_idx"],
+            "experienciador": row["experienciador"],
+            "experienciador_marca": row["experienciador_marca"],
+            "tipo_emocion": row["tipo_emocion"],
+            "tipo_emocion_canonico": row["tipo_emocion_canonico"],
+            "modo_existencia": row["modo_existencia"],
+            "fuente_marca": row["fuente_marca"],
+            "fuente_inferencia": row["fuente_inferencia"],
+            "frase": row["frase"],
+            "caracterizacion_error": row["caracterizacion_error"],
         }
         # Caracterización flat: foria, dominancia, intensidad, etc.
         rec.update(_unpack_json_dict(row["caracterizacion_payload"], prefix=""))
@@ -322,9 +335,12 @@ def get_emociones_enriched(
     enun_map: dict[str, str] = {}
     len_map: dict[str, int] = {}
     with _ro_connect(db_path) as conn:
-        if conn.execute(
-            "SELECT 1 FROM sqlite_master WHERE type='table' AND name='emociones'"
-        ).fetchone() is None:
+        if (
+            conn.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='emociones'"
+            ).fetchone()
+            is None
+        ):
             return base
         exp_units = _frase_mention_canonicos(conn, "experienciador")
         fte_units = _frase_mention_canonicos(conn, "fuente")
@@ -332,10 +348,14 @@ def get_emociones_enriched(
         enun_map = _discurso_enunciador_map(conn)
         len_map = _discurso_len_map(conn)
         emo_cols = {r["name"] for r in conn.execute("PRAGMA table_info(emociones)")}
-        sel_exp_c = ("experienciador_canonico" if "experienciador_canonico" in emo_cols
-                     else "NULL AS experienciador_canonico")
-        sel_fte_c = ("fuente_canonico" if "fuente_canonico" in emo_cols
-                     else "NULL AS fuente_canonico")
+        sel_exp_c = (
+            "experienciador_canonico"
+            if "experienciador_canonico" in emo_cols
+            else "NULL AS experienciador_canonico"
+        )
+        sel_fte_c = (
+            "fuente_canonico" if "fuente_canonico" in emo_cols else "NULL AS fuente_canonico"
+        )
         sql = (
             "SELECT codigo, frase_idx, emocion_idx, "
             "experienciador, experienciador_marca, "
@@ -352,12 +372,14 @@ def get_emociones_enriched(
             fkey = (r["codigo"], int(r["frase_idx"]))
 
             exp_c = resolver_canonico(
-                exp_units.get(fkey), r["experienciador_marca"],
+                exp_units.get(fkey),
+                r["experienciador_marca"],
                 override=r["experienciador_canonico"],
                 inferencia=r["experienciador"],
             )
             fte_cids = resolver_canonicos(
-                fte_units.get(fkey), r["fuente_marca"],
+                fte_units.get(fkey),
+                r["fuente_marca"],
                 override=r["fuente_canonico"],
                 inferencia=r["fuente_inferencia"],
             )
@@ -368,9 +390,9 @@ def get_emociones_enriched(
                 "experienciador_semas": sorted(semas.get(exp_c, set())) if exp_c else [],
                 "fuente_canonicos": fte_cids,
                 "fuente_canonico": "; ".join(fte_cids),
-                "fuente_semas": sorted(
-                    set().union(*(semas.get(c, set()) for c in fte_cids))
-                ) if fte_cids else [],
+                "fuente_semas": sorted(set().union(*(semas.get(c, set()) for c in fte_cids)))
+                if fte_cids
+                else [],
             }
             for grupo, leaf, colname in _ACTANTE_FLAT:
                 sub = act.get(grupo) if isinstance(act, dict) else None
@@ -382,8 +404,12 @@ def get_emociones_enriched(
         for row in base.itertuples(index=False)
     ]
     new_cols = (
-        "experienciador_canonicos", "experienciador_canonico", "experienciador_semas",
-        "fuente_canonicos", "fuente_canonico", "fuente_semas",
+        "experienciador_canonicos",
+        "experienciador_canonico",
+        "experienciador_semas",
+        "fuente_canonicos",
+        "fuente_canonico",
+        "fuente_semas",
     ) + tuple(c for _, _, c in _ACTANTE_FLAT)
     for col in new_cols:
         default: Any = [] if col.endswith(("_canonicos", "_semas")) else ""
@@ -392,12 +418,10 @@ def get_emociones_enriched(
     exp_raw = base["experienciador"].fillna("").astype(str)
     fte_raw = base.get("fuente_inferencia", pd.Series([""] * len(base))).fillna("").astype(str)
     base["experienciador_efectivo"] = [
-        c if c else (raw or "—")
-        for c, raw in zip(base["experienciador_canonico"], exp_raw)
+        c if c else (raw or "—") for c, raw in zip(base["experienciador_canonico"], exp_raw)
     ]
     base["fuente_efectiva"] = [
-        c if c else (raw or "—")
-        for c, raw in zip(base["fuente_canonico"], fte_raw)
+        c if c else (raw or "—") for c, raw in zip(base["fuente_canonico"], fte_raw)
     ]
     base["enunciador"] = base["codigo"].map(enun_map).fillna("")
     base["pos_max_discurso"] = base["codigo"].map(len_map)

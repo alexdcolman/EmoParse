@@ -17,7 +17,6 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
-
 #: Dimensiones de caracterización expuestas como filtro (columna, etiqueta, Literal).
 _CARAC_DIMS: tuple[tuple[str, str, str], ...] = (
     ("modo_existencia", "Modo de existencia", "ModoExistenciaEmocion"),
@@ -103,7 +102,9 @@ def filter_panel(
                 key=f"{key}_expref",
             )
             exp_semas = st.multiselect(
-                "Experienciador — semas", semas_options, key=f"{key}_expsem",
+                "Experienciador — semas",
+                semas_options,
+                key=f"{key}_expsem",
             )
         with c2:
             fte_refs = st.multiselect(
@@ -112,7 +113,9 @@ def filter_panel(
                 key=f"{key}_fteref",
             )
             fte_semas = st.multiselect(
-                "Fuente — semas", semas_options, key=f"{key}_ftesem",
+                "Fuente — semas",
+                semas_options,
+                key=f"{key}_ftesem",
             )
 
         carac_sel: dict[str, list[str]] = {}

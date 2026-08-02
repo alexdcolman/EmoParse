@@ -9,19 +9,30 @@ from __future__ import annotations
 import re
 
 #: Abreviaciones comunes en español que no deben terminar oración.
-_ABBREVIATIONS: frozenset[str] = frozenset({
-    "sr", "sra", "srta",
-    "dr", "dra",
-    "ing", "lic", "prof",
-    "av", "avda", "calle",
-    "ej", "etc", "vs", "p", "pp",
-    "no",  # "n.°" se escribe a veces "no.",
-})
+_ABBREVIATIONS: frozenset[str] = frozenset(
+    {
+        "sr",
+        "sra",
+        "srta",
+        "dr",
+        "dra",
+        "ing",
+        "lic",
+        "prof",
+        "av",
+        "avda",
+        "calle",
+        "ej",
+        "etc",
+        "vs",
+        "p",
+        "pp",
+        "no",  # "n.°" se escribe a veces "no.",
+    }
+)
 
 #: Regex para detectar fin de oración.
-_SENTENCE_END = re.compile(
-    r"([.!?]+[\")\]]?)\s+(?=[A-ZÁÉÍÓÚÑÜ¡¿])"
-)
+_SENTENCE_END = re.compile(r"([.!?]+[\")\]]?)\s+(?=[A-ZÁÉÍÓÚÑÜ¡¿])")
 
 
 def split_into_sentences(
@@ -64,7 +75,7 @@ def _split_with_abbreviations(text: str) -> list[str]:
         if word_before.lower() in _ABBREVIATIONS:
             continue
 
-        sentence = text[last_end:match.start() + len(end_punct)]
+        sentence = text[last_end : match.start() + len(end_punct)]
         sentences.append(sentence.strip())
         last_end = match.end()
 
@@ -81,7 +92,7 @@ def _last_word_before(text: str, idx: int) -> str:
     start = end - 1
     while start >= 0 and not text[start].isspace():
         start -= 1
-    return text[start + 1:end]
+    return text[start + 1 : end]
 
 
 def _split_long_sentence(sentence: str, max_chars: int) -> list[str]:

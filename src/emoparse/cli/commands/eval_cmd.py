@@ -50,32 +50,43 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     """Registra `eval` como subcomando en el CLI principal."""
     p = subparsers.add_parser(
         "eval",
-        help="Evaluación de validez: golden set, acuerdo inter-anotador, "
-             "controles.",
+        help="Evaluación de validez: golden set, acuerdo inter-anotador, controles.",
         description="Evaluación de validez del análisis emocional.",
     )
-    p.add_argument("--db", type=Path, default=None,
-                   help="DB del run a evaluar (para --golden, --make-sample, "
-                        "--control).")
-    p.add_argument("--golden", type=Path, default=None,
-                   help="Golden set (.jsonl o directorio de .jsonl).")
-    p.add_argument("--ontology", type=Path,
-                   default=Path("knowledge/emociones_ontologia.json"),
-                   help="Ontología para canonicalizar tipos al comparar.")
-    p.add_argument("--make-sample", action="store_true",
-                   help="Exporta planilla de anotación a ciegas (--out).")
-    p.add_argument("--n", type=int, default=300,
-                   help="Tamaño de la muestra de anotación.")
-    p.add_argument("--seed", type=int, default=42,
-                   help="Seed del muestreo (reproducibilidad).")
-    p.add_argument("--agreement", type=Path, default=None,
-                   help="CSV con las planillas completadas (columna "
-                        "`anotador` + columnas de anotación).")
-    p.add_argument("--control", action="store_true",
-                   help="Reporta la tasa de detección del run (corpus de "
-                        "control → tasa esperada ≈ 0).")
-    p.add_argument("--out", type=Path, default=None,
-                   help="Archivo de salida (reporte .md o planilla .csv).")
+    p.add_argument(
+        "--db",
+        type=Path,
+        default=None,
+        help="DB del run a evaluar (para --golden, --make-sample, --control).",
+    )
+    p.add_argument(
+        "--golden", type=Path, default=None, help="Golden set (.jsonl o directorio de .jsonl)."
+    )
+    p.add_argument(
+        "--ontology",
+        type=Path,
+        default=Path("knowledge/emociones_ontologia.json"),
+        help="Ontología para canonicalizar tipos al comparar.",
+    )
+    p.add_argument(
+        "--make-sample", action="store_true", help="Exporta planilla de anotación a ciegas (--out)."
+    )
+    p.add_argument("--n", type=int, default=300, help="Tamaño de la muestra de anotación.")
+    p.add_argument("--seed", type=int, default=42, help="Seed del muestreo (reproducibilidad).")
+    p.add_argument(
+        "--agreement",
+        type=Path,
+        default=None,
+        help="CSV con las planillas completadas (columna `anotador` + columnas de anotación).",
+    )
+    p.add_argument(
+        "--control",
+        action="store_true",
+        help="Reporta la tasa de detección del run (corpus de control → tasa esperada ≈ 0).",
+    )
+    p.add_argument(
+        "--out", type=Path, default=None, help="Archivo de salida (reporte .md o planilla .csv)."
+    )
     p.set_defaults(handler=run)
 
 
@@ -89,16 +100,14 @@ def run(args: argparse.Namespace) -> int:
         return _golden(args)
     if args.control:
         return _control(args)
-    logger.error(
-        "[eval] Indicá un modo: --golden, --make-sample, --agreement o "
-        "--control."
-    )
+    logger.error("[eval] Indicá un modo: --golden, --make-sample, --agreement o --control.")
     return 1
 
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Modos
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _golden(args: argparse.Namespace) -> int:
     if args.db is None:
@@ -137,7 +146,8 @@ def _golden_markdown(report, args: argparse.Namespace) -> str:
         "",
         "## Detección de emociones",
         "",
-        "| métrica | valor |", "|---|---|",
+        "| métrica | valor |",
+        "|---|---|",
         f"| TP / FP / FN | {report.tp} / {report.fp} / {report.fn} |",
         f"| Precisión | {fmt(report.precision)} |",
         f"| Recall | {fmt(report.recall)} |",
@@ -145,7 +155,8 @@ def _golden_markdown(report, args: argparse.Namespace) -> str:
         "",
         "## Accuracy por dimensión (sobre pares emparejados)",
         "",
-        "| dimensión | correctas / evaluadas | accuracy |", "|---|---|---|",
+        "| dimensión | correctas / evaluadas | accuracy |",
+        "|---|---|---|",
     ]
     for dim in ("tipo", "experienciador", "modo_existencia", "foria"):
         n = report.dim_evaluadas.get(dim, 0)
@@ -183,8 +194,7 @@ def _agreement(args: argparse.Namespace) -> int:
         return 1
     if "anotador" not in df.columns or "id_muestra" not in df.columns:
         logger.error(
-            "[eval] El CSV debe concatenar las planillas con columnas "
-            "`anotador` e `id_muestra`."
+            "[eval] El CSV debe concatenar las planillas con columnas `anotador` e `id_muestra`."
         )
         return 1
 
@@ -193,20 +203,17 @@ def _agreement(args: argparse.Namespace) -> int:
     lineas = [
         "# Acuerdo inter-anotador (alpha de Krippendorff)",
         "",
-        f"Anotadores: {len(anotadores)} ({', '.join(anotadores)}) — "
-        f"Unidades: {len(unidades)}",
+        f"Anotadores: {len(anotadores)} ({', '.join(anotadores)}) — Unidades: {len(unidades)}",
         "",
-        "| dimensión | métrica | alpha |", "|---|---|---|",
+        "| dimensión | métrica | alpha |",
+        "|---|---|---|",
     ]
     indexed = df.set_index(["anotador", "id_muestra"])
     for columna, metric in _AGREEMENT_DIMENSIONS.items():
         if columna not in df.columns:
             continue
         matriz = [
-            [
-                indexed[columna].get((a, u)) if (a, u) in indexed.index else None
-                for u in unidades
-            ]
+            [indexed[columna].get((a, u)) if (a, u) in indexed.index else None for u in unidades]
             for a in anotadores
         ]
         alpha = krippendorff_alpha(matriz, metric=metric)  # type: ignore[arg-type]

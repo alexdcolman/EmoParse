@@ -86,8 +86,7 @@ class StageDAG:
         unknown = enabled_set - set(self._nodes)
         if unknown:
             raise ValueError(
-                f"Stages desconocidas: {sorted(unknown)}. "
-                f"Definidas: {sorted(self._nodes)}"
+                f"Stages desconocidas: {sorted(unknown)}. Definidas: {sorted(self._nodes)}"
             )
         for name in enabled:
             missing = set(self._nodes[name].deps) - enabled_set
@@ -131,10 +130,7 @@ class StageDAG:
 
         if len(result) != len(self._nodes):
             ciclo = set(self._nodes) - set(result)
-            raise ValueError(
-                f"Ciclo detectado en el DAG. Stages involucradas: "
-                f"{sorted(ciclo)}"
-            )
+            raise ValueError(f"Ciclo detectado en el DAG. Stages involucradas: {sorted(ciclo)}")
         return tuple(result)
 
 

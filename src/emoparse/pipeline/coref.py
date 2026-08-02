@@ -29,10 +29,7 @@ _MIN_SUBSET_TOKENS = 2
 
 def _strip_accents(s: str) -> str:
     """Quita tildes manteniendo el resto del unicode."""
-    return "".join(
-        c for c in unicodedata.normalize("NFD", s)
-        if unicodedata.category(c) != "Mn"
-    )
+    return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
 
 
 def _normalize(s: str) -> str:
@@ -143,10 +140,6 @@ def pick_representative(
         if not raw:
             continue
         score = len(_tokenize(raw))
-        if (
-            best is None
-            or score > best[0]
-            or (score == best[0] and key < best[1])
-        ):
+        if best is None or score > best[0] or (score == best[0] and key < best[1]):
             best = (score, key, raw)
     return best[2] if best else ""

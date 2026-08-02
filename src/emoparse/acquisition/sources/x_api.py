@@ -14,8 +14,9 @@ from __future__ import annotations
 
 import os
 import time
+from collections.abc import Iterator
 from datetime import date
-from typing import Any, Iterator
+from typing import Any
 
 import httpx
 from loguru import logger
@@ -32,10 +33,7 @@ _TWEET_FIELDS = (
 )
 _USER_FIELDS = "id,username,name,description,verified,public_metrics"
 _MEDIA_FIELDS = "media_key,type,url,preview_image_url,alt_text"
-_EXPANSIONS = (
-    "author_id,referenced_tweets.id,referenced_tweets.id.author_id,"
-    "attachments.media_keys"
-)
+_EXPANSIONS = "author_id,referenced_tweets.id,referenced_tweets.id.author_id,attachments.media_keys"
 
 #: Máximo de resultados por página que acepta la API de búsqueda.
 _PAGE_SIZE = 100
@@ -122,20 +120,20 @@ class XApiAdapter(PostSourceAdapter):
     def _get(self, endpoint: str, params: dict[str, Any]) -> dict[str, Any]:
         """GET con los fields/expansions estándar y manejo de rate limit."""
         full = dict(params)
-        full.update({
-            "tweet.fields": _TWEET_FIELDS,
-            "user.fields": _USER_FIELDS,
-            "media.fields": _MEDIA_FIELDS,
-            "expansions": _EXPANSIONS,
-        })
+        full.update(
+            {
+                "tweet.fields": _TWEET_FIELDS,
+                "user.fields": _USER_FIELDS,
+                "media.fields": _MEDIA_FIELDS,
+                "expansions": _EXPANSIONS,
+            }
+        )
         while True:
             resp = self._http.get(_BASE + endpoint, params=full)
             if resp.status_code == 429:
                 reset = resp.headers.get("x-rate-limit-reset")
                 wait = max(5.0, float(reset) - time.time()) if reset else 60.0
-                logger.warning(
-                    f"[x_api] Rate limit; espero {wait:.0f}s antes de reintentar."
-                )
+                logger.warning(f"[x_api] Rate limit; espero {wait:.0f}s antes de reintentar.")
                 time.sleep(min(wait, 900.0))
                 continue
             if resp.status_code in (401, 403):
@@ -193,6 +191,7 @@ class XApiAdapter(PostSourceAdapter):
 #  Mapeo tweet v2 → PostRecord (compartido con jsonl_import)
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def map_v2_tweet(
     tweet: dict[str, Any],
     includes: dict[str, Any] | None = None,
@@ -232,13 +231,15 @@ def map_v2_tweet(
     media = []
     for key in (tweet.get("attachments") or {}).get("media_keys") or []:
         m = media_by_key.get(key) or {}
-        media.append({
-            "tipo": {"photo": "imagen", "video": "video", "animated_gif": "gif"}.get(
-                str(m.get("type")), "otro"
-            ),
-            "url": m.get("url") or m.get("preview_image_url"),
-            "alt": m.get("alt_text"),
-        })
+        media.append(
+            {
+                "tipo": {"photo": "imagen", "video": "video", "animated_gif": "gif"}.get(
+                    str(m.get("type")), "otro"
+                ),
+                "url": m.get("url") or m.get("preview_image_url"),
+                "alt": m.get("alt_text"),
+            }
+        )
 
     metrics = tweet.get("public_metrics") or {}
     tweet_id = str(tweet.get("id") or "")

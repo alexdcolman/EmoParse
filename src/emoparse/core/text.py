@@ -19,18 +19,49 @@ _SLUG_MAXLEN = 64
 #: "una población mundial" colapsen en el mismo referente. Es la misma lista
 #: que usa el clustering léxico (`pipeline.coref`), de modo que el match por
 #: tokens y la construcción del slug compartan criterio.
-STOPWORDS: frozenset[str] = frozenset({
-    "el", "la", "los", "las", "lo",
-    "un", "una", "unos", "unas",
-    "de", "del", "al",
-    "y", "o", "u",
-    "a", "en", "con", "por", "para", "sobre",
-    "que", "se", "su", "sus",
-    "mi", "tu",
-    "este", "esta", "estos", "estas",
-    "ese", "esa", "esos", "esas",
-    "aquel", "aquella", "aquellos", "aquellas",
-})
+STOPWORDS: frozenset[str] = frozenset(
+    {
+        "el",
+        "la",
+        "los",
+        "las",
+        "lo",
+        "un",
+        "una",
+        "unos",
+        "unas",
+        "de",
+        "del",
+        "al",
+        "y",
+        "o",
+        "u",
+        "a",
+        "en",
+        "con",
+        "por",
+        "para",
+        "sobre",
+        "que",
+        "se",
+        "su",
+        "sus",
+        "mi",
+        "tu",
+        "este",
+        "esta",
+        "estos",
+        "estas",
+        "ese",
+        "esa",
+        "esos",
+        "esas",
+        "aquel",
+        "aquella",
+        "aquellos",
+        "aquellas",
+    }
+)
 
 
 def strip_accents_lower(value: str | None) -> str:

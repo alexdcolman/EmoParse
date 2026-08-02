@@ -24,6 +24,7 @@ from emoparse.app.revision_overlay import (
 )
 from emoparse.storage.referencia import primer_canonico
 
+
 #: Opciones de los campos tipados (Literal). Se importan del esquema como única
 #: fuente de verdad, campo por campo (si falta uno, no invalida el resto).
 def _safe_opts(litname: str) -> list[str] | None:
@@ -57,8 +58,11 @@ _OPTS.setdefault("intensidad", ["alta", "baja", "neutra_ambivalente"])
 
 _KB_TIPOS = ("individuo", "institucion", "colectivo", "desconocido")
 _ACTANTE_KEYS = (
-    "mediador", "verificador_normativo", "verificador_observacional",
-    "operador_modificacion", "polaridad",
+    "mediador",
+    "verificador_normativo",
+    "verificador_observacional",
+    "operador_modificacion",
+    "polaridad",
 )
 
 
@@ -105,9 +109,7 @@ def _render_input_metadata(header: dict[str, Any]) -> None:
         "<p style='margin:0 0 0.55rem;color:var(--accent);font-size:0.82rem;"
         f"font-weight:600;'>Datos propios del género{suffix}</p>"
         "<dl style='display:grid;grid-template-columns:minmax(7rem,0.3fr) 1fr;"
-        "gap:0.35rem 0.8rem;margin:0;'>"
-        + "".join(rows)
-        + "</dl></div>",
+        "gap:0.35rem 0.8rem;margin:0;'>" + "".join(rows) + "</dl></div>",
         unsafe_allow_html=True,
     )
 
@@ -131,6 +133,7 @@ def _referentes_kb_index() -> dict[str, str]:
     """Lee referentes_kb.json (KB persistente de referentes) → {canonical_id: display_name}."""
     import json
     import os
+
     path = Path(os.environ.get("EMOPARSE_KNOWLEDGE_DIR", "knowledge")) / "referentes_kb.json"
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
@@ -190,7 +193,9 @@ def render(db_path: Path) -> None:
     corpus_posts = data_layer.has_posts(db_path)
     labels = data_layer.codigo_labels(db_path) if corpus_posts else {}
     codigo = st.selectbox(
-        "Post" if corpus_posts else "Discurso", codigos, key="rev_codigo",
+        "Post" if corpus_posts else "Discurso",
+        codigos,
+        key="rev_codigo",
         format_func=lambda c: labels.get(c, c),
     )
 
@@ -222,9 +227,7 @@ def render(db_path: Path) -> None:
     kb_disp = _kb_display(db_path, ov)
     fuente_canon = data_layer.get_fuente_canonicos_map(db_path, codigo)
     exp_canon = data_layer.get_experienciador_canonico_map(db_path, codigo)
-    media_post = (
-        data_layer.get_media_of_post(db_path, codigo) if corpus_posts else []
-    )
+    media_post = data_layer.get_media_of_post(db_path, codigo) if corpus_posts else []
 
     st.markdown("<hr class='ep-divider'>", unsafe_allow_html=True)
 
@@ -232,8 +235,8 @@ def render(db_path: Path) -> None:
         "🔎 Solo emociones marcadas por el juez sin resolver",
         key=f"rev_sugfilter_{codigo}",
         help="Incluye tanto las emociones con sugerencias de corrección "
-             "pendientes como las que el juez marcó para revisar sin proponer "
-             "un valor concreto.",
+        "pendientes como las que el juez marcó para revisar sin proponer "
+        "un valor concreto.",
     )
 
     frases_sorted = df_fr.sort_values("unit_idx")
@@ -244,14 +247,11 @@ def render(db_path: Path) -> None:
         for _, fr in frases_sorted.iterrows():
             ui = int(fr["unit_idx"])
             pend = [
-                e for e in emos_by_frase.get(ui, [])
-                if _emotion_needs_review(ov, codigo, ui, e)
+                e for e in emos_by_frase.get(ui, []) if _emotion_needs_review(ov, codigo, ui, e)
             ]
             if pend:
                 n_emos_total += len(pend)
-                n_sug_total += sum(
-                    _emotion_pending_sug_count(ov, codigo, ui, e) for e in pend
-                )
+                n_sug_total += sum(_emotion_pending_sug_count(ov, codigo, ui, e) for e in pend)
                 frases_list.append((fr, pend))
         if frases_list:
             detalle = f"{n_emos_total} emoción(es) para revisar"
@@ -262,23 +262,30 @@ def render(db_path: Path) -> None:
             st.caption("No hay emociones del juez sin resolver. 🎉")
     else:
         frases_list = [
-            (fr, emos_by_frase.get(int(fr["unit_idx"]), []))
-            for _, fr in frases_sorted.iterrows()
+            (fr, emos_by_frase.get(int(fr["unit_idx"]), [])) for _, fr in frases_sorted.iterrows()
         ]
 
     total = len(frases_list)
     c1, c2 = st.columns([1, 2])
     with c1:
         page_size = st.selectbox(
-            "Frases por página", [10, 20, 50, 100], index=0,
+            "Frases por página",
+            [10, 20, 50, 100],
+            index=0,
             key=f"rev_ps_{codigo}",
         )
     n_pages = max(1, (total + page_size - 1) // page_size)
     with c2:
-        page = int(st.number_input(
-            "Página", min_value=1, max_value=n_pages, value=1, step=1,
-            key=f"rev_pg_{codigo}_{page_size}_{int(only_sug)}",
-        ))
+        page = int(
+            st.number_input(
+                "Página",
+                min_value=1,
+                max_value=n_pages,
+                value=1,
+                step=1,
+                key=f"rev_pg_{codigo}_{page_size}_{int(only_sug)}",
+            )
+        )
     start = (page - 1) * page_size
     end = min(start + page_size, total)
     if total:
@@ -291,15 +298,23 @@ def render(db_path: Path) -> None:
         nav_izq, cuerpo, nav_der = st.columns([0.06, 0.88, 0.06])
         with nav_izq:
             st.button(
-                "◀", key=f"rev_prev_{codigo}", use_container_width=True,
-                disabled=i_actual == 0, help="Post anterior",
-                on_click=_nav_codigo, args=(codigos, -1),
+                "◀",
+                key=f"rev_prev_{codigo}",
+                use_container_width=True,
+                disabled=i_actual == 0,
+                help="Post anterior",
+                on_click=_nav_codigo,
+                args=(codigos, -1),
             )
         with nav_der:
             st.button(
-                "▶", key=f"rev_next_{codigo}", use_container_width=True,
-                disabled=i_actual >= len(codigos) - 1, help="Post siguiente",
-                on_click=_nav_codigo, args=(codigos, 1),
+                "▶",
+                key=f"rev_next_{codigo}",
+                use_container_width=True,
+                disabled=i_actual >= len(codigos) - 1,
+                help="Post siguiente",
+                on_click=_nav_codigo,
+                args=(codigos, 1),
             )
     else:
         cuerpo = st.container()
@@ -308,7 +323,8 @@ def render(db_path: Path) -> None:
         for fr, emos in frases_list[start:end]:
             ui = int(fr["unit_idx"])
             _render_frase(
-                ov, codigo,
+                ov,
+                codigo,
                 unit_idx=ui,
                 frase=str(fr["frase"]),
                 actores=actores_by_frase.get(ui, []),
@@ -317,10 +333,7 @@ def render(db_path: Path) -> None:
                 kb_disp=kb_disp,
                 fuente_canon=fuente_canon,
                 exp_canon=exp_canon,
-                tecno=(
-                    data_layer.get_tecno_of_unit(db_path, codigo, ui)
-                    if corpus_posts else None
-                ),
+                tecno=(data_layer.get_tecno_of_unit(db_path, codigo, ui) if corpus_posts else None),
                 media=media_post if corpus_posts and ui == 0 else None,
             )
 
@@ -329,12 +342,11 @@ def _nav_codigo(codigos: list[str], delta: int) -> None:
     """Mueve el selector de discurso al anterior/siguiente (callback)."""
     actual = st.session_state.get("rev_codigo")
     i = codigos.index(actual) if actual in codigos else 0
-    st.session_state["rev_codigo"] = codigos[
-        max(0, min(len(codigos) - 1, i + delta))
-    ]
+    st.session_state["rev_codigo"] = codigos[max(0, min(len(codigos) - 1, i + delta))]
 
 
 # ── Header (una sola vez) ────────────────────────────────────────────────────
+
 
 def _render_header(ov: RevisionOverlay, codigo: str, header: dict[str, Any]) -> None:
     disc_ov = ov.get_discurso(codigo)
@@ -348,7 +360,8 @@ def _render_header(ov: RevisionOverlay, codigo: str, header: dict[str, Any]) -> 
     if isinstance(enunciatarios, list):
         nombres = [
             str(e.get("actor") or e.get("nombre") or e.get("tipo") or "")
-            for e in enunciatarios if isinstance(e, dict)
+            for e in enunciatarios
+            if isinstance(e, dict)
         ]
         enun_str = "; ".join(n for n in nombres if n)
     elif enunciatarios:
@@ -380,9 +393,11 @@ def _render_header(ov: RevisionOverlay, codigo: str, header: dict[str, Any]) -> 
                 new = st.text_input(label, value=eff(field), key=f"hdr_{codigo}_{field}")
             with c2:
                 st.checkbox(
-                    "✓ ok", value=bool(disc_ov.get("confirmado", {}).get(field)),
+                    "✓ ok",
+                    value=bool(disc_ov.get("confirmado", {}).get(field)),
                     key=f"hdrok_{codigo}_{field}",
-                    on_change=_on_confirm_header, args=(ov, codigo, field),
+                    on_change=_on_confirm_header,
+                    args=(ov, codigo, field),
                 )
             if new != eff(field):
                 if new.strip() and new != str(header.get(field) or ""):
@@ -403,7 +418,10 @@ _EMOS_PER_ROW = 2
 
 
 def _emotion_pending_sug_count(
-    ov: RevisionOverlay, codigo: str, unit_idx: int, em: dict[str, Any],
+    ov: RevisionOverlay,
+    codigo: str,
+    unit_idx: int,
+    em: dict[str, Any],
 ) -> int:
     """Cuántas sugerencias del juez de esta emoción siguen SIN resolver
     (ni aceptadas ni rechazadas en el overlay)."""
@@ -412,13 +430,15 @@ def _emotion_pending_sug_count(
         return 0
     states = ov.get_suggestion_states(codigo, unit_idx, int(em["emocion_idx"]))
     return sum(
-        1 for s in sugs
-        if s.get("campo") and states.get(s["campo"]) not in ("accepted", "rejected")
+        1 for s in sugs if s.get("campo") and states.get(s["campo"]) not in ("accepted", "rejected")
     )
 
 
 def _emotion_needs_review(
-    ov: RevisionOverlay, codigo: str, unit_idx: int, em: dict[str, Any],
+    ov: RevisionOverlay,
+    codigo: str,
+    unit_idx: int,
+    em: dict[str, Any],
 ) -> bool:
     """True si la emoción amerita revisión del juez y sigue sin resolverse.
 
@@ -441,21 +461,25 @@ def _emotion_needs_review(
 
 
 def _render_frase(
-    ov: RevisionOverlay, codigo: str, *, unit_idx: int, frase: str,
-    actores: list[dict[str, Any]], emociones: list[dict[str, Any]],
-    kb_ids: list[str], kb_disp: dict[str, str],
+    ov: RevisionOverlay,
+    codigo: str,
+    *,
+    unit_idx: int,
+    frase: str,
+    actores: list[dict[str, Any]],
+    emociones: list[dict[str, Any]],
+    kb_ids: list[str],
+    kb_disp: dict[str, str],
     fuente_canon: dict[tuple[int, int], list[str]] | None = None,
     exp_canon: dict[tuple[int, int], str] | None = None,
     tecno: list[dict[str, Any]] | None = None,
     media: list[dict[str, Any]] | None = None,
 ) -> None:
     activos = [
-        e for e in emociones
-        if not ov.is_emocion_deleted(codigo, unit_idx, int(e["emocion_idx"]))
+        e for e in emociones if not ov.is_emocion_deleted(codigo, unit_idx, int(e["emocion_idx"]))
     ]
     eliminadas = [
-        e for e in emociones
-        if ov.is_emocion_deleted(codigo, unit_idx, int(e["emocion_idx"]))
+        e for e in emociones if ov.is_emocion_deleted(codigo, unit_idx, int(e["emocion_idx"]))
     ]
     n_nuevas = len(ov.list_new_emociones(codigo, unit_idx))
     n_act = len(actores) + len(ov.get_frase(codigo, unit_idx).get("actores_agregados", []))
@@ -479,13 +503,19 @@ def _render_frase(
 
     # Emociones al costado, en tarjetas, de a _EMOS_PER_ROW por fila.
     for i in range(0, len(activos), _EMOS_PER_ROW):
-        fila = activos[i:i + _EMOS_PER_ROW]
+        fila = activos[i : i + _EMOS_PER_ROW]
         cols = st.columns(_EMOS_PER_ROW, gap="small")
         for col, em in zip(cols, fila):
             with col:
                 _render_emocion_card(
-                    ov, codigo, unit_idx, em, kb_ids, kb_disp,
-                    fuente_canon or {}, exp_canon or {},
+                    ov,
+                    codigo,
+                    unit_idx,
+                    em,
+                    kb_ids,
+                    kb_disp,
+                    fuente_canon or {},
+                    exp_canon or {},
                 )
 
     if eliminadas:
@@ -549,8 +579,7 @@ def _render_tecno_chips(tecno: list[dict[str, Any]]) -> None:
             f"border:1px solid {styles.var_soft(token)};border-radius:5px;"
             f"padding:1px 7px;margin:2px 4px 2px 0;'>"
             f"{_esc(valor)}"
-            + (f" <span style='color:var(--dim);'>· {_esc(detalle)}</span>"
-               if detalle else "")
+            + (f" <span style='color:var(--dim);'>· {_esc(detalle)}</span>" if detalle else "")
             + "</span>"
         )
     st.markdown(
@@ -587,15 +616,20 @@ def _render_media(media: list[dict[str, Any]]) -> None:
                 f"<div style='font-size:0.78rem;color:var(--text-dim);line-height:1.5;'>"
                 f"<span class='badge badge-dim'>{_esc(tipo_img)}</span> "
                 f"{_esc(desc) if desc else '(sin descripción generada)'}"
-                + (f"<br><span style='color:var(--dim);'>texto en imagen: "
-                   f"{_esc(ocr[:160])}</span>" if ocr else "")
+                + (
+                    f"<br><span style='color:var(--dim);'>texto en imagen: {_esc(ocr[:160])}</span>"
+                    if ocr
+                    else ""
+                )
                 + "</div>",
                 unsafe_allow_html=True,
             )
 
 
 def _render_deleted_emociones(
-    ov: RevisionOverlay, codigo: str, unit_idx: int,
+    ov: RevisionOverlay,
+    codigo: str,
+    unit_idx: int,
     eliminadas: list[dict[str, Any]],
 ) -> None:
     for em in eliminadas:
@@ -616,9 +650,13 @@ def _render_deleted_emociones(
 
 # ── Actores de la frase ──────────────────────────────────────────────────────
 
+
 def _render_actores(
-    ov: RevisionOverlay, codigo: str, unit_idx: int,
-    actores: list[dict[str, Any]], kb_ids: list[str],
+    ov: RevisionOverlay,
+    codigo: str,
+    unit_idx: int,
+    actores: list[dict[str, Any]],
+    kb_ids: list[str],
     kb_disp: dict[str, str],
 ) -> None:
     fr_ov = ov.get_frase(codigo, unit_idx)
@@ -631,7 +669,8 @@ def _render_actores(
         resuelto = link.get("resuelto_por")
         badge = (
             " <span style='color:var(--accent2);font-size:0.7rem;'>[deixis]</span>"
-            if resuelto == "deixis_enunciador" else ""
+            if resuelto == "deixis_enunciador"
+            else ""
         )
         is_removed = key in removed
         style = "text-decoration:line-through;opacity:0.5;" if is_removed else ""
@@ -673,53 +712,74 @@ def _render_actores(
 
 
 def _render_add_actor(
-    ov: RevisionOverlay, codigo: str, unit_idx: int, kb_ids: list[str],
+    ov: RevisionOverlay,
+    codigo: str,
+    unit_idx: int,
+    kb_ids: list[str],
 ) -> None:
     if not _toggle("+ agregar actor", f"rev_addact_{codigo}_{unit_idx}"):
         return
     mencion = st.text_input("Mención", key=f"addact_men_{codigo}_{unit_idx}")
     modo = st.radio(
-        "Vincular a", ["Actor existente de la KB", "Actor nuevo"],
-        key=f"addact_modo_{codigo}_{unit_idx}", horizontal=True,
+        "Vincular a",
+        ["Actor existente de la KB", "Actor nuevo"],
+        key=f"addact_modo_{codigo}_{unit_idx}",
+        horizontal=True,
     )
     if modo == "Actor existente de la KB":
         canon = st.selectbox(
-            "Canónico", kb_ids or ["(KB vacía)"], key=f"addact_canon_{codigo}_{unit_idx}",
+            "Canónico",
+            kb_ids or ["(KB vacía)"],
+            key=f"addact_canon_{codigo}_{unit_idx}",
         )
-        if st.button("Agregar", key=f"addact_btn_{codigo}_{unit_idx}",
-                     disabled=not mencion.strip() or not kb_ids):
-            ov.add_actor(codigo, unit_idx, {
-                "actor_mencionado": mencion.strip(),
-                "actor_canonico": canon,
-                "es_nuevo": False,
-                "origen": "revision",
-            })
+        if st.button(
+            "Agregar",
+            key=f"addact_btn_{codigo}_{unit_idx}",
+            disabled=not mencion.strip() or not kb_ids,
+        ):
+            ov.add_actor(
+                codigo,
+                unit_idx,
+                {
+                    "actor_mencionado": mencion.strip(),
+                    "actor_canonico": canon,
+                    "es_nuevo": False,
+                    "origen": "revision",
+                },
+            )
             st.session_state.pop(f"addact_men_{codigo}_{unit_idx}", None)
             st.rerun()
     else:
         from emoparse.core.text import slugify
+
         nombre = st.text_input("Nombre del actor nuevo", key=f"addact_nom_{codigo}_{unit_idx}")
         tipo = st.selectbox("Tipo", _KB_TIPOS, key=f"addact_tipo_{codigo}_{unit_idx}")
         slug = slugify(nombre) if nombre.strip() else ""
         exists = bool(slug) and slug in set(kb_ids)
         if nombre.strip():
             st.caption(
-                f"⚠️ ya existe `{slug}` en la KB" if exists
-                else f"canonical_id propuesto: `{slug}`"
+                f"⚠️ ya existe `{slug}` en la KB" if exists else f"canonical_id propuesto: `{slug}`"
             )
-        if st.button("Crear y agregar", key=f"addact_new_{codigo}_{unit_idx}",
-                     disabled=not (mencion.strip() and slug) or exists):
+        if st.button(
+            "Crear y agregar",
+            key=f"addact_new_{codigo}_{unit_idx}",
+            disabled=not (mencion.strip() and slug) or exists,
+        ):
             try:
                 ov.propose_actor(slug, nombre.strip(), tipo, set(kb_ids))
             except ValueError as e:
                 st.error(str(e))
                 return
-            ov.add_actor(codigo, unit_idx, {
-                "actor_mencionado": mencion.strip(),
-                "actor_canonico": slug,
-                "es_nuevo": True,
-                "origen": "revision_nuevo",
-            })
+            ov.add_actor(
+                codigo,
+                unit_idx,
+                {
+                    "actor_mencionado": mencion.strip(),
+                    "actor_canonico": slug,
+                    "es_nuevo": True,
+                    "origen": "revision_nuevo",
+                },
+            )
             for k in ("men", "nom"):
                 st.session_state.pop(f"addact_{k}_{codigo}_{unit_idx}", None)
             st.rerun()
@@ -727,9 +787,14 @@ def _render_add_actor(
 
 # ── Emoción (tarjeta) ────────────────────────────────────────────────────────
 
+
 def _render_emocion_card(
-    ov: RevisionOverlay, codigo: str, unit_idx: int,
-    em: dict[str, Any], kb_ids: list[str], kb_disp: dict[str, str],
+    ov: RevisionOverlay,
+    codigo: str,
+    unit_idx: int,
+    em: dict[str, Any],
+    kb_ids: list[str],
+    kb_disp: dict[str, str],
     fuente_canon: dict[tuple[int, int], str] | None = None,
     exp_canon: dict[tuple[int, int], str] | None = None,
 ) -> None:
@@ -751,7 +816,7 @@ def _render_emocion_card(
 
     juicio = em.get("juicio") or {}
     sug_by_path: dict[tuple[str, ...], dict[str, Any]] = {}
-    for s in (juicio.get("sugerencias") or []):
+    for s in juicio.get("sugerencias") or []:
         campo = s.get("campo")
         if campo:
             sug_by_path[tuple(str(campo).split("."))] = s
@@ -791,39 +856,95 @@ def _render_emocion_card(
         det = em
         # La fuente de una emoción puede combinar referentes.
         canon_fte = "; ".join(
-            _canon_label(c, kb_disp)
-            for c in (fuente_canon or {}).get((unit_idx, eidx), [])
+            _canon_label(c, kb_disp) for c in (fuente_canon or {}).get((unit_idx, eidx), [])
         )
-        _element(ov, codigo, unit_idx, eidx, label="Experienciador",
-                 path=["experienciador"], value=det.get("experienciador"),
-                 det_value=det.get("experienciador"), sctx=sctx,
-                 canonico=canon_exp, marca=det.get("experienciador_marca"))
-        _element(ov, codigo, unit_idx, eidx, label="Tipo de emoción",
-                 path=["tipo_emocion"], value=det.get("tipo_emocion"),
-                 det_value=det.get("tipo_emocion"), sctx=sctx,
-                 canonico=det.get("tipo_emocion_canonico"))
-        _element(ov, codigo, unit_idx, eidx, label="Modo de existencia",
-                 path=["modo_existencia"], value=eff.get("modo_existencia"),
-                 det_value=det.get("modo_existencia"), sctx=sctx)
-        _element(ov, codigo, unit_idx, eidx, label="Fuente",
-                 path=["fuente_inferencia"], value=det.get("fuente_inferencia"),
-                 det_value=det.get("fuente_inferencia"), sctx=sctx,
-                 canonico=canon_fte or None, marca=det.get("fuente_marca"))
-        _element(ov, codigo, unit_idx, eidx, label="Configuración",
-                 path=["tipo_configuracion"], value=eff.get("tipo_configuracion"),
-                 det_value=det.get("tipo_configuracion"), sctx=sctx)
+        _element(
+            ov,
+            codigo,
+            unit_idx,
+            eidx,
+            label="Experienciador",
+            path=["experienciador"],
+            value=det.get("experienciador"),
+            det_value=det.get("experienciador"),
+            sctx=sctx,
+            canonico=canon_exp,
+            marca=det.get("experienciador_marca"),
+        )
+        _element(
+            ov,
+            codigo,
+            unit_idx,
+            eidx,
+            label="Tipo de emoción",
+            path=["tipo_emocion"],
+            value=det.get("tipo_emocion"),
+            det_value=det.get("tipo_emocion"),
+            sctx=sctx,
+            canonico=det.get("tipo_emocion_canonico"),
+        )
+        _element(
+            ov,
+            codigo,
+            unit_idx,
+            eidx,
+            label="Modo de existencia",
+            path=["modo_existencia"],
+            value=eff.get("modo_existencia"),
+            det_value=det.get("modo_existencia"),
+            sctx=sctx,
+        )
+        _element(
+            ov,
+            codigo,
+            unit_idx,
+            eidx,
+            label="Fuente",
+            path=["fuente_inferencia"],
+            value=det.get("fuente_inferencia"),
+            det_value=det.get("fuente_inferencia"),
+            sctx=sctx,
+            canonico=canon_fte or None,
+            marca=det.get("fuente_marca"),
+        )
+        _element(
+            ov,
+            codigo,
+            unit_idx,
+            eidx,
+            label="Configuración",
+            path=["tipo_configuracion"],
+            value=eff.get("tipo_configuracion"),
+            det_value=det.get("tipo_configuracion"),
+            sctx=sctx,
+        )
 
         carac = eff.get("caracterizacion") or {}
         det_carac = det.get("caracterizacion") or {}
         if carac:
             _section("Caracterización")
-            for f in ("foria", "dominancia", "intensidad", "duracion",
-                      "tipo_atribucion", "temporalidad", "aspecto"):
+            for f in (
+                "foria",
+                "dominancia",
+                "intensidad",
+                "duracion",
+                "tipo_atribucion",
+                "temporalidad",
+                "aspecto",
+            ):
                 if f in carac:
-                    _element(ov, codigo, unit_idx, eidx, label=f,
-                             path=["caracterizacion", f], value=carac.get(f),
-                             det_value=det_carac.get(f), sctx=sctx,
-                             just=carac.get(f + "_justificacion"))
+                    _element(
+                        ov,
+                        codigo,
+                        unit_idx,
+                        eidx,
+                        label=f,
+                        path=["caracterizacion", f],
+                        value=carac.get(f),
+                        det_value=det_carac.get(f),
+                        sctx=sctx,
+                        just=carac.get(f + "_justificacion"),
+                    )
 
         actantes = eff.get("actantes") or {}
         det_act = det.get("actantes") or {}
@@ -841,33 +962,44 @@ def _render_emocion_card(
                 sub = actantes.get(ak)
                 if isinstance(sub, dict) and leaf in sub:
                     dsub = det_act.get(ak) if isinstance(det_act.get(ak), dict) else {}
-                    _element(ov, codigo, unit_idx, eidx, label=f"{ak} · {leaf}",
-                             path=["actantes", ak, leaf], value=sub.get(leaf),
-                             det_value=dsub.get(leaf), sctx=sctx,
-                             just=(sub.get("justificacion")
-                                   if leaf in ("funcion", "tipo") else None))
+                    _element(
+                        ov,
+                        codigo,
+                        unit_idx,
+                        eidx,
+                        label=f"{ak} · {leaf}",
+                        path=["actantes", ak, leaf],
+                        value=sub.get(leaf),
+                        det_value=dsub.get(leaf),
+                        sctx=sctx,
+                        just=(sub.get("justificacion") if leaf in ("funcion", "tipo") else None),
+                    )
 
         for path, sug in sug_by_path.items():
             if path not in sctx["rendered"]:
-                _render_suggestion(ov, codigo, unit_idx, eidx, list(path), sug,
-                                   sctx["states"].get(".".join(path)))
+                _render_suggestion(
+                    ov, codigo, unit_idx, eidx, list(path), sug, sctx["states"].get(".".join(path))
+                )
 
         st.markdown("<div style='height:0.3rem;'></div>", unsafe_allow_html=True)
         st.checkbox(
             "✓ Confirmar correcta",
             value=bool(confirmado.get("_emocion")),
             key=f"emok_{codigo}_{unit_idx}_{eidx}",
-            on_change=_on_confirm_emocion, args=(ov, codigo, unit_idx, eidx),
+            on_change=_on_confirm_emocion,
+            args=(ov, codigo, unit_idx, eidx),
         )
         fc1, fc2 = st.columns(2)
         with fc1:
-            if st.button("Revertir", key=f"emrev_{codigo}_{unit_idx}_{eidx}",
-                         use_container_width=True):
+            if st.button(
+                "Revertir", key=f"emrev_{codigo}_{unit_idx}_{eidx}", use_container_width=True
+            ):
                 _revert_emocion(ov, codigo, unit_idx, eidx)
                 st.rerun()
         with fc2:
-            if st.button("Eliminar", key=f"emdel_{codigo}_{unit_idx}_{eidx}",
-                         use_container_width=True):
+            if st.button(
+                "Eliminar", key=f"emdel_{codigo}_{unit_idx}_{eidx}", use_container_width=True
+            ):
                 ov.delete_emocion(codigo, unit_idx, eidx)
                 st.rerun()
 
@@ -881,7 +1013,10 @@ def _section(title: str) -> None:
 
 def _on_confirm_emocion(ov: RevisionOverlay, codigo: str, unit_idx: int, eidx: int) -> None:
     ov.confirm_emocion_field(
-        codigo, unit_idx, eidx, "_emocion",
+        codigo,
+        unit_idx,
+        eidx,
+        "_emocion",
         st.session_state[f"emok_{codigo}_{unit_idx}_{eidx}"],
     )
 
@@ -894,7 +1029,11 @@ def _revert_emocion(ov: RevisionOverlay, codigo: str, unit_idx: int, eidx: int) 
 
 
 def _override_at(
-    ov: RevisionOverlay, codigo: str, unit_idx: int, eidx: int, path: list[str],
+    ov: RevisionOverlay,
+    codigo: str,
+    unit_idx: int,
+    eidx: int,
+    path: list[str],
 ) -> tuple[bool, Any]:
     """(True, valor) si hay override del analista en `path`; (False, None) si no."""
     node: Any = ov.get_emocion(codigo, unit_idx, eidx).get("overrides", {})
@@ -914,9 +1053,18 @@ def _fmt_val(v: Any) -> str:
 
 
 def _element(
-    ov: RevisionOverlay, codigo: str, unit_idx: int, eidx: int, *,
-    label: str, path: list[str], value: Any, det_value: Any,
-    sctx: dict[str, Any], canonico: Any = None, marca: Any = None,
+    ov: RevisionOverlay,
+    codigo: str,
+    unit_idx: int,
+    eidx: int,
+    *,
+    label: str,
+    path: list[str],
+    value: Any,
+    det_value: Any,
+    sctx: dict[str, Any],
+    canonico: Any = None,
+    marca: Any = None,
     just: Any = None,
 ) -> None:
     """Un elemento del simulacro, en una línea compacta.
@@ -969,8 +1117,7 @@ def _element(
     sug = sctx["by_path"].get(tuple(path))
     if sug is not None:
         sctx["rendered"].add(tuple(path))
-        _render_suggestion(ov, codigo, unit_idx, eidx, path, sug,
-                           sctx["states"].get(key_str))
+        _render_suggestion(ov, codigo, unit_idx, eidx, path, sug, sctx["states"].get(key_str))
 
     if has_ov:
         if st.button("↺ deshacer", key=f"und_{ekey}"):
@@ -983,20 +1130,31 @@ def _element(
 
 
 def _render_edit_input(
-    ov: RevisionOverlay, codigo: str, unit_idx: int, eidx: int,
-    path: list[str], opts: list[str] | None, ekey: str,
+    ov: RevisionOverlay,
+    codigo: str,
+    unit_idx: int,
+    eidx: int,
+    path: list[str],
+    opts: list[str] | None,
+    ekey: str,
 ) -> None:
     inkey = f"in_{ekey}"
     if opts:
         choice = st.selectbox(
-            "nuevo valor", ["— elegir —"] + list(opts), index=0,
-            key=inkey, label_visibility="collapsed",
+            "nuevo valor",
+            ["— elegir —"] + list(opts),
+            index=0,
+            key=inkey,
+            label_visibility="collapsed",
         )
         newval: Any = None if choice == "— elegir —" else choice
     else:
         txt = st.text_input(
-            "nuevo valor", value="", key=inkey,
-            placeholder="escribí la corrección…", label_visibility="collapsed",
+            "nuevo valor",
+            value="",
+            key=inkey,
+            placeholder="escribí la corrección…",
+            label_visibility="collapsed",
         )
         newval = txt.strip() or None
     ec1, ec2 = st.columns(2)
@@ -1017,8 +1175,13 @@ def _render_edit_input(
 
 
 def _render_suggestion(
-    ov: RevisionOverlay, codigo: str, unit_idx: int, eidx: int,
-    path: list[str], sug: dict[str, Any], state: str | None,
+    ov: RevisionOverlay,
+    codigo: str,
+    unit_idx: int,
+    eidx: int,
+    path: list[str],
+    sug: dict[str, Any],
+    state: str | None,
 ) -> None:
     """Sugerencia del juez sobre un elemento: aceptar / rechazar."""
     campo = ".".join(path)
@@ -1042,9 +1205,7 @@ def _render_suggestion(
         return
     st.markdown(
         f"<div style='font-size:0.7rem;color:var(--accent);margin:0 0 0.1rem 0.4rem;'>"
-        f"💡 juez sugiere <b>{_esc(valor)}</b>"
-        + (f" — {_esc(just)}" if just else "")
-        + "</div>",
+        f"💡 juez sugiere <b>{_esc(valor)}</b>" + (f" — {_esc(just)}" if just else "") + "</div>",
         unsafe_allow_html=True,
     )
     cs1, cs2 = st.columns(2)
@@ -1060,6 +1221,7 @@ def _render_suggestion(
 
 
 # ── Emociones nuevas / agregar ───────────────────────────────────────────────
+
 
 def _render_new_emociones(ov: RevisionOverlay, codigo: str, unit_idx: int) -> None:
     for pos, em in enumerate(ov.list_new_emociones(codigo, unit_idx)):
@@ -1088,21 +1250,29 @@ def _render_add_emocion(ov: RevisionOverlay, codigo: str, unit_idx: int) -> None
         key=f"addem_modo_{codigo}_{unit_idx}",
     )
     fuente = st.text_input("Fuente de la emoción", key=f"addem_fte_{codigo}_{unit_idx}")
-    if st.button("Agregar emoción", key=f"addem_btn_{codigo}_{unit_idx}",
-                 disabled=not (exp.strip() and tipo.strip())):
-        ov.add_emocion(codigo, unit_idx, {
-            "experienciador": exp.strip(),
-            "tipo_emocion": tipo.strip(),
-            "modo_existencia": modo,
-            "fuente_inferencia": fuente.strip(),
-            "origen": "revision",
-        })
+    if st.button(
+        "Agregar emoción",
+        key=f"addem_btn_{codigo}_{unit_idx}",
+        disabled=not (exp.strip() and tipo.strip()),
+    ):
+        ov.add_emocion(
+            codigo,
+            unit_idx,
+            {
+                "experienciador": exp.strip(),
+                "tipo_emocion": tipo.strip(),
+                "modo_existencia": modo,
+                "fuente_inferencia": fuente.strip(),
+                "origen": "revision",
+            },
+        )
         for k in ("exp", "tipo"):
             st.session_state.pop(f"addem_{k}_{codigo}_{unit_idx}", None)
         st.rerun()
 
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
+
 
 def _kb_ids(db_path: Path, ov: RevisionOverlay) -> list[str]:
     """canonical_ids del referentes_kb + los propuestos en el overlay (para no chocar)."""

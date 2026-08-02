@@ -35,7 +35,6 @@ def ctx() -> RunContext:
 
 
 class TestBootstrap:
-
     def test_creates_all_tables(self, db: Database, ctx: RunContext) -> None:
         repo = RunsRepository(db)
         repo.bootstrap(ctx)
@@ -81,12 +80,12 @@ class TestBootstrap:
 
 
 class TestGetRun:
-
     def test_returns_none_if_no_run(self, db: Database) -> None:
         # DB sin bootstrap: no hay tabla runs todavía.
         repo = RunsRepository(db)
         # Crear tabla vacía manualmente (sin insertar fila).
         from emoparse.storage.schema import CREATE_RUNS
+
         db.execute(CREATE_RUNS)
         assert repo.get_run() is None
 
@@ -103,7 +102,6 @@ class TestGetRun:
 
 
 class TestStatus:
-
     def test_mark_completed(self, db: Database, ctx: RunContext) -> None:
         repo = RunsRepository(db)
         repo.bootstrap(ctx)
@@ -113,9 +111,7 @@ class TestStatus:
         assert row["status"] == "completed"
         assert row["finished_at"] is not None
 
-    def test_mark_failed_appends_to_notes(
-        self, db: Database, ctx: RunContext
-    ) -> None:
+    def test_mark_failed_appends_to_notes(self, db: Database, ctx: RunContext) -> None:
         repo = RunsRepository(db)
         repo.bootstrap(ctx)
         repo.mark_failed("simulated crash")
@@ -127,7 +123,6 @@ class TestStatus:
 
 
 class TestVersions:
-
     def test_versions_with_some_none(self, db: Database) -> None:
         """Versions parciales (algunas None) deben round-trip correctamente."""
         repo = RunsRepository(db)

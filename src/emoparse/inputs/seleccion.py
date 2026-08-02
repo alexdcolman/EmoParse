@@ -46,13 +46,18 @@ class SeleccionError(ValueError):
 #:   is_null          la columna está vacía o ausente
 #:   is_not_null      la columna tiene valor
 SeleccionOp = Literal[
-    "eq", "ne", "in", "contains", "gte", "lte", "between",
-    "is_null", "is_not_null",
+    "eq",
+    "ne",
+    "in",
+    "contains",
+    "gte",
+    "lte",
+    "between",
+    "is_null",
+    "is_not_null",
 ]
 
-_OPS_CON_VALOR: frozenset[str] = frozenset(
-    {"eq", "ne", "in", "contains", "gte", "lte", "between"}
-)
+_OPS_CON_VALOR: frozenset[str] = frozenset({"eq", "ne", "in", "contains", "gte", "lte", "between"})
 
 #: Cómo se lee cada operación en el resumen que se imprime y se persiste.
 _LECTURA: dict[str, str] = {
@@ -124,9 +129,7 @@ class Seleccion(BaseModel):
     @model_validator(mode="after")
     def _al_menos_uno(self) -> Seleccion:
         if not self.seleccion:
-            raise ValueError(
-                "El archivo no declara ningún filtro bajo 'seleccion'."
-            )
+            raise ValueError("El archivo no declara ningún filtro bajo 'seleccion'.")
         return self
 
     def leer(self) -> str:
@@ -144,9 +147,7 @@ def load_seleccion(path: Path | str) -> Seleccion:
     except yaml.YAMLError as e:
         raise SeleccionError(f"YAML inválido en {p}: {e}") from e
     if not isinstance(data, dict):
-        raise SeleccionError(
-            f"El YAML de {p} debe ser un mapping con la clave 'seleccion'."
-        )
+        raise SeleccionError(f"El YAML de {p} debe ser un mapping con la clave 'seleccion'.")
     try:
         return Seleccion.model_validate(data)
     except ValueError as e:
@@ -186,6 +187,7 @@ def aplicar_seleccion(df: pd.DataFrame, seleccion: Seleccion) -> pd.DataFrame:
 #  Evaluación de un filtro
 # ══════════════════════════════════════════════════════════════════════════════
 
+
 def _mascara_de(serie: pd.Series, filtro: SelectorFiltro) -> pd.Series:
     """Máscara booleana de una columna para un filtro."""
     if filtro.op == "is_null":
@@ -193,10 +195,7 @@ def _mascara_de(serie: pd.Series, filtro: SelectorFiltro) -> pd.Series:
     if filtro.op == "is_not_null":
         return serie.notna() & (serie.astype(str).str.strip() != "")
     if filtro.op == "contains":
-        return (
-            serie.fillna("").astype(str)
-            .str.contains(str(filtro.value), case=False, regex=False)
-        )
+        return serie.fillna("").astype(str).str.contains(str(filtro.value), case=False, regex=False)
     if filtro.op == "eq":
         return _texto(serie) == _texto_valor(filtro.value)
     if filtro.op == "ne":
@@ -234,9 +233,7 @@ def _texto_valor(valor: Any) -> str:
     return str(valor).strip().casefold()
 
 
-def _ordenables(
-    serie: pd.Series, valores: list[Any]
-) -> tuple[pd.Series, list[Any]]:
+def _ordenables(serie: pd.Series, valores: list[Any]) -> tuple[pd.Series, list[Any]]:
     """Convierte columna y extremos a un tipo comparable.
 
     El tipo lo decide el valor declarado, no la columna: si los extremos
@@ -251,8 +248,7 @@ def _ordenables(
     if declarados and not any(pd.isna(f) for f in fechas):
         col = pd.to_datetime(serie, errors="coerce", utc=True, format="mixed")
         convertidos = [
-            None if v is None else pd.to_datetime(v, errors="coerce", utc=True)
-            for v in valores
+            None if v is None else pd.to_datetime(v, errors="coerce", utc=True) for v in valores
         ]
         return col, convertidos
 

@@ -50,10 +50,7 @@ def render(db_path: Path) -> None:
     """
     grafos = data.list_red_grafos(db_path)
     solo_similitud = bool(grafos) and all(g in _GRAFOS_SIMILITUD for g in grafos)
-    titulo = (
-        "#### 🧬 Similitud entre unidades" if solo_similitud
-        else "#### 🕸 Red"
-    )
+    titulo = "#### 🧬 Similitud entre unidades" if solo_similitud else "#### 🕸 Red"
     st.markdown(titulo)
     if not grafos:
         st.info(
@@ -68,10 +65,9 @@ def render(db_path: Path) -> None:
     col1, col2 = st.columns([1, 3])
     with col1:
         grafo = st.selectbox(
-            "Grafo", grafos,
-            format_func=lambda g: (
-                f"{g} — {_DESCRIPCIONES[g]}" if g in _DESCRIPCIONES else g
-            ),
+            "Grafo",
+            grafos,
+            format_func=lambda g: f"{g} — {_DESCRIPCIONES[g]}" if g in _DESCRIPCIONES else g,
         )
         df_metricas = data.get_red_metricas(db_path, grafo)
         if not df_metricas.empty and df_metricas["comunidad"].notna().any():
@@ -84,7 +80,8 @@ def render(db_path: Path) -> None:
         try:
             st.plotly_chart(
                 fig_red(
-                    df_aristas, df_metricas,
+                    df_aristas,
+                    df_metricas,
                     etiquetas=_etiquetas_de_nodo(db_path, grafo, df_metricas),
                 ),
                 use_container_width=True,
@@ -96,8 +93,15 @@ def render(db_path: Path) -> None:
     if not df_metricas.empty:
         st.dataframe(
             df_metricas[
-                ["nodo", "grado_in", "grado_out", "grado_total",
-                 "pagerank", "intermediacion", "comunidad"]
+                [
+                    "nodo",
+                    "grado_in",
+                    "grado_out",
+                    "grado_total",
+                    "pagerank",
+                    "intermediacion",
+                    "comunidad",
+                ]
             ].head(100),
             use_container_width=True,
             hide_index=True,
@@ -132,8 +136,7 @@ def _etiquetas_de_nodo(
         if df.empty:
             return None
         return {
-            sim.clave_simulacro(r): sim.describir_simulacro(r)
-            for r in df.to_dict(orient="records")
+            sim.clave_simulacro(r): sim.describir_simulacro(r) for r in df.to_dict(orient="records")
         }
     return None
 
@@ -173,43 +176,42 @@ def _grupos_narrativos(db_path: Path, df_metricas: pd.DataFrame) -> None:
         posicion[str(r["nodo"])]: int(r["comunidad"])
         for r in df_metricas.to_dict(orient="records")
         if str(r["nodo"]) in posicion
-        and r.get("comunidad") is not None and not pd.isna(r["comunidad"])
+        and r.get("comunidad") is not None
+        and not pd.isna(r["comunidad"])
     }
     if not grupos:
         return
 
-    componentes = [
-        c for c in sim.COMPONENTES_DEFAULT
-        if c in sim.componentes_disponibles(df)
-    ]
+    componentes = [c for c in sim.COMPONENTES_DEFAULT if c in sim.componentes_disponibles(df)]
     st.markdown("##### Grupos narrativos")
-    st.caption(
-        f"{len(grupos)} simulacros agrupados por parecido entre "
-        f"{', '.join(componentes)}."
-    )
+    st.caption(f"{len(grupos)} simulacros agrupados por parecido entre {', '.join(componentes)}.")
     st.dataframe(
         sim.perfil_grupos(df, grupos, componentes),
-        use_container_width=True, hide_index=True,
+        use_container_width=True,
+        hide_index=True,
     )
 
     df_posts = data.get_posts(db_path)
     if df_posts.empty:
         return
     autores = sim.grupos_por_autor(
-        df, grupos,
-        {str(r["post_id"]): str(r["autor_handle"])
-         for r in df_posts.to_dict(orient="records")},
+        df,
+        grupos,
+        {str(r["post_id"]): str(r["autor_handle"]) for r in df_posts.to_dict(orient="records")},
     )
     if autores.empty:
         return
     st.markdown("##### Cuentas por grupo narrativo")
     grupo = st.selectbox(
-        "Grupo", sorted(autores["grupo"].unique()),
-        format_func=lambda g: f"Grupo {g}", key="red_grupo_narrativo",
+        "Grupo",
+        sorted(autores["grupo"].unique()),
+        format_func=lambda g: f"Grupo {g}",
+        key="red_grupo_narrativo",
     )
     st.dataframe(
         autores[autores["grupo"] == grupo].drop(columns=["grupo"]),
-        use_container_width=True, hide_index=True,
+        use_container_width=True,
+        hide_index=True,
     )
 
 
@@ -230,14 +232,13 @@ def _perfil_comunidades(db_path: Path, df_metricas: pd.DataFrame) -> None:
     )
     st.markdown("##### Perfil emocional por comunidad")
     if perfil.empty:
-        st.caption(
-            "Sin emociones caracterizadas en los posts de estas comunidades."
-        )
+        st.caption("Sin emociones caracterizadas en los posts de estas comunidades.")
         return
 
     st.plotly_chart(fig_perfil_forico(perfil), use_container_width=True)
     comunidad = st.selectbox(
-        "Comunidad", sorted(perfil["comunidad"].unique()),
+        "Comunidad",
+        sorted(perfil["comunidad"].unique()),
         format_func=lambda c: f"Comunidad {c}",
     )
     st.dataframe(

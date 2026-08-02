@@ -16,13 +16,13 @@ from typing import Any
 
 from loguru import logger
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  Adaptadores explícitos para datetime
 #
 #  Python 3.12 deprecó los adaptadores default para datetime.
 #  Convención: se serializa como ISO 8601 string (legible, ordenable, portable).
 # ══════════════════════════════════════════════════════════════════════════════
+
 
 def _adapt_datetime_iso(val: datetime) -> str:
     """datetime → str ISO 8601."""
@@ -52,8 +52,8 @@ class Database:
         if conn is None:
             conn = sqlite3.connect(
                 self.path,
-                isolation_level=None, # Control manual de transacciones.
-                detect_types=sqlite3.PARSE_DECLTYPES, # TIMESTAMP → datetime.
+                isolation_level=None,  # Control manual de transacciones.
+                detect_types=sqlite3.PARSE_DECLTYPES,  # TIMESTAMP → datetime.
             )
             conn.row_factory = sqlite3.Row
             self._init_pragmas(conn)
@@ -65,10 +65,10 @@ class Database:
     def _init_pragmas(conn: sqlite3.Connection) -> None:
         """PRAGMAs por conexión.
 
-            - WAL: lecturas/escrituras no se bloquean.
-            - synchronous=NORMAL: trade-off durabilidad vs velocidad razonable.
-            - foreign_keys=ON: enforcement de FKs declaradas.
-            - busy_timeout: tolerancia a locks de SQLite (tipico durante WAL checkpoints).
+        - WAL: lecturas/escrituras no se bloquean.
+        - synchronous=NORMAL: trade-off durabilidad vs velocidad razonable.
+        - foreign_keys=ON: enforcement de FKs declaradas.
+        - busy_timeout: tolerancia a locks de SQLite (tipico durante WAL checkpoints).
         """
         conn.execute("PRAGMA journal_mode=WAL")
         conn.execute("PRAGMA synchronous=NORMAL")

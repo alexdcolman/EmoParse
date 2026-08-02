@@ -21,11 +21,9 @@ from __future__ import annotations
 import argparse
 import os
 import shutil
-import sys
 from pathlib import Path
 
 from loguru import logger
-
 
 #: Path relativo al entry-point de la app dentro del paquete instalado.
 _APP_ENTRY = Path(__file__).parent.parent.parent / "app" / "__main__.py"
@@ -35,10 +33,7 @@ def handle(args: argparse.Namespace) -> int:
     """Maneja `emoparse app`. Devuelve exit code (nunca si streamlit toma el proceso)."""
     streamlit_bin = shutil.which("streamlit")
     if streamlit_bin is None:
-        logger.error(
-            "streamlit no encontrado en el entorno. "
-            "Instalalo con: pip install streamlit"
-        )
+        logger.error("streamlit no encontrado en el entorno. Instalalo con: pip install streamlit")
         return 1
 
     entry = _APP_ENTRY.resolve()

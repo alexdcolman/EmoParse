@@ -57,10 +57,14 @@ def handle(args: argparse.Namespace) -> int:
     if frases:
         ok_actores, fail_actores = _count_frase_status(f_repo, codigo, "actores")
         ok_emociones, fail_emociones = _count_frase_status(f_repo, codigo, "emociones")
-        print(f"  actores:   {ok_actores} ok, {fail_actores} failed, "
-              f"{len(frases) - ok_actores - fail_actores} pending")
-        print(f"  emociones: {ok_emociones} ok, {fail_emociones} failed, "
-              f"{len(frases) - ok_emociones - fail_emociones} pending")
+        print(
+            f"  actores:   {ok_actores} ok, {fail_actores} failed, "
+            f"{len(frases) - ok_actores - fail_actores} pending"
+        )
+        print(
+            f"  emociones: {ok_emociones} ok, {fail_emociones} failed, "
+            f"{len(frases) - ok_emociones - fail_emociones} pending"
+        )
     print()
 
     emociones = e_repo.list_emociones_of_discurso(codigo)
@@ -72,6 +76,7 @@ def handle(args: argparse.Namespace) -> int:
         print(f"  caracterizadas: {ok_c} ok, {fail_c} failed, {pending_c} pending")
 
         from collections import Counter
+
         tipos = Counter(e["tipo_emocion"] for e in emociones)
         if tipos:
             print(f"  tipos: {dict(tipos.most_common(5))}")
@@ -106,8 +111,8 @@ def _summarize_payload(stage: str, payload: dict) -> str:
         return f'"{rg[:80]}{"..." if len(rg) > 80 else ""}"'
     if stage == "metadata":
         return (
-            f'tipo={payload.get("tipo_discurso", "?")}, '
-            f'lugar={payload.get("ciudad", "?")}, {payload.get("pais", "?")}'
+            f"tipo={payload.get('tipo_discurso', '?')}, "
+            f"lugar={payload.get('ciudad', '?')}, {payload.get('pais', '?')}"
         )
     if stage == "enunciation":
         try:

@@ -24,7 +24,6 @@ from pydantic import ValidationError
 
 from emoparse.config.models import RunConfig
 
-
 #: Pattern para variables de entorno: ${VAR} o ${VAR:-default}.
 #: Soporta default vacío (`${VAR:-}`) y defaults con cualquier carácter
 #: excepto `}`.
@@ -79,14 +78,10 @@ def load_config(path: Path | str) -> RunConfig:
     try:
         cfg = RunConfig.model_validate(data)
     except ValidationError as e:
-        raise ConfigError(
-            f"Config inválido en {p}:\n{_format_validation_error(e)}"
-        ) from e
+        raise ConfigError(f"Config inválido en {p}:\n{_format_validation_error(e)}") from e
 
     logger.info(
-        f"[Config] Cargado {p} | "
-        f"models={list(cfg.models)} | "
-        f"stages={list(cfg.pipeline.stages)}"
+        f"[Config] Cargado {p} | models={list(cfg.models)} | stages={list(cfg.pipeline.stages)}"
     )
     return cfg
 
@@ -101,6 +96,7 @@ def _expand_env_vars(text: str) -> str:
     No hay sintaxis de escape (no es necesaria; `${...}` es muy raro
     en valores YAML reales).
     """
+
     def _replace(m: re.Match[str]) -> str:
         var_name = m.group(1)
         default = m.group(2)
@@ -114,6 +110,7 @@ def _expand_env_vars(text: str) -> str:
             f"pero no definida y sin default. Usá ${{{var_name}:-valor}} "
             f"para proveer un default."
         )
+
     return _ENV_VAR_PATTERN.sub(_replace, text)
 
 

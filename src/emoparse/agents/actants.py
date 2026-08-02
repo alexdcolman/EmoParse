@@ -27,7 +27,6 @@ from emoparse.core.schemas import (
 )
 from emoparse.genres.base import Genre
 
-
 #: Identificadores canónicos de los cuatro componentes actanciales.
 ACTANTS_COMPONENTS: tuple[str, ...] = (
     "mediador",
@@ -138,9 +137,7 @@ class ActantsAgent(BaseBatchAgent[ListaActantesBatchSchema]):
                 f"Válidos: {ACTANTS_COMPONENTS}"
             )
         if not enabled_components:
-            raise ValueError(
-                "Al menos un componente actancial debe estar habilitado."
-            )
+            raise ValueError("Al menos un componente actancial debe estar habilitado.")
         self._enabled: tuple[str, ...] = tuple(
             c for c in ACTANTS_COMPONENTS if c in enabled_components
         )
@@ -235,11 +232,7 @@ class ActantsAgent(BaseBatchAgent[ListaActantesBatchSchema]):
         if set(self._enabled) == set(ACTANTS_COMPONENTS):
             return actantes
         return ActantesEmocionSchema(
-            mediador=(
-                actantes.mediador
-                if "mediador" in self._enabled
-                else _disabled_mediador()
-            ),
+            mediador=(actantes.mediador if "mediador" in self._enabled else _disabled_mediador()),
             verificador_normativo=(
                 actantes.verificador_normativo
                 if "verificador_normativo" in self._enabled
@@ -256,9 +249,7 @@ class ActantsAgent(BaseBatchAgent[ListaActantesBatchSchema]):
                 else _disabled_operador_modificacion()
             ),
             polaridad=(
-                actantes.polaridad
-                if "polaridad" in self._enabled
-                else _disabled_polaridad()
+                actantes.polaridad if "polaridad" in self._enabled else _disabled_polaridad()
             ),
         )
 

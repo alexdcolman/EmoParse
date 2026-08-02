@@ -12,7 +12,6 @@ import pytest
 
 from emoparse.config import ConfigError, RunConfig, load_config, save_config
 
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  Helpers
 # ══════════════════════════════════════════════════════════════════════════════
@@ -58,7 +57,6 @@ def _write(tmp_path: Path, content: str, name: str = "config.yaml") -> Path:
 
 
 class TestValidLoad:
-
     def test_loads_valid_yaml(self, tmp_path: Path) -> None:
         p = _write(tmp_path, _VALID_YAML)
         cfg = load_config(p)
@@ -100,7 +98,6 @@ models:
 
 
 class TestModelConfigForAlias:
-
     def test_returns_dict_with_all_keys(self, tmp_path: Path) -> None:
         cfg = load_config(_write(tmp_path, _VALID_YAML))
         d = cfg.model_config_for_alias("qwen3-14b")
@@ -124,7 +121,6 @@ class TestModelConfigForAlias:
 
 
 class TestLoadErrors:
-
     def test_file_not_found(self, tmp_path: Path) -> None:
         with pytest.raises(ConfigError, match="no encontrado"):
             load_config(tmp_path / "no_existe.yaml")
@@ -185,7 +181,6 @@ pipeline:
 
 
 class TestSaveLoad:
-
     def test_round_trip(self, tmp_path: Path) -> None:
         """Cargar, guardar, cargar de nuevo: el config debe ser equivalente."""
         cfg1 = load_config(_write(tmp_path, _VALID_YAML))
@@ -210,7 +205,6 @@ class TestSaveLoad:
 
 
 class TestEnvVarExpansion:
-
     def test_env_var_with_default_used_when_unset(
         self,
         tmp_path: Path,
