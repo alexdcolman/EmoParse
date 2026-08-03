@@ -254,6 +254,13 @@ class Genre(BaseModel):
         "el enunciador; funciona igual con corpus seudonimizados "
         "(el alias es estable por cuenta).",
     )
+    enunciador_from_input_field: str | None = Field(
+        default=None,
+        description="Campo de input_metadata_model que fija de forma "
+        "determinista al emisor concreto del discurso. El valor "
+        "puede ser un string o una colección de nombres. Evita "
+        "inferir por LLM cuando la autoría ya viene declarada.",
+    )
     auditorio_predeterminado: bool = Field(
         default=False,
         description="Si True, el auditorio se construye de forma "
@@ -302,14 +309,33 @@ class Genre(BaseModel):
     @model_validator(mode="after")
     def validate_input_metadata_declaration(self) -> Genre:
         """Comprueba que las etiquetas refieran a campos del modelo tipado."""
+        if self.enunciador_from_handle and self.enunciador_from_input_field:
+            raise ValueError(
+                "enunciador_from_handle y enunciador_from_input_field son mutuamente excluyentes"
+            )
+
         if self.input_metadata_model is None:
-            if self.input_metadata_display or self.context_blocks:
+            if (
+                self.input_metadata_display
+                or self.context_blocks
+                or self.enunciador_from_input_field
+            ):
                 raise ValueError(
-                    "input_metadata_display y context_blocks requieren input_metadata_model"
+                    "input_metadata_display, context_blocks y "
+                    "enunciador_from_input_field requieren "
+                    "input_metadata_model"
                 )
             return self
 
         declared = set(self.input_metadata_model.model_fields)
+        if (
+            self.enunciador_from_input_field is not None
+            and self.enunciador_from_input_field not in declared
+        ):
+            raise ValueError(
+                "enunciador_from_input_field refiere a un campo no declarado: "
+                f"{self.enunciador_from_input_field}"
+            )
         unknown = set(self.input_metadata_display) - declared
         if unknown:
             raise ValueError(

@@ -18,9 +18,9 @@
   "discurso periodístico": {
     "descripción": "Producción verbal de medios de comunicación, orientada a informar o formar opinión.",
     "tipos_de_destinatarios": {
-      "audiencia objetivo": "Grupo social al que el medio apunta según su línea editorial.",
-      "fuentes": "Actores mencionados o interpelados por el medio para construir o cuestionar versiones.",
-      "oponentes ideológicos": "Grupos o discursos con los que el medio polemiza."
+      "lector_ciudadano": "el público ciudadano amplio al que informa la nota (instancia-público), sin vocativo, en registro informativo.",
+      "instancia_blanco": "el destinatario calculado por la estrategia editorial del medio; se reconoce por el ángulo de la nota más que por marcas.",
+      "fuente_referente": "el actor citado o etiquetado como fuente o protagonista de la noticia, interpelado o mencionado."
     }
   }
 }

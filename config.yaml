@@ -228,10 +228,10 @@ paths:
   inputs_dir:    ${EMOPARSE_INPUTS_DIR:-data}
 
 versions:
-  knowledge: v12
-  prompt:    v45
+  knowledge: v13
+  prompt: v46
   ontology:  v26
-  schema:    v36
+  schema: v37
 
 logging:
   level: INFO

@@ -39,7 +39,12 @@ def _sources(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
         yaml.safe_dump(
             {
                 "models": {"modelo-prueba": {"backend": "llama_cpp", "path": "modelo.gguf"}},
-                "pipeline": {"stages": {"metadata": "otro"}},
+                "pipeline": {
+                    "stages": {
+                        "metadata": "otro",
+                        "semas": "otro-modelo",
+                    }
+                },
                 "paths": {"knowledge_dir": "knowledge"},
             },
             sort_keys=False,
@@ -143,9 +148,7 @@ def test_prepare_creates_isolated_config_and_three_inputs(tmp_path: Path) -> Non
     generated = yaml.safe_load((workspace / "config.val01.yaml").read_text(encoding="utf-8"))
     assert generated["pipeline"]["parallel"] == 1
     assert generated["pipeline"]["cache_enabled"] is True
-    assert all(
-        generated["pipeline"]["stages"][stage] == "modelo-prueba" for stage in module.MODEL_STAGES
-    )
+    assert set(generated["pipeline"]["stages"].values()) == {"modelo-prueba"}
     article_rows = module._read_csv_rows(workspace / "inputs" / "articulo.csv")[1]
     discourse_rows = module._read_csv_rows(workspace / "inputs" / "discurso.csv")[1]
     assert len(article_rows) == 1
@@ -179,6 +182,37 @@ def test_prepare_rejects_unknown_model_alias(tmp_path: Path) -> None:
         assert "inexistente" in str(exc)
     else:
         raise AssertionError("prepare debía rechazar el alias desconocido")
+
+
+def test_journalistic_recipient_roles_are_consistent() -> None:
+    from emoparse.genres.articulo_periodistico import get_genre as get_article_genre
+    from emoparse.genres.tuit import get_genre as get_tuit_genre
+
+    expected = {
+        "lector_ciudadano": (
+            "el público ciudadano amplio al que informa la nota "
+            "(instancia-público), sin vocativo, en registro informativo."
+        ),
+        "instancia_blanco": (
+            "el destinatario calculado por la estrategia editorial del medio; "
+            "se reconoce por el ángulo de la nota más que por marcas."
+        ),
+        "fuente_referente": (
+            "el actor citado o etiquetado como fuente o protagonista de la "
+            "noticia, interpelado o mencionado."
+        ),
+    }
+    article = get_article_genre()
+    tuit = get_tuit_genre()
+
+    assert article.enunciatarios_por_tipo["periodistico"] == tuple(expected)
+    assert tuit.enunciatarios_por_tipo["periodistico_informativo"] == tuple(expected)
+    assert {role: article.roles_descripciones[role] for role in expected} == expected
+    assert {role: tuit.roles_descripciones[role] for role in expected} == expected
+
+    knowledge_path = Path(__file__).parents[2] / "knowledge" / "tipos_discurso.json"
+    knowledge = json.loads(knowledge_path.read_text(encoding="utf-8"))
+    assert knowledge["discurso periodístico"]["tipos_de_destinatarios"] == expected
 
 
 def _create_good_run(workspace: Path, module: ModuleType, spec: object) -> None:

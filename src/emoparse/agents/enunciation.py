@@ -176,9 +176,13 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         enunciador_just = (
             _opt_cell(row, "enunciador_fijado_justificacion") or parsed.enunciador.justificacion
         )
+        enunciador_validado = EnunciadorSchema(
+            actor=enunciador,
+            justificacion=enunciador_just,
+        )
         return {
-            "enunciador": enunciador,
-            "enunciador_justificacion": enunciador_just,
+            "enunciador": enunciador_validado.actor,
+            "enunciador_justificacion": enunciador_validado.justificacion,
             "enunciatarios": enunciatarios_json,
             "auditorio": auditorio_json,
             "colectivos_identificacion": colectivos_json,

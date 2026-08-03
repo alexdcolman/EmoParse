@@ -271,3 +271,30 @@ def test_invalid_fusion_payload_keeps_html_fallback(monkeypatch) -> None:
     assert record is not None
     assert "Primer párrafo" in record.contenido
     adapter.close()
+
+
+def test_fetch_article_reads_current_p12_author_markup(monkeypatch) -> None:
+    html = ARTICLE_HTML.replace(
+        '"author": [{"@type": "Person", "name": "Ana Pérez"}],',
+        '"author": [],',
+    ).replace(
+        '<div class="article-body">',
+        """<div class="left-content">
+          <a class="c-link p12Author" href="/autores/luis-bruschtein">
+            <div class="author-name">
+              <span class="prefix">Por </span>
+              <span class="name">Luis Bruschtein</span>
+            </div>
+          </a>
+        </div>
+        <div class="article-body">""",
+        1,
+    )
+    adapter = Pagina12Adapter(mode="http")
+    monkeypatch.setattr(adapter, "_fetch_text", lambda _url: html)
+
+    record = adapter.fetch_discurso("https://www.pagina12.com.ar/example")
+
+    assert record is not None
+    assert json.loads(record.to_dict()["autoria"]) == ["Luis Bruschtein"]
+    adapter.close()

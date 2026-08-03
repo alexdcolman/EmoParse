@@ -25,15 +25,6 @@ from typing import Any
 import yaml
 
 DEFAULT_WORKSPACE = Path(".build/val01")
-MODEL_STAGES = (
-    "summarizer",
-    "metadata",
-    "enunciation",
-    "enunciator_id",
-    "emotions",
-    "characterizer",
-    "emoji_affect",
-)
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,7 +210,7 @@ def _prepare_config(config_path: Path, output: Path, model_alias: str, workspace
     stages = pipeline.setdefault("stages", {})
     if not isinstance(stages, dict):
         raise Val01Error("pipeline.stages debe ser un mapping en el config.")
-    for stage in MODEL_STAGES:
+    for stage in tuple(stages):
         stages[stage] = model_alias
     pipeline["cache_enabled"] = True
     pipeline["parallel"] = 1

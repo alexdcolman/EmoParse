@@ -106,6 +106,7 @@ def get_genre() -> Genre:
             "epigrafe": "Epígrafe",
             "idioma": "Idioma",
         },
+        enunciador_from_input_field="autoria",
         context_blocks=(
             GenreContextBlock(
                 name="contexto_editorial",
@@ -134,15 +135,16 @@ def get_genre() -> Genre:
         },
         roles_descripciones={
             "lector_ciudadano": (
-                "público ciudadano amplio al que la nota informa y orienta "
-                "sobre un asunto de actualidad."
+                "el público ciudadano amplio al que informa la nota "
+                "(instancia-público), sin vocativo, en registro informativo."
             ),
             "instancia_blanco": (
-                "destinatario calculado por la estrategia editorial del medio "
-                "y por el encuadre de la nota."
+                "el destinatario calculado por la estrategia editorial del medio; "
+                "se reconoce por el ángulo de la nota más que por marcas."
             ),
             "fuente_referente": (
-                "actor citado, consultado o construido como fuente o referente del acontecimiento."
+                "el actor citado o etiquetado como fuente o protagonista de la "
+                "noticia, interpelado o mencionado."
             ),
         },
         tipos_discurso=(

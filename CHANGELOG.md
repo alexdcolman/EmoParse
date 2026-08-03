@@ -47,6 +47,19 @@ El formato sigue los principios de Keep a Changelog y el proyecto usa versionado
 
 ### Corregido
 
+- Los roles de destinatario del discurso periodístico se unifican entre el género
+  `articulo_periodistico`, el tipo `periodistico_informativo` de `tuit` y
+  `knowledge/tipos_discurso.json`: `lector_ciudadano`, `instancia_blanco` y
+  `fuente_referente`.
+- VAL-01 asigna el alias elegido a todas las stages LLM declaradas en el config; la primera
+  corrida del artículo reveló que `semas` seguía usando `gemma4-31b`.
+- En artículos periodísticos, la autoría declarada fija de forma determinista a la persona o firma
+  emisora; el nombre del medio deja de sustituirla cuando `autoria` está presente.
+- Los valores de identificación y justificación del referente emisor rechazan etiquetas
+  metalingüísticas como `enunciador`; el schema exige una persona, institución, colectivo o cuenta
+  concreta y evidencia igualmente concreta.
+- El adapter de Página/12 reconoce explícitamente el marcado actual
+  `.p12Author .author-name .name`, incluida la ruta `/autores/`.
 - Los reexports públicos `get_emociones` y `get_emociones_enriched` de la capa del dashboard se declaran explícitamente para que Ruff no los elimine como imports sin uso.
 - La configuración inicial de lint ya no trata sugerencias de simplificación como errores de CI.
 - El gate inicial de mypy usa Python 3.12 y una frontera explícita de archivos ya limpios; la deuda

@@ -38,6 +38,7 @@ from emoparse.core.backend.base import LLMBackend
 from emoparse.core.backend.retry import RetryConfig
 from emoparse.core.text import canonical_slug
 from emoparse.genres.base import Genre
+from emoparse.genres.enunciator import resolve_from_input_field
 from emoparse.knowledge.normalization import build_emotion_alias_lookup
 from emoparse.pipeline.contracts import (
     DiscursoInputContract,
@@ -447,6 +448,16 @@ class EnunciationStage(_DiscursoStage):
 
     def _resolver_enunciador(self, codigo: str, row_dict: dict[str, Any]) -> tuple[str, str]:
         """Devuelve (enunciador, justificacion) fijados, o ('', '')."""
+        if self._genre is not None and self._genre.enunciador_from_input_field:
+            campo = self._genre.enunciador_from_input_field
+            referente, justificacion = resolve_from_input_field(row_dict, campo)
+            if referente:
+                return referente, justificacion
+            logger.warning(
+                f"[Stage:{self.NAME}] {codigo}: el campo determinista "
+                f"'{campo}' no contiene referentes; se infiere por LLM."
+            )
+
         if self._genre is not None and self._genre.enunciador_from_handle:
             # El handle tiene prioridad sobre el display: es único por cuenta
             # (el display puede repetirse entre usuarios y rompería el
@@ -461,7 +472,7 @@ class EnunciationStage(_DiscursoStage):
                 return enunciador, justificacion
             logger.warning(
                 f"[Stage:{self.NAME}] {codigo}: sin autor_handle ni "
-                "autor_display en el input; el enunciador se infiere por LLM."
+                "autor_display en el input; el referente se infiere por LLM."
             )
             return "", ""
         if self._enunciator_agent is None:

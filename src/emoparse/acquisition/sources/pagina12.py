@@ -88,8 +88,10 @@ _CAPTION_SELECTORS: tuple[str, ...] = (
 )
 
 _AUTHOR_SELECTORS: tuple[str, ...] = (
+    ".p12Author .author-name .name",
     "article [rel='author']",
     "article a[href*='/autor/']",
+    "article a[href*='/autores/']",
     ".article-author",
     ".author-name",
 )

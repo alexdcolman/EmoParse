@@ -6,9 +6,10 @@
 
 from __future__ import annotations
 
+import re
 from typing import Annotated, Literal, get_args
 
-from pydantic import BaseModel, ConfigDict, Field, RootModel
+from pydantic import BaseModel, ConfigDict, Field, RootModel, field_validator
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Convención: todos los schemas tienen extra="forbid"
@@ -121,6 +122,24 @@ _MAX_CLASE = 80
 _MAX_ENTRADAS_ENUNCIACION = 12
 
 
+#: Las etiquetas metalingüísticas no son referentes. Se prohíben también en
+#: la justificación para que no lleguen al payload expresiones vacías como
+#: "el enunciador" en lugar de una persona, institución o colectivo concreto.
+_ENUNCIADOR_META_RE = re.compile(r"\benunciador(?:a|es|as)?\b", re.IGNORECASE)
+_ENUNCIADOR_ROLES_GENERICOS = frozenset(
+    {
+        "autor",
+        "autora",
+        "el autor",
+        "la autora",
+        "orador",
+        "oradora",
+        "el orador",
+        "la oradora",
+    }
+)
+
+
 class EnunciadorSchema(StrictBase):
     """Quién emite el discurso. Persona, institución o colectivo."""
 
@@ -134,6 +153,28 @@ class EnunciadorSchema(StrictBase):
         max_length=_MAX_JUSTIFICACION,
         description="Justificación breve de la identificación, citando elementos del texto.",
     )
+
+    @field_validator("actor")
+    @classmethod
+    def reject_role_instead_of_referent(cls, value: str) -> str:
+        """Exige un referente concreto, nunca una etiqueta de análisis."""
+        normalized = " ".join(value.lower().split())
+        if _ENUNCIADOR_META_RE.search(value) or normalized in _ENUNCIADOR_ROLES_GENERICOS:
+            raise ValueError(
+                "actor debe nombrar un referente concreto; no admite "
+                "etiquetas como 'enunciador', 'autor' u 'orador'"
+            )
+        return value
+
+    @field_validator("justificacion")
+    @classmethod
+    def reject_metalinguistic_justification(cls, value: str) -> str:
+        """Impide persistir fórmulas vacías basadas en la etiqueta del rol."""
+        if _ENUNCIADOR_META_RE.search(value):
+            raise ValueError(
+                "justificacion debe citar la evidencia concreta sin usar la palabra 'enunciador'"
+            )
+        return value
 
 
 class EnunciatarioSchema(StrictBase):

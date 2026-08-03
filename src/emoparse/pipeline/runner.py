@@ -704,7 +704,10 @@ class PipelineRunner:
             # está configurado (mismo backend de enunciation si no).
             enunciator_agent = None
             enunciator_release = None
-            if not self._genre.enunciador_from_handle:
+            enunciador_determinista = bool(
+                self._genre.enunciador_from_handle or self._genre.enunciador_from_input_field
+            )
+            if not enunciador_determinista:
                 id_alias = self._cfg.pipeline.stages.get("enunciator_id")
                 id_backend = self._get_backend("enunciator_id") if id_alias else backend
                 enunciator_agent = EnunciatorIdAgent(
