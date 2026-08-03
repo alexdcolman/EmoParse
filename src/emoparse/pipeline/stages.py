@@ -966,6 +966,7 @@ class EmotionsStage(_FraseStage):
         ontologia: str,
         heuristicas: str,
         configuraciones: str = "",
+        modos_existencia: str = "",
         emotion_alias_lookup: dict[str, str] | None = None,
         emotion_scope: tuple[str, ...] | None = None,
         agent_version: str | None = None,
@@ -980,7 +981,8 @@ class EmotionsStage(_FraseStage):
         self._ontologia = ontologia
         self._heuristicas = heuristicas
         self._configuraciones = configuraciones
-        self._emotion_alias_lookup = emotion_alias_lookup or {}
+        self._modos_existencia = modos_existencia
+        self._emotion_alias_lookup = emotion_alias_lookup
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else None
         # Providers opcionales de contexto para discurso nativo digital:
         # hilo (cadena de posts padre + cita), tecno (tecnolingüísticos
@@ -1013,6 +1015,7 @@ class EmotionsStage(_FraseStage):
             auditorio=_format_enunciatarios(enun.get("auditorio")),
             resumen=_resumen_global(summ),
             contexto_genero=contexto_genero or "",
+            modos_existencia=self._modos_existencia,
             emotion_scope=self._emotion_scope,
             emotion_alias_lookup=self._emotion_alias_lookup,
             retry_config=self._retry_config,
@@ -2716,6 +2719,7 @@ class EmotionsPass2Stage(Stage):
         ontologia: str,
         heuristicas: str,
         configuraciones: str = "",
+        modos_existencia: str = "",
         emotion_alias_lookup: dict[str, str] | None = None,
         rolling_window: int = 3,
         context_mode: Literal["rolling", "full"] = "rolling",
@@ -2736,7 +2740,8 @@ class EmotionsPass2Stage(Stage):
         self._ontologia = ontologia
         self._heuristicas = heuristicas
         self._configuraciones = configuraciones
-        self._emotion_alias_lookup = emotion_alias_lookup or {}
+        self._modos_existencia = modos_existencia
+        self._emotion_alias_lookup = emotion_alias_lookup
         self._rolling_window = rolling_window
         self._context_mode = context_mode
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else None
@@ -2829,6 +2834,7 @@ class EmotionsPass2Stage(Stage):
             enunciatarios=_format_enunciatarios(enun.get("enunciatarios")),
             auditorio=_format_enunciatarios(enun.get("auditorio")),
             resumen=_resumen_global(summ),
+            modos_existencia=self._modos_existencia,
             emotion_scope=self._emotion_scope,
             emotion_alias_lookup=self._emotion_alias_lookup,
             context_mode=self._context_mode,

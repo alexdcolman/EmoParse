@@ -9,9 +9,13 @@ Una emoción es un estado afectivo atribuible a un actor (experienciador)
 que se manifiesta o se infiere en el discurso. Incluye emociones explícitas
 ("tengo miedo") e inferibles ("temblando frente al juez" → miedo).
 
-MODOS DE EXISTENCIA DE LA EMOCIÓN (referencia):
+ONTOLOGÍA DE EMOCIONES (vocabulario cerrado):
 
 {{ ontologia }}
+
+MODOS DE EXISTENCIA DE LA EMOCIÓN (referencia):
+
+{{ modos_existencia }}
 
 CONFIGURACIONES DEL SIMULACRO EMOCIONAL (TIPO_CONF):
 
@@ -43,6 +47,21 @@ CAMPOS DE CADA EMOCIÓN (usá EXACTAMENTE estas claves abreviadas):
                        discurso a otro actor).
   * conf  configuración: el NÚMERO (1 a 8) de la configuración que le
                        corresponde, según la lista de arriba.
+
+REGLAS DE CIERRE ONTOLÓGICO Y ALCANCE LÉXICO:
+
+- Solo devolvé emociones presentes en la ontología mostrada. Palabras como
+  "carencia", "paciencia" o "cansancio" NO son automáticamente emociones:
+  elegí una emoción canónica respaldada por el contexto o no devuelvas nada.
+- Una emoción negada, ausente o explícitamente no poseída NO cuenta como
+  realizada: "carezco de esperanza" no expresa esperanza del hablante.
+- Priorizá el predicado emocional que organiza la construcción: "agradezco"
+  expresa gratitud, aunque su objeto mencione "esperanza".
+- No literalices expresiones cristalizadas: "colmar la paciencia" expresa
+  hartazgo, ira o impaciencia según el contexto; no "paciencia".
+- `fue` y `fuem` deben ser sintagmas breves de hasta seis palabras. Nunca
+  copies una oración completa ni una enumeración extensa.
+
 {% if heuristicas %}
 REGLAS DE INFERENCIA:
 

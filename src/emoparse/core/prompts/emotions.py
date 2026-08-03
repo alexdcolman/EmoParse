@@ -21,6 +21,7 @@ def render_system(
     heuristicas: str = "",
     resumen: str = "",
     contexto_genero: str = "",
+    modos_existencia: str = "",
     template: str = "emotions_system",
 ) -> str:
     """Renderiza el system prompt de EmotionsAgent.
@@ -46,6 +47,7 @@ def render_system(
         resumen: Contexto global del discurso, no evidencia autónoma.
         contexto_genero: Metadata tipada declarada por el género, acotada
             por el presupuesto de la stage.
+        modos_existencia: Texto formateado del catálogo de modos de existencia.
         template: Nombre del template Jinja2 del system prompt. Los géneros
             pueden sustituirlo vía `Genre.prompt_overrides` (p. ej.
             'emotions_system_tuit'). El template alternativo debe aceptar
@@ -64,6 +66,7 @@ def render_system(
         alcance=alcance,
         resumen=resumen,
         contexto_genero=contexto_genero,
+        modos_existencia=modos_existencia,
     )
 
 

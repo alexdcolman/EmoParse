@@ -71,13 +71,16 @@ def canonical_emotion(
 ) -> str | None:
     """Resuelve una etiqueta contra la ontología efectiva del género.
 
-    Sin lookup conserva la etiqueta limpia para compatibilidad. Con lookup,
-    aliases y canónicos se normalizan sin acentos; lo ajeno devuelve None.
+    ``lookup=None`` conserva la compatibilidad de construcciones antiguas que
+    no solicitan cierre. Un mapping provisto, incluso vacío, activa cierre
+    estricto: una ontología vacía no habilita vocabulario abierto.
     """
     if not isinstance(value, str) or not value.strip():
         return None
-    if not lookup:
+    if lookup is None:
         return value.strip()
+    if not lookup:
+        return None
     key = strip_accents(value.strip().lower())
     return lookup.get(key)
 
@@ -204,6 +207,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         auditorio: str = "",
         resumen: str = "",
         contexto_genero: str = "",
+        modos_existencia: str = "",
         emotion_scope: tuple[str, ...] | None = None,
         emotion_alias_lookup: dict[str, str] | None = None,
         retry_config: Any | None = None,
@@ -224,6 +228,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
             auditorio: Auditorio (destinatario directo, quienes efectivamente
                 escuchan o leen el discurso) del discurso, ya formateado
                 como texto. Vacío si no se conoce.
+            modos_existencia: Catálogo formateado de modos de existencia.
             emotion_scope: Restricción opcional de experienciadores a analizar.
                  Si es None o vacío, se analizan emociones de cualquier experienciador.
             emotion_alias_lookup: Mapa normalizado de nombres/aliases a emoción
@@ -244,8 +249,9 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         self._auditorio = auditorio
         self._resumen = resumen
         self._contexto_genero = contexto_genero
+        self._modos_existencia = modos_existencia
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else ()
-        self._emotion_alias_lookup = emotion_alias_lookup or {}
+        self._emotion_alias_lookup = emotion_alias_lookup
         self._genre = genre
 
         if genre is not None:
@@ -275,6 +281,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
             auditorio=self._auditorio,
             resumen=self._resumen,
             contexto_genero=self._contexto_genero,
+            modos_existencia=self._modos_existencia,
             alcance=self._alcance_text(),
             template=template,
         )

@@ -6,6 +6,16 @@ retroactiva el detalle completo de versiones anteriores.
 
 El formato sigue los principios de Keep a Changelog y el proyecto usa versionado semántico.
 
+## FIX-VAL01-05 — separación de ontología emocional y modos de existencia
+
+- El runner usa `emociones_ontologia.json` como vocabulario léxico cerrado y
+  `emociones.json` únicamente como catálogo de modos de existencia.
+- La ontología efectiva se valida antes de llamar al modelo: un lookup vacío
+  ahora falla cerrado con un error explícito.
+- Los prompts de emociones reciben por separado nombres/aliases y modos.
+- `normalize_emotions` y `judge` reutilizan la misma ontología configurada.
+- Se agregan contratos del cableado real del runner para evitar regresiones.
+
 ## [Sin publicar] — v0.7.0
 
 ### Agregado

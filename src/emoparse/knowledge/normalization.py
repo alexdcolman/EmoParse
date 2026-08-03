@@ -16,6 +16,33 @@ def strip_accents(s: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFD", s) if unicodedata.category(c) != "Mn")
 
 
+def format_emotion_ontology_for_prompt(ontology: dict[str, Any]) -> str:
+    """Formatea el vocabulario emocional cerrado para el prompt.
+
+    Incluye cada nombre canónico y sus aliases. Las dimensiones de
+    caracterización permanecen en la ontología cruda para validación y no se
+    duplican en el prompt de detección.
+    """
+    emociones = ontology.get("emociones", {})
+    if not isinstance(emociones, dict):
+        return ""
+
+    lines: list[str] = []
+    for canonical, entry in emociones.items():
+        if not isinstance(entry, dict):
+            continue
+        aliases = [
+            alias.strip()
+            for alias in entry.get("aliases", [])
+            if isinstance(alias, str) and alias.strip()
+        ]
+        line = f"- {canonical}"
+        if aliases:
+            line += f" (aliases: {', '.join(aliases)})"
+        lines.append(line)
+    return "\n".join(lines)
+
+
 def build_emotion_alias_lookup(
     ontology: dict[str, Any],
     *,

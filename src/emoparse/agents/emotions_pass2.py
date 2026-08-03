@@ -85,6 +85,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         enunciatarios: str = "",
         auditorio: str = "",
         resumen: str = "",
+        modos_existencia: str = "",
         emotion_scope: tuple[str, ...] | None = None,
         emotion_alias_lookup: dict[str, str] | None = None,
         context_mode: Literal["rolling", "full"] = "rolling",
@@ -106,6 +107,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
             auditorio: Auditorio (destinatario directo, quienes efectivamente
                 escuchan o leen el discurso) del discurso, ya formateado
                 como texto. Vacío si no se conoce.
+            modos_existencia: Catálogo formateado de modos de existencia.
             emotion_scope: Restricción de experienciadores a analizar. Si se
                 pasa, el prompt enfatiza que solo se consideren emociones
                 relacionadas con esos actores específicos. Si no se pasa, se
@@ -127,8 +129,9 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         self._enunciatarios = enunciatarios
         self._auditorio = auditorio
         self._resumen = resumen
+        self._modos_existencia = modos_existencia
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else ()
-        self._emotion_alias_lookup = emotion_alias_lookup or {}
+        self._emotion_alias_lookup = emotion_alias_lookup
         self._context_mode = context_mode
         self._genre = genre
 
@@ -163,6 +166,7 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
             enunciatarios=self._enunciatarios,
             auditorio=self._auditorio,
             resumen=self._resumen,
+            modos_existencia=self._modos_existencia,
             alcance=alcance_text(self._emotion_scope, self._enunciador, self._enunciatarios),
             template=template,
         )
