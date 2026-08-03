@@ -47,6 +47,11 @@ El formato sigue los principios de Keep a Changelog y el proyecto usa versionado
 
 ### Corregido
 
+- La detección de emociones queda cerrada al vocabulario efectivo de la ontología del género: aliases se canonizan antes de persistir y las etiquetas ajenas se descartan con advertencia.
+- El prompt emocional distingue emoción negada o ausente, predicado emocional y objeto léxico; evita interpretar `carezco de esperanza` como esperanza y `colmar la paciencia` como paciencia.
+- La autoatribución ya no puede asignarse a un experienciador distinto del emisor por la presencia de una matriz en primera persona como `creo que` o `siento que`.
+- En respuestas de redes, la cuenta destinataria directa se obtiene de la relación del hilo y no se describe falsamente como una mención textual.
+- `audiencia_ambiente` se documenta como audiencia pública secundaria compatible con una respuesta directa.
 - Los roles de destinatario del discurso periodístico se unifican entre el género
   `articulo_periodistico`, el tipo `periodistico_informativo` de `tuit` y
   `knowledge/tipos_discurso.json`: `lector_ciudadano`, `instancia_blanco` y

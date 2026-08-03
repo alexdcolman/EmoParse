@@ -64,8 +64,8 @@ _ROLES_DESCRIPCIONES: dict[str, str] = {
     "dispositivo (@mención, respuesta directa); puede superponerse con "
     "cualquier otro rol.",
     "audiencia_ambiente": "público indeterminado del archivo buscable ante el "
-    "cual el post también se enuncia (hashtags de alcance amplio, "
-    "apelaciones genéricas, sin destinatario individualizado).",
+    "cual el post también se enuncia. Puede coexistir con una respuesta "
+    "directa o una @mención: es la audiencia pública secundaria del post.",
     "prodestinatario": "el ya convencido que comparte la creencia; el post "
     "refuerza la comunión (nosotros inclusivo, consignas, afiliación).",
     "paradestinatario": "el indeciso al que se busca persuadir con argumentos o "

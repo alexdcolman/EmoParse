@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 import pandas as pd
@@ -17,6 +18,7 @@ from emoparse.core.schemas import (
     CaracterizacionBatchItemSchema,
     ListaCaracterizacionBatchSchema,
 )
+from emoparse.core.text import strip_accents_lower
 from emoparse.genres.base import Genre
 
 
@@ -51,6 +53,7 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
         heuristicas: str | None = None,
         retry_config: Any | None = None,
         genre: Genre | None = None,
+        enunciador: str = "",
     ) -> None:
         """
         Args:
@@ -58,6 +61,8 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
             titulo: Título del discurso, usado como contexto para el prompt.
             tipo_discurso: Clasificación o tipo del discurso, usado como
                 contexto.
+            enunciador: Referente emisor del discurso, usado para distinguir
+                auto de heteroatribución.
             heuristicas: Reglas heurísticas para caracterización de emociones.
                 Si None, no se inyectan heurísticas en el system prompt.
             retry_config: Política de reintentos ante errores transitorios
@@ -68,6 +73,7 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
 
         self._titulo = titulo
         self._tipo_discurso = tipo_discurso
+        self._enunciador = enunciador
         self._heuristicas = heuristicas
         self._genre = genre
 
@@ -82,6 +88,7 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
         return prompts.render_system(
             titulo=self._titulo,
             tipo_discurso=self._tipo_discurso,
+            enunciador=self._enunciador,
             heuristicas=self._heuristicas,
         )
 
@@ -114,6 +121,22 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
         row: pd.Series,
     ) -> dict[str, Any]:
         c = item.caracterizacion
+        tipo_atribucion = c.tipo_atribucion
+        justificacion_atribucion = c.tipo_atribucion_justificacion
+        experienciador = str(row.get("experienciador", "")).strip()
+        marca = str(row.get("experienciador_marca", "")).strip()
+        if (
+            tipo_atribucion == "auto_atribucion"
+            and self._enunciador.strip()
+            and experienciador
+            and not _same_referent(experienciador, self._enunciador)
+            and not _first_person_mark(marca)
+        ):
+            tipo_atribucion = "hetero_atribucion"
+            justificacion_atribucion = (
+                f"La emoción se atribuye a {experienciador}, distinto del "
+                f"enunciador {self._enunciador}."
+            )
         return {
             "foria": c.foria,
             "foria_justificacion": c.foria_justificacion,
@@ -123,10 +146,34 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
             "intensidad_justificacion": c.intensidad_justificacion,
             "duracion": c.duracion,
             "duracion_justificacion": c.duracion_justificacion,
-            "tipo_atribucion": c.tipo_atribucion,
-            "tipo_atribucion_justificacion": c.tipo_atribucion_justificacion,
+            "tipo_atribucion": tipo_atribucion,
+            "tipo_atribucion_justificacion": justificacion_atribucion,
             "temporalidad": c.temporalidad,
             "temporalidad_justificacion": c.temporalidad_justificacion,
             "aspecto": c.aspecto,
             "aspecto_justificacion": c.aspecto_justificacion,
         }
+
+
+_FIRST_PERSON_MARK_RE = re.compile(
+    r"\b(?:yo|me|mi|mis|mío|mía|mios|mias|nosotros|nosotras|nos|nuestro|"
+    r"nuestra|nuestros|nuestras)\b",
+    re.IGNORECASE,
+)
+
+
+def _same_referent(left: str, right: str) -> bool:
+    """Comparación tolerante de referentes para autoatribución."""
+
+    def norm(value: str) -> str:
+        value = strip_accents_lower(value).lstrip("@")
+        return re.sub(r"[^a-z0-9]+", "", value)
+
+    a = norm(left)
+    b = norm(right)
+    return bool(a and b and (a == b or a in b or b in a))
+
+
+def _first_person_mark(value: str) -> bool:
+    """True si la marca contiene un pronombre posesivo/personal de 1ª persona."""
+    return bool(_FIRST_PERSON_MARK_RE.search(value))

@@ -13,12 +13,14 @@ def render_system(
     titulo: str,
     tipo_discurso: str,
     heuristicas: str | None = None,
+    enunciador: str = "",
 ) -> str:
     """SYSTEM del characterizer con contexto del discurso."""
     return render(
         "characterizer_system",
         titulo=titulo,
         tipo_discurso=tipo_discurso,
+        enunciador=enunciador,
         heuristicas=heuristicas,
     )
 

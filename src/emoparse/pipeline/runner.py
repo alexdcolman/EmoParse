@@ -24,7 +24,9 @@ from emoparse.core.cache.backend import CachedBackend
 from emoparse.core.cache.repository import CacheRepository
 from emoparse.genres.presentation import attach_genre_presentation
 from emoparse.inputs.seleccion import Seleccion
+from emoparse.knowledge.genre_filter import filtrar_ontologia_por_genero
 from emoparse.knowledge.loader import KnowledgeError, KnowledgeLoader
+from emoparse.knowledge.normalization import build_emotion_alias_lookup
 from emoparse.pipeline.dag import EMOPARSE_DAG
 from emoparse.pipeline.genre_context import GenreContextProvider
 from emoparse.pipeline.payload_selection import PayloadSelectionEngine
@@ -763,6 +765,14 @@ class PipelineRunner:
             ontologia = self._knowledge.load_ontology(
                 self._ontology_filename, genre_id=self._genre.genre_id
             )
+            ontology_raw = filtrar_ontologia_por_genero(
+                self._knowledge.load_emotion_ontology(self._ontology_filename),
+                self._genre.genre_id,
+            )
+            emotion_alias_lookup = build_emotion_alias_lookup(
+                ontology_raw,
+                normalize_accents=True,
+            )
             heuristicas = self._heuristics_for("emotions", self._emotions_heuristics_filename)
             configuraciones = self._knowledge.load_emotion_configurations(
                 self._configurations_filename
@@ -806,6 +816,7 @@ class PipelineRunner:
                 ontologia=ontologia,
                 heuristicas=heuristicas,
                 configuraciones=configuraciones,
+                emotion_alias_lookup=emotion_alias_lookup,
                 emotion_scope=self._emotion_scope,
                 hilo_context_provider=hilo_provider,
                 tecno_context_provider=tecno_provider,
@@ -820,6 +831,14 @@ class PipelineRunner:
             backend = self._get_backend(name)
             ontologia = self._knowledge.load_ontology(
                 self._ontology_filename, genre_id=self._genre.genre_id
+            )
+            ontology_raw = filtrar_ontologia_por_genero(
+                self._knowledge.load_emotion_ontology(self._ontology_filename),
+                self._genre.genre_id,
+            )
+            emotion_alias_lookup = build_emotion_alias_lookup(
+                ontology_raw,
+                normalize_accents=True,
             )
             heuristicas = self._heuristics_for(
                 "emotions_pass2",
@@ -870,6 +889,7 @@ class PipelineRunner:
                 ontologia=ontologia,
                 heuristicas=heuristicas,
                 configuraciones=configuraciones,
+                emotion_alias_lookup=emotion_alias_lookup,
                 emotion_scope=self._emotion_scope,
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,

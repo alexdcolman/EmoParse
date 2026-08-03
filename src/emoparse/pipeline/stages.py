@@ -64,6 +64,7 @@ from emoparse.pipeline.emoji_rachas import (
 from emoparse.pipeline.genre_context import GenreContextProvider
 from emoparse.pipeline.modalidad_nlp import ModalidadNLP
 from emoparse.pipeline.progress import ProgressReporter
+from emoparse.pipeline.reply_context import reply_target
 from emoparse.pipeline.technoparse import (
     TecnoEntidad,
     menciones_handles,
@@ -438,6 +439,11 @@ class EnunciationStage(_DiscursoStage):
             row_dict["auditorio_fijo"] = json.dumps(
                 _auditorio_predeterminado(row_dict), ensure_ascii=False
             )
+            resolved_reply_target = reply_target(codigo, self._posts_repo)
+            if resolved_reply_target is not None:
+                row_dict["reply_target_fijo"] = json.dumps(
+                    resolved_reply_target, ensure_ascii=False
+                )
         row_dict = _contexto_cuenta(codigo, row_dict, self._posts_repo, self._embed_ctx)
         row_dict = _inject_contexto_hilo(codigo, row_dict, self._hilo_ctx)
         return _inject_genre_context(
@@ -960,6 +966,7 @@ class EmotionsStage(_FraseStage):
         ontologia: str,
         heuristicas: str,
         configuraciones: str = "",
+        emotion_alias_lookup: dict[str, str] | None = None,
         emotion_scope: tuple[str, ...] | None = None,
         agent_version: str | None = None,
         retry_config: RetryConfig | None = None,
@@ -973,6 +980,7 @@ class EmotionsStage(_FraseStage):
         self._ontologia = ontologia
         self._heuristicas = heuristicas
         self._configuraciones = configuraciones
+        self._emotion_alias_lookup = emotion_alias_lookup or {}
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else None
         # Providers opcionales de contexto para discurso nativo digital:
         # hilo (cadena de posts padre + cita), tecno (tecnolingüísticos
@@ -1006,6 +1014,7 @@ class EmotionsStage(_FraseStage):
             resumen=_resumen_global(summ),
             contexto_genero=contexto_genero or "",
             emotion_scope=self._emotion_scope,
+            emotion_alias_lookup=self._emotion_alias_lookup,
             retry_config=self._retry_config,
             genre=self._genre,
         )
@@ -2585,10 +2594,12 @@ class CharacterizerStage(Stage):
             self.progress.advance(len(items))
             input_data = self._d_repo.get_input(codigo) or {}
             meta = self._d_repo.get_payload(codigo, "metadata") or {}
+            enun = self._d_repo.get_payload(codigo, "enunciation") or {}
             agent = CharacterizerAgent(
                 self._backend,
                 titulo=str(input_data.get("titulo", "")),
                 tipo_discurso=str(meta.get("tipo_discurso", "")),
+                enunciador=str(enun.get("enunciador", "")),
                 heuristicas=self._heuristicas,
                 retry_config=self._retry_config,
                 genre=self._genre,
@@ -2705,6 +2716,7 @@ class EmotionsPass2Stage(Stage):
         ontologia: str,
         heuristicas: str,
         configuraciones: str = "",
+        emotion_alias_lookup: dict[str, str] | None = None,
         rolling_window: int = 3,
         context_mode: Literal["rolling", "full"] = "rolling",
         # "full" da más contexto de continuidad para detectar escaladas, a costa de prompt más largo
@@ -2724,6 +2736,7 @@ class EmotionsPass2Stage(Stage):
         self._ontologia = ontologia
         self._heuristicas = heuristicas
         self._configuraciones = configuraciones
+        self._emotion_alias_lookup = emotion_alias_lookup or {}
         self._rolling_window = rolling_window
         self._context_mode = context_mode
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else None
@@ -2817,6 +2830,7 @@ class EmotionsPass2Stage(Stage):
             auditorio=_format_enunciatarios(enun.get("auditorio")),
             resumen=_resumen_global(summ),
             emotion_scope=self._emotion_scope,
+            emotion_alias_lookup=self._emotion_alias_lookup,
             context_mode=self._context_mode,
             retry_config=self._retry_config,
             genre=self._genre,

@@ -27,7 +27,10 @@ CAMPOS DE CADA EMOCIÓN (usá EXACTAMENTE estas claves abreviadas):
                        de la unidad que lo identifica ("nosotros", "@cuenta", o
                        el verbo si el sujeto es tácito: "tienen miedo"). Nunca
                        una cláusula entera.
-  * emo   tipo de emoción: el nombre de UNA emoción, en sustantivo.
+  * emo   tipo de emoción: el nombre de UNA emoción, en sustantivo. DEBE ser
+                       una emoción canónica o un alias listado en la ontología
+                       incluida arriba; no inventes estados, condiciones ni
+                       nombres fuera de ese vocabulario.
   * fue   fuente: el actor o circunstante CONCRETO que DESENCADENA la emoción
                        en el experienciador, es decir su ORIGEN. Sintagma
                        nominal BREVE (máx ~6 palabras), no una explicación.
@@ -41,6 +44,21 @@ CAMPOS DE CADA EMOCIÓN (usá EXACTAMENTE estas claves abreviadas):
                        discurso a otro actor).
   * conf  configuración: el NÚMERO (1 a 8) de la configuración que le
                        corresponde, según la lista de arriba.
+
+REGLAS DE CIERRE ONTOLÓGICO Y ALCANCE LÉXICO:
+
+- Solo devolvé emociones presentes en la ontología mostrada. Palabras como
+  "carencia", "paciencia" o "cansancio" NO son automáticamente emociones:
+  elegí una emoción canónica respaldada por el contexto o no devuelvas nada.
+- Una emoción negada, ausente o explícitamente no poseída NO cuenta como
+  realizada: "carezco de esperanza" no expresa esperanza del hablante.
+- Priorizá el predicado emocional que organiza la construcción: "agradezco"
+  expresa gratitud, aunque su objeto mencione "esperanza".
+- No literalices expresiones cristalizadas: "colmar la paciencia" expresa
+  hartazgo, ira o impaciencia según el contexto; no "paciencia".
+- `fue` y `fuem` deben ser sintagmas breves de hasta seis palabras. Nunca
+  copies una oración completa ni una enumeración extensa.
+
 {% if heuristicas %}
 REGLAS DE INFERENCIA:
 

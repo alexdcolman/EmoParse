@@ -44,10 +44,15 @@ si falta cualquiera, es sin_atribucion:
 
   - auto_atribucion:   el propio experienciador se atribuye la emoción en
                        primera persona, cumpliendo (A) y (B): "tengo miedo",
-                       "amo a X", "mi odio hacia Y", "estoy triste".
+                       "amo a X", "mi odio hacia Y", "estoy triste". Si el
+                       experienciador es distinto del enunciador, NO puede ser
+                       auto_atribucion.
   - hetero_atribucion: OTRO actor (incluido el enunciador) atribuye la emoción
                        a un actor distinto, cumpliendo (A) y (B): "ella odia a
                        X", "el amor de él hacia Y", "ellos sentían miedo".
+                       En "creo/siento que el pueblo se hartó", el hartazgo del
+                       pueblo es hetero_atribucion: la primera persona pertenece
+                       a la matriz, no al experienciador.
   - sin_atribucion:    nadie enuncia la emoción cumpliendo (A) y (B); se infiere
                        de la situación, la valoración, un adverbio modal o el
                        comportamiento. Es el caso POR DEFECTO. Ejemplos:
@@ -101,6 +106,7 @@ CONTEXTO GLOBAL DEL DISCURSO:
 
   Título:     {{ titulo }}
   Tipo:       {{ tipo_discurso }}
+  Enunciador: {{ enunciador or "no identificado" }}
 
 - Las justificaciones deben ser sintéticas: una sola oración de no más de
   25 palabras, con la cita mínima necesaria. Nunca un párrafo.

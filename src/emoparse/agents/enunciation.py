@@ -168,7 +168,30 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
                     ).model_dump()
                 )
                 continue
-            enunciatarios.append(entrada.model_dump())
+            item = entrada.model_dump()
+            if _norm_rol(item.get("tipo")) == "audiencia_ambiente" and _opt_cell(
+                row, "reply_target_fijo"
+            ):
+                item["justificacion"] = (
+                    "Audiencia pública secundaria del post, además de la "
+                    "cuenta destinataria directa de la respuesta."
+                )
+            enunciatarios.append(item)
+
+        reply_target = _parse_json_object(_opt_cell(row, "reply_target_fijo"))
+        if reply_target is not None and _rol_admitido(reply_target.get("tipo"), permitidos):
+            actor_key = _norm_actor(reply_target.get("actor"))
+            tipo_key = _norm_rol(reply_target.get("tipo"))
+            enunciatarios = [
+                item
+                for item in enunciatarios
+                if not (
+                    _norm_actor(item.get("actor")) == actor_key
+                    and _norm_rol(item.get("tipo")) == tipo_key
+                )
+            ]
+            enunciatarios.insert(0, reply_target)
+
         enunciatarios_json = json.dumps(enunciatarios, ensure_ascii=False)
 
         # Auditorio: predeterminado desde el dispositivo si la fila lo trae;
@@ -567,6 +590,30 @@ def _auditorio_oral_fallback(row: pd.Series) -> dict[str, str]:
             "presente en la situación oral."
         ),
     ).model_dump()
+
+
+def _parse_json_object(value: str) -> dict[str, Any] | None:
+    """Parsea un objeto JSON opcional y exige las claves de enunciatario."""
+    if not value:
+        return None
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(parsed, dict):
+        return None
+    if not all(str(parsed.get(k) or "").strip() for k in ("actor", "tipo", "justificacion")):
+        return None
+    return {
+        "actor": str(parsed["actor"]).strip(),
+        "tipo": str(parsed["tipo"]).strip(),
+        "justificacion": str(parsed["justificacion"]).strip(),
+    }
+
+
+def _norm_actor(valor: Any) -> str:
+    """Normaliza un referente para deduplicar handles/cuentas."""
+    return " ".join(strip_accents_lower(valor).lstrip("@").split())
 
 
 def _norm_rol(valor: Any) -> str:

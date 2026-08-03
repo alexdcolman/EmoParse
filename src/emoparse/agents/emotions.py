@@ -31,6 +31,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
+from loguru import logger
 
 from emoparse.agents.base import BaseBatchAgent
 from emoparse.core.backend.base import LLMBackend
@@ -45,6 +46,7 @@ from emoparse.core.text import (
     sanitize_referent_label,
 )
 from emoparse.genres.schema_factory import emociones_batch_schema
+from emoparse.knowledge.normalization import strip_accents
 
 if TYPE_CHECKING:
     from emoparse.genres.base import Genre
@@ -61,6 +63,23 @@ _SANEADORES: dict[str, Callable[[str | None], str]] = {
     "experienciador": sanitize_referent_label,
     "fuente_inferencia": sanitize_referent_label,
 }
+
+
+def canonical_emotion(
+    value: Any,
+    lookup: dict[str, str] | None,
+) -> str | None:
+    """Resuelve una etiqueta contra la ontología efectiva del género.
+
+    Sin lookup conserva la etiqueta limpia para compatibilidad. Con lookup,
+    aliases y canónicos se normalizan sin acentos; lo ajeno devuelve None.
+    """
+    if not isinstance(value, str) or not value.strip():
+        return None
+    if not lookup:
+        return value.strip()
+    key = strip_accents(value.strip().lower())
+    return lookup.get(key)
 
 
 def sanitize_emocion(emo: dict[str, Any]) -> dict[str, Any]:
@@ -186,6 +205,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         resumen: str = "",
         contexto_genero: str = "",
         emotion_scope: tuple[str, ...] | None = None,
+        emotion_alias_lookup: dict[str, str] | None = None,
         retry_config: Any | None = None,
         genre: Genre | None = None,
     ) -> None:
@@ -206,6 +226,9 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
                 como texto. Vacío si no se conoce.
             emotion_scope: Restricción opcional de experienciadores a analizar.
                  Si es None o vacío, se analizan emociones de cualquier experienciador.
+            emotion_alias_lookup: Mapa normalizado de nombres/aliases a emoción
+                canónica. Si se provee, las salidas fuera de la ontología se
+                descartan antes de persistirse.
             retry_config: Política de reintentos ante errores transitorios.
             genre: Configuración opcional de género discursivo. Puede
                 ajustar parámetros como BATCH_SIZE y sustituir el template
@@ -222,6 +245,7 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         self._resumen = resumen
         self._contexto_genero = contexto_genero
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else ()
+        self._emotion_alias_lookup = emotion_alias_lookup or {}
         self._genre = genre
 
         if genre is not None:
@@ -292,11 +316,33 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         item: EmocionesBatchItemSchema,
         row: pd.Series,
     ) -> dict[str, Any]:
+        saneadas: list[dict[str, Any]] = []
+        for emocion in item.emociones:
+            limpia = sanitize_emocion(emocion.model_dump())
+            canonica = self._canonical_emotion(limpia.get("tipo_emocion"))
+            if canonica is None:
+                logger.warning(
+                    "[emotions] Emoción fuera de ontología descartada "
+                    f"(unit_idx={item.unit_idx}): {limpia.get('tipo_emocion')!r}"
+                )
+                continue
+            limpia["tipo_emocion"] = canonica
+            saneadas.append(limpia)
+
         emociones_json = json.dumps(
-            dedupe_emociones([sanitize_emocion(e.model_dump()) for e in item.emociones]),
+            dedupe_emociones(saneadas),
             ensure_ascii=False,
         )
         return {"emociones": emociones_json}
+
+    def _canonical_emotion(self, value: Any) -> str | None:
+        """Devuelve el canónico ontológico o None si la etiqueta es ajena.
+
+        Sin lookup conserva la compatibilidad previa. Con lookup, la salida
+        del LLM queda cerrada al vocabulario efectivo del género antes de
+        llegar a la base.
+        """
+        return canonical_emotion(value, self._emotion_alias_lookup)
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 
