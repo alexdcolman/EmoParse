@@ -49,6 +49,11 @@ La integración estructurada con un modelo real se documenta en
 `tests/integracion_llm/README.md`. Solo se ejecuta cuando se definen explícitamente la configuración
 y el alias del modelo.
 
+El smoke multigénero reproducible se prepara y verifica con
+`scripts/val01_smoke.py`. El script construye corpus mínimos bajo `.build/val01`, genera un config
+aislado para un único alias y, después de las tres corridas, audita bases, métricas y exportaciones.
+No ejecuta el modelo por su cuenta.
+
 ## Integración continua
 
 GitHub Actions ejecuta los contratos en Python 3.11 y 3.12. El andamio corre con resultado

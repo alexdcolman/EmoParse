@@ -43,6 +43,7 @@ El formato sigue los principios de Keep a Changelog y el proyecto usa versionado
 - Persistencia del alcance por stage y categoría `fuera de alcance` en el estado del CLI y del
   dashboard.
 - Traducción SQL compartida de filtros JSON entre selectores de corrida y políticas de reintento.
+- Arnés reproducible `scripts/val01_smoke.py` para preparar y verificar el smoke test multigénero con un único modelo local.
 
 ### Corregido
 
