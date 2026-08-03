@@ -153,6 +153,16 @@ class RunsRepository:
             type_def="TEXT",
         )
         self._add_column_if_missing(
+            table="mencion_canonico",
+            column="semas_version",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="mencion_canonico",
+            column="semas_error",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
             table="emociones",
             column="tipo_emocion_canonico",
             type_def="TEXT",

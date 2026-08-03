@@ -15,7 +15,7 @@ import pandas as pd
 from emoparse.agents.base import BaseAgent
 from emoparse.core.backend.base import LLMBackend
 from emoparse.core.prompts import enunciation as prompts
-from emoparse.core.schemas import EnunciacionSchema, EnunciadorSchema
+from emoparse.core.schemas import AuditorioSchema, EnunciacionSchema, EnunciadorSchema
 from emoparse.core.text import strip_accents_lower
 from emoparse.genres.base import Genre
 from emoparse.genres.schema_factory import enunciacion_schema
@@ -64,6 +64,7 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         heuristicas: str | None = None,
         colectivos: dict[str, Any] | None = None,
         destinatarios_indicadores: dict[str, Any] | None = None,
+        tipos_discurso: dict[str, Any] | None = None,
         retry_config: Any | None = None,
         genre: Genre | None = None,
     ) -> None:
@@ -80,6 +81,9 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
                 "tipos": {...}}`). Se inyectan en el prompt como pistas
                 orientativas del tipo identificado. Si None, el bloque de
                 roles se arma solo con las descripciones.
+            tipos_discurso: Diccionario canónico de `knowledge/tipos_discurso.json`.
+                Sus definiciones de destinatarios tienen prioridad sobre los
+                fallbacks declarados por el género.
             retry_config: Política de reintentos ante errores transitorios.
             genre: Configuración de género discursivo. Restringe los roles
                 enunciativos válidos del schema y define, por tipo de discurso,
@@ -90,6 +94,7 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         self._colectivos_str = _format_colectivos(colectivos)
         self._clases_validas = _allowed_colectivo_clases(colectivos)
         self._indicadores = destinatarios_indicadores or {}
+        self._tipos_discurso = tipos_discurso or {}
         self._genre = genre
 
         # Si se define genre, reemplazar el schema antes de llamar a
@@ -142,17 +147,33 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         # Serialización JSON para mantener compatibilidad tabular.
         # ensure_ascii=False preserva texto en español.
         permitidos = self._roles_permitidos(_opt_cell(row, "tipo_discurso"))
-        enunciatarios = [
-            e.model_dump()
-            for e in parsed.enunciatarios
-            if not es_rol_enunciativo(e.actor)
-            and not es_destinacion_sin_posicion(e.actor, e.tipo)
-            and _rol_admitido(e.tipo, permitidos)
-        ]
+        enunciatarios: list[dict[str, Any]] = []
+        auditorio_desde_vocativos: list[dict[str, Any]] = []
+        for entrada in parsed.enunciatarios:
+            if (
+                es_rol_enunciativo(entrada.actor)
+                or es_destinacion_sin_posicion(entrada.actor, entrada.tipo)
+                or not _rol_admitido(entrada.tipo, permitidos)
+            ):
+                continue
+            if _es_auditorio_situacional(
+                entrada.actor,
+                entrada.justificacion,
+                entrada.tipo,
+            ):
+                auditorio_desde_vocativos.append(
+                    AuditorioSchema(
+                        actor=entrada.actor,
+                        justificacion=entrada.justificacion,
+                    ).model_dump()
+                )
+                continue
+            enunciatarios.append(entrada.model_dump())
         enunciatarios_json = json.dumps(enunciatarios, ensure_ascii=False)
-        # Auditorio: predeterminado desde el dispositivo si la fila lo trae
-        # (géneros con `auditorio_predeterminado`); si no, el inferido, sin
-        # etiquetas de rol.
+
+        # Auditorio: predeterminado desde el dispositivo si la fila lo trae;
+        # si no, se combina el auditorio inferido con los vocativos que el LLM
+        # haya clasificado erróneamente como posiciones de destinación.
         auditorio_fijo = _opt_cell(row, "auditorio_fijo")
         if auditorio_fijo:
             try:
@@ -163,7 +184,12 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
             auditorio = [
                 a.model_dump() for a in parsed.auditorio if not es_rol_enunciativo(a.actor)
             ]
+            auditorio.extend(auditorio_desde_vocativos)
+            auditorio = _dedupe_referentes(auditorio)
+            if not auditorio and self._genre is not None and self._genre.auditorio_oral:
+                auditorio = [_auditorio_oral_fallback(row)]
         auditorio_json = json.dumps(auditorio, ensure_ascii=False)
+
         # Validación post-hoc de la clase de colectivo contra la ontología:
         # se descartan las clases no reconocidas (el schema deja `clase` libre).
         colectivos = [
@@ -213,14 +239,29 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
         roles = self._genre.roles_para_tipo(tipo_discurso or None)
         if not roles:
             return ""
-        descripciones = self._genre.roles_descripciones
+        descripciones = self._descripciones_roles(tipo_discurso, roles)
         indicadores = self._indicadores_por_rol(tipo_discurso)
         lineas = [
-            "ROLES ENUNCIATIVOS VÁLIDOS PARA ESTE POST (asigná a cada "
-            "enunciatario uno de estos `tipo`). Los indicadores son "
-            "orientativos: no siempre están presentes ni se respetan, no los "
-            "tomes al pie de la letra.",
+            "ROLES ENUNCIATIVOS VÁLIDOS PARA ESTE DISCURSO (asigná a cada "
+            "destinatario uno de estos `tipo`). Las definiciones provienen "
+            "del diccionario canónico de tipos de discurso; los indicadores "
+            "son solo pistas orientativas.",
         ]
+        if set(roles) == _ROLES_POLITICOS:
+            lineas.extend(
+                [
+                    "REGLA POLÍTICA CENTRAL:",
+                    "- Un vocativo o la presencia física en el acto identifica "
+                    "el AUDITORIO, no demuestra por sí sola una posición pro, "
+                    "para o contra.",
+                    "- prodestinatario exige evidencia de valores, creencias o "
+                    "adhesión compartidos.",
+                    "- paradestinatario exige una posición neutral o indecisa a "
+                    "la que se busca persuadir.",
+                    "- contradestinatario exige un adversario u oposición "
+                    "construidos explícitamente.",
+                ]
+            )
         for rol in roles:
             desc = descripciones.get(rol, "")
             lineas.append(f"- {rol}" + (f": {desc}" if desc else ""))
@@ -228,6 +269,38 @@ class EnunciationAgent(BaseAgent[EnunciacionSchema]):
             if pistas:
                 lineas.append("    Indicadores: " + "; ".join(pistas))
         return "\n".join(lineas)
+
+    def _descripciones_roles(
+        self,
+        tipo_discurso: str,
+        roles: tuple[str, ...],
+    ) -> dict[str, str]:
+        """Descripciones canónicas desde `tipos_discurso.json`, con fallback."""
+        candidatos: list[tuple[str, dict[str, Any]]] = []
+        for nombre, info in self._tipos_discurso.items():
+            if not isinstance(info, dict):
+                continue
+            defs = info.get("tipos_de_destinatarios")
+            if isinstance(defs, dict):
+                candidatos.append((str(nombre), defs))
+
+        tipo_norm = _norm_rol(tipo_discurso)
+        clave_genero = self._tipo_key(tipo_discurso)
+        clave_norm = _norm_rol(clave_genero or "")
+        seleccion: dict[str, Any] | None = None
+        for nombre, defs in candidatos:
+            nombre_norm = _norm_rol(nombre)
+            if nombre_norm == tipo_norm or (clave_norm and clave_norm in nombre_norm):
+                seleccion = defs
+                break
+        if seleccion is None:
+            for _, defs in candidatos:
+                if all(rol in defs for rol in roles):
+                    seleccion = defs
+                    break
+
+        fallback = self._genre.roles_descripciones if self._genre else {}
+        return {rol: str((seleccion or {}).get(rol) or fallback.get(rol) or "") for rol in roles}
 
     def _indicadores_por_rol(self, tipo_discurso: str) -> dict[str, list[str]]:
         """Mapea rol → indicadores para el tipo identificado (transversales
@@ -338,13 +411,22 @@ def _reglas_enunciador_genero(genre: Genre | None) -> str | None:
 
 
 def _reglas_auditorio_genero(genre: Genre | None) -> str | None:
-    """Reglas de auditorio derivadas de su modo de resolución declarado."""
-    if genre is None or not genre.auditorio_predeterminado:
+    """Reglas de auditorio derivadas del modo declarado por el género."""
+    if genre is None:
         return None
-    return (
-        "- El auditorio se completa de forma determinista desde el "
-        "dispositivo. No lo infieras: devolvé una lista vacía en `auditorio`."
-    )
+    if genre.auditorio_predeterminado:
+        return (
+            "- El auditorio se completa de forma determinista desde el "
+            "dispositivo. No lo infieras: devolvé una lista vacía en `auditorio`."
+        )
+    if genre.auditorio_oral:
+        return (
+            "- Es una situación oral: salvo ausencia total de indicios, devolvé "
+            "el público presente (por ejemplo, 'los asistentes al acto'). "
+            "Los vocativos y fórmulas como 'estamos reunidos' son evidencia "
+            "del auditorio, no de adhesión política."
+        )
+    return None
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -413,9 +495,10 @@ _ROLES_DE_CREENCIA = frozenset(
 #: Núcleos que designan a la audiencia por el dispositivo (los seguidores de
 #: una cuenta, el público de la plataforma) y no por lo que cree.
 _AUDIENCIA_DISPOSITIVO_RE = re.compile(
-    r"^(?:l[oa]s\s+|el\s+|la\s+)?"
+    r"^(?:el\s+resto\s+de\s+)?(?:l[oa]s\s+|el\s+|la\s+|todos\s+los\s+)?"
     r"(?:seguidor(?:e?s)?|followers|audiencia|publico|lector(?:e?s|as)?|"
-    r"usuari[oa]s?|comunidad|gente|espectador(?:e?s|as)?)\b"
+    r"usuari[oa]s?|comunidad|gente|espectador(?:e?s|as)?|argentinos?|"
+    r"ciudadania|sociedad|pueblo|nacion|poblacion)\b"
 )
 
 #: Marca de que la audiencia viene calificada por una posición ("seguidores
@@ -424,6 +507,66 @@ _CALIFICACION_RE = re.compile(
     r"\b(?:que|quienes|afin(?:es)?|contrari[oa]s|partidari[oa]s|adherentes|"
     r"critic[oa]s|a\s+favor|en\s+contra|opuest[oa]s|convencid[oa]s)\b"
 )
+
+
+_ROLES_POLITICOS = frozenset({"prodestinatario", "paradestinatario", "contradestinatario"})
+_AUDITORIO_SITUACIONAL_RE = re.compile(
+    r"\b(?:vocativ[oa]s?|presentes?|asistentes?|acto|ceremonia|reunidos?|"
+    r"autoridades?|veteranos?|familiares?|señoras y señores)\b",
+    re.IGNORECASE,
+)
+_POSICION_POLITICA_RE = re.compile(
+    r"\b(?:comparte[n]? (?:los )?valores|comparte[n]? (?:las )?creencias|"
+    r"base electoral|adherentes?|simpatizantes?|indecisos?|neutrales?|"
+    r"persuadir|oposici[oó]n|adversari[oa]s?|contraposici[oó]n|"
+    r"polarizaci[oó]n)\b",
+    re.IGNORECASE,
+)
+
+
+def _es_auditorio_situacional(actor: Any, justificacion: Any, tipo: Any) -> bool:
+    """Detecta vocativos/públicos presentes mal puestos como rol político."""
+    if _norm_rol(tipo) not in _ROLES_POLITICOS:
+        return False
+    texto = f"{actor} {justificacion}"
+    return bool(_AUDITORIO_SITUACIONAL_RE.search(texto) and not _POSICION_POLITICA_RE.search(texto))
+
+
+def _dedupe_referentes(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Deduplica entradas tabulares por actor normalizado, preservando orden."""
+    out: list[dict[str, Any]] = []
+    seen: set[str] = set()
+    for item in items:
+        key = " ".join(strip_accents_lower(item.get("actor", "")).split())
+        if not key or key in seen:
+            continue
+        seen.add(key)
+        out.append(item)
+    return out
+
+
+def _auditorio_oral_fallback(row: pd.Series) -> dict[str, str]:
+    """Auditorio mínimo para un género oral cuando el LLM devuelve vacío."""
+    contenido = _opt_cell(row, "contenido")
+    texto_norm = strip_accents_lower(contenido)
+    if "malvinas" in texto_norm and ("veterano" in texto_norm or "caidos" in texto_norm):
+        actor = (
+            "los presentes en el acto conmemorativo por el Día del Veterano "
+            "y de los Caídos en la Guerra de Malvinas"
+        )
+    elif "conmemor" in texto_norm:
+        actor = "los presentes en el acto conmemorativo"
+    elif "acto" in texto_norm or "ceremonia" in texto_norm:
+        actor = "los presentes en el acto"
+    else:
+        actor = "los presentes en la situación de enunciación"
+    return AuditorioSchema(
+        actor=actor,
+        justificacion=(
+            "Los vocativos y las marcas de reunión identifican al público "
+            "presente en la situación oral."
+        ),
+    ).model_dump()
 
 
 def _norm_rol(valor: Any) -> str:

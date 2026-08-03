@@ -122,11 +122,15 @@ _MAX_CLASE = 80
 _MAX_ENTRADAS_ENUNCIACION = 12
 
 
-#: Las etiquetas metalingüísticas no son referentes. Se prohíben también en
-#: la justificación para que no lleguen al payload expresiones vacías como
-#: "el enunciador" en lugar de una persona, institución o colectivo concreto.
-_ENUNCIADOR_META_RE = re.compile(r"\benunciador(?:a|es|as)?\b", re.IGNORECASE)
-_ENUNCIADOR_ROLES_GENERICOS = frozenset(
+#: Las etiquetas metalingüísticas no son referentes concretos. Se prohíben
+#: únicamente en los campos categoriales (`actor`, `nombre`, `clase`), pero se
+#: permiten en las justificaciones analíticas, donde son terminología válida.
+_META_REFERENTE_RE = re.compile(
+    r"\b(?:enunciador(?:a|es|as)?|enunciatari[oa]s?|auditorio|"
+    r"prodestinatari[oa]s?|paradestinatari[oa]s?|contradestinatari[oa]s?)\b",
+    re.IGNORECASE,
+)
+_ROLES_GENERICOS = frozenset(
     {
         "autor",
         "autora",
@@ -136,8 +140,23 @@ _ENUNCIADOR_ROLES_GENERICOS = frozenset(
         "oradora",
         "el orador",
         "la oradora",
+        "destinatario",
+        "destinataria",
+        "el destinatario",
+        "la destinataria",
     }
 )
+
+
+def _referente_concreto(value: str, *, campo: str) -> str:
+    """Valida que un campo categorial nombre un referente concreto."""
+    normalized = " ".join(value.lower().split())
+    if _META_REFERENTE_RE.search(value) or normalized in _ROLES_GENERICOS:
+        raise ValueError(
+            f"{campo} debe nombrar un referente concreto; no admite etiquetas "
+            "metalingüísticas ni roles de análisis"
+        )
+    return value
 
 
 class EnunciadorSchema(StrictBase):
@@ -158,23 +177,7 @@ class EnunciadorSchema(StrictBase):
     @classmethod
     def reject_role_instead_of_referent(cls, value: str) -> str:
         """Exige un referente concreto, nunca una etiqueta de análisis."""
-        normalized = " ".join(value.lower().split())
-        if _ENUNCIADOR_META_RE.search(value) or normalized in _ENUNCIADOR_ROLES_GENERICOS:
-            raise ValueError(
-                "actor debe nombrar un referente concreto; no admite "
-                "etiquetas como 'enunciador', 'autor' u 'orador'"
-            )
-        return value
-
-    @field_validator("justificacion")
-    @classmethod
-    def reject_metalinguistic_justification(cls, value: str) -> str:
-        """Impide persistir fórmulas vacías basadas en la etiqueta del rol."""
-        if _ENUNCIADOR_META_RE.search(value):
-            raise ValueError(
-                "justificacion debe citar la evidencia concreta sin usar la palabra 'enunciador'"
-            )
-        return value
+        return _referente_concreto(value, campo="actor")
 
 
 class EnunciatarioSchema(StrictBase):
@@ -196,6 +199,12 @@ class EnunciatarioSchema(StrictBase):
         description="Justificación breve, citando elementos del texto.",
     )
 
+    @field_validator("actor")
+    @classmethod
+    def reject_role_instead_of_referent(cls, value: str) -> str:
+        """El actor debe nombrar al destinatario, no la categoría analítica."""
+        return _referente_concreto(value, campo="actor")
+
 
 class AuditorioSchema(StrictBase):
     """Auditorio: destinatario DIRECTO del discurso (quien lo escucha o lee).
@@ -216,6 +225,12 @@ class AuditorioSchema(StrictBase):
         description="Justificación breve, citando elementos del texto o de la "
         "situación de enunciación.",
     )
+
+    @field_validator("actor")
+    @classmethod
+    def reject_role_instead_of_referent(cls, value: str) -> str:
+        """El actor debe nombrar al público concreto, no la categoría."""
+        return _referente_concreto(value, campo="actor")
 
 
 class ColectivoIdentificacionSchema(StrictBase):
@@ -242,6 +257,12 @@ class ColectivoIdentificacionSchema(StrictBase):
         max_length=_MAX_JUSTIFICACION,
         description="Justificación breve, citando elementos del texto.",
     )
+
+    @field_validator("clase", "nombre")
+    @classmethod
+    def reject_metalinguistic_category(cls, value: str) -> str:
+        """Las categorías deben ser ontológicas o referenciales, no roles."""
+        return _referente_concreto(value, campo="categoría")
 
 
 class EnunciacionSchema(StrictBase):
@@ -524,6 +545,23 @@ Aspecto = Literal[
 ]
 
 
+_RAZONAMIENTO_INTERNO_RE = re.compile(
+    r"(?:\bel prompt\b|\bme pide\b|\bdebo inferir\b|\bvoy a\b|"
+    r"\breleer\b|\bcorrecci[oó]n\b|\bpero espera\b|"
+    r"\bsi yo debo\b|\besto es la emoci[oó]n a caracterizar\b)",
+    re.IGNORECASE,
+)
+_CARACTERIZACION_JUSTIFICACIONES = (
+    "foria_justificacion",
+    "dominancia_justificacion",
+    "intensidad_justificacion",
+    "duracion_justificacion",
+    "tipo_atribucion_justificacion",
+    "temporalidad_justificacion",
+    "aspecto_justificacion",
+)
+
+
 class CaracterizacionEmocionSchema(StrictBase):
     """Caracterización completa de una emoción detectada."""
 
@@ -533,6 +571,7 @@ class CaracterizacionEmocionSchema(StrictBase):
         "positivo+negativo), indeterminado.",
     )
     foria_justificacion: str = Field(
+        max_length=_MAX_JUSTIFICACION,
         description="Justificación breve de la foria, citando elementos.",
     )
     dominancia: Dominancia = Field(  # type: ignore[valid-type]
@@ -540,12 +579,14 @@ class CaracterizacionEmocionSchema(StrictBase):
         "cognoscitiva (mental, evaluativa), mixta.",
     )
     dominancia_justificacion: str = Field(
+        max_length=_MAX_JUSTIFICACION,
         description="Justificación breve de la dominancia.",
     )
     intensidad: Intensidad = Field(  # type: ignore[valid-type]
         description="Intensidad: alta, baja, o neutra/ambivalente.",
     )
     intensidad_justificacion: str = Field(
+        max_length=_MAX_JUSTIFICACION,
         description="Justificación breve de la intensidad.",
     )
     duracion: TipoDuracion = Field(  # type: ignore[valid-type]
@@ -555,6 +596,7 @@ class CaracterizacionEmocionSchema(StrictBase):
         "'permanente' (rasgo estable del experienciador, sin límite temporal).",
     )
     duracion_justificacion: str = Field(
+        max_length=_MAX_JUSTIFICACION,
         description="Justificación breve de la duración, citando marcadores "
         "temporales o de aspecto presentes en el texto.",
     )
@@ -570,6 +612,7 @@ class CaracterizacionEmocionSchema(StrictBase):
         "Sin atribución textual directa, usar 'sin_atribucion'.",
     )
     tipo_atribucion_justificacion: str = Field(
+        max_length=_MAX_JUSTIFICACION,
         description="Justificación breve del tipo de atribución, citando "
         "la construcción sintáctica o enunciativa relevante.",
     )
@@ -587,6 +630,7 @@ class CaracterizacionEmocionSchema(StrictBase):
         "'indeterminada' (no deducible).",
     )
     temporalidad_justificacion: str = Field(
+        max_length=_MAX_JUSTIFICACION,
         description="Justificación breve, citando el marcador temporal o el "
         "anclaje histórico relevante del texto.",
     )
@@ -600,9 +644,21 @@ class CaracterizacionEmocionSchema(StrictBase):
         "'no_marcado' (sin marca aspectual clara).",
     )
     aspecto_justificacion: str = Field(
+        max_length=_MAX_JUSTIFICACION,
         description="Justificación breve, citando la marca aspectual (tiempo/"
         "perífrasis verbal, adverbio) relevante del texto.",
     )
+
+    @field_validator(*_CARACTERIZACION_JUSTIFICACIONES)
+    @classmethod
+    def reject_internal_reasoning(cls, value: str) -> str:
+        """Rechaza deliberación del modelo en campos destinados a evidencia."""
+        if _RAZONAMIENTO_INTERNO_RE.search(value):
+            raise ValueError(
+                "la justificación debe contener solo la decisión y su evidencia; "
+                "no admite deliberación sobre el prompt"
+            )
+        return value
 
 
 class CaracterizacionBatchItemSchema(StrictBase):

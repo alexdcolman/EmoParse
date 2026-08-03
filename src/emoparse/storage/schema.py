@@ -403,6 +403,10 @@ CREATE TABLE IF NOT EXISTS mencion_canonico (
     naturaleza      TEXT,
     -- Procedencia de la clasificación de modalidad/naturaleza: 'nlp'|'llm'|'human'.
     modalidad_origin TEXT,
+    -- Estado de la última pasada de semas para el referente. Se replica en
+    -- todos sus vínculos para representar también un resultado vacío.
+    semas_version   TEXT,
+    semas_error     TEXT,
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     reviewed_at     TIMESTAMP,
     UNIQUE (mencion_id, canonical_id),

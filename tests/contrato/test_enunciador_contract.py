@@ -6,7 +6,10 @@ import pytest
 from pydantic import ValidationError
 
 from emoparse.core.prompts import enunciation as prompts
-from emoparse.core.schemas import EnunciadorSchema
+from emoparse.core.schemas import (
+    ColectivoIdentificacionSchema,
+    EnunciadorSchema,
+)
 from emoparse.genres.articulo_periodistico import get_genre
 from emoparse.genres.enunciator import resolve_from_input_field
 
@@ -26,7 +29,6 @@ def test_article_authorship_fixes_concrete_person_without_llm() -> None:
 
     assert actor == "Luis Bruschtein"
     assert justification == "Autoría declarada en la metadata del campo `autoria`."
-    assert "enunciador" not in justification.lower()
 
 
 def test_article_authorship_accepts_json_and_multiple_signatures() -> None:
@@ -39,20 +41,42 @@ def test_article_authorship_accepts_json_and_multiple_signatures() -> None:
 
 
 @pytest.mark.parametrize(
-    ("actor", "justification"),
+    "actor",
     [
-        ("el enunciador", "La firma aparece en la cabecera."),
-        ("enunciador institucional", "La institución firma la nota."),
-        ("Luis Bruschtein", "El enunciador está firmado en la cabecera."),
-        ("autor", "La firma aparece en la cabecera."),
+        "el enunciador",
+        "enunciador institucional",
+        "enunciatario",
+        "prodestinatario",
+        "autor",
     ],
 )
-def test_schema_rejects_metalinguistic_placeholders(
+def test_schema_rejects_metalinguistic_placeholders_in_categories(
     actor: str,
-    justification: str,
 ) -> None:
     with pytest.raises(ValidationError):
-        EnunciadorSchema(actor=actor, justificacion=justification)
+        EnunciadorSchema(
+            actor=actor,
+            justificacion="La firma aparece en la cabecera.",
+        )
+
+
+def test_schema_accepts_analytic_term_in_justification() -> None:
+    parsed = EnunciadorSchema(
+        actor="Javier Milei",
+        justificacion=("El enunciador se identifica como Presidente de la Nación al inicio."),
+    )
+
+    assert parsed.actor == "Javier Milei"
+    assert "enunciador" in parsed.justificacion.lower()
+
+
+def test_collective_name_rejects_metalinguistic_category() -> None:
+    with pytest.raises(ValidationError):
+        ColectivoIdentificacionSchema(
+            clase="institucional",
+            nombre="el enunciador",
+            justificacion="El enunciador usa la primera persona plural.",
+        )
 
 
 def test_schema_accepts_concrete_referent_and_evidence() -> None:
@@ -64,9 +88,8 @@ def test_schema_accepts_concrete_referent_and_evidence() -> None:
     assert parsed.actor == "Luis Bruschtein"
 
 
-def test_identification_prompt_forbids_metalinguistic_values() -> None:
+def test_identification_prompt_forbids_metalinguistic_categories_only() -> None:
     text = prompts.render_enunciator_id_system()
 
-    assert 'No escribas la palabra "enunciador"' in text
+    assert "No escribas la palabra" in text
     assert "`actor`" in text
-    assert "`justificacion`" in text

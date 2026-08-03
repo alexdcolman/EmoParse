@@ -18,6 +18,10 @@ REGLAS PARA EL ENUNCIADOR:
   justificación que es una inferencia.
 - Si es totalmente indeterminable, escribí exactamente "no identificado".
   NO dejes el campo vacío.
+- En el campo categorial `actor`, no escribas etiquetas metalingüísticas
+  como "enunciador", "autor" u "orador": nombrá a la persona, institución,
+  colectivo o cuenta concreta. En la justificación sí podés usar terminología
+  analítica cuando resulte necesaria.
 {% if reglas_enunciador %}
 REGLAS ESPECÍFICAS DEL GÉNERO PARA EL ENUNCIADOR:
 
@@ -32,7 +36,7 @@ REGLAS PARA LOS ENUNCIATARIOS:
   de ESTE texto). NO uses un rol que no esté en esa lista.
 - El campo `actor` debe ser siempre un REFERENTE CONCRETO (persona,
   colectivo, institución identificables en este discurso), NUNCA una
-  etiqueta de rol ("enunciador", "autor", "prodestinatario",
+  etiqueta metalingüística o de rol ("enunciatario", "prodestinatario",
   "contradestinatario", "destinatario"): el rol va en `tipo`.
 - Cada justificación debe citar elementos concretos del texto.
 - Si solo se identifica un enunciatario, devolvé una lista de un solo
@@ -48,7 +52,7 @@ REGLAS PARA EL AUDITORIO:
 - Ejemplos: "los presentes en el Foro de Davos", "la audiencia de cadena
   nacional", "los asistentes al acto".
 - El campo `actor` del auditorio también debe ser un referente concreto,
-  nunca una etiqueta de rol.
+  nunca la palabra "auditorio" ni otra etiqueta de análisis.
 - Si no es determinable, devolvé lista vacía.
 {% if reglas_auditorio %}
 REGLAS ESPECÍFICAS DEL GÉNERO PARA EL AUDITORIO:
@@ -63,7 +67,8 @@ REGLAS PARA LOS COLECTIVOS DE IDENTIFICACIÓN:
   enunciador se identifica o a la que adscribe (no a quién se dirige).
 - Para cada colectivo, asigná una `clase` usando EXACTAMENTE uno de los
   identificadores válidos según el tipo de discurso. NO inventes clases.
-- Indicá el `nombre` concreto del colectivo (no la clase).
+- Indicá el `nombre` concreto del colectivo (no la clase ni palabras como
+  "enunciador" o "enunciatario").
 - Pueden ser varios y de distintas clases. Lista vacía si no hay evidencia.
 
 CLASES DE COLECTIVO VÁLIDAS (por tipo de discurso):

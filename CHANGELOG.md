@@ -51,13 +51,22 @@ El formato sigue los principios de Keep a Changelog y el proyecto usa versionado
   `articulo_periodistico`, el tipo `periodistico_informativo` de `tuit` y
   `knowledge/tipos_discurso.json`: `lector_ciudadano`, `instancia_blanco` y
   `fuente_referente`.
+- La destinación del discurso político usa como fuente primaria las definiciones de
+  `knowledge/tipos_discurso.json`: los vocativos y la presencia física describen el auditorio, no
+  prueban por sí solos posiciones pro, para o contradestinatarias.
+- Los géneros orales pueden declarar `auditorio_oral`; cuando hay marcas situacionales y el modelo
+  omite el público presente, se materializa un auditorio mínimo determinista.
+- Las justificaciones del caracterizador rechazan deliberación interna, relecturas y referencias al
+  prompt; solo admiten la decisión final y su evidencia textual.
+- La stage `semas` registra también los referentes procesados con resultado vacío, evitando que el
+  estado los muestre como pendientes y que una reanudación vuelva a procesarlos.
 - VAL-01 asigna el alias elegido a todas las stages LLM declaradas en el config; la primera
   corrida del artículo reveló que `semas` seguía usando `gemma4-31b`.
 - En artículos periodísticos, la autoría declarada fija de forma determinista a la persona o firma
   emisora; el nombre del medio deja de sustituirla cuando `autoria` está presente.
-- Los valores de identificación y justificación del referente emisor rechazan etiquetas
-  metalingüísticas como `enunciador`; el schema exige una persona, institución, colectivo o cuenta
-  concreta y evidencia igualmente concreta.
+- Los campos categoriales de la estructura enunciativa (`actor`, `nombre`, `clase`) rechazan
+  etiquetas metalingüísticas como `enunciador` o `enunciatario`; las justificaciones conservan esa
+  terminología analítica cuando corresponde.
 - El adapter de Página/12 reconoce explícitamente el marcado actual
   `.p12Author .author-name .name`, incluida la ruta `/autores/`.
 - Los reexports públicos `get_emociones` y `get_emociones_enriched` de la capa del dashboard se declaran explícitamente para que Ruff no los elimine como imports sin uso.

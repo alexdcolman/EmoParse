@@ -269,6 +269,14 @@ class Genre(BaseModel):
         "hashtag presente (nunca combinados) y un destinatario "
         "directo por cuenta mencionada.",
     )
+    auditorio_oral: bool = Field(
+        default=False,
+        description="Si True, el género presupone una situación oral con "
+        "público presente. Los vocativos describen el auditorio, "
+        "no bastan para asignar posiciones de destinación. Si el "
+        "LLM omite el auditorio pese a marcas situacionales, se "
+        "construye un fallback determinista.",
+    )
 
     # ── Tipos de discurso cerrados ───────────────────────────────────────────
     tipos_discurso: tuple[str, ...] = Field(

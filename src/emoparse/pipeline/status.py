@@ -409,6 +409,42 @@ def _referente_stage(conn: sqlite3.Connection, stage: str, ejecutada: bool) -> S
             "JOIN menciones m ON m.id = mc.mencion_id "
             f"WHERE {selector}",
         )
+        total_global = _uno(
+            conn,
+            "SELECT COUNT(DISTINCT canonical_id) FROM mencion_canonico",
+        )
+        fuera = max(total_global - total, 0)
+        cols = _columnas(conn, "mencion_canonico")
+        if {"semas_version", "semas_error"}.issubset(cols):
+            completed = _uno(
+                conn,
+                "SELECT COUNT(DISTINCT mc.canonical_id) "
+                "FROM mencion_canonico mc "
+                "JOIN menciones m ON m.id = mc.mencion_id "
+                "WHERE mc.semas_version IS NOT NULL "
+                "AND mc.semas_error IS NULL "
+                f"AND {selector}",
+            )
+            failed = _uno(
+                conn,
+                "SELECT COUNT(DISTINCT mc.canonical_id) "
+                "FROM mencion_canonico mc "
+                "JOIN menciones m ON m.id = mc.mencion_id "
+                "WHERE mc.semas_error IS NOT NULL "
+                f"AND {selector}",
+            )
+            return StageStatus(
+                stage=stage,
+                pending=max(total - completed - failed, 0),
+                failed=failed,
+                completed=completed,
+                fuera_alcance=fuera,
+                ejecutada=ejecutada,
+                unidad="referentes",
+            )
+
+        # Compatibilidad con DBs anteriores a schema v38: solo puede saberse
+        # qué referentes dejaron al menos un sema.
         completed = _uno(
             conn,
             "SELECT COUNT(DISTINCT cs.canonical_id) "
@@ -418,11 +454,6 @@ def _referente_stage(conn: sqlite3.Connection, stage: str, ejecutada: bool) -> S
             "WHERE mc.canonical_id = cs.canonical_id "
             f"AND {selector})",
         )
-        total_global = _uno(
-            conn,
-            "SELECT COUNT(DISTINCT canonical_id) FROM mencion_canonico",
-        )
-        fuera = max(total_global - total, 0)
         return StageStatus(
             stage=stage,
             pending=max(total - completed, 0),

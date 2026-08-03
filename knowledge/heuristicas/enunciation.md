@@ -16,7 +16,7 @@ Estas reglas orientan la identificación del enunciador principal y los enunciat
 3. **Roles enunciativos según género discursivo**
    - Discurso político: prodestinatario (simpatizantes), paradestinatario (indecisos), contradestinatario (adversarios).
    - Redes sociales / tuits: prodestinatario, paradestinatario, contradestinatario, destinatario_mencionado (la cuenta interpelada vía @), audiencia_ambiente (el público indeterminado del archivo buscable).
-   - Periodismo / discurso público: audiencia_objetivo, fuente, oponente_ideologico.
+   - Periodismo: lector_ciudadano, instancia_blanco, fuente_referente.
    - Asigná solo los roles válidos para el género identificado.
    - El rol va siempre en el campo `tipo`; el campo `actor` debe ser un referente concreto (persona, colectivo, institución o cuenta identificables), nunca una etiqueta de rol ("enunciador", "autor del post", "prodestinatario", "destinatario"). Única excepción: "audiencia ambiente", indeterminada por naturaleza.
 
@@ -35,6 +35,8 @@ Instrucciones generales:
 
 Reglas adicionales:
 
-- El enunciador nunca es un identificador técnico (ids, URLs, URIs como "at://…").
+- El referente emisor nunca es un identificador técnico (ids, URLs, URIs como "at://…").
+- En los campos categoriales de identificación (`actor`, `nombre`, `clase`) no uses "enunciador", "enunciatario" ni otras etiquetas de análisis: nombrá el referente concreto. En las justificaciones sí puede usarse terminología analítica.
+- En artículos periodísticos, la autoría declarada en la metadata tiene prioridad sobre el nombre del medio. El medio solo puede usarse si la nota carece de firma.
 - Los colectivos de identificación pueden no existir: lista vacía válida. Hashtags temáticos o actores mencionados no son colectivos del enunciador salvo identificación explícita.
 - Justificaciones sintéticas: una sola oración de no más de 25 palabras.

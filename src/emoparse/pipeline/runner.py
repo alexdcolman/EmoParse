@@ -697,6 +697,7 @@ class PipelineRunner:
                 destinatarios_indicadores=(
                     self._knowledge.load_destinatarios_indicadores(self._genre.genre_id) or None
                 ),
+                tipos_discurso=self._knowledge.load_diccionario_tipos(self._diccionario_filename),
             )
             # Sub-paso de identificación del enunciador: determinista en los
             # géneros con `enunciador_from_handle`; en el resto, un agente

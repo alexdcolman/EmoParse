@@ -3538,8 +3538,8 @@ class SemasStage(Stage):
         self._genre = genre
 
     def run_pending(self) -> int:
-        """Propone semas para los referentes que aún no tienen ninguno."""
-        ya = self._m_repo.canonicos_con_semas()
+        """Propone semas para referentes aún no barridos por la stage."""
+        ya = self._m_repo.canonicos_semas_procesados()
         codigos = set(self._selector_scope) if self._selector_scope is not None else None
         pendientes = [
             c for c in self._m_repo.list_canonicos(codigos=codigos) if c["canonical_id"] not in ya
@@ -3576,20 +3576,42 @@ class SemasStage(Stage):
 
         total = 0
         for _, row in out.iterrows():
-            raw = row.get("semas")
-            if not raw:
+            canonical_id = str(row["canonical_id"])
+            error = str(row.get("semas_error") or "").strip()
+            if error:
+                self._m_repo.mark_semas_processed(
+                    canonical_id,
+                    version=self._version,
+                    error=error,
+                )
                 continue
+
+            raw = row.get("semas")
             try:
-                semas = json.loads(raw)
+                semas = json.loads(raw) if raw else []
             except (json.JSONDecodeError, TypeError):
+                self._m_repo.mark_semas_processed(
+                    canonical_id,
+                    version=self._version,
+                    error="salida de semas inválida",
+                )
                 continue
             if not isinstance(semas, list):
+                self._m_repo.mark_semas_processed(
+                    canonical_id,
+                    version=self._version,
+                    error="salida de semas no es una lista",
+                )
                 continue
             total += self._m_repo.propose_semas(
-                str(row["canonical_id"]),
+                canonical_id,
                 [str(s) for s in semas],
                 allowed=allowed,
                 origin="llm",
+            )
+            self._m_repo.mark_semas_processed(
+                canonical_id,
+                version=self._version,
             )
         logger.info(f"[Stage:{self.NAME}] {len(pendientes)} referentes, {total} semas propuestos.")
         return total

@@ -848,10 +848,28 @@ class MencionesRepository:
             out.append({"canonical_id": r["canonical_id"], "marcas": marcas})
         return out
 
-    def canonicos_con_semas(self) -> set[str]:
-        """Canónicos que ya tienen algún sema (para no re-proponer)."""
-        rows = self._db.execute("SELECT DISTINCT canonical_id FROM canonico_semas").fetchall()
+    def canonicos_semas_procesados(self) -> set[str]:
+        """Canónicos ya barridos por la stage, incluso con resultado vacío."""
+        rows = self._db.execute(
+            "SELECT DISTINCT canonical_id FROM mencion_canonico WHERE semas_version IS NOT NULL"
+        ).fetchall()
         return {r["canonical_id"] for r in rows}
+
+    def mark_semas_processed(
+        self,
+        canonical_id: str,
+        *,
+        version: str | None,
+        error: str | None = None,
+    ) -> None:
+        """Marca el referente como procesado, aunque no tenga semas válidos."""
+        canonical_id = canonical_slug(canonical_id)
+        with self._db.transaction() as cur:
+            cur.execute(
+                "UPDATE mencion_canonico SET semas_version = ?, semas_error = ? "
+                "WHERE canonical_id = ?",
+                (version or "unknown", error, canonical_id),
+            )
 
     def reset_semas(self) -> int:
         """Borra TODOS los semas de la DB (propuestos y editados a mano).
@@ -863,7 +881,9 @@ class MencionesRepository:
         """
         with self._db.transaction() as cur:
             cur.execute("DELETE FROM canonico_semas")
-            return cur.rowcount
+            deleted = cur.rowcount
+            cur.execute("UPDATE mencion_canonico SET semas_version = NULL, semas_error = NULL")
+            return deleted
 
     def accepted_referentes(self) -> list[dict[str, Any]]:
         """Referentes con ≥1 vínculo ACEPTADO, con clase inferida y display.

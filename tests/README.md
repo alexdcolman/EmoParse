@@ -52,7 +52,9 @@ y el alias del modelo.
 El smoke multigénero reproducible se prepara y verifica con
 `scripts/val01_smoke.py`. El script construye corpus mínimos bajo `.build/val01`, genera un config
 aislado para un único alias y, después de las tres corridas, audita bases, métricas y exportaciones.
-No ejecuta el modelo por su cuenta.
+No ejecuta el modelo por su cuenta. La identificación del referente emisor tiene contratos
+propios: la autoría periodística declarada evita inferencia LLM y los valores metalingüísticos
+(`enunciador`, `autor`, `orador`) se rechazan antes de persistir.
 
 ## Integración continua
 

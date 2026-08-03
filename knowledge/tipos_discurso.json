@@ -2,9 +2,9 @@
   "discurso político": {
     "descripción": "Discurso producido por actores del campo político, como representantes estatales, partidos, o movimientos. Tiene siempre tres tipos de destinatarios simultáneos",
     "tipos_de_destinatarios": {
-      "prodestinatario": "Grupo que comparte los valores y las creencias del enunciador. Generalmente, su propio partido y su propia base electoral. Nunca se corresponde con una población ni con una una sociedad.",
-      "paradestinatario": "Audiencia neutra o indecisa, a la que el discurso intenta atraer y persuadir.",
-      "contradestinatario": "Oposición o adversarios explícitos, mencionados para contraposición o polarización. Suelen tener valores y creencias opuestas a las del enunciador."
+      "prodestinatario": "Colectivo político que comparte los valores y las creencias del emisor; generalmente su partido, militancia o base electoral. La presencia física, un vocativo o pertenecer a una población no bastan para clasificarlo así.",
+      "paradestinatario": "Audiencia neutral, indecisa o todavía no convencida, a la que el discurso busca atraer o persuadir. Requiere indicios de disputa por su adhesión.",
+      "contradestinatario": "Oposición o adversario construido explícitamente mediante ataque, refutación, contraposición o polarización. La mera mención temática de un actor no basta."
     }
   },
   "discurso científico": {

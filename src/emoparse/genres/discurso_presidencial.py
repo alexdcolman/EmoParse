@@ -29,12 +29,19 @@ def get_genre() -> Genre:
         enunciation_roles=_ROLES_POLITICOS,
         enunciatarios_por_tipo={"politico": _ROLES_POLITICOS},
         roles_descripciones={
-            "prodestinatario": "el ya convencido, base electoral que comparte "
-            "la creencia; el discurso refuerza la comunión.",
-            "paradestinatario": "el indeciso al que se busca persuadir con "
-            "argumentos, sin presuponer adhesión.",
-            "contradestinatario": "el adversario excluido del colectivo de "
-            "identificación; se lo ataca o refuta.",
+            "prodestinatario": (
+                "Colectivo político que comparte los valores y las creencias "
+                "del emisor; generalmente su partido, militancia o base "
+                "electoral. La presencia física o un vocativo no bastan."
+            ),
+            "paradestinatario": (
+                "Audiencia neutral, indecisa o todavía no convencida, a la que "
+                "el discurso busca atraer o persuadir."
+            ),
+            "contradestinatario": (
+                "Oposición o adversario construido explícitamente mediante "
+                "ataque, refutación, contraposición o polarización."
+            ),
         },
         models={},
         batch_size={
@@ -48,5 +55,6 @@ def get_genre() -> Genre:
             "judge": 1,
         },
         summarizer=True,
+        auditorio_oral=True,
         prompt_overrides={},
     )
