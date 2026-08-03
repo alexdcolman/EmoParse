@@ -38,6 +38,11 @@ El formato sigue los principios de Keep a Changelog y el proyecto usa versionado
 - Línea de base progresiva de lint y tipado: Ruff bloquea errores de sintaxis, imports y reglas
   seguras; mypy estricto cubre una frontera explícita de archivos ya limpios y se ampliará por módulos.
 - `.git-blame-ignore-revs` para excluir del análisis de autoría el formateo mecánico inicial.
+- Selectores dinámicos sobre payloads de stages anteriores mediante notación punto en el mismo YAML
+  de `--select`.
+- Persistencia del alcance por stage y categoría `fuera de alcance` en el estado del CLI y del
+  dashboard.
+- Traducción SQL compartida de filtros JSON entre selectores de corrida y políticas de reintento.
 
 ### Corregido
 
@@ -77,6 +82,8 @@ El formato sigue los principios de Keep a Changelog y el proyecto usa versionado
   `discursos.csv` y en las descargas de la tab Tabla.
 - La reanudación de un run sincroniza únicamente la sección reservada `_emoparse` de su config y
   conserva el config original del usuario.
+- Los filtros del input se resuelven durante la ingesta; los filtros de payload empiezan a regir
+  únicamente después de que su stage productora queda completa y afectan a las stages posteriores.
 
 ### Documentación
 

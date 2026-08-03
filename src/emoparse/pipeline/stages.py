@@ -93,6 +93,33 @@ class Stage(ABC):
         self.metrics = StageMetricsAccumulator()
         self.validate_contracts: bool = True
         self.progress = ProgressReporter(getattr(type(self), "NAME", "stage"))
+        self._selector_scope: frozenset[str] | None = None
+
+    def set_selector_scope(self, codigos: frozenset[str] | None) -> None:
+        """Fija el alcance por discurso para esta ejecución de la stage."""
+        self._selector_scope = codigos
+
+    def _scope_codes(self, codigos: list[str]) -> list[str]:
+        """Filtra códigos según el selector dinámico vigente."""
+        if self._selector_scope is None:
+            return codigos
+        return [codigo for codigo in codigos if codigo in self._selector_scope]
+
+    def _scope_tuples(self, rows: list[tuple[Any, ...]]) -> list[tuple[Any, ...]]:
+        """Filtra tuplas cuyo primer elemento es el código de discurso."""
+        if self._selector_scope is None:
+            return rows
+        return [row for row in rows if str(row[0]) in self._selector_scope]
+
+    def _scope_records(
+        self,
+        rows: list[dict[str, Any]],
+        key: str = "codigo",
+    ) -> list[dict[str, Any]]:
+        """Filtra registros por una clave que identifica el discurso/post."""
+        if self._selector_scope is None:
+            return rows
+        return [row for row in rows if str(row.get(key, "")) in self._selector_scope]
 
     def _validate(
         self,
@@ -148,7 +175,9 @@ class _DiscursoStage(Stage):
         self._version = agent_version
 
     def run_pending(self) -> int:
-        codigos = self._repo.list_pending(self.STAGE_KEY)  # type: ignore[arg-type]
+        codigos = self._scope_codes(
+            self._repo.list_pending(self.STAGE_KEY)  # type: ignore[arg-type]
+        )
         if not codigos:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
@@ -347,7 +376,9 @@ class EnunciationStage(_DiscursoStage):
         callback de liberación, se descarga el modelo del sub-paso: los dos
         modelos nunca conviven durante la fase larga.
         """
-        codigos = self._repo.list_pending(self.STAGE_KEY)  # type: ignore[arg-type]
+        codigos = self._scope_codes(
+            self._repo.list_pending(self.STAGE_KEY)  # type: ignore[arg-type]
+        )
         if not codigos:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
@@ -690,7 +721,9 @@ class _FraseStage(Stage):
 
     def run_pending(self) -> int:
         """Procesa frases pendientes agrupadas por discurso."""
-        all_pending = self._f_repo.list_pending(self.STAGE_KEY)  # type: ignore[arg-type]
+        all_pending = self._scope_tuples(
+            self._f_repo.list_pending(self.STAGE_KEY)  # type: ignore[arg-type]
+        )
         if not all_pending:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
@@ -1182,7 +1215,7 @@ class ExplodeEmotionsStage(Stage):
 
     def run_pending(self) -> int:
         """Procesa discursos y explota emociones pendientes."""
-        codigos = self._d_repo.list_codigos()
+        codigos = self._scope_codes(self._d_repo.list_codigos())
         total = 0
         for codigo in self.progress.track(codigos, "discursos"):
             count = self._explode_for_codigo(codigo)
@@ -1300,7 +1333,7 @@ class TechnoparseStage(Stage):
 
     def run_pending(self) -> int:
         """Procesa todas las unidades del corpus (recomputación idempotente)."""
-        codigos = self._d_repo.list_codigos()
+        codigos = self._scope_codes(self._d_repo.list_codigos())
         total = 0
         for codigo in self.progress.track(codigos, "discursos"):
             total += self._parse_codigo(codigo)
@@ -1387,7 +1420,7 @@ class ReframingStage(Stage):
         """Procesa los posts citadores pendientes."""
         from emoparse.agents.reframing import ReframingAgent
 
-        pendientes = self._p_repo.list_pending_reframing()
+        pendientes = self._scope_records(self._p_repo.list_pending_reframing(), key="post_id")
         if not pendientes:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
@@ -1512,7 +1545,7 @@ class EmojiAffectStage(Stage):
 
     def run_pending(self) -> int:
         """Resuelve los usos de emoji pendientes (léxico y, si hay, LLM)."""
-        pendientes = self._t_repo.list_emojis_sin_afecto()
+        pendientes = self._scope_records(self._t_repo.list_emojis_sin_afecto())
         if not pendientes:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
@@ -1847,7 +1880,7 @@ class TecnoUsageStage(Stage):
         """Analiza las unidades con menciones/tecnografismos pendientes."""
         from emoparse.agents.tecno_usage import TecnoUsageAgent
 
-        unidades = self._t_repo.list_unidades_con_tecno_sin_uso()
+        unidades = self._scope_records(self._t_repo.list_unidades_con_tecno_sin_uso())
         if not unidades:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
@@ -2011,7 +2044,9 @@ class VisionDescribeStage(Stage):
         from emoparse.core.prompts import vision_describe as prompts
         from emoparse.core.schemas import VisionSchema
 
-        pendientes = self._p_repo.list_media_pending_descripcion()
+        pendientes = self._scope_records(
+            self._p_repo.list_media_pending_descripcion(), key="post_id"
+        )
         if not pendientes:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
@@ -2130,7 +2165,9 @@ class DeixisStage(Stage):
 
     def run_pending(self) -> int:
         """Resuelve la deixis de los discursos que aún no la tienen."""
-        codigos = [c for c in self._d_repo.list_codigos() if not self._m_repo.has_deixis_llm(c)]
+        codigos = self._scope_codes(
+            [c for c in self._d_repo.list_codigos() if not self._m_repo.has_deixis_llm(c)]
+        )
         if not codigos:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
@@ -2285,7 +2322,8 @@ class ModalidadStage(Stage):
 
     def run_pending(self) -> int:
         total = 0
-        for codigo in self.progress.track(self._d_repo.list_codigos(), "discursos"):
+        codigos = self._scope_codes(self._d_repo.list_codigos())
+        for codigo in self.progress.track(codigos, "discursos"):
             total += self._classify_for_codigo(codigo)
         logger.info(f"[Stage:{self.NAME}] {total} vínculos clasificados.")
         return total
@@ -2465,7 +2503,7 @@ class NormalizeEmotionsStage(Stage):
 
     def run_pending(self) -> int:
         """Normaliza emociones pendientes y devuelve el total procesado."""
-        pending = self._repo.list_pending_normalization()
+        pending = self._scope_tuples(self._repo.list_pending_normalization())
         if not pending:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
@@ -2521,7 +2559,7 @@ class CharacterizerStage(Stage):
 
     def run_pending(self) -> int:
         """Procesa emociones pendientes y guarda caracterización."""
-        pending = self._e_repo.list_pending_caracterizacion()
+        pending = self._scope_tuples(self._e_repo.list_pending_caracterizacion())
         if not pending:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
@@ -2704,7 +2742,9 @@ class EmotionsPass2Stage(Stage):
         semántica que el pase 1: un agente por discurso, persistencia bajo
         lock. Con backend in-process el runner lo deja en 1.
         """
-        all_pending = self._f_repo.list_pending(self.STAGE_KEY)  # type: ignore[arg-type]
+        all_pending = self._scope_tuples(
+            self._f_repo.list_pending(self.STAGE_KEY)  # type: ignore[arg-type]
+        )
         if not all_pending:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
@@ -2950,7 +2990,7 @@ class ActantsStage(Stage):
 
     def run_pending(self) -> int:
         """Procesa emociones pendientes y guarda análisis actancial."""
-        pending = self._e_repo.list_pending_actantes()
+        pending = self._scope_tuples(self._e_repo.list_pending_actantes())
         if not pending:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
@@ -3283,7 +3323,7 @@ class JudgeStage(Stage):
 
     def run_pending(self) -> int:
         """Procesa emociones caracterizadas y guarda veredictos."""
-        pending = self._j_repo.list_pending()
+        pending = self._scope_tuples(self._j_repo.list_pending())
         if not pending:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
@@ -3489,7 +3529,10 @@ class SemasStage(Stage):
     def run_pending(self) -> int:
         """Propone semas para los referentes que aún no tienen ninguno."""
         ya = self._m_repo.canonicos_con_semas()
-        pendientes = [c for c in self._m_repo.list_canonicos() if c["canonical_id"] not in ya]
+        codigos = set(self._selector_scope) if self._selector_scope is not None else None
+        pendientes = [
+            c for c in self._m_repo.list_canonicos(codigos=codigos) if c["canonical_id"] not in ya
+        ]
         if not pendientes:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0

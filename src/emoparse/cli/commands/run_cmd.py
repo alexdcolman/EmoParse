@@ -83,6 +83,7 @@ def handle(args: argparse.Namespace) -> int:
         return 1
 
     n_input = len(df_input)
+    seleccion = None
     resumen_seleccion: str | None = None
     if args.select is not None:
         try:
@@ -92,10 +93,16 @@ def handle(args: argparse.Namespace) -> int:
             logger.error(f"Selección inválida: {e}")
             return 1
         resumen_seleccion = seleccion.leer()
-        logger.info(
-            f"[run] Alcance: {len(df_input)} de {n_input} unidad(es) del "
-            f"input ({resumen_seleccion})."
-        )
+        if seleccion.input_filters():
+            logger.info(
+                f"[run] Ingesta seleccionada: {len(df_input)} de {n_input} "
+                f"unidad(es) ({resumen_seleccion})."
+            )
+        if seleccion.payload_filters():
+            logger.info(
+                "[run] Los filtros de payload se resolverán etapa por etapa "
+                "cuando sus productores queden completos."
+            )
 
     db_path = _resolve_db_path(args.db, cfg.paths.runs_dir, args.run_id)
     accion = _resolver_db_existente(db_path, args)
@@ -168,19 +175,25 @@ def handle(args: argparse.Namespace) -> int:
         genre=genre,
         emotion_scope=emotion_scope,
         embed_context=bool(getattr(args, "embed", False)),
+        selection=seleccion,
     ) as runner:
         runner.ingest(df_input)
         _registrar_alcance(db_path, resumen_seleccion, n_input, len(df_input))
         if posts_bundle is not None:
             runner.ingest_posts(posts_bundle)
-        report = runner.run()
+        try:
+            report = runner.run()
+        except SeleccionError as e:
+            logger.error(f"Selección inválida durante el pipeline: {e}")
+            return 1
 
     print()
     print(f"=== Run {args.run_id} completado ===")
     print(f"DB:    {db_path}")
     print(f"Género: {genre.genre_id} ({genre.display_name})")
     if resumen_seleccion:
-        print(f"Alcance: {len(df_input)} de {n_input} unidades del input ({resumen_seleccion})")
+        print(f"Selección: {resumen_seleccion}")
+        print(f"Ingesta:   {len(df_input)} de {n_input} unidades del input")
     print()
     print("Stages procesadas (items ok):")
     for stage_name in STAGE_ORDER:
@@ -375,11 +388,12 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         default=None,
         metavar="ARCHIVO.yaml",
         help=(
-            "Archivo YAML que acota qué unidades del input se analizan, "
-            "según los campos que el propio input trae (fuente, autor, "
-            "fecha, tipo, idioma, o cualquier columna presente). En corpus "
-            "de posts se guarda el corpus técnico completo; lo que se acota "
-            "es qué se analiza. Ver data/ejemplos/seleccion.yaml."
+            "Archivo YAML que acota qué unidades se analizan. Admite campos "
+            "del input y payloads de stages previas con notación punto, por "
+            "ejemplo metadata.tipo_discurso o enunciation.enunciador. Los "
+            "filtros de payload empiezan a regir después de que su stage "
+            "productora queda completa. Ver data/ejemplos/seleccion.yaml y "
+            "seleccion_payload_v070.yaml."
         ),
     )
     p.add_argument(

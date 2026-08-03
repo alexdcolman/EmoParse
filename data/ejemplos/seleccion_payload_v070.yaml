@@ -1,0 +1,19 @@
+# Ejemplo v0.7.0: campos del input y payloads producidos por el pipeline.
+# Todos los filtros se combinan con AND.
+seleccion:
+  # Se resuelve al cargar el archivo de entrada.
+  - field: idioma
+    op: contains
+    value: es
+
+  # Empieza a regir después de que metadata queda completa.
+  - field: metadata.tipo_discurso
+    op: in
+    value:
+      - discurso_politico
+      - entrevista
+
+  # Empieza a regir después de que enunciation queda completa.
+  - field: enunciation.enunciador.nombre
+    op: contains
+    value: presidente

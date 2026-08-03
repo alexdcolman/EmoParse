@@ -85,12 +85,14 @@ emoparse scrape --source casarosada \
   --from 2024-01-01 --to 2024-12-31
 ```
 
-Para iterar sin correr el corpus entero, `run` acepta `--select` con un archivo que acota qué unidades se analizan según los campos del input (fuente, autor, fecha como rango, tipo, idioma, o cualquier columna presente). El alcance de cada corrida queda asentado y `emoparse status` lo informa. Hay un ejemplo comentado en `data/ejemplos/seleccion.yaml`.
+Para iterar sin correr el corpus entero, `run` acepta `--select`. El mismo YAML puede filtrar campos del input y resultados de stages anteriores mediante notación punto, por ejemplo `metadata.tipo_discurso` o `enunciation.enunciador.nombre`. Los filtros del input se resuelven al ingerir; los de payload empiezan a regir después de que su stage productora queda completa y solo afectan a las stages posteriores. `emoparse status` separa lo pendiente, lo no aplicable y lo excluido por el selector.
 
 ```bash
 emoparse run --config config.yaml --input data/discursos.csv \
-  --run-id mi_run --select seleccion.yaml
+  --run-id mi_run --select data/ejemplos/seleccion_payload_v070.yaml
 ```
+
+Los ejemplos están en `data/ejemplos/seleccion.yaml` y `data/ejemplos/seleccion_payload_v070.yaml`. Una corrida posterior sin selector procesa lo que quedó fuera de alcance sin repetir los resultados ya persistidos.
 
 ---
 

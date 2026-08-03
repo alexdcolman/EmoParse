@@ -229,7 +229,10 @@ models/
 runs/
 exports/
 knowledge/actors_kb.json.bak*
-data/
+# Datos locales: ignorar todo salvo los ejemplos versionados
+data/*
+!data/ejemplos/
+!data/ejemplos/**
 
 # Local logs
 logs/

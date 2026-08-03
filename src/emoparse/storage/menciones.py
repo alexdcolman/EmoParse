@@ -813,17 +813,34 @@ class MencionesRepository:
         ).fetchall()
         return {r["canonical_id"] for r in rows}
 
-    def list_canonicos(self, sample: int = 8) -> list[dict[str, Any]]:
-        """Referentes canónicos con una muestra de sus marcas (excluye rechazados)."""
+    def list_canonicos(
+        self,
+        sample: int = 8,
+        codigos: set[str] | None = None,
+    ) -> list[dict[str, Any]]:
+        """Referentes canónicos con una muestra de sus marcas.
+
+        Cuando `codigos` se especifica, considera únicamente menciones de esos
+        discursos. Esto permite que stages agregadas respeten un selector de
+        payload sin borrar ni reinterpretar el resto del corpus.
+        """
+        where = "mc.status != 'rejected'"
+        params: tuple[Any, ...] = ()
+        if codigos is not None:
+            if not codigos:
+                return []
+            placeholders = ", ".join(["?"] * len(codigos))
+            where += f" AND m.codigo IN ({placeholders})"
+            params = tuple(sorted(codigos))
         rows = self._db.execute(
             "SELECT mc.canonical_id AS canonical_id, "
             "       group_concat(DISTINCT m.marca) AS marcas "
             "FROM mencion_canonico mc "
             "JOIN menciones m ON m.id = mc.mencion_id "
-            "WHERE mc.status != 'rejected' "
+            f"WHERE {where} "
             "GROUP BY mc.canonical_id "
             "ORDER BY mc.canonical_id",
-            (),
+            params,
         ).fetchall()
         out: list[dict[str, Any]] = []
         for r in rows:

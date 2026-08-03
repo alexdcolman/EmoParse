@@ -147,3 +147,23 @@ componerse mediante heurísticas, propiedades declarativas del género y bloques
 género `tuit`, por ejemplo, ya usa el template base de `metadata` y `enunciation`: su vocabulario
 cerrado, sus heurísticas y sus modos deterministas de enunciador y auditorio se insertan sin
 duplicar el system prompt completo.
+
+## Selectores sobre payloads
+
+El archivo pasado a `emoparse run --select` admite tanto campos del input como paths sobre salidas
+persistidas. Un campo con prefijo de stage, por ejemplo `metadata.tipo_discurso` o
+`enunciation.enunciador.nombre`, se interpreta sobre el JSON producido por esa stage.
+
+El alcance es dinámico: un filtro no afecta a su propia stage ni a las anteriores. Empieza a regir
+antes de la primera stage posterior, cuando el productor ya está completo, y se combina en AND con
+los demás filtros resolubles. Si el productor está deshabilitado o incompleto, o si ningún discurso
+cumple la selección, el pipeline termina con un mensaje explícito.
+
+Los payloads seleccionables se registran en `pipeline.payload_selection`. Agregar una nueva fuente
+requiere declarar su tabla o join, la expresión del código de discurso, la columna JSON y el criterio
+de completitud. La traducción de operaciones a `json_extract` vive en `pipeline.filter_sql` y se
+comparte con las políticas declarativas de reintento.
+
+El alcance calculado se persiste por stage en `stage_selector_scope`. `emoparse status` y la tab
+Estado presentan `fuera` como una categoría distinta de `n/a`: lo primero fue excluido por una
+decisión de corrida y puede procesarse después; lo segundo no pertenece al universo de la stage.

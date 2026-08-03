@@ -39,7 +39,14 @@ class TestBootstrap:
         repo = RunsRepository(db)
         repo.bootstrap(ctx)
 
-        for table in ("runs", "discursos", "frases", "emociones", "llm_cache"):
+        for table in (
+            "runs",
+            "discursos",
+            "stage_selector_scope",
+            "frases",
+            "emociones",
+            "llm_cache",
+        ):
             assert db.table_exists(table), f"Tabla {table} no creada"
 
     def test_inserts_run_row(self, db: Database, ctx: RunContext) -> None:

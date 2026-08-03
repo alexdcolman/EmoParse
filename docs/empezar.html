@@ -197,12 +197,19 @@ emoparse app</code></pre>
 
 <pre><code>emoparse run ... --stages actors,emotions,explode_emotions</code></pre>
 
-    <p>También se puede acotar una corrida a una selección declarada en YAML sin modificar el corpus
-    original. La selección queda registrada en la base y una ejecución posterior puede retomar el
-    resto.</p>
+    <p>También se puede acotar una corrida con un YAML sin modificar el corpus original. Los campos
+    del input se filtran al comienzo; los resultados de etapas anteriores se referencian con notación
+    punto, como <code>metadata.tipo_discurso</code> o
+    <code>enunciation.enunciador.nombre</code>, y empiezan a filtrar recién después de que la etapa
+    productora queda completa. Una ejecución posterior sin selector retoma lo que quedó afuera sin
+    repetir resultados persistidos.</p>
 
 <pre><code>emoparse run --config config.yaml --input data/discursos.csv \
-  --run-id prueba_acotada --select data/ejemplos/seleccion.yaml</code></pre>
+  --run-id prueba_acotada \
+  --select data/ejemplos/seleccion_payload_v070.yaml</code></pre>
+
+    <p>El comando <code>emoparse status</code> distingue lo pendiente, lo no aplicable y lo excluido
+    por el selector en cada etapa.</p>
 
     <div class="nota">
       <span class="rotulo">Dónde queda todo</span>

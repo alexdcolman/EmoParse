@@ -28,8 +28,8 @@ def render(db_path: Path) -> None:
     st.markdown(
         "<p style='color:var(--text-dim);font-size:0.88rem;'>"
         "Vista read-only. El porcentaje se calcula sobre las unidades que "
-        "la stage alcanza: lo marcado <code>n/a</code> queda afuera "
-        "(un post sin cita no tiene reframing). Para reintentar errores, "
+        "la stage alcanza. <code>fuera</code> indica exclusión por selector; "
+        "<code>n/a</code>, material al que la stage no aplica. Para reintentar errores, "
         "ejecutá <code>emoparse retry --db [run] --stage [stage]</code>."
         "</p>",
         unsafe_allow_html=True,
@@ -111,12 +111,18 @@ def _render_stage_row(s: data_layer.StageStatus) -> None:
         return
 
     pct = s.pct or 0
-    # Lo que quedó fuera del alcance de la stage se muestra aparte: no es
-    # trabajo pendiente y no entra en el porcentaje.
+    # El alcance decidido por selector y el material no aplicable se muestran
+    # por separado: ninguno entra en el porcentaje, pero tienen causas distintas.
     na_html = (
         f"<span style='color:var(--dim);font-family:DM Mono,monospace;font-size:0.78rem;'>"
         f"— {s.no_aplica} n/a</span>"
         if s.no_aplica
+        else ""
+    )
+    scope_html = (
+        f"<span style='color:var(--warn);font-family:DM Mono,monospace;font-size:0.78rem;'>"
+        f"◌ {s.fuera_alcance} fuera</span>"
+        if s.fuera_alcance
         else ""
     )
     summary_html = (
@@ -129,6 +135,7 @@ def _render_stage_row(s: data_layer.StageStatus) -> None:
         f"⏳ {s.pending}</span>"
         f"<span style='color:var(--danger);font-family:DM Mono,monospace;font-size:0.78rem;'>"
         f"✗ {s.failed}</span>"
+        f"{scope_html}"
         f"{na_html}"
         f"<span style='color:var(--dim);font-size:0.74rem;'>{s.unidad}</span>"
         f"</div>"

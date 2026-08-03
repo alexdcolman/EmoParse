@@ -1,0 +1,33 @@
+# ══════════════════════════════════════════════════════════════════════════════
+#  Selección del corpus — se pasa con `emoparse run --select`
+#
+#  Acota qué unidades del input se analizan. Los filtros se aplican en
+#  conjunto: una unidad entra solo si los cumple todos.
+#
+#  Operaciones: eq, ne, in, contains, gte, lte, between, is_null,
+#  is_not_null. En between, cualquiera de los dos extremos puede ir en null
+#  para dejar el rango abierto de ese lado.
+#
+#  Los campos son las columnas del input. En corpus de posts están
+#  disponibles fuente (plataforma), autor, autor_handle, fecha, tipo_post,
+#  conversacion_id, lang, titulo, url y contenido.
+# ══════════════════════════════════════════════════════════════════════════════
+
+seleccion:
+  - field: fuente
+    op: eq
+    value: bluesky
+
+  - field: fecha
+    op: between
+    value: ["2026-03-01", "2026-05-31"]
+
+  # Los hashtags no son una columna: se buscan dentro del texto.
+  # `contains` no distingue mayúsculas.
+  # - field: contenido
+  #   op: contains
+  #   value: "#reformalaboral"
+
+  # - field: tipo_post
+  #   op: in
+  #   value: [original, quote]

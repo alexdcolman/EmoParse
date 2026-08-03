@@ -3,9 +3,9 @@
 #
 #  Selección declarativa de un subconjunto del corpus.
 #
-#  Acota qué unidades entran al análisis según los campos que el propio
-#  input trae (fuente, autor, fecha, tipo, idioma, o cualquier columna
-#  presente en el archivo). Se declara en un YAML:
+#  Acota qué unidades entran al análisis según campos del input o payloads
+#  producidos por stages anteriores. Los payloads se nombran con el prefijo
+#  de su stage y notación punto. Se declara en un YAML:
 #
 #      seleccion:
 #        - field: fuente
@@ -14,11 +14,14 @@
 #        - field: fecha
 #          op: between
 #          value: ["2026-03-01", "2026-05-31"]
+#        - field: metadata.tipo_discurso
+#          op: eq
+#          value: discurso_politico
 #
 #  Los filtros se aplican en AND. El vocabulario de operaciones es el mismo
 #  que el de las policies de reintento, para no tener dos sintaxis: acá se
-#  evalúa sobre columnas del DataFrame de entrada, allá sobre el payload
-#  JSON de una etapa ya corrida.
+#  evalúa primero sobre columnas del DataFrame y luego, etapa por etapa,
+#  sobre payloads JSON ya persistidos.
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -74,11 +77,11 @@ _LECTURA: dict[str, str] = {
 
 
 class SelectorFiltro(BaseModel):
-    """Un filtro sobre una columna del input."""
+    """Un filtro sobre una columna del input o un path de payload."""
 
     model_config = ConfigDict(extra="forbid")
 
-    field: str = Field(description="Columna del input sobre la que filtrar.")
+    field: str = Field(description="Columna del input o path stage.campo.")
     op: SeleccionOp = Field(default="eq")
     value: Any = Field(default=None)
 
@@ -118,6 +121,30 @@ class SelectorFiltro(BaseModel):
             return f"{self.field} {_LECTURA[self.op]}"
         return f"{self.field} {_LECTURA[self.op]} {self.value!r}"
 
+    @property
+    def source_stage(self) -> str | None:
+        """Stage prefijada en `field`, si el campo referencia un payload."""
+        if "." not in self.field:
+            return None
+        prefix = self.field.split(".", 1)[0]
+        from emoparse.pipeline.dag import EMOPARSE_DAG
+
+        return prefix if prefix in EMOPARSE_DAG.names() else None
+
+    @property
+    def payload_path(self) -> str | None:
+        """Path interno del payload, sin el prefijo de stage."""
+        if self.source_stage is None:
+            return None
+        return self.field.split(".", 1)[1]
+
+    def without_stage_prefix(self) -> SelectorFiltro:
+        """Copia del filtro con `field` relativo al payload."""
+        path = self.payload_path
+        if path is None:
+            return self
+        return self.model_copy(update={"field": path})
+
 
 class Seleccion(BaseModel):
     """Contenido del archivo de selección."""
@@ -135,6 +162,14 @@ class Seleccion(BaseModel):
     def leer(self) -> str:
         """Los filtros en una línea, tal como se aplican (en AND)."""
         return " y ".join(f.leer() for f in self.seleccion)
+
+    def input_filters(self) -> list[SelectorFiltro]:
+        """Filtros resolubles directamente sobre el archivo de entrada."""
+        return [item for item in self.seleccion if item.source_stage is None]
+
+    def payload_filters(self) -> list[SelectorFiltro]:
+        """Filtros que dependen de la salida de una stage previa."""
+        return [item for item in self.seleccion if item.source_stage is not None]
 
 
 def load_seleccion(path: Path | str) -> Seleccion:
@@ -161,8 +196,12 @@ def aplicar_seleccion(df: pd.DataFrame, seleccion: Seleccion) -> pd.DataFrame:
     el input no tiene, o cuando el resultado queda vacío: un conjunto vacío
     devuelto en silencio se confunde con un corpus ya procesado.
     """
+    filtros = seleccion.input_filters()
+    if not filtros:
+        return df.reset_index(drop=True)
+
     mascara = pd.Series(True, index=df.index)
-    for filtro in seleccion.seleccion:
+    for filtro in filtros:
         if filtro.field not in df.columns:
             raise SeleccionError(
                 f"El input no tiene la columna '{filtro.field}'. "

@@ -4,10 +4,10 @@
 #  Subcomando `status`: muestra el progreso del pipeline en una DB.
 #
 #  Output formato tabla:
-#    Stage          | Pending | Failed | Completed | n/a | Total
-#    ───────────────┼─────────┼────────┼───────────┼─────┼──────
-#    summarizer     |       0 |      1 |        99 |   0 |   100
-#    metadata       |      12 |      0 |        88 |   0 |   100
+#    Stage          | Pending | Failed | Completed | Fuera | n/a | Total
+#    ───────────────┼─────────┼────────┼───────────┼───────┼─────┼──────
+#    summarizer     |       0 |      1 |        99 |     0 |   0 |   100
+#    metadata       |      12 |      0 |        88 |     0 |   0 |   100
 #    ...
 #
 #  El conteo lo resuelve `pipeline.status`, que es la misma fuente que usa
@@ -15,7 +15,8 @@
 #  - Pending:   la unidad entra en el alcance de la stage y falta procesarla.
 #  - Failed:    corrió y falló (no se reintenta automático).
 #  - Completed: resuelta.
-#  - n/a:       fuera del alcance de la stage; no entra en el porcentaje.
+#  - Fuera:     excluida por el selector dinámico de la corrida.
+#  - n/a:       la stage no aplica a esa unidad; no entra en el porcentaje.
 #  Una stage que no corrió en este run se marca aparte, sin porcentaje.
 #
 #  Si alguna corrida acotó el input con un selector, se lista antes de la
@@ -83,19 +84,27 @@ def _print_alcance(runs_repo: RunsRepository) -> None:
     for c in corridas:
         fecha = str(c.get("fecha", ""))[:10]
         print(
-            f"  {fecha}  {c.get('n_en_alcance')} de {c.get('n_input')} "
-            f"unidades del input  ·  {c.get('seleccion')}"
+            f"  {fecha}  ingesta {c.get('n_en_alcance')} de {c.get('n_input')} "
+            f"unidades  ·  {c.get('seleccion')}"
         )
 
 
 def _print_stage_table(rows: list[StageStatus]) -> None:
     """Imprime el estado de cada stage como tabla ASCII."""
-    headers = ("Stage", "Pending", "Failed", "Completed", "n/a", "Total")
+    headers = (
+        "Stage",
+        "Pending",
+        "Failed",
+        "Completed",
+        "Fuera",
+        "n/a",
+        "Total",
+    )
     unidad_w = max((len(r.unidad) for r in rows), default=0)
     name_w = max(len(headers[0]), max((len(r.stage) for r in rows), default=0))
     num_w = 9
 
-    sep = "─" * (name_w + 2) + "┼" + ("─" * num_w + "┼") * 4 + "─" * num_w
+    sep = "─" * (name_w + 2) + "┼" + ("─" * num_w + "┼") * 5 + "─" * num_w
     print(f"  {headers[0]:<{name_w}}  │ " + " │ ".join(f"{h:>{num_w - 2}}" for h in headers[1:]))
     print(f"  {sep}")
     for r in rows:
@@ -105,7 +114,15 @@ def _print_stage_table(rows: list[StageStatus]) -> None:
         print(
             f"{_marca(r)} {r.stage:<{name_w}}  │ "
             + " │ ".join(
-                f"{v:>{num_w - 2}}" for v in (pending, r.failed, r.completed, r.no_aplica, r.total)
+                f"{v:>{num_w - 2}}"
+                for v in (
+                    pending,
+                    r.failed,
+                    r.completed,
+                    r.fuera_alcance,
+                    r.no_aplica,
+                    r.total,
+                )
             )
             + f"  {r.unidad:<{unidad_w}}"
         )

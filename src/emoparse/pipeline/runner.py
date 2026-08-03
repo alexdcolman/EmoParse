@@ -23,9 +23,11 @@ from emoparse.core.backend.retry import RetryConfig
 from emoparse.core.cache.backend import CachedBackend
 from emoparse.core.cache.repository import CacheRepository
 from emoparse.genres.presentation import attach_genre_presentation
+from emoparse.inputs.seleccion import Seleccion
 from emoparse.knowledge.loader import KnowledgeError, KnowledgeLoader
 from emoparse.pipeline.dag import EMOPARSE_DAG
 from emoparse.pipeline.genre_context import GenreContextProvider
+from emoparse.pipeline.payload_selection import PayloadSelectionEngine
 from emoparse.pipeline.stages import (
     ActantsStage,
     ActorsStage,
@@ -172,6 +174,7 @@ class PipelineRunner:
         actants_components: tuple[str, ...] = ACTANTS_COMPONENTS,
         genre: Genre | None = None,
         embed_context: bool = False,
+        selection: Seleccion | None = None,
     ) -> None:
         """
         Args:
@@ -213,11 +216,14 @@ class PipelineRunner:
                 rellenan con un placeholder determinístico al persistir.
                 Default: los cuatro componentes.
             genre: Género del discurso.
+            selection: Selector declarativo. Los filtros del input ya llegan
+                resueltos; los de payload se activan por stage.
         """
         self._run_id = run_id
         self._cfg = config
         self._knowledge = knowledge
         self._enabled_stages = tuple(enabled_stages)
+        self._selection = selection
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else None
         self._validate_contracts = validate_contracts
         self._actors_heuristics_filename = actors_heuristics_filename or heuristics_filename
@@ -268,6 +274,11 @@ class PipelineRunner:
         self._ht_repo = HashtagsRepository(self._db)
         self._cache_repo = CacheRepository(self._db)
         self._metrics_repo = MetricsRepository(self._db)
+        self._payload_selection = PayloadSelectionEngine(
+            self._db,
+            self._selection,
+            self._enabled_stages,
+        )
         self._current_accumulator: StageMetricsAccumulator | None = None
         self._ctx = self._build_run_context()
         self._runs_repo.bootstrap(self._ctx)
@@ -439,6 +450,7 @@ class PipelineRunner:
         if not self._frases_exist():
             self.chunk_into_frases()
 
+        self._payload_selection.prepare()
         report: dict[str, int] = {}
         try:
             for stage_name in STAGE_ORDER:
@@ -468,6 +480,7 @@ class PipelineRunner:
         self._current_accumulator = accumulator
         try:
             stage = self._build_stage(stage_name)
+            stage.set_selector_scope(self._payload_selection.scope_for(stage_name))
             stage.metrics = accumulator
             stage.validate_contracts = self._validate_contracts
             if isinstance(stage, (_FraseStage, EmotionsPass2Stage)):

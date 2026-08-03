@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from emoparse.config.models import RunConfig
 from emoparse.pipeline.dag import EMOPARSE_DAG
+from emoparse.pipeline.filter_sql import where_for_json_filters
 from emoparse.storage.db import Database
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -356,44 +357,12 @@ class RetryPolicyApplier:
         filters: list[RetryPolicyFilter],
         payload_col: str,
     ) -> tuple[list[str], list[Any]]:
-        """Convierte filtros declarativos a WHERE clauses SQL.
-
-        Cada filtro se traduce a un `json_extract(<payload_col>, '$.path')`
-        comparado con el value según la op. Las ops se materializan así:
-          eq: json_extract(...) = ?
-          ne: json_extract(...) != ?
-          in: json_extract(...) IN (?, ?, ...)
-          contains: json_extract(...) LIKE '%value%' (escape básico)
-          is_null: json_extract(...) IS NULL
-          is_not_null: json_extract(...) IS NOT NULL
-        """
-        clauses: list[str] = []
-        params: list[Any] = []
-        for f in filters:
-            json_path = "$." + f.field
-            extracted = f"json_extract({payload_col}, '{json_path}')"
-            if f.op == "eq":
-                clauses.append(f"{extracted} = ?")
-                params.append(f.value)
-            elif f.op == "ne":
-                clauses.append(f"{extracted} != ?")
-                params.append(f.value)
-            elif f.op == "in":
-                placeholders = ", ".join(["?"] * len(f.value))
-                clauses.append(f"{extracted} IN ({placeholders})")
-                params.extend(f.value)
-            elif f.op == "contains":
-                # SQLite por default no escapa; se utiliza un ESCAPE clause.
-                escaped = str(f.value).replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-                clauses.append(f"{extracted} LIKE ? ESCAPE '\\'")
-                params.append(f"%{escaped}%")
-            elif f.op == "is_null":
-                clauses.append(f"{extracted} IS NULL")
-            elif f.op == "is_not_null":
-                clauses.append(f"{extracted} IS NOT NULL")
-            else:
-                raise ValueError(f"op desconocida: {f.op}")
-        return clauses, params
+        """Convierte filtros declarativos a WHERE clauses SQL."""
+        return where_for_json_filters(
+            filters,
+            payload_col,
+            case_sensitive_contains=True,
+        )
 
     # ── Override del config ──────────────────────────────────────────────────
 

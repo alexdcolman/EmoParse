@@ -33,6 +33,28 @@ CREATE TABLE IF NOT EXISTS runs (
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  Tabla `stage_selector_scope`: alcance variable por stage.
+# ══════════════════════════════════════════════════════════════════════════════
+
+CREATE_STAGE_SELECTOR_SCOPE = """
+CREATE TABLE IF NOT EXISTS stage_selector_scope (
+    stage           TEXT NOT NULL,
+    codigo          TEXT NOT NULL,
+    en_alcance      INTEGER NOT NULL CHECK (en_alcance IN (0, 1)),
+    selector        TEXT,
+    updated_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (stage, codigo),
+    FOREIGN KEY (codigo) REFERENCES discursos(codigo) ON DELETE CASCADE
+)
+""".strip()
+
+CREATE_STAGE_SELECTOR_SCOPE_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_stage_selector_scope_stage
+    ON stage_selector_scope(stage, en_alcance)
+""".strip()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  Tabla `discursos`: una fila por discurso.
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -671,6 +693,8 @@ CREATE TABLE IF NOT EXISTS red_metricas (
 ALL_TABLES_DDL: list[str] = [
     CREATE_RUNS,
     CREATE_DISCURSOS,
+    CREATE_STAGE_SELECTOR_SCOPE,
+    CREATE_STAGE_SELECTOR_SCOPE_INDEX,
     CREATE_FRASES,
     CREATE_EMOCIONES,
     CREATE_LLM_CACHE,
