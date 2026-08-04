@@ -259,8 +259,8 @@
         <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>Path al .sqlite.</td></tr>
         <tr><td><code>--codigo</code></td><td><code>CODIGO</code></td><td></td><td>Validar solo este discurso (por código). Default: todos.</td></tr>
         <tr><td><code>--verbose-issues</code></td><td></td><td></td><td>Mostrar detalle de cada issue aunque sean muchas.</td></tr>
-        <tr><td><code>--knowledge-dir</code></td><td><code>KNOWLEDGE_DIR</code></td><td></td><td>Directorio de knowledge files. Permite cargar la ontología de emociones para activar V11_DesviacionOntologica.</td></tr>
-        <tr><td><code>--ontology-file</code></td><td><code>ONTOLOGY_FILE</code></td><td><code>emociones_ontologia.json</code></td><td>Nombre del archivo de ontología de emociones dentro de --knowledge-dir. Default: emociones_ontologia.json.</td></tr>
+        <tr><td><code>--knowledge-dir</code></td><td><code>KNOWLEDGE_DIR</code></td><td></td><td>Directorio de knowledge files. Permite cargar restricciones de caracterización para activar V11_DesviacionOntologica.</td></tr>
+        <tr><td><code>--constraints-file</code></td><td><code>CONSTRAINTS_FILE</code></td><td><code>restricciones_caracterizacion_emociones.json</code></td><td>Nombre del archivo de restricciones de caracterización dentro de --knowledge-dir. Default: restricciones_caracterizacion_emociones.json.</td></tr>
       </tbody>
     </table>
     </div>
@@ -371,7 +371,6 @@
       <tbody>
         <tr><td><code>--db</code></td><td><code>DB</code></td><td></td><td>DB del run a evaluar (para --golden, --make-sample, --control).</td></tr>
         <tr><td><code>--golden</code></td><td><code>GOLDEN</code></td><td></td><td>Golden set (.jsonl o directorio de .jsonl).</td></tr>
-        <tr><td><code>--ontology</code></td><td><code>ONTOLOGY</code></td><td><code>knowledge/emociones_ontologia.json</code></td><td>Ontología para canonicalizar tipos al comparar.</td></tr>
         <tr><td><code>--make-sample</code></td><td></td><td></td><td>Exporta planilla de anotación a ciegas (--out).</td></tr>
         <tr><td><code>--n</code></td><td><code>N</code></td><td><code>300</code></td><td>Tamaño de la muestra de anotación.</td></tr>
         <tr><td><code>--seed</code></td><td><code>SEED</code></td><td><code>42</code></td><td>Seed del muestreo (reproducibilidad).</td></tr>

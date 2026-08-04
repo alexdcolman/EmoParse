@@ -42,7 +42,6 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
         titulo: str = "",
         tipo_discurso: str = "",
         heuristicas: str | None = None,
-        ontologia: str | None = None,
         resumen: str | None = None,
         enunciacion: str | None = None,
         retry_config: Any | None = None,
@@ -55,8 +54,6 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
             tipo_discurso: Clasificación o tipo del discurso.
             heuristicas: Reglas heurísticas para evaluación de coherencia.
                 Si None, no se inyectan heurísticas en el system prompt.
-            ontologia: Ontología de emociones serializada. Si None, el juez no
-                recibe las definiciones de emociones (comportamiento previo).
             resumen: Resumen global del discurso, como contexto.
             enunciacion: Bloque preformateado con enunciador, enunciatarios,
                 auditorio y colectivos de identificación.
@@ -67,7 +64,6 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
         self._titulo = titulo
         self._tipo_discurso = tipo_discurso
         self._heuristicas = heuristicas
-        self._ontologia = ontologia
         self._resumen = resumen
         self._enunciacion = enunciacion
         self._genre = genre
@@ -84,7 +80,6 @@ class JudgeAgent(BaseBatchAgent[ListaJuiciosBatchSchema]):
             titulo=self._titulo,
             tipo_discurso=self._tipo_discurso,
             heuristicas=self._heuristicas,
-            ontologia=self._ontologia,
             resumen=self._resumen,
             enunciacion=self._enunciacion,
         )

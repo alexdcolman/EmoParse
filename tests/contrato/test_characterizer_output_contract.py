@@ -54,3 +54,42 @@ def test_characterizer_allows_enunciator_term_in_justification() -> None:
     parsed = CaracterizacionEmocionSchema(**payload)
 
     assert "enunciador" in parsed.tipo_atribucion_justificacion.lower()
+
+
+@pytest.mark.parametrize(
+    "justificacion",
+    [
+        "El hablante atribuye explícitamente la emoción mediante ‘lo voy a creer’ en primera persona.",
+        "La desconfianza se sitúa en presente/futuro ('cansadísimo', 'voy a creer').",
+        "La frase 'Cuando vea acciones, lo voy a creer' presenta un futuro hipotético.",
+        "La cita 'voy a elegir otro camino' funciona como evidencia textual.",
+    ],
+)
+def test_characterizer_allows_deliberative_phrases_inside_textual_quotes(
+    justificacion: str,
+) -> None:
+    payload = _payload()
+    payload["tipo_atribucion_justificacion"] = justificacion
+
+    parsed = CaracterizacionEmocionSchema(**payload)
+
+    assert parsed.tipo_atribucion_justificacion == justificacion
+
+
+@pytest.mark.parametrize(
+    "justificacion",
+    [
+        "Voy a poner ansiedad porque parece la mejor opción.",
+        "Voy a elegir esperanza y después revisar.",
+        "Debo inferir una categoría antes de responder.",
+        "Pero espera, voy a releer la salida.",
+    ],
+)
+def test_characterizer_still_rejects_real_internal_deliberation(
+    justificacion: str,
+) -> None:
+    payload = _payload()
+    payload["tipo_atribucion_justificacion"] = justificacion
+
+    with pytest.raises(ValidationError):
+        CaracterizacionEmocionSchema(**payload)

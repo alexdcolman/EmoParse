@@ -10,7 +10,6 @@ from emoparse.core.prompts._loader import render
 
 
 def render_system(
-    ontologia: str,
     configuraciones: str,
     titulo: str,
     tipo_discurso: str,
@@ -20,6 +19,7 @@ def render_system(
     alcance: str = "",
     heuristicas: str = "",
     resumen: str = "",
+    modos_existencia: str = "",
     template: str = "emotions_pass2_system",
 ) -> str:
     """SYSTEM del pase 2.
@@ -42,7 +42,6 @@ def render_system(
     """
     return render(
         template,
-        ontologia=ontologia,
         configuraciones=configuraciones,
         heuristicas=heuristicas,
         titulo=titulo,
@@ -52,6 +51,7 @@ def render_system(
         auditorio=auditorio,
         alcance=alcance,
         resumen=resumen,
+        modos_existencia=modos_existencia,
     )
 
 

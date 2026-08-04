@@ -1,0 +1,22 @@
+version: 2
+assumed_chars_per_token: 3
+limits:
+  emotions_tuit_system_chars: 11200
+  characterizer_system_chars: 7600
+reference:
+  fix_val01_08:
+    emotions_tuit_system_chars: 18562
+    characterizer_system_chars: 9132
+  fix_val01_10:
+    emotions_tuit_system_chars: 10785
+    characterizer_system_chars: 7288
+  pre_fix_val01_06:
+    emotions_tuit_system_chars: 15095
+    characterizer_system_chars: 7847
+gemma4_31b:
+  context_length: 4096
+  configured_max_tokens: 2048
+notes:
+  limits: "Topes de regresión en caracteres; no garantizan encaje en la ventana real."
+  emotions_tuit_system_chars: "Incluye modos de existencia, configuraciones y heurísticas base+tuit; excluye por contrato el catálogo ex post."
+  characterizer_system_chars: "Incluye heurísticas del characterizer."

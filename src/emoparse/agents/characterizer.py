@@ -98,16 +98,20 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
             codigo = str(row.get("codigo", ""))
             frase = str(row.get("frase", ""))
             experienciador = str(row.get("experienciador", ""))
+            experienciador_marca = str(row.get("experienciador_marca", ""))
             tipo_emocion = str(row.get("tipo_emocion", ""))
             modo = str(row.get("modo_existencia", ""))
+            tipo_configuracion = str(row.get("tipo_configuracion", ""))
             fuente_marca = str(row.get("fuente_marca", ""))
             fuente_inferencia = str(row.get("fuente_inferencia", ""))
 
             bloques.append(
                 f"EMOCIÓN [{i}] (codigo={codigo}):\n"
                 f"  Experienciador:  {experienciador}\n"
+                f"  Marca experienciador: {experienciador_marca}\n"
                 f"  Tipo emoción:    {tipo_emocion}\n"
                 f"  Modo existencia: {modo}\n"
+                f"  Configuración:   {tipo_configuracion}\n"
                 f"  Fuente marca:    {fuente_marca}\n"
                 f"  Fuente inferencia: {fuente_inferencia}\n"
                 f"  Frase de origen: {frase}"
@@ -125,18 +129,56 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
         justificacion_atribucion = c.tipo_atribucion_justificacion
         experienciador = str(row.get("experienciador", "")).strip()
         marca = str(row.get("experienciador_marca", "")).strip()
-        if (
-            tipo_atribucion == "auto_atribucion"
-            and self._enunciador.strip()
+        frase = str(row.get("frase", "")).strip()
+        configuracion = str(row.get("tipo_configuracion", "")).strip()
+        same_as_enunciator = bool(
+            self._enunciador.strip()
             and experienciador
-            and not _same_referent(experienciador, self._enunciador)
-            and not _first_person_mark(marca)
-        ):
-            tipo_atribucion = "hetero_atribucion"
+            and _same_referent(experienciador, self._enunciador)
+        )
+        marca_literal = _literal_mark_in_text(marca, frase)
+        explicit_config = configuracion in _EXPLICIT_ATTRIBUTION_CONFIGS
+
+        if same_as_enunciator and _optative_self_mark(marca):
+            tipo_atribucion = "auto_atribucion"
             justificacion_atribucion = (
-                f"La emoción se atribuye a {experienciador}, distinto del "
-                f"enunciador {self._enunciador}."
+                f"El optativo '{marca}' expresa explícitamente el deseo del enunciador."
             )
+        elif tipo_atribucion == "auto_atribucion" and _first_person_mark(marca):
+            # Un posesivo o pronombre de primera persona puede abarcar al
+            # enunciador y a un colectivo institucional distinto de su nombre.
+            pass
+        elif same_as_enunciator:
+            if marca_literal and explicit_config:
+                tipo_atribucion = "auto_atribucion"
+            elif tipo_atribucion in {"auto_atribucion", "hetero_atribucion"}:
+                tipo_atribucion = "sin_atribucion"
+                justificacion_atribucion = (
+                    "La emoción se infiere de la construcción, sin un término "
+                    "emocional atribuido explícitamente al enunciador."
+                )
+        elif self._enunciador.strip() and experienciador:
+            if frase and marca_literal and explicit_config:
+                tipo_atribucion = "hetero_atribucion"
+                justificacion_atribucion = (
+                    f"La unidad atribuye explícitamente la emoción a "
+                    f"{experienciador}, distinto del enunciador."
+                )
+            elif not frase and tipo_atribucion == "auto_atribucion":
+                # Compatibilidad con filas antiguas que no transportaban frase
+                # ni configuración al postprocesado del characterizer.
+                tipo_atribucion = "hetero_atribucion"
+                justificacion_atribucion = (
+                    f"La emoción se atribuye a {experienciador}, distinto del "
+                    f"enunciador {self._enunciador}."
+                )
+            elif tipo_atribucion in {"auto_atribucion", "hetero_atribucion"}:
+                tipo_atribucion = "sin_atribucion"
+                justificacion_atribucion = (
+                    "El experienciador se recupera del contexto, pero la unidad "
+                    "no lo marca sintácticamente."
+                )
+
         return {
             "foria": c.foria,
             "foria_justificacion": c.foria_justificacion,
@@ -155,6 +197,16 @@ class CharacterizerAgent(BaseBatchAgent[ListaCaracterizacionBatchSchema]):
         }
 
 
+_OPTATIVE_SELF_MARK_RE = re.compile(r"^\s*ojal[aá]\b", re.IGNORECASE)
+
+_EXPLICIT_ATTRIBUTION_CONFIGS = frozenset(
+    {
+        "sostenido_en_sustantivos",
+        "sostenido_en_adjetivos",
+        "ordenado_alrededor_de_verbos_psicologicos",
+    }
+)
+
 _FIRST_PERSON_MARK_RE = re.compile(
     r"\b(?:yo|me|mi|mis|mío|mía|mios|mias|nosotros|nosotras|nos|nuestro|"
     r"nuestra|nuestros|nuestras)\b",
@@ -172,6 +224,25 @@ def _same_referent(left: str, right: str) -> bool:
     a = norm(left)
     b = norm(right)
     return bool(a and b and (a == b or a in b or b in a))
+
+
+def _literal_mark_in_text(mark: str, text: str) -> bool:
+    """True si la marca aparece como secuencia completa en la unidad actual."""
+    mark_norm = " ".join(strip_accents_lower(mark).split())
+    if not mark_norm or mark_norm in {"no identificado", "no identificada"}:
+        return False
+    text_norm = " ".join(strip_accents_lower(text).split())
+    return bool(
+        re.search(
+            rf"(?<![a-z0-9]){re.escape(mark_norm)}(?![a-z0-9])",
+            text_norm,
+        )
+    )
+
+
+def _optative_self_mark(value: str) -> bool:
+    """True si la marca expresa un optativo inequívoco del enunciador."""
+    return bool(_OPTATIVE_SELF_MARK_RE.search(value))
 
 
 def _first_person_mark(value: str) -> bool:

@@ -1,53 +1,31 @@
 REGLAS HEURÍSTICAS PARA LA CARACTERIZACIÓN UNIFICADA DE EMOCIONES
 
-------------------------------------------------------------
 DOMINANCIA
-------------------------------------------------------------
-Determiná si la emoción predomina en lo corporal, cognitivo o ambos:
+- corporal: manifestaciones físicas, gestos o sensaciones;
+- cognoscitiva: juicios, evaluaciones o pensamientos;
+- mixta: ambos registros con peso comparable.
+Si la unidad no alcanza, usá el valor prototípico de la emoción con prudencia.
 
-1. Corporal: manifestaciones físicas, gestos o sensaciones.
-2. Cognoscitiva: juicios, evaluaciones o pensamientos asociados a la emoción.
-3. Mixta: combinación de indicios corporales y cognitivos.
-
-Analizá verbos, adjetivos, sustantivos y contexto para inferir dominancia.
-En todas las emociones analizadas debe poder inferirse algún valor de esos tres.
-Si no hay suficientes elementos contextuales, considerá el tipo de emoción de modo genérico:
-- Paranoia → mixta
-- Interés → cognoscitiva
-- Disgusto → corporal
-
-------------------------------------------------------------
 FORIA
-------------------------------------------------------------
-Identificá el carácter fórico de la emoción según su tonalidad afectiva:
+- eufórico: tonalidad positiva;
+- disfórico: malestar o tonalidad negativa;
+- afórico: sin polaridad clara;
+- ambifórico: coexistencia de tonos positivos y negativos.
 
-1. Eufórico: expresiones de alegría, entusiasmo o satisfacción.
-2. Disfórico: emociones negativas o de malestar.
-3. Afórico: emociones neutras, sin polaridad clara.
-4. Ambifórico: mezcla de tonalidades positiva y negativa.
-
-Considerá sustantivos, adjetivos, verbos afectivos y contexto discursivo.
-Si no hay suficientes elementos, inferí el valor genérico según el tipo de emoción:
-- Paranoia → disfórica
-- Interés → afórica
-- Alegría → eufórica
-
-------------------------------------------------------------
 INTENSIDAD
-------------------------------------------------------------
-Inferí el grado de fuerza de la emoción expresada o inferible:
+- alta: emoción dominante o intensificada;
+- baja: tenue o secundaria;
+- neutra_ambivalente: sin gradación clara.
+Usá intensificadores, modalidad, puntuación y fuerza de la predicación; no la importancia política del tema.
 
-1. Alta: emociones intensamente expresadas o inferibles.
-2. Baja: emociones leves o sutiles.
-3. Neutra/Ambivalente: emociones sin intensidad clara o con mezcla afectiva.
+ATRIBUCIÓN
+- Auto y heteroatribución exigen un término emocional explícito y una relación sintáctica con el experienciador.
+- Una matriz epistémica en primera persona no autoatribuye la emoción de la subordinada: `creo que X está triste` atribuye tristeza a X.
+- Si el experienciador se recupera del contexto pero no tiene marca en la unidad actual, corresponde `sin_atribucion`.
+- Las emociones reconstruidas desde una situación, una valoración, un comportamiento o una condición de credibilidad son `sin_atribucion` cuando no hay término emocional predicado del actor.
+- Una predicación explícita de un actor distinto del enunciador es `hetero_atribucion`, aunque esté incluida bajo `creo que` o `siento que`.
+- Un optativo explícito del enunciador puede ser `auto_atribucion` cuando porta directamente deseo o esperanza.
 
-Considerá adjetivos, adverbios, verbos y contexto discursivo.
-Si no hay elementos suficientes, aplicá inferencia genérica según el tipo de emoción:
-- Miedo → alta
-- Interés → neutra
-- Preocupación → baja
-
-------------------------------------------------------------
-NOTA GENERAL
-------------------------------------------------------------
-Estas heurísticas deben aplicarse de manera integrada: la caracterización unificada busca representar el perfil emocional completo (foria, dominancia, intensidad y fuente) del experienciador en el contexto discursivo.
+JUSTIFICACIONES
+- Una sola oración breve por dimensión, con la cita mínima necesaria.
+- No incluyas deliberación del modelo, correcciones, relecturas ni referencias al prompt. Las mismas palabras son válidas cuando pertenecen a una cita del corpus.

@@ -7,11 +7,10 @@
 # ══════════════════════════════════════════════════════════════════════════════
 
 from emoparse.evaluation.agreement import krippendorff_alpha
-from emoparse.evaluation.matching import MatchReport, build_alias_map, match_units
+from emoparse.evaluation.matching import MatchReport, match_units
 
 __all__ = [
     "krippendorff_alpha",
     "MatchReport",
-    "build_alias_map",
     "match_units",
 ]

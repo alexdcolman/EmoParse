@@ -463,7 +463,6 @@ class TestContractActivoEnStages:
             mock_backend,
             mock_d_repo,
             mock_f_repo,
-            ontologia="",
             heuristicas="",
         )
         stage.validate_contracts = True
@@ -570,7 +569,6 @@ class TestContractActivoEnStages:
             mock_backend,
             mock_d_repo,
             mock_f_repo,
-            ontologia="",
             heuristicas="",
         )
         stage.validate_contracts = True

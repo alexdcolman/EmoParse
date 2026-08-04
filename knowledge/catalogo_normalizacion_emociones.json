@@ -1,0 +1,344 @@
+{
+  "version": "v1",
+  "descripcion": "Catálogo exclusivo de normalización ex post: nombres canónicos, aliases y alcance por género. No contiene instrucciones de prompt ni restricciones de caracterización.",
+  "emociones": {
+    "ira": {
+      "aliases": [
+        "enojo",
+        "rabia",
+        "furia",
+        "cólera",
+        "colera",
+        "bronca",
+        "irritación",
+        "irritacion"
+      ]
+    },
+    "miedo": {
+      "aliases": [
+        "temor",
+        "terror",
+        "panico",
+        "pánico",
+        "aprensión",
+        "aprension",
+        "susto",
+        "horror"
+      ]
+    },
+    "tristeza": {
+      "aliases": [
+        "pena",
+        "dolor",
+        "pesar",
+        "duelo",
+        "luto",
+        "abatimiento",
+        "depresión",
+        "depresion",
+        "sufrimiento"
+      ]
+    },
+    "alegria": {
+      "aliases": [
+        "alegría",
+        "felicidad",
+        "júbilo",
+        "jubilo",
+        "gozo",
+        "contento",
+        "euforia",
+        "entusiasmo",
+        "satisfacción",
+        "satisfaccion"
+      ]
+    },
+    "sorpresa": {
+      "aliases": [
+        "asombro",
+        "estupor",
+        "extrañeza",
+        "extranieza",
+        "perplejidad",
+        "desconcierto",
+        "shock",
+        "estupefacción",
+        "estupefaccion",
+        "incredulidad"
+      ]
+    },
+    "asco": {
+      "aliases": [
+        "repugnancia",
+        "repulsion",
+        "repulsión",
+        "disgusto",
+        "aversión",
+        "aversion",
+        "náusea",
+        "nausea",
+        "rechazo"
+      ]
+    },
+    "amor": {
+      "aliases": [
+        "cariño",
+        "carino",
+        "afecto",
+        "ternura",
+        "apego",
+        "adoración",
+        "adoracion"
+      ]
+    },
+    "confianza": {
+      "aliases": [
+        "fe",
+        "seguridad",
+        "certeza",
+        "convicción",
+        "conviccion",
+        "credibilidad",
+        "determinación",
+        "determinacion"
+      ]
+    },
+    "culpa": {
+      "aliases": [
+        "remordimiento",
+        "arrepentimiento",
+        "vergüenza_moral",
+        "verguenza_moral"
+      ]
+    },
+    "vergüenza": {
+      "aliases": [
+        "verguenza",
+        "humillación",
+        "humillacion",
+        "bochorno",
+        "pudor"
+      ]
+    },
+    "decepción": {
+      "aliases": [
+        "decepcion",
+        "desilusión",
+        "desilusión",
+        "desilusíon",
+        "frustración",
+        "frustracion",
+        "desengaño",
+        "desenganio",
+        "insatisfacción",
+        "insatisfaccion"
+      ]
+    },
+    "esperanza": {
+      "aliases": [
+        "ilusión",
+        "ilusion",
+        "anhelo",
+        "expectativa",
+        "optimismo"
+      ]
+    },
+    "melancolía": {
+      "aliases": [
+        "melancolia",
+        "nostalgia",
+        "añoranza",
+        "anioranza",
+        "morriña",
+        "morrina"
+      ]
+    },
+    "orgullo": {
+      "aliases": [
+        "dignidad",
+        "autoestima",
+        "honor",
+        "soberbia"
+      ]
+    },
+    "ansiedad": {
+      "aliases": [
+        "nerviosismo",
+        "zozobra",
+        "inquietud",
+        "intranquilidad",
+        "alarma",
+        "impaciencia",
+        "preocupación",
+        "preocupacion"
+      ]
+    },
+    "angustia": {
+      "aliases": [
+        "congoja",
+        "desazón",
+        "desazon",
+        "desasosiego",
+        "desesperación",
+        "desesperacion"
+      ]
+    },
+    "conmoción": {
+      "aliases": [
+        "conmocion",
+        "emoción_profunda",
+        "emocion_profunda",
+        "impacto",
+        "sacudida",
+        "estremecimiento"
+      ]
+    },
+    "indignación": {
+      "aliases": [
+        "indignacion",
+        "ultraje",
+        "escándalo_moral",
+        "escandalo_moral",
+        "cólera_moral",
+        "colera_moral"
+      ]
+    },
+    "desprecio": {
+      "aliases": [
+        "desden",
+        "desdén",
+        "menosprecio",
+        "desprecio_moral"
+      ]
+    },
+    "admiración": {
+      "aliases": [
+        "admiracion",
+        "fascinación",
+        "fascinacion",
+        "deslumbramiento",
+        "reconocimiento_admirativo",
+        "aprecio",
+        "estima",
+        "respeto"
+      ]
+    },
+    "gratitud": {
+      "aliases": [
+        "agradecimiento",
+        "reconocimiento_agradecido"
+      ]
+    },
+    "alivio": {
+      "aliases": [
+        "desahogo",
+        "descompresión",
+        "descompresion"
+      ]
+    },
+    "desconfianza": {
+      "aliases": [
+        "sospecha",
+        "recelo",
+        "escepticismo_afectivo",
+        "escepticismo"
+      ]
+    },
+    "resignación": {
+      "aliases": [
+        "resignacion",
+        "derrotismo",
+        "desgano",
+        "desánimo",
+        "desanimo",
+        "desaliento"
+      ]
+    },
+    "envidia": {
+      "aliases": [
+        "celos_sociales",
+        "resentimiento_envidioso"
+      ]
+    },
+    "odio": {
+      "aliases": [
+        "aborrecimiento",
+        "hostilidad_intensa",
+        "inquina",
+        "hostilidad"
+      ]
+    },
+    "burla": {
+      "aliases": [
+        "mofa",
+        "sorna",
+        "escarnio",
+        "ridiculización",
+        "ridiculizacion",
+        "cargada"
+      ],
+      "generos": [
+        "tuit"
+      ]
+    },
+    "hartazgo": {
+      "aliases": [
+        "hastío",
+        "hastio",
+        "fastidio",
+        "cansancio_moral",
+        "saturación",
+        "saturacion"
+      ],
+      "generos": [
+        "tuit"
+      ]
+    },
+    "vergüenza_ajena": {
+      "aliases": [
+        "verguenza_ajena",
+        "cringe",
+        "bochorno_ajeno",
+        "pena_ajena"
+      ],
+      "generos": [
+        "tuit"
+      ]
+    },
+    "diversión": {
+      "aliases": [
+        "diversion",
+        "gracia",
+        "risa_compartida",
+        "chiste_celebrado"
+      ],
+      "generos": [
+        "tuit"
+      ]
+    },
+    "deseo": {
+      "aliases": [
+        "ansia",
+        "ansias",
+        "apetencia",
+        "avidez",
+        "ambición",
+        "ambicion"
+      ]
+    },
+    "interés": {
+      "aliases": [
+        "interes",
+        "curiosidad",
+        "intriga"
+      ]
+    },
+    "desamparo": {
+      "aliases": [
+        "indefensión",
+        "indefension",
+        "abandono_sentido"
+      ]
+    }
+  }
+}

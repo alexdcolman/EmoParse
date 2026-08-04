@@ -1,24 +1,27 @@
 Reglas de inferencia emocional. Se aplican a cada unidad por separado.
 
 Detección
-- No inventes emociones: registrá solo las que tienen indicio léxico, sintáctico o situacional en la unidad analizada. Si no hay ninguno, devolvé lista vacía.
-- No uses contenido de otras unidades para inferir emociones de una.
-- No repitas la misma emoción para el mismo experienciador en la misma unidad, salvo que difieran en modo de existencia.
+- Registrá solo emociones con indicio léxico, sintáctico o situacional en la unidad. Si no hay evidencia, devolvé lista vacía.
+- Una emoción mencionada, negada, ausente o contenida en discurso ajeno no se atribuye automáticamente al enunciador.
+- La negación, ausencia o carencia de una emoción no licencia por sí sola otra emoción asociada u opuesta.
+- No repitas la misma emoción para el mismo experienciador y modo de existencia.
 
-Experienciador y fuente
-- Cada emoción tiene UN experienciador. Si dos actores sienten la misma emoción, devolvé una entrada por actor, cada una con su propio modo de existencia: el enunciador puede sentirla realizada y proyectarla al auditorio como potencial.
-- Nunca fusiones experienciadores distintos en una sola etiqueta ("macri_milei", "javier milei y asistentes"): son entradas separadas. La fuente, en cambio, puede combinar entidades ("me irritan los colectivistas y los socialistas" es una sola emoción).
-- Si el segundo término es un posesivo anafórico sobre el primero, resolvé la anáfora al separar: "Carlitos y su círculo cercano" da "Carlitos" y "círculo cercano de Carlitos". Un "su X" nunca queda suelto como referente.
-- El experienciador es un referente con nombre, nunca el deíctico ni el rol ("nosotros", "enunciador", "enunciatario") ni una construcción sobre ellos. Si un plural deíctico ("nosotros", "nuestro") abarca varios referentes distinguibles (el enunciador y su gobierno, el enunciador y el pueblo), devolvé una entrada por referente. La marca, en cambio, se transcribe entera: los plurales deícticos no se parten como marca.
+Experienciador, fuente y marcas
+- Cada emoción tiene un solo experienciador concreto. Si el emisor la siente, usá el referente indicado como Enunciador, no “hablante”, “autor” ni “enunciador”.
+- `expm` y `fuem` son secuencias literales, breves y de la unidad actual. El contexto puede resolver `exp` o `fue`, pero nunca aporta marcas.
+- Una matriz epistémica en primera persona (`creo que`, `pienso que`, `siento que`, `me parece que`) no convierte al enunciador en experienciador de la emoción predicada en la subordinada.
+- Si una emoción léxicamente presente no tiene experienciador recuperable, usá `no identificado`; no la reasignes al emisor por defecto.
+- Nunca fusiones experienciadores distintos. La fuente sí puede reunir varios desencadenantes coordinados.
 
-Denominación de las categorías
-- Una sola denominación por campo. Si dudás entre dos, escribí solo la primera: nunca "Argentina / Estado argentino", nunca "curiosidad / ironía".
-- tipo_emocion nombra UNA emoción, en sustantivo y sin agregados: "indignación", no "frustración, arrepentimiento", no "estrés/agobio", no "sentirse traicionado", no "alegría, justificación: …". Sin comillas, comas, barras, paréntesis ni glosas.
+Categorías y configuración
+- `tipo_emocion` nombra una sola emoción canónica, en sustantivo y sin glosas, barras ni alternativas.
+- Elegí una sola configuración. Priorizá la marca directa: sustantivo, adjetivo o verbo psicológico; las configuraciones inferenciales se usan cuando no hay marca léxica directa.
+- Una predicación explícita `actor + verbo/estado emocional` conserva ese actor como experienciador; una matriz epistémica externa no cambia esa relación.
+- Las emociones atribuidas a audiencia o destinatarios son potenciales salvo que la unidad las presente como ya realizadas.
 
-Modo de existencia
-- Las emociones atribuidas a la audiencia o a los destinatarios son siempre potenciales, salvo que el texto simule explícitamente que ya la sienten ("entiendo que estén enojados" da realizada).
-
-Configuración del simulacro (TIPO_CONF)
-- Elegí la configuración predominante. Si hay varias activas, priorizá la marca léxica o sintáctica más directa (sustantivo > adjetivo > verbo psicológico) por sobre las inferenciales.
-- Las configuraciones sostenidas en sustantivos, adjetivos o verbos psicológicos solo aplican si la marca pertenece a la familia léxica de una emoción ("amor", "amaba", "amado"). Una palabra que no nombra ni deriva de una emoción ("inclaudicable", "aliado") no es marca léxica emocional: ahí la emoción se porta por indicadores cognitivos, de comportamiento, axiológicos, descriptivo-narrativos o por transposición.
-- Usá transposicion_situacion_reconocimiento_potencial cuando ninguna marca léxica ni conductual la determina con claridad y la emoción se reconstruye desde la situación enunciativa.
+Construcciones frecuentes
+- `agradecer` porta gratitud; una emoción nombrada en su complemento puede ser solo contenido ajeno.
+- `siento que + proposición` es epistémico/perceptivo y no crea por sí solo ansiedad, sorpresa ni otra emoción.
+- `espero + proposición` y `ojalá` pueden portar una única esperanza o deseo del enunciador; no dupliques la misma lectura como interés ni como una segunda esperanza sin marca independiente.
+- `estar + adjetivo afectivo` se clasifica por el adjetivo, no como comportamiento.
+- Una condición que suspende la creencia hasta obtener pruebas puede realizar desconfianza, pero no toda forma futura de `creer` la expresa.

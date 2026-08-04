@@ -462,9 +462,9 @@ class EmocionSchema(StrictBase):
         "(TIPO_CONF), del 1 al 8 según la lista provista. "
         "Identifica cómo la emoción es portada en la unidad. "
         "Las configuraciones sostenidas en sustantivos, adjetivos "
-        "o verbos psicológicos SOLO aplican si la marca léxica "
-        "pertenece a la familia léxica de una emoción ('amor', "
-        "'amaba', 'amado'); una palabra no emocional "
+        "o verbos psicológicos aplican cuando la marca nombra o realiza "
+        "directamente un estado afectivo ('amor', 'amaba', 'amado', "
+        "'estoy cansadísimo' como hartazgo); una palabra no emocional "
         "('inclaudicable') no cuenta como tal. DEBE elegirse "
         "exactamente una; si ninguna marca léxica lo determina "
         "con claridad, usar la 8 (transposición situacional).",
@@ -546,10 +546,16 @@ Aspecto = Literal[
 
 
 _RAZONAMIENTO_INTERNO_RE = re.compile(
-    r"(?:\bel prompt\b|\bme pide\b|\bdebo inferir\b|\bvoy a\b|"
-    r"\breleer\b|\bcorrecci[oó]n\b|\bpero espera\b|"
-    r"\bsi yo debo\b|\besto es la emoci[oó]n a caracterizar\b)",
+    r"(?:\bel prompt\b|\bme pide\b|\bdebo\b|"
+    r"\bvoy a (?:poner|elegir|usar|inferir|releer|corregir|clasificar|"
+    r"responder|devolver|marcar|decidir)\b|\breleer\b|"
+    r"\b(?:corregir|corrijo|corregiré) (?:la|mi) (?:respuesta|decisi[oó]n)\b|"
+    r"\bpero espera\b|\bsi yo debo\b|"
+    r"\besto es la emoci[oó]n a caracterizar\b)",
     re.IGNORECASE,
+)
+_CITA_TEXTUAL_RE = re.compile(
+    r'(?:"[^"\n]*"|“[^”]*”|\'[^\'\n]*\'|‘[^’]*’)',
 )
 _CARACTERIZACION_JUSTIFICACIONES = (
     "foria_justificacion",
@@ -652,8 +658,9 @@ class CaracterizacionEmocionSchema(StrictBase):
     @field_validator(*_CARACTERIZACION_JUSTIFICACIONES)
     @classmethod
     def reject_internal_reasoning(cls, value: str) -> str:
-        """Rechaza deliberación del modelo en campos destinados a evidencia."""
-        if _RAZONAMIENTO_INTERNO_RE.search(value):
+        """Rechaza deliberación propia, pero permite citas textuales del corpus."""
+        sin_citas = _CITA_TEXTUAL_RE.sub("", value)
+        if _RAZONAMIENTO_INTERNO_RE.search(sin_citas):
             raise ValueError(
                 "la justificación debe contener solo la decisión y su evidencia; "
                 "no admite deliberación sobre el prompt"

@@ -1,17 +1,8 @@
 {
-  "version": "v3",
+  "version": "v1",
+  "descripcion": "Restricciones esperadas y toleradas para validación ex post de caracterizaciones emocionales. No se usa para detección, prompts ni normalización de aliases.",
   "emociones": {
     "ira": {
-      "aliases": [
-        "enojo",
-        "rabia",
-        "furia",
-        "cólera",
-        "colera",
-        "bronca",
-        "irritación",
-        "irritacion"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -48,16 +39,6 @@
       }
     },
     "miedo": {
-      "aliases": [
-        "temor",
-        "terror",
-        "panico",
-        "pánico",
-        "aprensión",
-        "aprension",
-        "susto",
-        "horror"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -95,17 +76,6 @@
       }
     },
     "tristeza": {
-      "aliases": [
-        "pena",
-        "dolor",
-        "pesar",
-        "duelo",
-        "luto",
-        "abatimiento",
-        "depresión",
-        "depresion",
-        "sufrimiento"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -144,18 +114,6 @@
       }
     },
     "alegria": {
-      "aliases": [
-        "alegría",
-        "felicidad",
-        "júbilo",
-        "jubilo",
-        "gozo",
-        "contento",
-        "euforia",
-        "entusiasmo",
-        "satisfacción",
-        "satisfaccion"
-      ],
       "foria": {
         "esperado": [
           "euforico"
@@ -193,18 +151,6 @@
       }
     },
     "sorpresa": {
-      "aliases": [
-        "asombro",
-        "estupor",
-        "extrañeza",
-        "extranieza",
-        "perplejidad",
-        "desconcierto",
-        "shock",
-        "estupefacción",
-        "estupefaccion",
-        "incredulidad"
-      ],
       "foria": {
         "esperado": [
           "aforico",
@@ -244,17 +190,6 @@
       }
     },
     "asco": {
-      "aliases": [
-        "repugnancia",
-        "repulsion",
-        "repulsión",
-        "disgusto",
-        "aversión",
-        "aversion",
-        "náusea",
-        "nausea",
-        "rechazo"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -291,15 +226,6 @@
       }
     },
     "amor": {
-      "aliases": [
-        "cariño",
-        "carino",
-        "afecto",
-        "ternura",
-        "apego",
-        "adoración",
-        "adoracion"
-      ],
       "foria": {
         "esperado": [
           "euforico"
@@ -338,16 +264,6 @@
       }
     },
     "confianza": {
-      "aliases": [
-        "fe",
-        "seguridad",
-        "certeza",
-        "convicción",
-        "conviccion",
-        "credibilidad",
-        "determinación",
-        "determinacion"
-      ],
       "foria": {
         "esperado": [
           "euforico"
@@ -385,12 +301,6 @@
       }
     },
     "culpa": {
-      "aliases": [
-        "remordimiento",
-        "arrepentimiento",
-        "vergüenza_moral",
-        "verguenza_moral"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -428,13 +338,6 @@
       }
     },
     "vergüenza": {
-      "aliases": [
-        "verguenza",
-        "humillación",
-        "humillacion",
-        "bochorno",
-        "pudor"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -472,18 +375,6 @@
       }
     },
     "decepción": {
-      "aliases": [
-        "decepcion",
-        "desilusión",
-        "desilusión",
-        "desilusíon",
-        "frustración",
-        "frustracion",
-        "desengaño",
-        "desenganio",
-        "insatisfacción",
-        "insatisfaccion"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -521,13 +412,6 @@
       }
     },
     "esperanza": {
-      "aliases": [
-        "ilusión",
-        "ilusion",
-        "anhelo",
-        "expectativa",
-        "optimismo"
-      ],
       "foria": {
         "esperado": [
           "euforico"
@@ -565,14 +449,6 @@
       }
     },
     "melancolía": {
-      "aliases": [
-        "melancolia",
-        "nostalgia",
-        "añoranza",
-        "anioranza",
-        "morriña",
-        "morrina"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -610,12 +486,6 @@
       }
     },
     "orgullo": {
-      "aliases": [
-        "dignidad",
-        "autoestima",
-        "honor",
-        "soberbia"
-      ],
       "foria": {
         "esperado": [
           "euforico"
@@ -652,16 +522,6 @@
       }
     },
     "ansiedad": {
-      "aliases": [
-        "nerviosismo",
-        "zozobra",
-        "inquietud",
-        "intranquilidad",
-        "alarma",
-        "impaciencia",
-        "preocupación",
-        "preocupacion"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -700,14 +560,6 @@
       }
     },
     "angustia": {
-      "aliases": [
-        "congoja",
-        "desazón",
-        "desazon",
-        "desasosiego",
-        "desesperación",
-        "desesperacion"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -746,14 +598,6 @@
       }
     },
     "conmoción": {
-      "aliases": [
-        "conmocion",
-        "emoción_profunda",
-        "emocion_profunda",
-        "impacto",
-        "sacudida",
-        "estremecimiento"
-      ],
       "foria": {
         "esperado": [
           "ambiforico"
@@ -791,14 +635,6 @@
       }
     },
     "indignación": {
-      "aliases": [
-        "indignacion",
-        "ultraje",
-        "escándalo_moral",
-        "escandalo_moral",
-        "cólera_moral",
-        "colera_moral"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -835,12 +671,6 @@
       }
     },
     "desprecio": {
-      "aliases": [
-        "desden",
-        "desdén",
-        "menosprecio",
-        "desprecio_moral"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -877,16 +707,6 @@
       }
     },
     "admiración": {
-      "aliases": [
-        "admiracion",
-        "fascinación",
-        "fascinacion",
-        "deslumbramiento",
-        "reconocimiento_admirativo",
-        "aprecio",
-        "estima",
-        "respeto"
-      ],
       "foria": {
         "esperado": [
           "euforico"
@@ -925,10 +745,6 @@
       }
     },
     "gratitud": {
-      "aliases": [
-        "agradecimiento",
-        "reconocimiento_agradecido"
-      ],
       "foria": {
         "esperado": [
           "euforico"
@@ -966,11 +782,6 @@
       }
     },
     "alivio": {
-      "aliases": [
-        "desahogo",
-        "descompresión",
-        "descompresion"
-      ],
       "foria": {
         "esperado": [
           "euforico"
@@ -1008,12 +819,6 @@
       }
     },
     "desconfianza": {
-      "aliases": [
-        "sospecha",
-        "recelo",
-        "escepticismo_afectivo",
-        "escepticismo"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -1051,14 +856,6 @@
       }
     },
     "resignación": {
-      "aliases": [
-        "resignacion",
-        "derrotismo",
-        "desgano",
-        "desánimo",
-        "desanimo",
-        "desaliento"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -1097,10 +894,6 @@
       }
     },
     "envidia": {
-      "aliases": [
-        "celos_sociales",
-        "resentimiento_envidioso"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -1138,12 +931,6 @@
       }
     },
     "odio": {
-      "aliases": [
-        "aborrecimiento",
-        "hostilidad_intensa",
-        "inquina",
-        "hostilidad"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -1179,14 +966,6 @@
       }
     },
     "burla": {
-      "aliases": [
-        "mofa",
-        "sorna",
-        "escarnio",
-        "ridiculización",
-        "ridiculizacion",
-        "cargada"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -1227,14 +1006,6 @@
       ]
     },
     "hartazgo": {
-      "aliases": [
-        "hastío",
-        "hastio",
-        "fastidio",
-        "cansancio_moral",
-        "saturación",
-        "saturacion"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -1275,12 +1046,6 @@
       ]
     },
     "vergüenza_ajena": {
-      "aliases": [
-        "verguenza_ajena",
-        "cringe",
-        "bochorno_ajeno",
-        "pena_ajena"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -1319,12 +1084,6 @@
       ]
     },
     "diversión": {
-      "aliases": [
-        "diversion",
-        "gracia",
-        "risa_compartida",
-        "chiste_celebrado"
-      ],
       "foria": {
         "esperado": [
           "euforico"
@@ -1363,14 +1122,6 @@
       ]
     },
     "deseo": {
-      "aliases": [
-        "ansia",
-        "ansias",
-        "apetencia",
-        "avidez",
-        "ambición",
-        "ambicion"
-      ],
       "foria": {
         "esperado": [
           "euforico"
@@ -1409,11 +1160,6 @@
       }
     },
     "interés": {
-      "aliases": [
-        "interes",
-        "curiosidad",
-        "intriga"
-      ],
       "foria": {
         "esperado": [
           "euforico",
@@ -1451,11 +1197,6 @@
       }
     },
     "desamparo": {
-      "aliases": [
-        "indefensión",
-        "indefension",
-        "abandono_sentido"
-      ],
       "foria": {
         "esperado": [
           "disforico"
@@ -1492,7 +1233,5 @@
         ]
       }
     }
-  },
-  "notas_v2": "v2 agrega emociones del discurso político en redes (burla, hartazgo, vergüenza_ajena, diversión — restringidas al género tuit vía el campo `generos`) y emociones compartidas de uso frecuente (desprecio, admiración, gratitud, alivio, desconfianza, resignación, envidia, odio). La base es compartida: una entrada SIN campo `generos` está disponible en todos los géneros; con `generos: [\"tuit\"]` solo se ofrece en los prompts de esos géneros (emoparse.knowledge.genre_filter aplica el filtro al formatear la ontología). La normalización de aliases opera siempre sobre la base completa: si un discurso presidencial expresa burla, se normaliza igual, aunque el prompt no la ofrezca como candidata.",
-  "notas_v3": "v3 suma tres emociones compartidas de uso frecuente en el corpus: deseo (tensión hacia un objeto valorado; su modo de existencia esperado es potencial o virtual), interés (curiosidad, intriga; emoción epistémica de baja intensidad) y desamparo (indefensión sentida ante el abandono o la falta de protección). Amplía además los aliases de canónicas existentes con formas observadas en corridas reales (aprecio y respeto → admiración; desesperación → angustia; determinación → confianza; estremecimiento → conmoción; estupefacción e incredulidad → sorpresa; horror → miedo; hostilidad → odio; impaciencia y preocupación → ansiedad; insatisfacción → decepción; sufrimiento → tristeza; desaliento → resignación). Quedan deliberadamente sin canónico los términos que no nombran emociones sino disposiciones, actitudes o registros (altruismo, compromiso, concientización, desaprobación, fortaleza, valentía, solemnidad), los afectos demasiado inespecíficos para normalizar sin pérdida (malestar) y los artefactos de etiqueta compuesta (\"ironía/desprecio\": la ironía es un procedimiento enunciativo; su componente afectivo ya normaliza como burla o desprecio)."
+  }
 }

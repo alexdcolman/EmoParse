@@ -17,7 +17,7 @@ def filtrar_ontologia_por_genero(
     un género.
 
     Args:
-        ontologia: El dict completo de emociones_ontologia.json.
+        ontologia: Un mapping de definiciones con campo opcional `generos`.
         genre_id: Género activo (p. ej. 'tuit', 'discurso_presidencial').
             None conserva la base completa (comportamiento para
             normalización de aliases y para herramientas transversales).

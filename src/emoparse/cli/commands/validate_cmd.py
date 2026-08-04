@@ -29,8 +29,8 @@ from emoparse.storage.validation import ValidationRepository
 #: Umbral: si hay ≤ N issues en total, se muestran en detalle sin --verbose-issues.
 _AUTO_DETAIL_THRESHOLD = 10
 
-#: Nombre por default del archivo de ontología de emociones.
-_DEFAULT_ONTOLOGY_FILENAME = "emociones_ontologia.json"
+#: Restricciones de caracterización usadas opcionalmente por V11.
+_DEFAULT_CONSTRAINTS_FILENAME = "restricciones_caracterizacion_emociones.json"
 
 
 def handle(args: argparse.Namespace) -> int:
@@ -50,13 +50,15 @@ def handle(args: argparse.Namespace) -> int:
         )
         return 2
 
-    # Carga opcional de la ontología de emociones para V11.
-    emotion_ontology: dict[str, Any] | None = _load_emotion_ontology(args)
+    # Carga opcional de restricciones de caracterización para V11.
+    characterization_constraints: dict[str, Any] | None = (
+        _load_emotion_characterization_constraints(args)
+    )
 
     # Filtro por código si está definido.
     codigo_filter: str | None = getattr(args, "codigo", None)
 
-    runner = ValidationRunner(db, emotion_ontology=emotion_ontology)
+    runner = ValidationRunner(db, characterization_constraints=characterization_constraints)
 
     if codigo_filter:
         # Ejecución limitada al discurso especificado.
@@ -102,8 +104,10 @@ def handle(args: argparse.Namespace) -> int:
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 
-def _load_emotion_ontology(args: argparse.Namespace) -> dict[str, Any] | None:
-    """Intenta cargar la ontología de emociones para V11.
+def _load_emotion_characterization_constraints(
+    args: argparse.Namespace,
+) -> dict[str, Any] | None:
+    """Carga opcionalmente las restricciones de caracterización para V11.
 
     Si --knowledge-dir no se especificó o el archivo no existe, loguea
     a INFO y devuelve None (el runner corre sin V11). Nunca bloquea.
@@ -116,19 +120,20 @@ def _load_emotion_ontology(args: argparse.Namespace) -> dict[str, Any] | None:
         )
         return None
 
-    ontology_filename: str = getattr(args, "ontology_file", _DEFAULT_ONTOLOGY_FILENAME)
+    constraints_filename: str = getattr(args, "constraints_file", _DEFAULT_CONSTRAINTS_FILENAME)
 
     try:
         loader = KnowledgeLoader(knowledge_dir)
-        ontology = loader.load_emotion_ontology(ontology_filename)
+        constraints = loader.load_emotion_characterization_constraints(constraints_filename)
         logger.info(
-            f"[validate] Ontología de emociones cargada desde '{ontology_filename}' — V11 activo."
+            "[validate] Restricciones de caracterización cargadas desde "
+            f"'{constraints_filename}' — V11 activo."
         )
-        return ontology
+        return constraints
     except KnowledgeError as e:
         logger.info(
-            f"[validate] No se pudo cargar la ontología de emociones "
-            f"({e}). V11_DesviacionOntologica no se ejecutará."
+            "[validate] No se pudieron cargar las restricciones de "
+            f"caracterización ({e}). V11_DesviacionOntologica no se ejecutará."
         )
         return None
 
@@ -174,17 +179,18 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--knowledge-dir",
         dest="knowledge_dir",
         help=(
-            "Directorio de knowledge files. Permite cargar la ontología "
-            "de emociones para activar V11_DesviacionOntologica."
+            "Directorio de knowledge files. Permite cargar restricciones de "
+            "caracterización para activar V11_DesviacionOntologica."
         ),
     )
     p.add_argument(
-        "--ontology-file",
-        default="emociones_ontologia.json",
-        dest="ontology_file",
+        "--constraints-file",
+        default="restricciones_caracterizacion_emociones.json",
+        dest="constraints_file",
         help=(
-            "Nombre del archivo de ontología de emociones dentro de "
-            "--knowledge-dir. Default: emociones_ontologia.json."
+            "Nombre del archivo de restricciones de caracterización dentro de "
+            "--knowledge-dir. Default: "
+            "restricciones_caracterizacion_emociones.json."
         ),
     )
     p.set_defaults(handler=handle)

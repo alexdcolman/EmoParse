@@ -1,6 +1,6 @@
 {
   "version": "v1",
-  "descripcion": "Léxico afectivo de emojis: prior curado emoji → candidatos de tipo de emoción y foria. Es un insumo heurístico para las etapas que desambiguan tecnografismos afectivos, NO una clasificación automática: los candidatos deben confirmarse en contexto y mapearse a la ontología de emociones vigente (emociones_ontologia.json). `ambiguo: true` marca emojis cuya foria depende fuertemente del contexto (ironía, burla).",
+  "descripcion": "Léxico afectivo de emojis: prior curado emoji → candidatos de tipo de emoción y foria. Es un insumo heurístico para las etapas que desambiguan tecnografismos afectivos, NO una clasificación automática: los candidatos deben confirmarse en contexto y normalizarse ex post en la etapa normalize_emotions. `ambiguo: true` marca emojis cuya foria depende fuertemente del contexto (ironía, burla).",
   "campos": {
     "candidatos": "tipos de emoción candidatos, del más al menos frecuente",
     "foria": "euforico | disforico | null (si depende del contexto)",

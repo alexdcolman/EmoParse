@@ -228,10 +228,10 @@ paths:
   inputs_dir:    ${EMOPARSE_INPUTS_DIR:-data}
 
 versions:
-  knowledge: v14
-  prompt: v49
-  ontology: v26
-  schema: v40
+  knowledge: v19
+  prompt: v54
+  ontology: v27
+  schema: v41
 
 logging:
   level: INFO
@@ -243,5 +243,5 @@ notes: |
   Run de producción. Bumpear versions cuando cambien:
     - knowledge:  datos base del proyecto.
     - prompt:     templates de los agentes.
-    - ontology:   archivos JSON de knowledge/.
+    - ontology:   versión histórica del catálogo ex post y otros JSON; nunca implica inyección en prompts.
     - schema:     schemas Pydantic de salida.

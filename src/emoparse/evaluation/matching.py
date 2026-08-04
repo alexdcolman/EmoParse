@@ -5,13 +5,13 @@
 #
 #  Estrategia por unidad (codigo, unit_idx):
 #  1. Se emparejan golden↔predichas de forma greedy por score descendente:
-#     +2 si el tipo coincide (canonicalizado por la ontología de alias),
+#     +2 si el tipo canónico coincide,
 #     +1 si el experienciador coincide (igualdad laxa por solapamiento de
 #     tokens normalizados). Solo se aceptan pares con score > 0.
 #  2. Detección: TP = pares aceptados; FP = predichas sin par; FN = golden
 #     sin par. De ahí precisión, recall y F1.
 #  3. Dimensiones: sobre los pares aceptados se mide accuracy de tipo
-#     (canónico), experienciador (laxo), modo_existencia y foria (si el
+#     (sobre `tipo_emocion_canonico`), experienciador (laxo), modo_existencia y foria (si el
 #     golden las trae).
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -60,21 +60,9 @@ class MatchReport:
         return self.dim_correctas.get(dim, 0) / n if n else None
 
 
-def build_alias_map(ontologia: dict[str, Any]) -> dict[str, str]:
-    """alias normalizado → emoción canónica, desde emociones_ontologia.json."""
-    alias_map: dict[str, str] = {}
-    for canonico, entry in (ontologia.get("emociones") or {}).items():
-        alias_map[_norm_token(canonico)] = canonico
-        if isinstance(entry, dict):
-            for alias in entry.get("aliases") or []:
-                alias_map[_norm_token(str(alias))] = canonico
-    return alias_map
-
-
 def match_units(
     golden_units: dict[tuple[str, int], list[dict[str, Any]]],
     pred_units: dict[tuple[str, int], list[dict[str, Any]]],
-    alias_map: dict[str, str],
 ) -> MatchReport:
     """Compara golden vs predicciones sobre las unidades del golden.
 
@@ -85,7 +73,7 @@ def match_units(
     for key, golds in golden_units.items():
         preds = list(pred_units.get(key, []))
         report.unidades += 1
-        _match_one_unit(key, golds, preds, alias_map, report)
+        _match_one_unit(key, golds, preds, report)
     return report
 
 
@@ -98,14 +86,13 @@ def _match_one_unit(
     key: tuple[str, int],
     golds: list[dict[str, Any]],
     preds: list[dict[str, Any]],
-    alias_map: dict[str, str],
     report: MatchReport,
 ) -> None:
     candidatos: list[tuple[int, int, int]] = []  # (score, g_idx, p_idx)
     for g_idx, g in enumerate(golds):
         for p_idx, p in enumerate(preds):
             score = 0
-            if _tipo_eq(g, p, alias_map):
+            if _tipo_eq(g, p):
                 score += 2
             if _exp_eq(g, p):
                 score += 1
@@ -128,7 +115,7 @@ def _match_one_unit(
 
     for g_idx, p_idx in pares:
         g, p = golds[g_idx], preds[p_idx]
-        _score_dim(report, "tipo", _tipo_eq(g, p, alias_map), g, p, key)
+        _score_dim(report, "tipo", _tipo_eq(g, p), g, p, key)
         _score_dim(report, "experienciador", _exp_eq(g, p), g, p, key)
         for dim in ("modo_existencia", "foria"):
             g_val = _norm_token(str(g.get(dim) or ""))
@@ -166,12 +153,10 @@ def _score_dim(
 # ══════════════════════════════════════════════════════════════════════════════
 
 
-def _tipo_eq(g: dict[str, Any], p: dict[str, Any], alias_map: dict[str, str]) -> bool:
-    g_tipo = _canonico(str(g.get("tipo_emocion") or ""), alias_map)
-    p_tipo = _canonico(
-        str(p.get("tipo_emocion_canonico") or p.get("tipo_emocion") or ""),
-        alias_map,
-    )
+def _tipo_eq(g: dict[str, Any], p: dict[str, Any]) -> bool:
+    """Compara etiquetas canónicas; el golden debe usar nombres normalizados."""
+    g_tipo = _norm_token(str(g.get("tipo_emocion") or ""))
+    p_tipo = _norm_token(str(p.get("tipo_emocion_canonico") or ""))
     return bool(g_tipo) and g_tipo == p_tipo
 
 
@@ -183,11 +168,6 @@ def _exp_eq(g: dict[str, Any], p: dict[str, Any]) -> bool:
         return False
     inter = g_toks & p_toks
     return len(inter) / min(len(g_toks), len(p_toks)) >= 0.5
-
-
-def _canonico(valor: str, alias_map: dict[str, str]) -> str:
-    tok = _norm_token(valor)
-    return alias_map.get(tok, tok)
 
 
 _STOP = {"el", "la", "los", "las", "un", "una", "de", "del", "al", "y", "e"}

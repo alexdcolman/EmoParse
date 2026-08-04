@@ -25,7 +25,6 @@
 from __future__ import annotations
 
 import argparse
-import json
 import sqlite3
 from pathlib import Path
 
@@ -34,7 +33,7 @@ from loguru import logger
 
 from emoparse.evaluation.agreement import krippendorff_alpha
 from emoparse.evaluation.golden import GoldenError, load_golden, load_run_emotions
-from emoparse.evaluation.matching import build_alias_map, match_units
+from emoparse.evaluation.matching import match_units
 from emoparse.evaluation.sampling import make_annotation_sample
 
 #: Dimensiones de la planilla → métrica de alpha.
@@ -61,12 +60,6 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     )
     p.add_argument(
         "--golden", type=Path, default=None, help="Golden set (.jsonl o directorio de .jsonl)."
-    )
-    p.add_argument(
-        "--ontology",
-        type=Path,
-        default=Path("knowledge/emociones_ontologia.json"),
-        help="Ontología para canonicalizar tipos al comparar.",
     )
     p.add_argument(
         "--make-sample", action="store_true", help="Exporta planilla de anotación a ciegas (--out)."
@@ -118,14 +111,8 @@ def _golden(args: argparse.Namespace) -> int:
     except GoldenError as e:
         logger.error(f"[eval] {e}")
         return 1
-    try:
-        ontologia = json.loads(args.ontology.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as e:
-        logger.error(f"[eval] Ontología ilegible ({args.ontology}): {e}")
-        return 1
-
     preds = load_run_emotions(args.db, keys=set(golden))
-    report = match_units(golden, preds, build_alias_map(ontologia))
+    report = match_units(golden, preds)
 
     md = _golden_markdown(report, args)
     print(md)

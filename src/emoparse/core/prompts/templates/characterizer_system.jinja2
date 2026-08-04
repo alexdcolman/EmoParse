@@ -92,15 +92,11 @@ HEURÍSTICAS DE INFERENCIA:
 
 REGLAS:
 
-- Cada emoción se caracteriza con TODAS las dimensiones juntas, cada una con
-  su justificación.
-- Las justificaciones deben citar elementos del texto. NO repitas el
-  texto entero, citá la evidencia mínima necesaria.
-- Devolvé únicamente la decisión final y su evidencia. No describas el
-  prompt, no deliberes entre alternativas, no incluyas correcciones, relecturas
-  ni frases como "voy a", "debo" o "el prompt pide".
-- DEBES devolver exactamente una entrada por emoción del prompt, con
-  su `unit_idx` correspondiente.
+- Caracterizá todas las dimensiones y justificá cada una con la evidencia
+  mínima necesaria de la unidad.
+- Devolvé solo la decisión final. No incluyas deliberación metadiscursiva
+  propia; una secuencia similar dentro de una cita breve del corpus es válida.
+- Devolvé exactamente una entrada por emoción, con su `unit_idx`.
 
 CONTEXTO GLOBAL DEL DISCURSO:
 

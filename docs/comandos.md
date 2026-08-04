@@ -126,8 +126,8 @@ Lee las emociones ya caracterizadas de la DB y aplica los domain validators. Las
 | `--db` | DB | requerido | Path al .sqlite. |
 | `--codigo` | CODIGO |  | Validar solo este discurso (por código). Default: todos. |
 | `--verbose-issues` |  |  | Mostrar detalle de cada issue aunque sean muchas. |
-| `--knowledge-dir` | KNOWLEDGE_DIR |  | Directorio de knowledge files. Permite cargar la ontología de emociones para activar V11_DesviacionOntologica. |
-| `--ontology-file` | ONTOLOGY_FILE | emociones_ontologia.json | Nombre del archivo de ontología de emociones dentro de --knowledge-dir. Default: emociones_ontologia.json. |
+| `--knowledge-dir` | KNOWLEDGE_DIR |  | Directorio de knowledge files. Permite cargar restricciones de caracterización para activar V11_DesviacionOntologica. |
+| `--constraints-file` | CONSTRAINTS_FILE | restricciones_caracterizacion_emociones.json | Nombre del archivo de restricciones de caracterización dentro de --knowledge-dir. Default: restricciones_caracterizacion_emociones.json. |
 
 ## `emoparse scrape`
 
@@ -213,7 +213,6 @@ Evaluación de validez del análisis emocional.
 |---|---|---|---|
 | `--db` | DB |  | DB del run a evaluar (para --golden, --make-sample, --control). |
 | `--golden` | GOLDEN |  | Golden set (.jsonl o directorio de .jsonl). |
-| `--ontology` | ONTOLOGY | knowledge/emociones_ontologia.json | Ontología para canonicalizar tipos al comparar. |
 | `--make-sample` |  |  | Exporta planilla de anotación a ciegas (--out). |
 | `--n` | N | 300 | Tamaño de la muestra de anotación. |
 | `--seed` | SEED | 42 | Seed del muestreo (reproducibilidad). |

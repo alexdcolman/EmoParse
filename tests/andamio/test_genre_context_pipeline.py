@@ -139,7 +139,6 @@ def test_emotions_system_prompt_receives_genre_context() -> None:
     context = GenreContextProvider(get_genre()).render("emotions", ARTICLE_INPUT)
 
     rendered = emotions_prompts.render_system(
-        ontologia="ontología",
         configuraciones="configuraciones",
         titulo="Una noticia de prueba",
         tipo_discurso="noticia",

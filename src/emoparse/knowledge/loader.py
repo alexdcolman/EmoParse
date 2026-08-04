@@ -89,13 +89,38 @@ class KnowledgeLoader:
         logger.debug(f"[Knowledge] Cargadas heurísticas: {path.name} ({len(content)} chars)")
         return content
 
-    def load_emotion_ontology(self, filename: str = "emociones_ontologia.json") -> dict[str, Any]:
-        """Devuelve el dict crudo de la ontología de emociones, sin formateo."""
+    def load_emotion_normalization_catalog(
+        self,
+        filename: str = "catalogo_normalizacion_emociones.json",
+    ) -> dict[str, Any]:
+        """Carga el catálogo canónico usado después de la detección.
+
+        Este recurso es exclusivo de normalización/evaluación ex post. No debe
+        inyectarse en prompts ni usarse para cerrar el vocabulario del LLM.
+        """
         path = self._resolve(filename)
         data = self._read_json(path)
         logger.debug(
-            f"[Knowledge] Cargada ontología de emociones: {path.name} "
+            f"[Knowledge] Cargado catálogo de normalización emocional: {path.name} "
             f"({len(data.get('emociones', {}))} entradas)"
+        )
+        return data
+
+    def load_emotion_characterization_constraints(
+        self,
+        filename: str = "restricciones_caracterizacion_emociones.json",
+    ) -> dict[str, Any]:
+        """Carga restricciones ex post para V11, separadas del catálogo.
+
+        Este recurso no contiene aliases y no participa en prompts, detección
+        ni normalización. Se consulta únicamente al validar caracterizaciones
+        ya persistidas.
+        """
+        path = self._resolve(filename)
+        data = self._read_json(path)
+        logger.debug(
+            f"[Knowledge] Cargadas restricciones de caracterización emocional: "
+            f"{path.name} ({len(data.get('emociones', {}))} entradas)"
         )
         return data
 

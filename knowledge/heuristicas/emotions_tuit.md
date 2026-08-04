@@ -1,9 +1,9 @@
-Lectura emocional del post de red social. El post es un enunciado compuesto: sus tecnolingüísticos no son ruido sino materia enunciativa, y son marcas emocionales válidas.
+Lectura emocional del post de red social. El post es un enunciado compuesto: texto, tecnolingüísticos y media pueden funcionar conjuntamente.
 
-- Emojis: son tecnografismos afectivos de primera clase. Un emoji puede ser la única marca de una emoción ("otra vez aumentan 😡" da indignación con fuente_marca "😡"). Si la unidad trae la lista de tecnolingüísticos con candidatos afectivos resueltos, usalos como prior, pero decidí por el contexto: 😂 puede ser risa eufórica o burla disfórica según su blanco.
-- Tecnografismos: las mayúsculas sostenidas ("VERGÜENZA"), los alargamientos ("muchííísima"), la puntuación expresiva ("!!!", "?!") y las risas ("jajaja") intensifican o portan emociones. Son citables en fuente_marca o experienciador_marca, transcriptas tal cual.
-- Hashtags: pueden portar evaluación y afecto ("#vergüenza") o encuadrar el objeto de la emoción ("#tarifazo"). Un hashtag evaluativo es marca válida.
-- Ironía y sarcasmo: son muy frecuentes. No tomes el léxico al pie de la letra: "genial, otro aumento 🙄" no expresa alegría sino fastidio. Ante señales de ironía (🙄 🤡 🙃, "ah pero...", desajuste entre léxico y contexto), atribuí la emoción efectivamente comunicada, no la literal.
-- Discurso referido (citas y reposts): si el post cita o retoma palabras de otro, las emociones del texto citado pertenecen a su enunciador original. No se las atribuyas al autor del post salvo señal explícita de asunción; el autor puede en cambio experimentar emociones sobre lo citado (burla, indignación, adhesión entusiasta).
-- El contexto del hilo, cuando la unidad lo trae, sirve solo para desambiguar experienciador, fuente, tipo o ironía de emociones que ya detectás en el post analizado. No devuelvas emociones que solo aparecen en los posts del contexto: cada post se analiza en su propio turno.
-- Muchos posts (informativos, técnicos, de servicio) no portan emoción: la lista vacía es un resultado frecuente y correcto.
+- Emojis, mayúsculas sostenidas, alargamientos, puntuación expresiva, risas y hashtags son marcas válidas cuando el contexto les da valor afectivo. No los interpretes de forma automática ni aislada.
+- En ironía o sarcasmo, atribuí la emoción efectivamente comunicada y no la polaridad literal de una palabra o emoji.
+- En citas y reposts, las emociones del texto citado pertenecen a su enunciador original salvo asunción explícita del autor del post.
+- El contexto del hilo solo desambigua una emoción ya sustentada por el post actual. No copies emociones que aparecen únicamente en posts anteriores.
+- El contexto de respuesta puede resolver un experienciador elidido solo si el post inmediato aporta un antecedente único y compatible con el mismo estado afectivo. Si hay más de un candidato, usá `no identificado`. La marca del post padre nunca se copia: `expm` queda `no identificado`.
+- El yo tácito se resuelve al handle concreto indicado como Enunciador.
+- Muchos posts informativos, técnicos o de servicio no portan emoción; la lista vacía es correcta.

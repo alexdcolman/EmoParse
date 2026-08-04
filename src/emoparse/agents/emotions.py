@@ -5,7 +5,7 @@
 #  batch.
 #
 #  El agente utiliza:
-#  - ontología emocional
+#  - modos de existencia y configuraciones
 #  - heurísticas de inferencia
 #  - actores previamente identificados por unidad
 #
@@ -27,11 +27,11 @@
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 import pandas as pd
-from loguru import logger
 
 from emoparse.agents.base import BaseBatchAgent
 from emoparse.core.backend.base import LLMBackend
@@ -65,24 +65,77 @@ _SANEADORES: dict[str, Callable[[str | None], str]] = {
 }
 
 
-def canonical_emotion(
-    value: Any,
-    lookup: dict[str, str] | None,
-) -> str | None:
-    """Resuelve una etiqueta contra la ontología efectiva del género.
-
-    ``lookup=None`` conserva la compatibilidad de construcciones antiguas que
-    no solicitan cierre. Un mapping provisto, incluso vacío, activa cierre
-    estricto: una ontología vacía no habilita vocabulario abierto.
-    """
-    if not isinstance(value, str) or not value.strip():
-        return None
-    if lookup is None:
-        return value.strip()
-    if not lookup:
-        return None
-    key = strip_accents(value.strip().lower())
-    return lookup.get(key)
+_ENUNCIATOR_ROLE_LABELS = frozenset(
+    {
+        "hablante",
+        "el hablante",
+        "enunciador",
+        "el enunciador",
+        "autor",
+        "el autor",
+        "autora",
+        "la autora",
+        "autor del post",
+        "el autor del post",
+        "autora del post",
+        "la autora del post",
+    }
+)
+_SIENTO_QUE_RE = re.compile(r"\bsiento\s+que\b", re.IGNORECASE)
+_AGRADECER_MARK_RE = re.compile(
+    r"\b(?:agradezco|agradecemos|agradece|agradecen|agradeci[oó]|agradecer)\b",
+    re.IGNORECASE,
+)
+_CARENCIA_RE = re.compile(r"\bcare(?:zco|ce|cemos|cen)\b", re.IGNORECASE)
+_ESPERAR_SELF_RE = re.compile(r"\b(?:espero|esperamos)\b", re.IGNORECASE)
+_INTERES_LEXEME_RE = re.compile(r"\binter(?:[eé]s|esad\w*|esa\w*)\b", re.IGNORECASE)
+_CANSADO_STATE_RE = re.compile(
+    r"\b(?:estoy|estamos|est[aá]|est[aá]n|estaba|estaban)\s+(?:muy\s+)?cansad\w*\b",
+    re.IGNORECASE,
+)
+_CANSADO_MARK_RE = re.compile(
+    r"\b(?:estoy|estamos|est[aá]|est[aá]n|estaba|estaban|cansad\w*)\b",
+    re.IGNORECASE,
+)
+_OJALA_RE = re.compile(r"\bojal[aá]\b", re.IGNORECASE)
+_HARTARSE_RE = re.compile(
+    r"\b(?P<actor>(?:el|la|los|las)\s+[\wáéíóúüñ@.-]+"
+    r"(?:\s+[\wáéíóúüñ@.-]+){0,3})\s+se\s+hart[oó]\b",
+    re.IGNORECASE,
+)
+_CONDITIONAL_BELIEF_RE = re.compile(
+    r"\bcuando\b[^.;:\n]{0,120}?\b"
+    r"(?P<mark>(?:lo\s+)?(?:voy|vamos)\s+a\s+creer|"
+    r"(?:lo\s+)?creer(?:é|emos))\b",
+    re.IGNORECASE,
+)
+_EVIDENCE_SOURCE_RE = re.compile(
+    r"\b(?:acciones|hechos|pruebas|resultados|evidencia)\b",
+    re.IGNORECASE,
+)
+_COGNITIVE_MATRIX_MARK_RE = re.compile(
+    r"^\s*(?:yo\s+)?(?:creo|pienso|considero|entiendo|siento|"
+    r"me\s+parece)\s+que\b",
+    re.IGNORECASE,
+)
+_UNKNOWN_MARKS = frozenset(
+    {
+        "",
+        "no identificado",
+        "no identificada",
+        "no se identifica",
+        "desconocido",
+        "desconocida",
+    }
+)
+_OPTATIVE_MARKS = frozenset({"ojala"})
+_OPTATIVE_EMOTIONS = frozenset({"esperanza", "deseo"})
+_FIRST_PERSON_MARK_RE = re.compile(
+    r"\b(?:yo|me|mi|mis|m[ií]o|m[ií]a|nosotros|nosotras|nos|nuestro|"
+    r"nuestra|nuestros|nuestras)\b",
+    re.IGNORECASE,
+)
+_MAX_MARK_WORDS = 6
 
 
 def sanitize_emocion(emo: dict[str, Any]) -> dict[str, Any]:
@@ -113,38 +166,255 @@ def sanitize_emocion(emo: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
-def dedupe_emociones(emociones: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """Elimina emociones repetidas dentro de una misma unidad.
+def resolve_enunciator_referent(value: Any, enunciador: str) -> Any:
+    """Resuelve etiquetas genéricas del emisor al referente concreto conocido."""
+    if not isinstance(value, str) or not enunciador.strip():
+        return value
+    if _norm_clave(value) in _ENUNCIATOR_ROLE_LABELS:
+        return enunciador.strip()
+    return value
 
-    Aplica la regla que el prompt ya pide ("no repitas la misma emoción para
-    el mismo experienciador en la misma unidad, salvo que difieran en modo de
-    existencia") de forma determinista, en vez de confiar en que el modelo la
-    respete. La identidad es (experienciador, tipo_emocion, modo_existencia),
-    normalizados: dos entradas que solo difieren en la marca o en la
-    justificación son la misma emoción. Preserva el orden de aparición.
 
-    Cubre el caso degenerado en que el sampler entra en bucle y repite el
-    mismo objeto hasta agotar el presupuesto: lo repetido no llega a
-    persistirse.
-    """
-    vistas: set[tuple[str, str, str]] = set()
-    out: list[dict[str, Any]] = []
-    for e in emociones:
-        clave = (
-            _norm_clave(e.get("experienciador")),
-            _norm_clave(e.get("tipo_emocion")),
-            _norm_clave(e.get("modo_existencia")),
+def _is_unknown_mark(value: Any) -> bool:
+    return _norm_clave(value) in _UNKNOWN_MARKS
+
+
+def _literal_mark_in_text(value: Any, text: str) -> bool:
+    """True si la marca aparece como secuencia completa dentro de la unidad."""
+    mark = _norm_clave(value)
+    if not mark or mark in _UNKNOWN_MARKS:
+        return False
+    return bool(
+        re.search(
+            rf"(?<![a-z0-9]){re.escape(mark)}(?![a-z0-9])",
+            _norm_clave(text),
         )
-        if clave in vistas:
-            continue
-        vistas.add(clave)
-        out.append(e)
+    )
+
+
+def _same_referent(left: Any, right: Any) -> bool:
+    """Compara referentes tolerando @, espacios y signos."""
+    a = re.sub(r"[^a-z0-9]+", "", _norm_clave(left).lstrip("@"))
+    b = re.sub(r"[^a-z0-9]+", "", _norm_clave(right).lstrip("@"))
+    return bool(a and b and (a == b or a in b or b in a))
+
+
+def _emotion_has_lexical_evidence(
+    tipo: str,
+    text: str,
+) -> bool:
+    """Comprueba evidencia léxica del tipo detectado sin catálogo canónico."""
+    return bool(re.search(rf"\b{re.escape(tipo)}\b", _norm_clave(text)))
+
+
+def _first_person_mark(value: Any) -> bool:
+    return bool(_FIRST_PERSON_MARK_RE.search(str(value or "")))
+
+
+def _matched_text(match: re.Match[str] | None, group: str | int = 0) -> str:
+    return match.group(group).strip() if match is not None else ""
+
+
+def _mark_is_clause_like(value: Any) -> bool:
+    raw = str(value or "").strip()
+    if not raw:
+        return False
+    return "\n" in raw or len(raw.split()) > _MAX_MARK_WORDS
+
+
+def normalize_emotion_for_unit(
+    emotion: dict[str, Any],
+    *,
+    text: str,
+    enunciador: str,
+) -> dict[str, Any] | None:
+    """Normaliza estructura y evidencia sin crear emociones ausentes.
+
+    Las correcciones semánticas se limitan a casos donde el modelo ya produjo
+    una emoción. Este postprocesado nunca completa una detección omitida.
+    """
+    out = dict(emotion)
+    out["experienciador"] = resolve_enunciator_referent(
+        out.get("experienciador"),
+        enunciador,
+    )
+    tipo = _norm_clave(out.get("tipo_emocion"))
+    same_as_enunciator = bool(enunciador.strip()) and _same_referent(
+        out.get("experienciador"),
+        enunciador,
+    )
+    mark_raw = str(out.get("experienciador_marca", "") or "").strip()
+    mark = _norm_clave(mark_raw)
+
+    agradecer = _AGRADECER_MARK_RE.search(text)
+    if (
+        agradecer is not None
+        and tipo in {"esperanza", "gratitud"}
+        and (_AGRADECER_MARK_RE.search(mark_raw) or mark in {"agradezco", "agradecemos"})
+    ):
+        gratitud = "gratitud"
+        out["tipo_emocion"] = gratitud
+        out["experienciador_marca"] = _matched_text(agradecer)
+        out["modo_existencia"] = "realizada"
+        out["tipo_configuracion"] = "ordenado_alrededor_de_verbos_psicologicos"
+        tipo = _norm_clave(gratitud)
+        mark_raw = str(out["experienciador_marca"])
+        mark = _norm_clave(mark_raw)
+
+    esperar = _ESPERAR_SELF_RE.search(text)
+    if esperar is not None and same_as_enunciator:
+        if tipo in _OPTATIVE_EMOTIONS:
+            esperanza = "esperanza"
+            out["tipo_emocion"] = esperanza
+            out["experienciador_marca"] = _matched_text(esperar)
+            out["modo_existencia"] = "realizada"
+            out["tipo_configuracion"] = "ordenado_alrededor_de_verbos_psicologicos"
+            tipo = _norm_clave(esperanza)
+            mark_raw = str(out["experienciador_marca"])
+            mark = _norm_clave(mark_raw)
+        elif tipo == "interes" and (
+            mark == _norm_clave(_matched_text(esperar)) or not _INTERES_LEXEME_RE.search(text)
+        ):
+            return None
+
+    if _CARENCIA_RE.search(mark_raw):
+        return None
+
+    if _SIENTO_QUE_RE.search(text):
+        matrix_mark = mark in {"siento", "siento que"} or bool(
+            _COGNITIVE_MATRIX_MARK_RE.search(mark_raw)
+        )
+        if matrix_mark and not _emotion_has_lexical_evidence(
+            tipo,
+            text,
+        ):
+            return None
+
+    ojala = _OJALA_RE.search(text)
+    if mark in _OPTATIVE_MARKS or (ojala is not None and mark == _norm_clave(_matched_text(ojala))):
+        if tipo not in _OPTATIVE_EMOTIONS:
+            return None
+        esperanza = "esperanza"
+        out["tipo_emocion"] = esperanza
+        out["experienciador_marca"] = _matched_text(ojala) or mark_raw
+        out["modo_existencia"] = "realizada"
+        out["tipo_configuracion"] = "cualificacion_por_indicadores_cognitivos"
+        tipo = _norm_clave(esperanza)
+        mark_raw = str(out["experienciador_marca"])
+        mark = _norm_clave(mark_raw)
+
+    if (
+        ojala is not None
+        and same_as_enunciator
+        and _is_unknown_mark(mark_raw)
+        and not _emotion_has_lexical_evidence(tipo, text)
+    ):
+        return None
+
+    if (
+        tipo == "hartazgo"
+        and same_as_enunciator
+        and _CANSADO_STATE_RE.search(text)
+        and _CANSADO_MARK_RE.search(mark_raw)
+    ):
+        out["modo_existencia"] = "realizada"
+        out["tipo_configuracion"] = "sostenido_en_adjetivos"
+
+    if tipo == "hartazgo":
+        for hartarse in _HARTARSE_RE.finditer(text):
+            actor = _matched_text(hartarse, "actor")
+            if not _same_referent(out.get("experienciador"), actor):
+                continue
+            out["experienciador_marca"] = actor
+            out["modo_existencia"] = "realizada"
+            out["tipo_configuracion"] = "ordenado_alrededor_de_verbos_psicologicos"
+            mark_raw = actor
+            mark = _norm_clave(mark_raw)
+            break
+
+    belief = _CONDITIONAL_BELIEF_RE.search(text)
+    if tipo == "desconfianza" and belief is not None:
+        out["experienciador_marca"] = _matched_text(belief, "mark")
+        out["modo_existencia"] = "realizada"
+        out["tipo_configuracion"] = "cualificacion_por_indicadores_cognitivos"
+        if _is_unknown_mark(out.get("fuente_marca")):
+            source_match = _EVIDENCE_SOURCE_RE.search(text[: belief.start("mark")])
+            source = _matched_text(source_match) or "no identificado"
+            out["fuente_marca"] = source
+            out["fuente_inferencia"] = source
+        mark_raw = str(out["experienciador_marca"])
+        mark = _norm_clave(mark_raw)
+
+    if _mark_is_clause_like(mark_raw):
+        lexical = _emotion_has_lexical_evidence(tipo, text)
+        if same_as_enunciator and _COGNITIVE_MATRIX_MARK_RE.search(mark_raw):
+            if not lexical:
+                return None
+            out["experienciador"] = "no identificado"
+            out["experienciador_marca"] = "no identificado"
+            out["tipo_configuracion"] = "sostenido_en_sustantivos"
+            same_as_enunciator = False
+            mark_raw = "no identificado"
+            mark = _norm_clave(mark_raw)
+        else:
+            out["experienciador_marca"] = "no identificado"
+            mark_raw = "no identificado"
+            mark = _norm_clave(mark_raw)
+
+    if not _literal_mark_in_text(mark_raw, text) and not _is_unknown_mark(mark_raw):
+        lexical = _emotion_has_lexical_evidence(tipo, text)
+        if same_as_enunciator and not _first_person_mark(mark_raw):
+            if not lexical:
+                return None
+            out["experienciador"] = "no identificado"
+        out["experienciador_marca"] = "no identificado"
+
+    source_mark = str(out.get("fuente_marca", "") or "").strip()
+    if _mark_is_clause_like(source_mark) or (
+        not _literal_mark_in_text(source_mark, text) and not _is_unknown_mark(source_mark)
+    ):
+        out["fuente_marca"] = "no identificado"
+
     return out
 
 
+def dedupe_emociones(emociones: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Elimina duplicados por experienciador, emoción y modo de existencia."""
+    vistas: set[tuple[str, str, str]] = set()
+    out: list[dict[str, Any]] = []
+    for emotion in emociones:
+        key = (
+            _norm_clave(emotion.get("experienciador")),
+            _norm_clave(emotion.get("tipo_emocion")),
+            _norm_clave(emotion.get("modo_existencia")),
+        )
+        if key in vistas:
+            continue
+        vistas.add(key)
+        out.append(emotion)
+    return out
+
+
+def order_emotions_by_evidence(
+    emociones: list[dict[str, Any]],
+    text: str,
+) -> list[dict[str, Any]]:
+    """Ordena por la primera marca literal para conservar el recorrido textual."""
+    text_norm = _norm_clave(text)
+
+    def key(item: tuple[int, dict[str, Any]]) -> tuple[int, int]:
+        index, emotion = item
+        mark = _norm_clave(emotion.get("experienciador_marca"))
+        position = text_norm.find(mark) if mark and mark not in _UNKNOWN_MARKS else -1
+        return (position if position >= 0 else len(text_norm) + index, index)
+
+    return [emotion for _, emotion in sorted(enumerate(emociones), key=key)]
+
+
 def _norm_clave(valor: Any) -> str:
-    """Normaliza un campo para comparar identidad de emociones."""
-    return " ".join(str(valor or "").strip().lower().split())
+    """Normaliza un campo para comparar identidad, literalidad y aliases."""
+    text = strip_accents(str(valor or "").strip().lower())
+    return " ".join(text.split())
 
 
 def alcance_text(
@@ -176,8 +446,8 @@ def alcance_text(
 class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
     """Primer pase de detección de emociones.
 
-    Procesa frases o párrafos utilizando ontología emocional, heurísticas
-    de inferencia y los actores previamente identificados en cada unidad.
+    Procesa frases o párrafos utilizando modos de existencia, configuraciones,
+    heurísticas de inferencia y los actores identificados en cada unidad.
 
     Agrega la columna `emociones`, que contiene una lista JSON con
     `experienciador`, `tipo_emocion`, `modo_existencia`, `fuente_marca`,
@@ -197,7 +467,6 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
     def __init__(
         self,
         backend: LLMBackend,
-        ontologia: str,
         heuristicas: str,
         configuraciones: str = "",
         titulo: str = "",
@@ -209,14 +478,12 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         contexto_genero: str = "",
         modos_existencia: str = "",
         emotion_scope: tuple[str, ...] | None = None,
-        emotion_alias_lookup: dict[str, str] | None = None,
         retry_config: Any | None = None,
         genre: Genre | None = None,
     ) -> None:
         """
         Args:
             backend: Backend LLM utilizado para generación estructurada.
-            ontologia: Ontología emocional utilizada por el agente.
             heuristicas: Reglas heurísticas para inferencia emocional.
             configuraciones: Texto formateado con las 8 configuraciones del
                 simulacro emocional (TIPO_CONF). Si es string vacío, el
@@ -231,15 +498,11 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
             modos_existencia: Catálogo formateado de modos de existencia.
             emotion_scope: Restricción opcional de experienciadores a analizar.
                  Si es None o vacío, se analizan emociones de cualquier experienciador.
-            emotion_alias_lookup: Mapa normalizado de nombres/aliases a emoción
-                canónica. Si se provee, las salidas fuera de la ontología se
-                descartan antes de persistirse.
             retry_config: Política de reintentos ante errores transitorios.
             genre: Configuración opcional de género discursivo. Puede
                 ajustar parámetros como BATCH_SIZE y sustituir el template
                 del system prompt vía `prompt_overrides`.
         """
-        self._ontologia = ontologia
         self._heuristicas = heuristicas
         self._configuraciones = configuraciones
         self._titulo = titulo
@@ -251,7 +514,6 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         self._contexto_genero = contexto_genero
         self._modos_existencia = modos_existencia
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else ()
-        self._emotion_alias_lookup = emotion_alias_lookup
         self._genre = genre
 
         if genre is not None:
@@ -271,7 +533,6 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         if self._genre is not None:
             template = self._genre.prompt_overrides.get("emotions", template)
         return prompts.render_system(
-            ontologia=self._ontologia,
             heuristicas=self._heuristicas,
             configuraciones=self._configuraciones,
             titulo=self._titulo,
@@ -324,32 +585,23 @@ class EmotionsAgent(BaseBatchAgent[ListaEmocionesBatchSchema]):
         row: pd.Series,
     ) -> dict[str, Any]:
         saneadas: list[dict[str, Any]] = []
+        text = str(row.get("frase", row.get("contenido", "")))
+        enunciador = getattr(self, "_enunciador", "")
         for emocion in item.emociones:
             limpia = sanitize_emocion(emocion.model_dump())
-            canonica = self._canonical_emotion(limpia.get("tipo_emocion"))
-            if canonica is None:
-                logger.warning(
-                    "[emotions] Emoción fuera de ontología descartada "
-                    f"(unit_idx={item.unit_idx}): {limpia.get('tipo_emocion')!r}"
-                )
-                continue
-            limpia["tipo_emocion"] = canonica
-            saneadas.append(limpia)
+            normalizada = normalize_emotion_for_unit(
+                limpia,
+                text=text,
+                enunciador=enunciador,
+            )
+            if normalizada is not None:
+                saneadas.append(normalizada)
 
         emociones_json = json.dumps(
-            dedupe_emociones(saneadas),
+            order_emotions_by_evidence(dedupe_emociones(saneadas), text),
             ensure_ascii=False,
         )
         return {"emociones": emociones_json}
-
-    def _canonical_emotion(self, value: Any) -> str | None:
-        """Devuelve el canónico ontológico o None si la etiqueta es ajena.
-
-        Sin lookup conserva la compatibilidad previa. Con lookup, la salida
-        del LLM queda cerrada al vocabulario efectivo del género antes de
-        llegar a la base.
-        """
-        return canonical_emotion(value, self._emotion_alias_lookup)
 
     # ── Helpers ──────────────────────────────────────────────────────────────
 

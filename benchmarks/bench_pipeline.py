@@ -46,13 +46,22 @@ def main() -> int:
             run_id = f"bench_{key}_{int(time.time())}_{corrida}"
             db_path = Path(args.workdir) / f"{run_id}.sqlite"
             cmd = [
-                sys.executable, "-m", "emoparse", "run",
-                "--run-id", run_id,
-                "--config", config,
-                "--input", args.input,
-                "--genre", args.genre,
-                "--stages", args.stages,
-                "--db", str(db_path),
+                sys.executable,
+                "-m",
+                "emoparse",
+                "run",
+                "--run-id",
+                run_id,
+                "--config",
+                config,
+                "--input",
+                args.input,
+                "--genre",
+                args.genre,
+                "--stages",
+                args.stages,
+                "--db",
+                str(db_path),
             ]
             print(f"→ [{label}] corrida {corrida + 1}/{args.runs}: {' '.join(cmd)}")
             t0 = time.perf_counter()
@@ -62,8 +71,9 @@ def main() -> int:
                 print(f"  ✗ falló (exit {proc.returncode}); se omite de la tabla.")
                 continue
             for stage_row in _read_metrics(db_path):
-                resultados.append({"variante": label, "corrida": corrida,
-                                   "wall_s": wall, **stage_row})
+                resultados.append(
+                    {"variante": label, "corrida": corrida, "wall_s": wall, **stage_row}
+                )
 
     md = _to_markdown(resultados)
     print(md)

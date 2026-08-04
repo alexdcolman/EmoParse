@@ -39,7 +39,7 @@ from emoparse.core.backend.retry import RetryConfig
 from emoparse.core.text import canonical_slug
 from emoparse.genres.base import Genre
 from emoparse.genres.enunciator import resolve_from_input_field
-from emoparse.knowledge.normalization import build_emotion_alias_lookup
+from emoparse.knowledge.normalization import build_emotion_normalization_lookup
 from emoparse.pipeline.contracts import (
     DiscursoInputContract,
     EmocionExplodedContract,
@@ -963,11 +963,9 @@ class EmotionsStage(_FraseStage):
         backend: LLMBackend,
         discursos_repo: DiscursosRepository,
         frases_repo: FrasesRepository,
-        ontologia: str,
         heuristicas: str,
         configuraciones: str = "",
         modos_existencia: str = "",
-        emotion_alias_lookup: dict[str, str] | None = None,
         emotion_scope: tuple[str, ...] | None = None,
         agent_version: str | None = None,
         retry_config: RetryConfig | None = None,
@@ -978,11 +976,9 @@ class EmotionsStage(_FraseStage):
         genre_context_provider: GenreContextProvider | None = None,
     ) -> None:
         super().__init__(backend, discursos_repo, frases_repo, agent_version, retry_config, genre)
-        self._ontologia = ontologia
         self._heuristicas = heuristicas
         self._configuraciones = configuraciones
         self._modos_existencia = modos_existencia
-        self._emotion_alias_lookup = emotion_alias_lookup
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else None
         # Providers opcionales de contexto para discurso nativo digital:
         # hilo (cadena de posts padre + cita), tecno (tecnolingüísticos
@@ -994,7 +990,7 @@ class EmotionsStage(_FraseStage):
         self._genre_context = genre_context_provider
 
     def _build_agent(self, input_data: dict[str, Any], codigo: str) -> EmotionsAgent:
-        """Construye EmotionsAgent con ontología y heurísticas."""
+        """Construye EmotionsAgent con modos, configuraciones y heurísticas."""
         meta = self._d_repo.get_payload(codigo, "metadata") or {}
         enun = self._d_repo.get_payload(codigo, "enunciation") or {}
         summ = self._d_repo.get_payload(codigo, "summarizer") or {}
@@ -1005,7 +1001,6 @@ class EmotionsStage(_FraseStage):
         )
         return EmotionsAgent(
             self._backend,
-            ontologia=self._ontologia,
             heuristicas=self._heuristicas,
             configuraciones=self._configuraciones,
             titulo=str(input_data.get("titulo", "")),
@@ -1017,7 +1012,6 @@ class EmotionsStage(_FraseStage):
             contexto_genero=contexto_genero or "",
             modos_existencia=self._modos_existencia,
             emotion_scope=self._emotion_scope,
-            emotion_alias_lookup=self._emotion_alias_lookup,
             retry_config=self._retry_config,
             genre=self._genre,
         )
@@ -2500,11 +2494,11 @@ class ModalidadStage(Stage):
 
 
 class NormalizeEmotionsStage(Stage):
-    """Mapea tipo_emocion (texto libre del LLM) a canónico vía ontología.
+    """Mapea texto libre del LLM a un canónico mediante el catálogo ex post.
 
-    Opera sobre filas de la tabla ``emociones`` con ``tipo_emocion`` no nulo
-    y ``tipo_emocion_canonico`` nulo. Escribe el canónico en la columna nueva;
-    si la emoción no está cubierta por la ontología, deja NULL (sin error).
+    El catálogo no participa en la detección ni en ningún prompt. Opera sobre
+    filas de ``emociones`` ya persistidas; si una etiqueta no está cubierta,
+    deja ``tipo_emocion_canonico`` en NULL (sin error).
 
     Stage determinística, sin LLM, idempotente: re-ejecutar solo procesa
     las filas aún pendientes.
@@ -2515,13 +2509,13 @@ class NormalizeEmotionsStage(Stage):
     def __init__(
         self,
         emociones_repo: EmocionesRepository,
-        emotion_ontology: dict[str, Any],
+        normalization_catalog: dict[str, Any],
         agent_version: str | None = None,
     ) -> None:
         super().__init__()
         self.validate_contracts = False  # no hay DataFrame en esta stage
         self._repo = emociones_repo
-        self._lookup = build_emotion_alias_lookup(emotion_ontology)
+        self._lookup = build_emotion_normalization_lookup(normalization_catalog)
         self._version = agent_version
 
     def run_pending(self) -> int:
@@ -2716,11 +2710,9 @@ class EmotionsPass2Stage(Stage):
         backend: LLMBackend,
         discursos_repo: DiscursosRepository,
         frases_repo: FrasesRepository,
-        ontologia: str,
         heuristicas: str,
         configuraciones: str = "",
         modos_existencia: str = "",
-        emotion_alias_lookup: dict[str, str] | None = None,
         rolling_window: int = 3,
         context_mode: Literal["rolling", "full"] = "rolling",
         # "full" da más contexto de continuidad para detectar escaladas, a costa de prompt más largo
@@ -2737,11 +2729,9 @@ class EmotionsPass2Stage(Stage):
         self._backend = backend
         self._d_repo = discursos_repo
         self._f_repo = frases_repo
-        self._ontologia = ontologia
         self._heuristicas = heuristicas
         self._configuraciones = configuraciones
         self._modos_existencia = modos_existencia
-        self._emotion_alias_lookup = emotion_alias_lookup
         self._rolling_window = rolling_window
         self._context_mode = context_mode
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else None
@@ -2825,7 +2815,6 @@ class EmotionsPass2Stage(Stage):
         summ = self._d_repo.get_payload(codigo, "summarizer") or {}
         agent = EmotionsAgentPass2(
             self._backend,
-            ontologia=self._ontologia,
             heuristicas=self._heuristicas,
             configuraciones=self._configuraciones,
             titulo=str(input_data.get("titulo", "")),
@@ -2836,7 +2825,6 @@ class EmotionsPass2Stage(Stage):
             resumen=_resumen_global(summ),
             modos_existencia=self._modos_existencia,
             emotion_scope=self._emotion_scope,
-            emotion_alias_lookup=self._emotion_alias_lookup,
             context_mode=self._context_mode,
             retry_config=self._retry_config,
             genre=self._genre,
@@ -3327,7 +3315,6 @@ class JudgeStage(Stage):
         emociones_repo: EmocionesRepository,
         judgments_repo: JudgmentsRepository,
         heuristicas: str | None = None,
-        ontologia: str = "",
         agent_version: str | None = None,
         retry_config: RetryConfig | None = None,
         genre: Genre | None = None,
@@ -3341,7 +3328,6 @@ class JudgeStage(Stage):
         self._e_repo = emociones_repo
         self._j_repo = judgments_repo
         self._heuristicas = heuristicas
-        self._ontologia = ontologia
         self._version = agent_version
         self._retry_config = retry_config
         self._genre = genre
@@ -3381,7 +3367,6 @@ class JudgeStage(Stage):
                 titulo=str(input_data.get("titulo", "")),
                 tipo_discurso=str(meta.get("tipo_discurso", "")),
                 heuristicas=self._heuristicas,
-                ontologia=self._ontologia,
                 resumen=_resumen_global(summ) or None,
                 enunciacion=_format_enunciacion_for_judge(enun) or None,
                 retry_config=self._retry_config,

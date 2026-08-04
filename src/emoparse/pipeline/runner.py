@@ -24,12 +24,7 @@ from emoparse.core.cache.backend import CachedBackend
 from emoparse.core.cache.repository import CacheRepository
 from emoparse.genres.presentation import attach_genre_presentation
 from emoparse.inputs.seleccion import Seleccion
-from emoparse.knowledge.genre_filter import filtrar_ontologia_por_genero
 from emoparse.knowledge.loader import KnowledgeError, KnowledgeLoader
-from emoparse.knowledge.normalization import (
-    build_emotion_alias_lookup,
-    format_emotion_ontology_for_prompt,
-)
 from emoparse.pipeline.dag import EMOPARSE_DAG
 from emoparse.pipeline.genre_context import GenreContextProvider
 from emoparse.pipeline.payload_selection import PayloadSelectionEngine
@@ -163,7 +158,7 @@ class PipelineRunner:
         enabled_stages: tuple[str, ...] = DEFAULT_ENABLED_STAGES,
         emotion_scope: tuple[str, ...] | None = None,
         validate_contracts: bool = True,
-        ontology_filename: str = "emociones_ontologia.json",
+        normalization_filename: str = "catalogo_normalizacion_emociones.json",
         emotion_modes_filename: str = "emociones.json",
         heuristics_filename: str = "heuristicas.md",
         diccionario_filename: str = "tipos_discurso.json",
@@ -191,8 +186,8 @@ class PipelineRunner:
             db_path: Path al archivo .sqlite de este run. Si
                 existe, se reanuda; si no, se crea.
             enabled_stages: Etapas a ejecutar.
-            ontology_filename: Nombre de la ontología léxica de emociones
-                dentro de knowledge_dir.
+            normalization_filename: Catálogo canónico usado únicamente por
+                normalize_emotions después de la detección.
             emotion_modes_filename: Nombre del catálogo de modos de existencia
                 de las emociones dentro de knowledge_dir.
             heuristics_filename: Nombre del archivo de heurísticas (fallback
@@ -263,9 +258,9 @@ class PipelineRunner:
         if unknown:
             raise ValueError(f"Stages desconocidas: {sorted(unknown)}. Válidas: {STAGE_ORDER}")
 
-        self._ontology_filename = ontology_filename
+        self._normalization_filename = normalization_filename
         self._emotion_modes_filename = emotion_modes_filename
-        self._emotion_resources_cache: tuple[str, str, dict[str, str]] | None = None
+        self._emotion_modes_cache: str | None = None
         self._heuristics_filename = heuristics_filename  # fallback monolítico
         self._diccionario_filename = diccionario_filename
         self._colectivos_filename = colectivos_filename
@@ -579,50 +574,25 @@ class PipelineRunner:
         bloques = [self._load_heuristics_safe(n) for n in nombres]
         return "\n\n".join(b for b in bloques if b)
 
-    def _load_emotion_resources(self) -> tuple[str, str, dict[str, str]]:
-        """Carga y valida vocabulario, modos y aliases para detección.
+    def _load_emotion_modes(self) -> str:
+        """Carga la ontología de modos de existencia usada por emotions.
 
-        La ontología léxica y los modos de existencia son archivos distintos.
-        El lookup nunca puede quedar vacío: ante un archivo equivocado o una
-        ontología sin emociones, el pipeline falla antes de llamar al modelo.
+        El catálogo canónico de normalización no se lee aquí: pertenece
+        exclusivamente a ``normalize_emotions`` y nunca entra en prompts.
         """
-        if self._emotion_resources_cache is not None:
-            return self._emotion_resources_cache
+        if self._emotion_modes_cache is not None:
+            return self._emotion_modes_cache
 
-        ontology_raw = filtrar_ontologia_por_genero(
-            self._knowledge.load_emotion_ontology(self._ontology_filename),
-            self._genre.genre_id,
+        modos_existencia = self._knowledge.load_ontology(
+            self._emotion_modes_filename,
+            genre_id=self._genre.genre_id,
         )
-        emotion_alias_lookup = build_emotion_alias_lookup(
-            ontology_raw,
-            normalize_accents=True,
-        )
-        if not emotion_alias_lookup:
-            raise KnowledgeError(
-                "La ontología léxica de emociones no contiene entradas "
-                f"utilizables para el género {self._genre.genre_id!r}: "
-                f"{self._ontology_filename!r}. Verificá que no sea el "
-                "archivo de modos de existencia."
-            )
-
-        ontologia = format_emotion_ontology_for_prompt(ontology_raw)
-        if not ontologia.strip():
-            raise KnowledgeError(
-                "No se pudo formatear la ontología léxica de emociones: "
-                f"{self._ontology_filename!r}."
-            )
-        modos_existencia = self._knowledge.load_ontology(self._emotion_modes_filename)
         if not modos_existencia.strip():
             raise KnowledgeError(
-                f"El catálogo de modos de existencia está vacío: {self._emotion_modes_filename!r}."
+                f"La ontología de modos de existencia está vacía: {self._emotion_modes_filename!r}."
             )
-
-        self._emotion_resources_cache = (
-            ontologia,
-            modos_existencia,
-            emotion_alias_lookup,
-        )
-        return self._emotion_resources_cache
+        self._emotion_modes_cache = modos_existencia
+        return modos_existencia
 
     def _build_stage(self, name: str) -> Stage:
         """Construye el Stage con sus dependencias."""
@@ -815,7 +785,7 @@ class PipelineRunner:
 
         if name == "emotions":
             backend = self._get_backend(name)
-            ontologia, modos_existencia, emotion_alias_lookup = self._load_emotion_resources()
+            modos_existencia = self._load_emotion_modes()
             heuristicas = self._heuristics_for("emotions", self._emotions_heuristics_filename)
             configuraciones = self._knowledge.load_emotion_configurations(
                 self._configurations_filename
@@ -856,11 +826,9 @@ class PipelineRunner:
                 backend,
                 self._d_repo,
                 self._f_repo,
-                ontologia=ontologia,
                 heuristicas=heuristicas,
                 configuraciones=configuraciones,
                 modos_existencia=modos_existencia,
-                emotion_alias_lookup=emotion_alias_lookup,
                 emotion_scope=self._emotion_scope,
                 hilo_context_provider=hilo_provider,
                 tecno_context_provider=tecno_provider,
@@ -873,7 +841,7 @@ class PipelineRunner:
 
         if name == "emotions_pass2":
             backend = self._get_backend(name)
-            ontologia, modos_existencia, emotion_alias_lookup = self._load_emotion_resources()
+            modos_existencia = self._load_emotion_modes()
             heuristicas = self._heuristics_for(
                 "emotions_pass2",
                 self._emotions_heuristics_filename,
@@ -920,11 +888,9 @@ class PipelineRunner:
                 backend,
                 self._d_repo,
                 self._f_repo,
-                ontologia=ontologia,
                 heuristicas=heuristicas,
                 configuraciones=configuraciones,
                 modos_existencia=modos_existencia,
-                emotion_alias_lookup=emotion_alias_lookup,
                 emotion_scope=self._emotion_scope,
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
@@ -976,10 +942,12 @@ class PipelineRunner:
             )
 
         if name == "normalize_emotions":
-            ontology = self._knowledge.load_emotion_ontology(self._ontology_filename)
+            catalog = self._knowledge.load_emotion_normalization_catalog(
+                self._normalization_filename
+            )
             return NormalizeEmotionsStage(
                 emociones_repo=self._e_repo,
-                emotion_ontology=ontology,
+                normalization_catalog=catalog,
                 agent_version=self._cfg.versions.ontology,
             )
 
@@ -1029,7 +997,6 @@ class PipelineRunner:
                 heuristicas=self._knowledge.load_heuristics(self._judge_heuristics_filename)
                 if self._judge_heuristics_filename
                 else None,
-                ontologia=self._load_emotion_resources()[0],
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,

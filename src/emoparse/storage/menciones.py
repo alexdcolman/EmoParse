@@ -40,6 +40,21 @@ def _es_desconocido(s: str) -> bool:
     return es_referente_desconocido(s)
 
 
+def _inferencia_compatible_con_marca(marca: str, inferencia: str) -> bool:
+    """Prioriza inferencias que recuperan el referente nombrado por la marca."""
+    marca_slug = canonical_slug(marca)
+    inferencia_slug = canonical_slug(inferencia)
+    return bool(
+        marca_slug
+        and inferencia_slug
+        and (
+            marca_slug == inferencia_slug
+            or marca_slug in inferencia_slug
+            or inferencia_slug in marca_slug
+        )
+    )
+
+
 def _acumular_single(
     acc: dict[tuple[int, str], dict[str, Any]],
     *,
@@ -52,7 +67,7 @@ def _acumular_single(
     marca = _norm(marca)
     if not marca:
         return
-    key = (unit_idx, marca)
+    key = (unit_idx, marca.casefold())
     entry = acc.get(key)
     if entry is None:
         inferencia = _norm(inferencia)
@@ -67,9 +82,20 @@ def _acumular_single(
             "funciones": set(),
         }
         acc[key] = entry
-    elif entry["llm_inferencia"] is None:
+    else:
         inferencia = _norm(inferencia)
-        if not _es_desconocido(inferencia):
+        existente = _norm(entry["llm_inferencia"])
+        reemplazar = bool(
+            not _es_desconocido(inferencia)
+            and (
+                _es_desconocido(existente)
+                or (
+                    not _inferencia_compatible_con_marca(marca, existente)
+                    and _inferencia_compatible_con_marca(marca, inferencia)
+                )
+            )
+        )
+        if reemplazar:
             entry["llm_inferencia"] = inferencia
             propuesto = canonical_slug(inferencia)
             entry["canonical_proposed"] = None if es_canonico_invalido(propuesto) else propuesto
@@ -152,13 +178,15 @@ def acumular_emociones(
         for e in emociones:
             if not isinstance(e, dict):
                 continue
-            _acumular(
-                acc,
-                unit_idx=unit_idx,
-                marca=_norm(e.get("experienciador_marca")),
-                funcion="experienciador",
-                inferencia=_norm(e.get("experienciador")),
-            )
+            experienciador_marca = _norm(e.get("experienciador_marca"))
+            if not _es_desconocido(experienciador_marca):
+                _acumular(
+                    acc,
+                    unit_idx=unit_idx,
+                    marca=experienciador_marca,
+                    funcion="experienciador",
+                    inferencia=_norm(e.get("experienciador")),
+                )
             fuente_marca = _norm(e.get("fuente_marca"))
             if not _es_desconocido(fuente_marca):
                 _acumular(

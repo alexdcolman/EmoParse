@@ -315,3 +315,40 @@ Zappavigna, M. (2011). Ambient affiliation: A linguistic perspective on Twitter.
 
 - [*EmoParse: hacia la automatización del análisis de emociones discursivas con IA generativa*](https://github.com/alexdcolman/EmoParse/blob/main/docs/other/EMOPARSE_HACIA_LA_AUTOMATIZACION_DEL_ANALISIS_DE_EMOCIONES_DISCURSIVAS_CON_IA_GENERATIVA.pdf) — Trabajo (PDF) donde se desarrollan en extenso el enfoque teórico-metodológico y la prueba del sistema.
 - [Tipología de destinatarios por tipo de tuit: fundamentación teórica y propuesta](https://github.com/alexdcolman/EmoParse/blob/main/docs/other/tipologia_destinatarios_tuits_fundamentacion.md) — el cruce entre género y tipo de discurso en el dominio digital, y el anclaje teórico de las categorías de destinatario.
+
+<!-- EMOPARSE:VAL01-NORMALIZATION-CONCEPTS START -->
+## Detección abierta, normalización y variables derivadas
+
+La detección de emociones no obliga al modelo a elegir dentro de una lista
+canónica cerrada. `emotions` conserva la etiqueta producida por el modelo y
+`normalize_emotions` intenta vincularla después con un nombre canónico. Así se
+mantienen tanto la forma detectada como una categoría comparable para análisis
+agregados.
+
+Los recursos cumplen funciones distintas:
+
+- `emociones.json` define los modos de existencia de la emoción y puede formar
+  parte del contexto de detección;
+- `catalogo_normalizacion_emociones.json` contiene nombres canónicos y aliases,
+  se usa exclusivamente en `normalize_emotions` y no se incorpora a prompts;
+- `restricciones_caracterizacion_emociones.json` contiene las restricciones
+  empleadas por la validación V11 de la caracterización.
+
+El modelo de caracterización produce `tipo_configuracion`. A partir de ese
+valor, el sistema deriva de manera determinista `modo_semiotizacion` y
+`modo_identificacion`. Estas dos variables no desaparecen: siguen siendo
+outputs analíticos persistidos y exportados. Lo que se evita es pedirle al LLM
+tres decisiones redundantes que podrían resultar incompatibles.
+
+### Validación técnica y revisión semántica
+
+Un smoke test comprueba que el pipeline complete sus stages, respete schemas,
+persistencia, routing y límites de contexto. No exige coincidencia exacta con
+una única anotación humana. Omisiones, detecciones adicionales, atribuciones
+discutibles y lecturas ambiguas se registran para evaluación semántica y
+optimización posterior.
+
+El smoke de VAL-01 se cerró con versions v19/v54/v27/v41 y
+`gemma4-31b` en `emotions`. La validación ampliada sobre
+`bluesky_milei.jsonl` —500 posts— permanece como gate previo a v1.0.0.
+<!-- EMOPARSE:VAL01-NORMALIZATION-CONCEPTS END -->

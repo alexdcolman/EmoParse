@@ -357,7 +357,44 @@
     </div>
 
   </div>
-  </main>
+  <!-- EMOPARSE:VAL01-NORMALIZATION-PIPELINE START -->
+<section id="normalizacion-emociones-val01">
+  <h2>Detección, normalización y caracterización</h2>
+  <p>
+    La stage <code>emotions</code> trabaja con vocabulario abierto.
+    <code>normalize_emotions</code> asigna después un nombre canónico sin
+    reemplazar la etiqueta original.
+  </p>
+  <ul>
+    <li>
+      <code>emociones.json</code> define los modos de existencia utilizados
+      durante la detección.
+    </li>
+    <li>
+      <code>catalogo_normalizacion_emociones.json</code> contiene nombres
+      canónicos y aliases; se usa únicamente en
+      <code>normalize_emotions</code> y no entra en prompts.
+    </li>
+    <li>
+      <code>restricciones_caracterizacion_emociones.json</code> reúne las
+      restricciones de caracterización utilizadas por V11.
+    </li>
+  </ul>
+  <p>
+    <code>characterizer</code> produce <code>tipo_configuracion</code>. El
+    sistema deriva determinísticamente
+    <code>modo_semiotizacion</code> y <code>modo_identificacion</code>, que
+    continúan disponibles como variables analíticas y columnas exportadas.
+  </p>
+  <p>
+    El smoke técnico VAL-01 con versions v19/v54/v27/v41 y
+    <code>gemma4-31b</code> en <code>emotions</code> comprobó la integración
+    multigénero. La evaluación semántica ampliada de 500 posts queda pendiente
+    antes de v1.0.0.
+  </p>
+</section>
+<!-- EMOPARSE:VAL01-NORMALIZATION-PIPELINE END -->
+</main>
 
   <footer class="pie">
     <div>

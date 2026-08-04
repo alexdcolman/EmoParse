@@ -39,8 +39,8 @@ class ValidationRunner:
         db: base de datos del run a validar.
         row_validators: lista de RowValidators. Default: ROW_VALIDATORS.
         discurso_validators: lista de DiscursoValidators. Default: DISCURSO_VALIDATORS.
-        emotion_ontology: dict crudo cargado por
-            KnowledgeLoader.load_emotion_ontology(). Si se provee, se
+        characterization_constraints: restricciones crudas cargadas por
+            KnowledgeLoader.load_emotion_characterization_constraints(). Si se proveen, se
             construye V11_DesviacionOntologica y se agrega al final de
             row_validators. Si es None, V11 no se ejecuta.
     """
@@ -50,14 +50,14 @@ class ValidationRunner:
         db: Database,
         row_validators: list[RowValidator] | None = None,
         discurso_validators: list[DiscursoValidator] | None = None,
-        emotion_ontology: dict[str, Any] | None = None,
+        characterization_constraints: dict[str, Any] | None = None,
     ) -> None:
         self._db = db
         self._repo = ValidationRepository(db)
 
         row = list(row_validators) if row_validators is not None else list(ROW_VALIDATORS)
-        if emotion_ontology is not None:
-            row.append(V11_DesviacionOntologica(emotion_ontology))
+        if characterization_constraints is not None:
+            row.append(V11_DesviacionOntologica(characterization_constraints))
             logger.debug("[ValidationRunner] V11_DesviacionOntologica registrado.")
 
         self._row_validators = row
@@ -121,7 +121,9 @@ class ValidationRunner:
                         emocion_idx=emo["emocion_idx"],
                         experienciador=emo.get("experienciador", ""),
                         experienciador_marca=emo.get("experienciador_marca", ""),
-                        tipo_emocion=emo.get("tipo_emocion", ""),
+                        tipo_emocion=(
+                            emo.get("tipo_emocion_canonico") or emo.get("tipo_emocion", "")
+                        ),
                         fuente_marca=emo.get("fuente_marca", ""),
                         fuente_inferencia=emo.get("fuente_inferencia", ""),
                         modo_existencia=emo.get("modo_existencia", ""),
@@ -176,6 +178,7 @@ class ValidationRunner:
                 experienciador,
                 experienciador_marca,
                 tipo_emocion,
+                tipo_emocion_canonico,
                 modo_existencia,
                 caracterizacion_payload
             FROM emociones
@@ -204,6 +207,7 @@ class ValidationRunner:
                     "experienciador": row["experienciador"] or "",
                     "experienciador_marca": row["experienciador_marca"] or "",
                     "tipo_emocion": row["tipo_emocion"] or "",
+                    "tipo_emocion_canonico": row["tipo_emocion_canonico"] or "",
                     "modo_existencia": row["modo_existencia"] or "",
                     "foria": caract.get("foria", ""),
                     "dominancia": caract.get("dominancia", ""),

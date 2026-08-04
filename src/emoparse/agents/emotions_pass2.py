@@ -14,13 +14,13 @@ import json
 from typing import TYPE_CHECKING, Any, Literal
 
 import pandas as pd
-from loguru import logger
 
 from emoparse.agents.base import BaseBatchAgent
 from emoparse.agents.emotions import (
     alcance_text,
-    canonical_emotion,
     dedupe_emociones,
+    normalize_emotion_for_unit,
+    order_emotions_by_evidence,
     sanitize_emocion,
 )
 from emoparse.core.backend.base import LLMBackend
@@ -76,7 +76,6 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
     def __init__(
         self,
         backend: LLMBackend,
-        ontologia: str,
         heuristicas: str,
         configuraciones: str = "",
         titulo: str = "",
@@ -87,7 +86,6 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         resumen: str = "",
         modos_existencia: str = "",
         emotion_scope: tuple[str, ...] | None = None,
-        emotion_alias_lookup: dict[str, str] | None = None,
         context_mode: Literal["rolling", "full"] = "rolling",
         retry_config: RetryConfig | None = None,
         genre: Genre | None = None,
@@ -95,7 +93,6 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         """
         Args:
             backend: Backend LLM utilizado para generación estructurada.
-            ontologia: Ontología emocional utilizada por el prompt.
             heuristicas: Reglas heurísticas de interpretación emocional.
             configuraciones: Texto formateado con las 8 configuraciones del
                 simulacro emocional (TIPO_CONF). Si es string vacío, el
@@ -112,15 +109,12 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
                 pasa, el prompt enfatiza que solo se consideren emociones
                 relacionadas con esos actores específicos. Si no se pasa, se
                 analizan emociones de cualquier experienciador presente.
-            emotion_alias_lookup: Mapa de nombres/aliases a emoción canónica.
-                Las etiquetas ajenas se descartan antes de persistirse.
             context_mode: Estrategia de construcción del contexto previo
                 (`"rolling"` o `"full"`).
             retry_config: Política de reintentos ante errores transitorios.
             genre: Configuración opcional de género discursivo. Puede
                 ajustar parámetros como `BATCH_SIZE`.
         """
-        self._ontologia = ontologia
         self._heuristicas = heuristicas
         self._configuraciones = configuraciones
         self._titulo = titulo
@@ -131,7 +125,6 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         self._resumen = resumen
         self._modos_existencia = modos_existencia
         self._emotion_scope = tuple(emotion_scope) if emotion_scope else ()
-        self._emotion_alias_lookup = emotion_alias_lookup
         self._context_mode = context_mode
         self._genre = genre
 
@@ -157,7 +150,6 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         if self._genre is not None:
             template = self._genre.prompt_overrides.get("emotions_pass2", template)
         return prompts.render_system(
-            ontologia=self._ontologia,
             heuristicas=self._heuristicas,
             configuraciones=self._configuraciones,
             titulo=self._titulo,
@@ -220,19 +212,19 @@ class EmotionsAgentPass2(BaseBatchAgent[ListaEmocionesBatchSchema]):
         row: pd.Series,
     ) -> dict[str, Any]:
         saneadas: list[dict[str, Any]] = []
+        text = str(row.get("frase", row.get("contenido", "")))
+        enunciador = getattr(self, "_enunciador", "")
         for emocion in item.emociones:
             limpia = sanitize_emocion(emocion.model_dump())
-            canonica = canonical_emotion(limpia.get("tipo_emocion"), self._emotion_alias_lookup)
-            if canonica is None:
-                logger.warning(
-                    "[emotions_pass2] Emoción fuera de ontología descartada "
-                    f"(unit_idx={item.unit_idx}): {limpia.get('tipo_emocion')!r}"
-                )
-                continue
-            limpia["tipo_emocion"] = canonica
-            saneadas.append(limpia)
+            normalizada = normalize_emotion_for_unit(
+                limpia,
+                text=text,
+                enunciador=enunciador,
+            )
+            if normalizada is not None:
+                saneadas.append(normalizada)
         emociones_json = json.dumps(
-            dedupe_emociones(saneadas),
+            order_emotions_by_evidence(dedupe_emociones(saneadas), text),
             ensure_ascii=False,
         )
         return {"emociones": emociones_json}

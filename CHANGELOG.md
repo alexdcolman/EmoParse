@@ -1,14 +1,98 @@
 # Changelog
 
+<!-- EMOPARSE:VAL01-LOTE1-CHANGELOG START -->
+## VAL-01 · Cierre técnico del lote 1
+
+- `emotions` y `emotions_pass2` mantienen vocabulario abierto; la
+  canonicalización ocurre ex post en `normalize_emotions`.
+- `emociones.json` conserva exclusivamente los modos de existencia usados por
+  detección, mientras `catalogo_normalizacion_emociones.json` queda reservado
+  para normalización y no entra en prompts.
+- `restricciones_caracterizacion_emociones.json` concentra las restricciones
+  de caracterización utilizadas por V11.
+- `modo_semiotizacion` y `modo_identificacion` siguen siendo variables
+  analíticas: se derivan determinísticamente desde `tipo_configuracion` y se
+  conservan en las exportaciones.
+- El smoke multigénero con versions v19/v54/v27/v41 completó posts, artículo
+  periodístico y discurso presidencial sin errores de `emotions` ni
+  `characterizer`; el routing vigente usa `gemma4-31b` para `emotions`.
+- Este resultado valida la integración técnica, no la exactitud semántica del
+  modelo. La prueba de `bluesky_milei.jsonl` con 500 posts queda como gate
+  obligatorio previo a v1.0.0.
+<!-- EMOPARSE:VAL01-LOTE1-CHANGELOG END -->
+
+## FIX-VAL01-10 — separación estricta entre detección y normalización
+
+- elimina el catálogo canónico de todos los prompts, agentes de detección y juez;
+- `emotions` y `emotions_pass2` vuelven a vocabulario abierto y `normalize_emotions` canonicaliza ex post; la evaluación consume `tipo_emocion_canonico` ya persistido;
+- renombra y divide el antiguo recurso: `catalogo_normalizacion_emociones.json` queda exclusivo de `normalize_emotions`, mientras V11 usa `restricciones_caracterizacion_emociones.json`;
+- fija en `.assistant/PROMPT_GOVERNANCE.md` la prohibición absoluta y la diferencia con `emociones.json`, que contiene los modos de existencia;
+- añade contratos para impedir regresiones y reduce nuevamente la huella de prompt de Gemma 4.
+
+
+
+## FIX-VAL01-09 — depuración de prompts y control de sobreadaptación
+
+- Retira reglas de casos particulares de los templates de `emotions`,
+  `emotions_pass2` y `characterizer`; los templates conservan solo el
+  contrato estable de entrada/salida.
+- Reordena las reglas interpretativas entre heurísticas genéricas y
+  heurísticas del género tuit, sin duplicarlas en el prompt renderizado.
+- El postprocesado de emociones deja de completar detecciones omitidas por
+  el modelo: normaliza únicamente emociones ya producidas y descarta
+  atribuciones al enunciador sustentadas solo en matrices epistémicas.
+- Añade contratos con contraejemplos, presupuesto de prompt, medición
+  reproducible y una regresión preparada para `gemma4-31b`.
+- Documenta la gobernanza de prompts en `.assistant/PROMPT_GOVERNANCE.md`.
+- Versiones: `knowledge=v18`, `prompt=v53`, `ontology=v26`, `schema=v41`.
+
 Los cambios públicos relevantes de EmoParse se registran en este archivo. El mantenimiento formal
 del changelog comenzó durante la migración de v0.6.5 a v0.7.0; no se reconstruye de manera
 retroactiva el detalle completo de versiones anteriores.
 
 El formato sigue los principios de Keep a Changelog y el proyecto usa versionado semántico.
 
+## FIX-VAL01-08 — evidencia independiente y atribución explícita en posts
+
+- Una forma optativa como `Ojalá` sostiene una sola esperanza del enunciador salvo que exista una
+  segunda marca emocional literal e independiente en la misma unidad.
+- La fuente o el objeto evaluado ya no basta para agregar ira, esperanza u otra emoción del autor
+  cuando la marca del experienciador es `no identificado`.
+- Las construcciones explícitas `actor + se hartó` se normalizan como verbos psicológicos y el
+  caracterizador las reconoce como heteroatribución, no como comportamiento ni como referente
+  recuperado solo del contexto.
+- Se agregan regresiones con la salida real de `val01_posts_fix07`, incluida la esperanza duplicada
+  y la ira espuria del último post.
+
+## FIX-VAL01-07 — consistencia de marcas, experienciadores y atribución en posts
+
+- Las marcas de experienciador y fuente deben pertenecer literalmente al post actual; el contexto
+  del hilo puede resolver referentes, pero ya no suministra marcas ausentes.
+- Se eliminan lecturas espurias de tristeza, interés, sorpresa e ira en los casos observados de
+  VAL-01, y se completan de forma determinista la desconfianza condicional, el hartazgo explícito y
+  la esperanza introducida por `Espero` u `Ojalá`.
+- `Espero + proposición` conserva una sola esperanza realizada del autor y `Siento que +
+  proposición` deja de ocultar predicaciones emocionales independientes de la misma unidad.
+- El caracterizador distingue emoción lexicalizada, inferencia cognitiva y referente recuperado
+  solo desde el contexto para fijar autoatribución, heteroatribución o ausencia de atribución.
+- La derivación de menciones deduplica marcas sin distinguir mayúsculas y prioriza la inferencia que
+  coincide con el referente literalmente nombrado.
+- Se agregan contratos para los cinco posts y para la consistencia de menciones de experienciador.
+
+## FIX-VAL01-06 — validación del caracterizador y semántica emocional de posts
+
+- El validador de justificaciones distingue la deliberación interna del modelo de las citas
+  textuales del corpus, por lo que admite evidencia como `lo voy a creer` sin habilitar fórmulas
+  como `voy a poner` o `voy a elegir`.
+- La detección emocional diferencia gratitud expresada de esperanza mencionada en mensajes,
+  `siento que + proposición` de un sentimiento y `Ojalá` de una inferencia espuria de ansiedad.
+- Los experienciadores genéricos del yo en posts se resuelven al handle concreto del enunciador.
+- `estar + cansado` como realización de hartazgo se conserva como estado adjetival explícito.
+- Se agregan contratos de regresión para los cinco casos pendientes de VAL-01.
+
 ## FIX-VAL01-05 — separación de ontología emocional y modos de existencia
 
-- El runner usa `emociones_ontologia.json` como vocabulario léxico cerrado y
+- El runner usa `catalogo_normalizacion_emociones.json` como vocabulario léxico cerrado y
   `emociones.json` únicamente como catálogo de modos de existencia.
 - La ontología efectiva se valida antes de llamar al modelo: un lookup vacío
   ahora falla cerrado con un error explícito.

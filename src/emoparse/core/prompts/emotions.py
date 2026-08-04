@@ -10,7 +10,6 @@ from emoparse.core.prompts._loader import render
 
 
 def render_system(
-    ontologia: str,
     configuraciones: str,
     titulo: str,
     tipo_discurso: str,
@@ -27,7 +26,6 @@ def render_system(
     """Renderiza el system prompt de EmotionsAgent.
 
     Args:
-        ontologia: Texto formateado de la ontología de emociones.
         configuraciones: Texto con las ocho configuraciones de simulacro
             emocional, ya fusionadas con sus heurísticas de detección y
             ejemplos (ver KnowledgeLoader.load_emotion_configurations).
@@ -55,7 +53,6 @@ def render_system(
     """
     return render(
         template,
-        ontologia=ontologia,
         configuraciones=configuraciones,
         heuristicas=heuristicas,
         titulo=titulo,

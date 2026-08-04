@@ -13,7 +13,7 @@ from emoparse.domain.validators.base import (
     RowValidator,
     ValidationIssue,
 )
-from emoparse.knowledge.normalization import build_emotion_alias_lookup, strip_accents
+from emoparse.knowledge.normalization import strip_accents
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  RowValidators (operan sobre una emoción individual)
@@ -24,7 +24,7 @@ class V01_ModoPotencialVirtualExperienciador(RowValidator):
     """V-01: modo Virtual o Potencial con experienciador que parece ser
     el enunciador.
 
-    Fuente ontológica:
+    Fuente de normalización:
       emociones.json — "Potencial: efecto pretendido sobre un enunciatario"
                        "Virtual: estructura posible o imaginada"
       actores.json   — "Excluir siempre al enunciador y a los enunciatarios"
@@ -92,7 +92,7 @@ class V01_ModoPotencialVirtualExperienciador(RowValidator):
 class V02_FuenteNoIdentificadaConIntensidadAlta(RowValidator):
     """V-02: fuente no identificada con intensidad alta.
 
-    Fuente ontológica:
+    Fuente de normalización:
       fuente.json    — "Si no lográs determinar la fuente con exactitud,
                        devolvé: 'no se identifica'"
       intensidad.json — "Alta: emociones intensamente expresadas o inferibles"
@@ -153,7 +153,7 @@ class V02_FuenteNoIdentificadaConIntensidadAlta(RowValidator):
 class V04_AforicoConIntensidadAlta(RowValidator):
     """V-04: foria afórica con intensidad alta.
 
-    Fuente ontológica:
+    Fuente de normalización:
       foria.json    — "Afórico: emoción neutra, sin polaridad positiva ni
                        negativa clara."
       intensidad.json — "Alta: emociones intensamente expresadas o inferibles."
@@ -212,7 +212,7 @@ class V04_AforicoConIntensidadAlta(RowValidator):
 class V05_AmbiforicaConIntensidadBaja(RowValidator):
     """V-05: foria ambifórica con intensidad baja.
 
-    Fuente ontológica:
+    Fuente de normalización:
       foria.json — "Ambifórico: mezcla de tonalidades positiva y negativa."
       intensidad.json — "Baja: emoción leve o sutil."
 
@@ -269,7 +269,7 @@ class V05_AmbiforicaConIntensidadBaja(RowValidator):
 class V06_VirtualConForiaAforica(RowValidator):
     """V-06: modo existencia Virtual con foria afórica.
 
-    Fuente ontológica:
+    Fuente de normalización:
       emociones.json — "Virtual: estructura posible o imaginada, como
                         competencia emocional o potencial conceptual."
       foria.json     — "Afórico: sin polaridad positiva ni negativa clara."
@@ -335,7 +335,7 @@ class V06_VirtualConForiaAforica(RowValidator):
 class V08_ActorCoincideConEnunciador(DiscursoValidator):
     """V-08: experienciador coincide con el enunciador del discurso.
 
-    Fuente ontológica:
+    Fuente de normalización:
       actores.json — "Excluir siempre al enunciador y a los enunciatarios,
                       incluso si son referidos indirectamente."
       inferencia_actores.txt — idem.
@@ -388,7 +388,7 @@ class V08_ActorCoincideConEnunciador(DiscursoValidator):
 class V09_EmocionDuplicadaMismoActorMismaFrase(DiscursoValidator):
     """V-09: misma emoción + mismo experienciador en la misma frase.
 
-    Fuente ontológica:
+    Fuente de normalización:
       inferencia_emociones.txt — "Evitá repetir emociones ya registradas
                                   para el mismo actor en la misma frase."
 
@@ -449,7 +449,7 @@ class V09_EmocionDuplicadaMismoActorMismaFrase(DiscursoValidator):
 class V10_ModoPotencialConExperienciadorNoEnunciatario(DiscursoValidator):
     """V-10: modo Potencial con experienciador que no es enunciatario.
 
-    Fuente ontológica:
+    Fuente de normalización:
       emociones.json — "Potencial: la emoción se plantea como posibilidad
                         futura o como efecto pretendido sobre un enunciatario."
       Ejemplo canónico: "Quiero que se sientan orgullosos" → orgullo
@@ -521,19 +521,19 @@ class V10_ModoPotencialConExperienciadorNoEnunciatario(DiscursoValidator):
 
 class V11_DesviacionOntologica(RowValidator):
     """V-11: caracterización de una emoción fuera de los valores esperados
-    según la ontología de emociones del proyecto.
+    según las restricciones de caracterización del proyecto.
 
-    Fuente ontológica:
-      emociones_ontologia.json — constraints por emoción y dimensión.
+    Fuente de validación:
+      restricciones_caracterizacion_emociones.json — valores esperados y
+      tolerados por emoción y dimensión.
 
-    Regla: para cada emoción conocida (matcheada por nombre canónico o
-    alias, con tolerancia de tildes), se verifican las cuatro dimensiones
+    Regla: para cada emoción canónica conocida se verifican las cuatro dimensiones
     de caracterización: foria, intensidad, dominancia y modo_existencia.
     Si el valor asignado no aparece en "esperado" ni en "tolerado", se
     emite un warning.
 
-    Comportamiento ante emociones desconocidas: si el tipo_emocion no
-    matchea ninguna entrada de la ontología, el validator no emite issue.
+    Comportamiento ante emociones desconocidas: si `tipo_emocion_canonico`
+    no matchea una entrada de restricciones, el validator no emite issue.
     Esto evita penalizar emociones válidas que aún no están catalogadas.
     """
 
@@ -546,13 +546,13 @@ class V11_DesviacionOntologica(RowValidator):
         ("modo_existencia", "modo_existencia"),
     )
 
-    def __init__(self, ontologia: dict[str, Any]) -> None:
+    def __init__(self, restricciones: dict[str, Any]) -> None:
         """
         Args:
-            ontologia: Dict crudo retornado por
-                KnowledgeLoader.load_emotion_ontology().
+            restricciones: Dict crudo retornado por
+                KnowledgeLoader.load_emotion_characterization_constraints().
         """
-        self._lookup = self._build_lookup(ontologia)
+        self._lookup = self._build_lookup(restricciones)
 
     @staticmethod
     def _normalize(s: str) -> str:
@@ -560,24 +560,16 @@ class V11_DesviacionOntologica(RowValidator):
         return strip_accents(s.strip().lower())
 
     @classmethod
-    def _build_lookup(cls, ont: dict[str, Any]) -> dict[str, dict[str, Any]]:
-        """Construye mapping alias_normalizado → entrada de la ontología.
-
-        Delega en ``build_emotion_alias_lookup`` (con normalize_accents=True)
-        para obtener el mapping alias → canonical_id, luego lo traduce a
-        alias → entry completa (necesaria para acceder a constraints por
-        dimensión). El nombre canónico tiene prioridad; aliases de emociones
-        posteriores no sobreescriben entradas previas.
-        """
-        alias_to_canonical = build_emotion_alias_lookup(ont, normalize_accents=True)
-        emociones: dict[str, Any] = ont.get("emociones", {})
-        canonical_to_entry = {k: v for k, v in emociones.items() if isinstance(v, dict)}
-        lookup: dict[str, dict[str, Any]] = {}
-        for alias_norm, canonical in alias_to_canonical.items():
-            entry = canonical_to_entry.get(canonical)
-            if entry is not None:
-                lookup[alias_norm] = entry
-        return lookup
+    def _build_lookup(cls, restricciones: dict[str, Any]) -> dict[str, dict[str, Any]]:
+        """Construye mapping canónico normalizado → restricciones."""
+        emociones = restricciones.get("emociones", {})
+        if not isinstance(emociones, dict):
+            return {}
+        return {
+            cls._normalize(canonical): entry
+            for canonical, entry in emociones.items()
+            if isinstance(canonical, str) and isinstance(entry, dict)
+        }
 
     def validate(
         self,
