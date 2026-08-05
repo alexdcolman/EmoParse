@@ -25,6 +25,7 @@ from emoparse.app.components import (
     tab_deixis,
     tab_enunciacion,
     tab_estado,
+    tab_modelos,
     tab_referentes,
     tab_revision,
     tab_simulacros,
@@ -119,6 +120,7 @@ def main() -> None:
         "👥 Por actor",
         "📋 Tabla",
         "↔ Comparar discursos",
+        "🧪 Comparar modelos",
         "🔎 Búsqueda",
         "🔗 Co-ocurrencia",
         "🎭 Simulacros",
@@ -133,7 +135,7 @@ def main() -> None:
     # para cualquier género. Las de tecnodiscurso siguen siendo solo de posts.
     corpus_posts = data.has_posts(db_path)
     hay_red = corpus_posts or bool(data.list_red_grafos(db_path))
-    n_fijas = len(labels)  # 12 tabs fijas de la página Resultados
+    n_fijas = len(labels)  # tabs fijas de la página Resultados
     if hay_red:
         labels.append("🕸 Red")
     idx_red = n_fijas if hay_red else None
@@ -146,6 +148,7 @@ def main() -> None:
         tab_act,
         tab_tab,
         tab_comp,
+        tab_mod,
         tab_busq,
         tab_corr,
         tab_sim,
@@ -154,7 +157,7 @@ def main() -> None:
         tab_ref,
         tab_rev,
         tab_est,
-    ) = tabs[:12]
+    ) = tabs[:n_fijas]
 
     with tab_curva_:
         tab_curva.render(db_path)
@@ -164,6 +167,8 @@ def main() -> None:
         tab_tabla.render(db_path)
     with tab_comp:
         tab_comparacion.render(db_path)
+    with tab_mod:
+        tab_modelos.render(runs_dir, db_path)
     with tab_busq:
         tab_busqueda.render(db_path)
     with tab_corr:

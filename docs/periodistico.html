@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+
+<html lang="es-AR">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>Artículos periodísticos — EmoParse</title>
+<meta content="Cómo analiza EmoParse artículos periodísticos: contexto editorial, párrafos, autoría, voces citadas y emociones discursivas." name="description"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono&amp;family=IBM+Plex+Sans+Condensed:wght@400;600&amp;family=Spectral:ital,wght@0,400;0,600;1,400&amp;display=swap" rel="stylesheet"/>
+<link href="assets/css/estilo.css" rel="stylesheet"/>
+</head>
+<body>
+<a class="saltar" href="#principal">Ir al contenido</a>
+<div class="hoja">
+<header class="masthead">
+<h1 class="titulo"><a href="index.html">EmoParse</a></h1>
+<p class="bajada">Análisis semiótico de emociones en discursos</p>
+<p class="sello"><span>v0.6.5</span><span>Beta</span><span>Licencia MIT</span></p>
+</header>
+<nav aria-label="Navegación del sitio" class="nav">
+<h2>Secciones</h2>
+<ul>
+<li><a href="index.html">Portada</a></li>
+<li><a href="enfoque.html">El enfoque</a></li>
+<li><a href="pipeline.html">Cómo funciona</a></li>
+<li><a aria-current="page" href="periodistico.html">Artículos</a></li>
+<li><a href="digital.html">Posts y redes</a></li>
+<li><a href="tablero.html">El tablero</a></li>
+<li><a href="empezar.html">Empezar</a></li>
+<li><a href="comandos.html">Comandos</a></li>
+<li><a href="glosario.html">Glosario</a></li>
+</ul>
+<h2>En esta página</h2>
+<ol class="indice">
+<li><a href="#genero"><span class="num">1</span>Un género propio</a></li>
+<li><a href="#contexto"><span class="num">2</span>Contexto editorial</a></li>
+<li><a href="#unidad"><span class="num">3</span>El párrafo</a></li>
+<li><a href="#voces"><span class="num">4</span>Voces y destinatarios</a></li>
+<li><a href="#emociones"><span class="num">5</span>Emociones y citas</a></li>
+<li><a href="#corpus"><span class="num">6</span>Conseguir el corpus</a></li>
+<li><a href="#revision"><span class="num">7</span>Revisar y exportar</a></li>
+</ol>
+<h2>Repositorio</h2>
+<ul><li><a href="https://github.com/alexdcolman/EmoParse">Código en GitHub</a></li></ul>
+</nav>
+<main class="cuerpo" id="principal"><div class="contenido">
+<h1>Artículos periodísticos</h1>
+<p class="entradilla">Un artículo organiza la lectura mediante el título, la sección, la firma, las
+fuentes, las citas y la secuencia de párrafos. EmoParse conserva esas capas y analiza cada fragmento
+dentro de la pieza editorial a la que pertenece.</p>
+<h2 id="genero"><span class="num">1</span>Un género propio</h2>
+<p>La escena periodística puede reunir una voz institucional, una firma personal, una agencia,
+personas entrevistadas y documentos citados. También alterna narración, explicación, descripción y
+evaluación. El género <code>articulo_periodistico</code> declara campos y posiciones enunciativas
+adecuados para esa organización.</p>
+<p>La clasificación incluye noticia, crónica, entrevista, análisis y opinión. El tipo sitúa las
+operaciones del texto y orienta la revisión posterior.</p>
+<h2 id="contexto"><span class="num">2</span>El contexto editorial</h2>
+<p>El corpus puede conservar medio, sección, volanta, título, subtítulo, autoría, agencia, epígrafe e
+idioma. Estos datos ubican la pieza antes de leer sus emociones y acompañan cada párrafo durante el
+análisis.</p>
+<div class="tabla-caja"><table>
+<thead><tr><th>Dato</th><th>Qué aporta a la lectura</th></tr></thead>
+<tbody>
+<tr><td>Medio y sección</td><td>Ubican la nota dentro de una organización y un área temática.</td></tr>
+<tr><td>Volanta, título y subtítulo</td><td>Presentan el acontecimiento, el ángulo y la jerarquía informativa.</td></tr>
+<tr><td>Autoría o agencia</td><td>Distinguen una firma, una producción colectiva o un despacho.</td></tr>
+<tr><td>Epígrafe</td><td>Agrega información o valoración sobre la imagen que acompaña la nota.</td></tr>
+</tbody>
+</table></div>
+<h2 id="unidad"><span class="num">3</span>El párrafo como unidad de lectura</h2>
+<p>EmoParse segmenta los artículos por párrafos. Un párrafo suele reunir una escena, una explicación o
+una cita con mayor continuidad que una oración aislada. La base conserva su vínculo con el artículo,
+el título, el resumen y la metadata editorial.</p>
+<p>La unidad queda disponible para revisar atribuciones concretas y, al mismo tiempo, mantiene la
+procedencia necesaria para interpretar el fragmento.</p>
+<h2 id="voces"><span class="num">4</span>Quién habla y para quién</h2>
+<p>La firma extraída funciona como punto de partida para identificar la instancia emisora. Las citas,
+los testimonios y los documentos incorporan otras voces. El análisis reconstruye esas posiciones a
+partir del texto y del contexto editorial.</p>
+<p>El género contempla al lector ciudadano, al segmento construido por la estrategia editorial y a
+las personas o instituciones presentadas como fuentes. Una emoción citada se atribuye a la voz que la
+enuncia o al actor del que esa voz habla. La evidencia permanece vinculada al párrafo para que la
+atribución pueda revisarse.</p>
+<h2 id="emociones"><span class="num">5</span>Emociones, evaluaciones y citas</h2>
+<p>Cada registro emocional reúne una categoría, un experienciador, una fuente, un modo de existencia y
+la marca textual que sostiene la lectura. En artículos periodísticos, la alternancia de voces ocupa
+un lugar central en esa reconstrucción.</p>
+<div class="nota">
+<span class="rotulo">Ejemplo</span>
+<p>En «Los vecinos dijeron estar angustiados por la crecida», la angustia se atribuye a los
+  vecinos. La firma periodística introduce la declaración y conserva una posición enunciativa
+  diferente.</p>
+</div>
+<p>La revisión humana corrige atribuciones, unifica denominaciones de un mismo actor y descarta
+lecturas que no tienen apoyo suficiente en el fragmento.</p>
+<h2 id="corpus"><span class="num">6</span>Conseguir un corpus</h2>
+<p>EmoParse puede descargar artículos públicos de Página/12 y guardarlos en CSV. También admite un
+archivo propio con un código único y el cuerpo de cada texto.</p>
+<pre><code>emoparse scrape \
+  --source pagina12 \
+  --max 24 \
+  --output data/articulos.csv</code></pre>
+<p>La preparación de la base permite revisar la ingesta y la segmentación antes de ejecutar modelos:</p>
+<pre><code>emoparse run \
+  --input data/articulos.csv \
+  --db runs/articulos.sqlite \
+  --genre articulo_periodistico \
+  --prepare-only</code></pre>
+<p>El <a href="https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_articulo_periodistico.md">tutorial de artículos periodísticos</a>
+recorre la instalación, la corrida, la revisión y la exportación.</p>
+<h2 id="revision"><span class="num">7</span>Revisar, comparar y exportar</h2>
+<p>El tablero presenta la metadata editorial junto al texto. Las vistas permiten recorrer emociones
+por artículo, actor, categoría y foria, revisar los vínculos y volver al párrafo original.</p>
+<p>La exportación conserva las tablas analíticas y agrega la metadata del género en un archivo
+separado. Los cruces por medio, sección, firma o tipo de pieza quedan disponibles para el análisis
+del corpus.</p>
+</div></main>
+<footer class="pie">
+<div>
+<h2>Proyecto</h2>
+<p>EmoParse se desarrolla en el marco de una investigación sobre análisis automático de
+      emociones en discursos.</p>
+<p><a href="https://github.com/alexdcolman/EmoParse">github.com/alexdcolman/EmoParse</a></p>
+</div>
+<div>
+<h2>Autoría</h2>
+<p><a href="https://independent.academia.edu/AlexColman1">Alex Colman</a></p>
+<p>alexdcolman@gmail.com</p>
+</div>
+<div>
+<h2>Licencia</h2>
+<p>MIT. Si se usa en una publicación, una referencia al repositorio ayuda a sostener el
+      proyecto.</p>
+</div>
+</footer>
+</div>
+<script src="assets/js/figuras.js"></script>
+</body>
+</html>

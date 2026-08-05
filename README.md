@@ -2,16 +2,16 @@
 
 > Análisis de emociones en discursos con modelos de lenguaje locales.
 
-EmoParse procesa corpus de discursos y devuelve, para cada frase, una caracterización semiótica de las emociones que la atraviesan: qué actor las experimenta, en qué modo de existencia, con qué foria (la orientación entre lo agradable y lo desagradable), dominancia, intensidad, duración, temporalidad histórica y aspecto gramatical, y cuál es la fuente que la desencadena. Opcionalmente realiza un análisis actancial de cada emoción (mediador, verificadores normativo y observacional, operador de modificación y polaridad) y homogeneiza actores y emociones para habilitar el análisis agregado del corpus.
+EmoParse procesa corpus de discursos presidenciales, artículos periodísticos y posts y devuelve, para cada unidad de análisis, una caracterización semiótica de las emociones que la atraviesan: qué actor las experimenta, en qué modo de existencia, con qué foria (la orientación entre lo agradable y lo desagradable), dominancia, intensidad, duración, temporalidad histórica y aspecto gramatical, y cuál es la fuente que la desencadena. Opcionalmente realiza un análisis actancial de cada emoción (mediador, verificadores normativo y observacional, operador de modificación y polaridad) y homogeneiza actores y emociones para habilitar el análisis agregado del corpus.
 
-Además del discurso tradicional, EmoParse analiza **discurso nativo digital**: el género `tuit` trata cada post como enunciado compuesto (texto + hashtags + menciones + emojis + tecnografismos + imágenes), preserva la estructura conversacional y agrega análisis de redes de interacción con acoplamiento emocional. Ver [Género tuit](#género-tuit-discurso-nativo-digital).
+EmoParse incluye tres géneros. `discurso_presidencial` trabaja por frases; `articulo_periodistico` trabaja por párrafos y conserva el contexto editorial; `tuit` trata cada post como un enunciado compuesto por texto, hashtags, menciones, emojis, tecnografismos e imágenes, preserva la estructura conversacional y agrega análisis de redes. Ver [Artículo periodístico](#artículo-periodístico) y [Género tuit](#género-tuit-discurso-nativo-digital).
 
 Está pensado para investigadores en lingüística, semiótica, ciencias del lenguaje y análisis del discurso que necesitan procesar corpus extensos sin renunciar a la trazabilidad ni al marco teórico.
 
 - **Reproducible**: una base de resultados por corrida, versionado fino de prompts y ontologías, semilla fija.
-- **Trazable**: cada emoción detectada lleva su justificación textual y queda enlazada a la frase original.
+- **Trazable**: cada emoción detectada lleva su justificación textual y queda enlazada a la unidad original.
 - **Local-first**: corre con modelos GGUF locales, dentro del proceso con llama.cpp o mediante `llama-server`, y también vía LM Studio, sin enviar el corpus a servicios externos. La arquitectura admite además backends de API.
-- **Extensible**: el pipeline (la cadena de etapas del análisis) está organizado como un grafo declarativo; sumar géneros, fuentes de adquisición o agentes es código aislado. El mapa de declaraciones y límites está en [`docs/puntos_de_extension.md`](docs/puntos_de_extension.md).
+- **Extensible**: el pipeline (la cadena de etapas del análisis) está organizado como un grafo declarativo; sumar géneros, fuentes de adquisición o agentes es código aislado. La arquitectura completa está en [`docs/arquitectura.md`](docs/arquitectura.md), el mapa de extensiones en [`docs/puntos_de_extension.md`](docs/puntos_de_extension.md) y los diagnósticos habituales en [`docs/solucion_de_problemas.md`](docs/solucion_de_problemas.md).
 
 ![Curva emocional de un discurso: cada emoción ubicada en el punto donde aparece, coloreada por foria](docs/img/readme/curva-emocional.png)
 
@@ -70,7 +70,8 @@ cp config.example.yaml config.yaml
 # 3. Correr el pipeline sobre un CSV de discursos
 emoparse run \
   --config config.yaml \
-  --input  data/discursos.csv \
+  --input data/discursos.csv \
+  --genre discurso_presidencial \
   --run-id mi_run
 
 # 4. Explorar resultados
@@ -101,7 +102,7 @@ Los ejemplos están en `data/ejemplos/seleccion.yaml` y `data/ejemplos/seleccion
 ```
 emoparse app         Abre el dashboard de revisión y visualización
 emoparse run         Ejecuta el pipeline completo
-emoparse scrape      Scrapea discursos desde una source registrada
+emoparse scrape      Adquiere discursos y artículos desde una fuente registrada
 emoparse acquire     Adquiere posts (Bluesky, Mastodon, X API, dumps JSONL/CSV) a un corpus incremental
 emoparse follows     Adquiere el grafo de seguimiento entre las cuentas del corpus
 emoparse network     Construye y analiza las redes de un run (interacción, similitud, semántica)
@@ -145,6 +146,34 @@ La etapa opcional `deixis` resuelve las marcas de 1ª y 2ª persona ("yo", "noso
 La etapa opcional `modalidad` clasifica **cómo** cada marca refiere a su referente: `designacion` (lo nombra: "Javier Milei", "el presidente"), `referencia_gramatical` (deixis o morfología: "yo", "he defendido") o `identificacion_inferencial` (lo identifica por la actitud o los valores que expresa). Es un híbrido: un pre-pass con spaCy resuelve los casos claros y el modelo interviene solo en los ambiguos. Así se puede aceptar un vínculo sin perder el experienciador y a la vez filtrar las designaciones para estudiar la construcción de objetos de discurso.
 
 El dashboard incluye además tabs de **Búsqueda** (por texto o por selección de emoción/actor/experienciador/fuente), **Co-ocurrencia** de emociones y **Simulacros** (reconstrucción de cada emoción con sus funciones actanciales).
+
+---
+
+## Artículo periodístico
+
+El género `articulo_periodistico` analiza cada nota por párrafos y conserva su contexto editorial: medio, sección, volanta, subtítulo, autoría, agencia, epígrafe e idioma. La firma extraída funciona como punto de partida para el enunciador, mientras que las voces citadas y los demás actores se reconstruyen a partir del texto.
+
+```bash
+# 1. Adquirir artículos públicos de Página/12
+emoparse scrape --source pagina12 --max 24 \
+  --output data/articulos.csv
+
+# 2. Preparar la base y revisar la segmentación sin ejecutar modelos
+emoparse run --config config.yaml \
+  --input data/articulos.csv \
+  --genre articulo_periodistico \
+  --db runs/articulos.sqlite \
+  --prepare-only
+
+# 3. Ejecutar las etapas elegidas
+emoparse run --config config.yaml \
+  --input data/articulos.csv \
+  --genre articulo_periodistico \
+  --db runs/articulos.sqlite \
+  --stages summarizer,metadata,enunciation,emotions,explode_emotions,normalize_emotions,characterizer
+```
+
+El tablero muestra los datos editoriales junto a cada unidad y `emoparse export` los conserva también en `metadata_genero.csv`. Ver la página [Artículos periodísticos](docs/periodistico.html) y el [tutorial completo](tutorial/tutorial_articulo_periodistico.md).
 
 ---
 

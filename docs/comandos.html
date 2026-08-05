@@ -27,6 +27,7 @@
       <li><a href="index.html">Portada</a></li>
       <li><a href="enfoque.html">El enfoque</a></li>
       <li><a href="pipeline.html">Cómo funciona</a></li>
+      <li><a href="periodistico.html">Artículos</a></li>
       <li><a href="digital.html">Posts y redes</a></li>
       <li><a href="tablero.html">El tablero</a></li>
       <li><a href="empezar.html">Empezar</a></li>
@@ -108,6 +109,7 @@
         <tr><td><code>--run-id</code></td><td><code>RUN_ID</code></td><td><code>requerido</code></td><td>Identificador único del run.</td></tr>
         <tr><td><code>--db</code></td><td><code>DB</code></td><td></td><td>Path al .sqlite del run. Default: &lt;runs_dir&gt;/&lt;run_id&gt;.sqlite.</td></tr>
         <tr><td><code>--stages</code></td><td><code>STAGES</code></td><td></td><td>Lista comma-separated de stages a correr. Válidas: technoparse,emoji_affect,hashtag_semiotics,tecno_usage,vision_describe,summarizer,metadata,enunciation,actors,emotions,emotions_pass2,explode_emotions,deixis,modalidad,normalize_emotions,characterizer,reframing,actants,judge,semas. Si se omite, se usan las stages por default; el género puede sumar etapas propias. Un --stages explícito se respeta tal como fue escrito y debe incluir las dependencias duras.</td></tr>
+        <tr><td><code>--prepare-only</code></td><td></td><td></td><td>Crea o amplía la DB con la ingesta y la segmentación del corpus, sin ejecutar stages ni cargar modelos. Se puede combinar con --resume mientras la base siga siendo de preparación.</td></tr>
         <tr><td><code>--genre</code></td><td><code>GENRE</code></td><td></td><td>ID del género de discurso a aplicar. Default: &#x27;discurso_presidencial&#x27;. Los géneros disponibles dependen de los entry-points &#x27;emoparse.genres&#x27; instalados. El género determina los roles enunciativos válidos, la unidad de chunking (frase/parrafo/documento), y opcionalmente overrides de modelos y batch_sizes.</td></tr>
         <tr><td><code>--select</code></td><td><code>ARCHIVO.YAML</code></td><td></td><td>Archivo YAML que acota qué unidades se analizan. Admite campos del input y payloads de stages previas con notación punto, por ejemplo metadata.tipo_discurso o enunciation.enunciador. Los filtros de payload empiezan a regir después de que su stage productora queda completa. Ver data/ejemplos/seleccion.yaml y seleccion_payload_v070.yaml.</td></tr>
         <tr><td><code>--enunciador</code></td><td></td><td></td><td>Acota la detección de emociones (ambos pases) a las del enunciador. Combinable con --enunciatarios y --actores (se unen). Si no se pasa ninguna de las tres, se analizan todos los experienciadores.</td></tr>
@@ -363,20 +365,31 @@
 
     <h2 id="eval">emoparse eval</h2>
 
-    <p>Evaluación de validez del análisis emocional.</p>
+    <p>Evaluación humana y regresión semántica del análisis emocional.</p>
 
     <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
-        <tr><td><code>--db</code></td><td><code>DB</code></td><td></td><td>DB del run a evaluar (para --golden, --make-sample, --control).</td></tr>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td></td><td>DB del run. Puede repetirse con --golden --por-genero; los otros modos requieren una sola.</td></tr>
         <tr><td><code>--golden</code></td><td><code>GOLDEN</code></td><td></td><td>Golden set (.jsonl o directorio de .jsonl).</td></tr>
+        <tr><td><code>--por-genero</code></td><td></td><td></td><td>Separa el reporte del golden por género y admite un --db por género.</td></tr>
+        <tr><td><code>--persist-report</code></td><td></td><td></td><td>Persiste el reporte estructurado en la tabla eval_reports de cada run. Disponible para --golden y --control.</td></tr>
+        <tr><td><code>--golden-version</code></td><td><code>GOLDEN_VERSION</code></td><td></td><td>Versión legible del golden persistido; se infiere de una ruta como golden/v2.</td></tr>
         <tr><td><code>--make-sample</code></td><td></td><td></td><td>Exporta planilla de anotación a ciegas (--out).</td></tr>
-        <tr><td><code>--n</code></td><td><code>N</code></td><td><code>300</code></td><td>Tamaño de la muestra de anotación.</td></tr>
-        <tr><td><code>--seed</code></td><td><code>SEED</code></td><td><code>42</code></td><td>Seed del muestreo (reproducibilidad).</td></tr>
-        <tr><td><code>--agreement</code></td><td><code>AGREEMENT</code></td><td></td><td>CSV con las planillas completadas (columna `anotador` + columnas de anotación).</td></tr>
-        <tr><td><code>--control</code></td><td></td><td></td><td>Reporta la tasa de detección del run (corpus de control → tasa esperada ≈ 0).</td></tr>
-        <tr><td><code>--out</code></td><td><code>OUT</code></td><td></td><td>Archivo de salida (reporte .md o planilla .csv).</td></tr>
+        <tr><td><code>--make-retest</code></td><td><code>MAKE_RETEST</code></td><td></td><td>Extrae una segunda pasada ciega desde una planilla completa (--out).</td></tr>
+        <tr><td><code>--freeze-sample</code></td><td><code>FREEZE_SAMPLE</code></td><td></td><td>Congela una planilla completa como golden JSONL v2 (--out).</td></tr>
+        <tr><td><code>--n</code></td><td><code>N</code></td><td><code>200</code></td><td>Tamaño de la muestra (200 por defecto).</td></tr>
+        <tr><td><code>--seed</code></td><td><code>SEED</code></td><td><code>42</code></td><td>Seed del muestreo reproducible.</td></tr>
+        <tr><td><code>--min-textos</code></td><td><code>MIN_TEXTOS</code></td><td><code>1</code></td><td>Cantidad mínima de textos distintos exigida al crear la muestra.</td></tr>
+        <tr><td><code>--max-por-texto</code></td><td><code>MAX_POR_TEXTO</code></td><td></td><td>Máximo de unidades tomadas de un mismo texto.</td></tr>
+        <tr><td><code>--genero</code></td><td><code>GENERO</code></td><td></td><td>Género explícito para runs antiguos o para congelar una planilla sin metadata.</td></tr>
+        <tr><td><code>--anotador</code></td><td><code>ANOTADOR</code></td><td></td><td>Sobrescribe `anotador` en todas las filas al congelar el golden.</td></tr>
+        <tr><td><code>--pasada</code></td><td><code>PASADA</code></td><td></td><td>Sobrescribe `pasada` en todas las filas al congelar el golden.</td></tr>
+        <tr><td><code>--fecha</code></td><td><code>FECHA</code></td><td></td><td>Sobrescribe `fecha_anotacion` (AAAA-MM-DD) al congelar el golden.</td></tr>
+        <tr><td><code>--agreement</code></td><td><code>AGREEMENT</code></td><td></td><td>CSV concatenado con `anotador`, `pasada`, `id_muestra` y columnas de anotación.</td></tr>
+        <tr><td><code>--control</code></td><td></td><td></td><td>Reporta la tasa de detección del run sobre un corpus de control.</td></tr>
+        <tr><td><code>--out</code></td><td><code>OUT</code></td><td></td><td>Archivo de salida (.md, .csv o .jsonl).</td></tr>
       </tbody>
     </table>
     </div>

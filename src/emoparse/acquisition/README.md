@@ -77,3 +77,14 @@ necesaria pero no suficiente: revisar caso por caso.
 
 La sal permite re-derivar los alias: quien publique el corpus **no** debe
 publicar el archivo `.salt`.
+
+## Contexto externo del golden v2
+
+`scripts/build_golden_v2_tuit_context.py` es un piloto acotado de 7.1. Parte del JSONL de tuits
+congelado y adquiere las referencias salientes de Bluesky mediante `getPosts`, en lotes de hasta 25
+URIs. Sigue la cadena de padres hasta cinco niveles y conserva por separado raíz, padre directo,
+antecedentes, cita y repost.
+
+Los archivos se escriben bajo `data/golden_v2/context/` y no se versionan. El corpus origen no se
+modifica. Las respuestas posteriores al post analizado quedan fuera del alcance porque no forman
+parte del contexto disponible al momento de publicación.

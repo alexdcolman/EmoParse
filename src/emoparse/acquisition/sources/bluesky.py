@@ -112,6 +112,27 @@ class BlueskyAdapter(PostSourceAdapter):
         thread = getattr(resp, "thread", None)
         yield from self._walk_thread(thread)
 
+    def fetch_posts(self, post_ids: list[str]) -> Iterator[PostRecord]:
+        """Trae posts concretos por URI AT, en lotes de hasta 25.
+
+        La API devuelve únicamente las vistas disponibles. Quien llama debe
+        comparar los ids solicitados con los recibidos para registrar bajas,
+        bloqueos u otros destinos no resolubles.
+        """
+        seen: set[str] = set()
+        unique: list[str] = []
+        for post_id in post_ids:
+            if post_id and post_id not in seen:
+                seen.add(post_id)
+                unique.append(post_id)
+        for start in range(0, len(unique), 25):
+            batch = unique[start : start + 25]
+            resp = self._client.app.bsky.feed.get_posts(params={"uris": batch})
+            for post_view in getattr(resp, "posts", None) or []:
+                record = self._map_post_view(post_view)
+                if record is not None:
+                    yield record
+
     def fetch_user(
         self,
         handle: str,

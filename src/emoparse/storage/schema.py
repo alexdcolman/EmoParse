@@ -259,6 +259,8 @@ CREATE_RUN_METRICS = """
 CREATE TABLE IF NOT EXISTS run_metrics (
     run_id                  TEXT NOT NULL,
     stage_name              TEXT NOT NULL,
+    -- Alias efectivo para esta ejecución. NULL en stages deterministas.
+    model_alias             TEXT,
     n_items_ok              INTEGER NOT NULL DEFAULT 0,
     n_items_failed          INTEGER NOT NULL DEFAULT 0,
     total_latency_ms        REAL NOT NULL DEFAULT 0.0,
@@ -277,6 +279,28 @@ CREATE TABLE IF NOT EXISTS run_metrics (
 CREATE_RUN_METRICS_INDEX = """
 CREATE INDEX IF NOT EXISTS idx_run_metrics_run_id
     ON run_metrics(run_id)
+""".strip()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+#  Tabla `eval_reports`: reportes estructurados de evaluación.
+# ══════════════════════════════════════════════════════════════════════════════
+
+CREATE_EVAL_REPORTS = """
+CREATE TABLE IF NOT EXISTS eval_reports (
+    report_id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    run_id             TEXT NOT NULL,
+    golden_version     TEXT NOT NULL,
+    recorded_at        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    payload            TEXT NOT NULL,
+    FOREIGN KEY (run_id) REFERENCES runs(run_id) ON DELETE CASCADE
+)
+""".strip()
+
+
+CREATE_EVAL_REPORTS_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_eval_reports_run_id_recorded_at
+    ON eval_reports(run_id, recorded_at)
 """.strip()
 
 
@@ -707,6 +731,8 @@ ALL_TABLES_DDL: list[str] = [
     CREATE_VALIDATION_ISSUES_INDEX,
     CREATE_RUN_METRICS,
     CREATE_RUN_METRICS_INDEX,
+    CREATE_EVAL_REPORTS,
+    CREATE_EVAL_REPORTS_INDEX,
     CREATE_JUDGMENTS,
     CREATE_JUDGMENTS_INDEX,
     CREATE_MENCIONES,

@@ -73,18 +73,21 @@ Esto deja 500 posts en un archivo JSONL.² La adquisición es incremental y rean
 
 El comando base es el mismo que en discursos, con dos diferencias: se agrega `--genre tuit` y el input es el JSONL de posts.
 
-```bash
-emoparse run --config config.yaml --input data/bluesky_milei.jsonl \
-    --genre tuit --run-id bluesky_milei --db runs/bluesky_milei.sqlite \
-    --stages <etapas>
-```
+Los comandos de cada bloque repiten el input, el género y la base para que se puedan copiar tal
+como están. El primero crea la base; los siguientes agregan `--resume` para continuarla.
 
 Como siempre en esta app, conviene ir por bloques y revisar en el dashboard los resultados de cada etapa, en lugar de correr todo de una. El siguiente es un recorrido que funciona bien en la práctica.
 
 **1. Capa tecnolingüística.** Primero, lo propio del dispositivo:
 
 ```bash
-emoparse run ... --stages technoparse,reframing,emoji_affect,hashtag_semiotics,tecno_usage
+emoparse run \
+  --config config.yaml \
+  --input data/bluesky_milei.jsonl \
+  --genre tuit \
+  --run-id bluesky_milei \
+  --db runs/bluesky_milei.sqlite \
+  --stages technoparse,reframing,emoji_affect,hashtag_semiotics,tecno_usage
 ```
 
 Esto extrae los tecnolingüísticos (technoparse, se corre sin modelo de IA), analiza el reencuadre de las citas y reposteos con comentario (reframing), resuelve el afecto de los emojis, caracteriza los hashtags y clasifica el uso pragmático de menciones, tecnografismos y links.³ Podés revisar el resultado en las tabs **✳ Tecno** y **#️⃣ Hashtags** del dashboard.
@@ -94,7 +97,14 @@ Esto extrae los tecnolingüísticos (technoparse, se corre sin modelo de IA), an
 **2. Escena enunciativa.** Ahora el contexto de cada post:
 
 ```bash
-emoparse run ... --stages metadata,enunciation
+emoparse run \
+  --config config.yaml \
+  --input data/bluesky_milei.jsonl \
+  --genre tuit \
+  --run-id bluesky_milei \
+  --db runs/bluesky_milei.sqlite \
+  --resume \
+  --stages metadata,enunciation
 ```
 
 `metadata` clasifica el tipo de discurso (político, periodístico-informativo, institucional, humor/meme, personal-cotidiano, promocional —podés mirar la caracterización de estos tipos de discurso en [acá](https://github.com/alexdcolman/EmoParse/blob/main/docs/other/tipologia_destinatarios_tuits_fundamentacion.md)—) y `enunciation` (re)construye la escena enunciativa. Revisá la tab **🗣 Enunciación**: como gran parte se resuelve de forma determinista (el enunciador se identifica con la cuenta, el auditorio se completa desde el dispositivo), la revisión es más liviana que la de discursos tradicionales.
@@ -102,18 +112,32 @@ emoparse run ... --stages metadata,enunciation
 **3. Actores y emociones.**
 
 ```bash
-emoparse run ... --stages actors,emotions,explode_emotions
+emoparse run \
+  --config config.yaml \
+  --input data/bluesky_milei.jsonl \
+  --genre tuit \
+  --run-id bluesky_milei \
+  --db runs/bluesky_milei.sqlite \
+  --resume \
+  --stages metadata,enunciation,actors,emotions,explode_emotions
 ```
 
-`actors` es opcional (enriquece a `emotions` con los actores discursivos nombrados o inferibles del post, pero `emotions` corre sin ella); si la incluís, va primero. `emotions` detecta las emociones frase por frase de forma aislada, para no contagiar una frase con la anterior. `explode_emotions` separa cada emoción en su propia fila y siembra los primeros vínculos entre marcas y referentes. Mirá los primeros resultados en el dashboard antes de seguir.
+`actors` es opcional (enriquece a `emotions` con los actores discursivos nombrados o inferibles del post, pero `emotions` corre sin ella); si la incluís, va primero. `emotions` detecta las emociones post por post, con vocabulario abierto y sin imponer de antemano un nombre canónico. `explode_emotions` separa cada emoción en su propia fila y siembra los primeros vínculos entre marcas y referentes. Mirá los primeros resultados en el dashboard antes de seguir.
 
 **4. Deixis, modalidad y referentes.**
 
 ```bash
-emoparse run ... --stages deixis,modalidad,normalize_emotions
+emoparse run \
+  --config config.yaml \
+  --input data/bluesky_milei.jsonl \
+  --genre tuit \
+  --run-id bluesky_milei \
+  --db runs/bluesky_milei.sqlite \
+  --resume \
+  --stages metadata,enunciation,emotions,explode_emotions,deixis,modalidad,normalize_emotions
 ```
 
-`deixis` resuelve a quién remite cada "yo", "nosotros", "ustedes"; `modalidad` clasifica el tipo de vínculo entre marca y referente; `normalize_emotions` asigna el nombre canónico a cada emoción. Revisá en el dashboard primero **🧭 Deixis** y después **🧩 Referentes**.
+`deixis` resuelve a quién remite cada "yo", "nosotros", "ustedes"; `modalidad` clasifica el tipo de vínculo entre marca y referente; `normalize_emotions` asigna después un nombre canónico sin reemplazar la etiqueta original. Revisá en el dashboard primero **🧭 Deixis** y después **🧩 Referentes**.
 
 Una advertencia propia del género: en tuits, posiblemente, vas a encontrar **mayor dispersión de referentes** que en un discurso político clásico. La brevedad y la multiplicidad de voces generan más variabilidad en cómo se nombra cada entidad ("Milei", "el peluca", "gorda papuda", "@JMilei"). La revisión de deixis y referentes sigue siendo el paso humano más lento: para 500 posts, contá varias horas de trabajo.⁴
 
@@ -122,7 +146,14 @@ Una advertencia propia del género: en tuits, posiblemente, vas a encontrar **ma
 **5. Caracterización fina y auditoría.**
 
 ```bash
-emoparse run ... --stages characterizer,actants,semas,judge
+emoparse run \
+  --config config.yaml \
+  --input data/bluesky_milei.jsonl \
+  --genre tuit \
+  --run-id bluesky_milei \
+  --db runs/bluesky_milei.sqlite \
+  --resume \
+  --stages metadata,enunciation,emotions,explode_emotions,normalize_emotions,characterizer,actants,judge,semas
 ```
 
 `characterizer` da a cada emoción su perfil (foria, intensidad, dominancia, temporalidad); `actants` suma mediadores, verificadores, operadores de modificación de la emoción y define si la emoción es afirmada o negada; `semas` asigna rasgos semánticos a los referentes ya unificados; `judge` (opcional) audita las inferencias del primer modelo.
@@ -204,6 +235,8 @@ Todo esto se explora en la tab **🕸 Red**, y con `--export-dir` se exporta a G
 Si te resulta incómodo recordar los comandos que tenés que ejecutar, el dashboard tiene una sección, llamada **⚙ Ejecutar**, que los arma por vos: elegís el comando que necesitás y las opciones con controles, y te muestra la línea lista para copiar y pegar en la terminal.
 
 ![sección Ejecutar](screenshots/tuits/12.png)
+
+La explicación técnica del diseño, la persistencia y la composición por género está en la [arquitectura técnica pública](../docs/arquitectura.md).
 
 ## Preguntas frecuentes
 

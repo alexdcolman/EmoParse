@@ -119,23 +119,26 @@ class MetricsRepository:
         run_id: str,
         stage_name: str,
         snapshot: StageMetricsSnapshot,
+        *,
+        model_alias: str | None = None,
     ) -> None:
-        """Persiste un snapshot de métricas."""
+        """Persiste un snapshot de métricas y el modelo efectivo de la ejecución."""
         with self._db.transaction() as cur:
             cur.execute(
                 """
                 INSERT INTO run_metrics (
-                    run_id, stage_name,
+                    run_id, stage_name, model_alias,
                     n_items_ok, n_items_failed,
                     total_latency_ms, p50_latency_ms, p99_latency_ms,
                     total_prompt_tokens, total_completion_tokens,
                     cache_hits, cache_misses,
                     recorded_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     run_id,
                     stage_name,
+                    model_alias,
                     snapshot.n_items_ok,
                     snapshot.n_items_failed,
                     snapshot.total_latency_ms,
@@ -151,10 +154,11 @@ class MetricsRepository:
 
     def list_for_run(self, run_id: str) -> list[dict[str, Any]]:
         """Todas las métricas de un run, ordenadas por recorded_at."""
+        model_column = self._model_alias_select()
         rows = self._db.execute(
-            """
+            f"""
             SELECT
-                run_id, stage_name,
+                run_id, stage_name, {model_column},
                 n_items_ok, n_items_failed,
                 total_latency_ms, p50_latency_ms, p99_latency_ms,
                 total_prompt_tokens, total_completion_tokens,
@@ -188,3 +192,44 @@ class MetricsRepository:
             (run_id, run_id),
         ).fetchall()
         return [dict(row) for row in rows]
+
+    def model_aliases_by_stage(self, run_id: str) -> dict[str, tuple[str, ...]]:
+        """Aliases observados por stage a lo largo de todas sus ejecuciones."""
+        if not self._has_model_alias_column():
+            return {}
+        rows = self._db.execute(
+            """
+            SELECT stage_name, model_alias
+            FROM run_metrics
+            WHERE run_id = ? AND model_alias IS NOT NULL AND TRIM(model_alias) <> ''
+            GROUP BY stage_name, model_alias
+            ORDER BY stage_name, model_alias
+            """,
+            (run_id,),
+        ).fetchall()
+        grouped: dict[str, list[str]] = {}
+        for row in rows:
+            grouped.setdefault(str(row["stage_name"]), []).append(str(row["model_alias"]))
+        return {stage: tuple(aliases) for stage, aliases in grouped.items()}
+
+    def mixed_stages(self, run_id: str) -> dict[str, tuple[str, ...]]:
+        """Stages ejecutadas con más de un alias dentro del mismo run."""
+        return {
+            stage: aliases
+            for stage, aliases in self.model_aliases_by_stage(run_id).items()
+            if len(aliases) > 1
+        }
+
+    def _model_alias_select(self) -> str:
+        if self._has_model_alias_column():
+            return "model_alias"
+        return "NULL AS model_alias"
+
+    def _has_model_alias_column(self) -> bool:
+        if not self._db.table_exists("run_metrics"):
+            return False
+        columns = {
+            str(row["name"])
+            for row in self._db.execute("PRAGMA table_info(run_metrics)").fetchall()
+        }
+        return "model_alias" in columns

@@ -48,6 +48,7 @@ def handle(args: argparse.Namespace) -> int:
     # Anchos fijos para mantener la tabla legible en terminal estándar.
     headers = [
         ("stage", 18),
+        ("model", 22),
         ("ok", 6),
         ("failed", 7),
         ("total_ms", 11),
@@ -64,8 +65,10 @@ def handle(args: argparse.Namespace) -> int:
     print("-" * len(header_line))
 
     for r in rows:
+        model_alias = r["model_alias"] if "model_alias" in r.keys() else None
         cells = [
             (r["stage_name"], 18, "left"),
+            (str(model_alias or "—"), 22, "left"),
             (str(r["n_items_ok"]), 6, "right"),
             (str(r["n_items_failed"]), 7, "right"),
             (_fmt_ms(r["total_latency_ms"]), 11, "right"),
@@ -85,6 +88,12 @@ def handle(args: argparse.Namespace) -> int:
                 line_parts.append(f"{value:>{width}}")
         print(" ".join(line_parts))
 
+    mixed = repo.mixed_stages(run_id)
+    if mixed:
+        print()
+        print("ADVERTENCIA: el run contiene stages ejecutadas con más de un modelo:")
+        for stage, aliases in mixed.items():
+            print(f"  - {stage}: {', '.join(aliases)}")
     print()
     return 0
 

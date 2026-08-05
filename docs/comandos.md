@@ -25,6 +25,7 @@ Carga la config, ingesta los discursos del input, y ejecuta todas las stages hab
 | `--run-id` | RUN_ID | requerido | Identificador único del run. |
 | `--db` | DB |  | Path al .sqlite del run. Default: <runs_dir>/<run_id>.sqlite. |
 | `--stages` | STAGES |  | Lista comma-separated de stages a correr. Válidas: technoparse,emoji_affect,hashtag_semiotics,tecno_usage,vision_describe,summarizer,metadata,enunciation,actors,emotions,emotions_pass2,explode_emotions,deixis,modalidad,normalize_emotions,characterizer,reframing,actants,judge,semas. Si se omite, se usan las stages por default; el género puede sumar etapas propias. Un --stages explícito se respeta tal como fue escrito y debe incluir las dependencias duras. |
+| `--prepare-only` |  |  | Crea o amplía la DB con la ingesta y la segmentación del corpus, sin ejecutar stages ni cargar modelos. Se puede combinar con --resume mientras la base siga siendo de preparación. |
 | `--genre` | GENRE |  | ID del género de discurso a aplicar. Default: 'discurso_presidencial'. Los géneros disponibles dependen de los entry-points 'emoparse.genres' instalados. El género determina los roles enunciativos válidos, la unidad de chunking (frase/parrafo/documento), y opcionalmente overrides de modelos y batch_sizes. |
 | `--select` | ARCHIVO.YAML |  | Archivo YAML que acota qué unidades se analizan. Admite campos del input y payloads de stages previas con notación punto, por ejemplo metadata.tipo_discurso o enunciation.enunciador. Los filtros de payload empiezan a regir después de que su stage productora queda completa. Ver data/ejemplos/seleccion.yaml y seleccion_payload_v070.yaml. |
 | `--enunciador` |  |  | Acota la detección de emociones (ambos pases) a las del enunciador. Combinable con --enunciatarios y --actores (se unen). Si no se pasa ninguna de las tres, se analizan todos los experienciadores. |
@@ -207,18 +208,29 @@ Pide a la fuente a quién sigue cada cuenta del corpus y persiste como grafo 'fo
 
 ## `emoparse eval`
 
-Evaluación de validez del análisis emocional.
+Evaluación humana y regresión semántica del análisis emocional.
 
 | Opción | Valor | Default | Qué hace |
 |---|---|---|---|
-| `--db` | DB |  | DB del run a evaluar (para --golden, --make-sample, --control). |
+| `--db` | DB |  | DB del run. Puede repetirse con --golden --por-genero; los otros modos requieren una sola. |
 | `--golden` | GOLDEN |  | Golden set (.jsonl o directorio de .jsonl). |
+| `--por-genero` |  |  | Separa el reporte del golden por género y admite un --db por género. |
+| `--persist-report` |  |  | Persiste el reporte estructurado en la tabla eval_reports de cada run. Disponible para --golden y --control. |
+| `--golden-version` | GOLDEN_VERSION |  | Versión legible del golden persistido; se infiere de una ruta como golden/v2. |
 | `--make-sample` |  |  | Exporta planilla de anotación a ciegas (--out). |
-| `--n` | N | 300 | Tamaño de la muestra de anotación. |
-| `--seed` | SEED | 42 | Seed del muestreo (reproducibilidad). |
-| `--agreement` | AGREEMENT |  | CSV con las planillas completadas (columna `anotador` + columnas de anotación). |
-| `--control` |  |  | Reporta la tasa de detección del run (corpus de control → tasa esperada ≈ 0). |
-| `--out` | OUT |  | Archivo de salida (reporte .md o planilla .csv). |
+| `--make-retest` | MAKE_RETEST |  | Extrae una segunda pasada ciega desde una planilla completa (--out). |
+| `--freeze-sample` | FREEZE_SAMPLE |  | Congela una planilla completa como golden JSONL v2 (--out). |
+| `--n` | N | 200 | Tamaño de la muestra (200 por defecto). |
+| `--seed` | SEED | 42 | Seed del muestreo reproducible. |
+| `--min-textos` | MIN_TEXTOS | 1 | Cantidad mínima de textos distintos exigida al crear la muestra. |
+| `--max-por-texto` | MAX_POR_TEXTO |  | Máximo de unidades tomadas de un mismo texto. |
+| `--genero` | GENERO |  | Género explícito para runs antiguos o para congelar una planilla sin metadata. |
+| `--anotador` | ANOTADOR |  | Sobrescribe `anotador` en todas las filas al congelar el golden. |
+| `--pasada` | PASADA |  | Sobrescribe `pasada` en todas las filas al congelar el golden. |
+| `--fecha` | FECHA |  | Sobrescribe `fecha_anotacion` (AAAA-MM-DD) al congelar el golden. |
+| `--agreement` | AGREEMENT |  | CSV concatenado con `anotador`, `pasada`, `id_muestra` y columnas de anotación. |
+| `--control` |  |  | Reporta la tasa de detección del run sobre un corpus de control. |
+| `--out` | OUT |  | Archivo de salida (.md, .csv o .jsonl). |
 
 ## `emoparse app`
 

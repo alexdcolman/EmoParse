@@ -476,10 +476,7 @@ def _extract_body(
     article: dict[str, Any],
     fusion_content: dict[str, Any],
 ) -> str:
-    structured = _as_text(article.get("articleBody"))
-    if len(structured) >= 200:
-        return strip_boilerplate(clean_whitespace(structured))
-
+    """Extrae el cuerpo y conserva los límites de párrafo cuando existen."""
     fusion_body = _extract_ans_body(fusion_content)
     if len(fusion_body) >= 200:
         return fusion_body
@@ -489,6 +486,12 @@ def _extract_body(
         texts = _paragraph_texts(paragraphs)
         if texts:
             return strip_boilerplate(clean_whitespace("\n\n".join(texts)))
+
+    # JSON-LD suele exponer el cuerpo como una sola cadena. Se usa únicamente
+    # como respaldo porque no permite reconstruir los párrafos editoriales.
+    structured = _as_text(article.get("articleBody"))
+    if len(structured) >= 200:
+        return strip_boilerplate(clean_whitespace(structured))
     return ""
 
 

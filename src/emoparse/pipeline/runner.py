@@ -498,6 +498,7 @@ class PipelineRunner:
             run_id=self._run_id,
             stage_name=stage_name,
             snapshot=accumulator.snapshot(),
+            model_alias=self._cfg.pipeline.stages.get(stage_name),
         )
         return ok
 

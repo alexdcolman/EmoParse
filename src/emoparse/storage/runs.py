@@ -237,6 +237,11 @@ class RunsRepository:
             column="alcance",
             type_def="TEXT",
         )
+        self._add_column_if_missing(
+            table="run_metrics",
+            column="model_alias",
+            type_def="TEXT",
+        )
 
     def _add_column_if_missing(
         self,

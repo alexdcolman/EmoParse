@@ -27,6 +27,7 @@
       <li><a href="index.html">Portada</a></li>
       <li><a href="enfoque.html">El enfoque</a></li>
       <li><a href="pipeline.html">Cómo funciona</a></li>
+      <li><a href="periodistico.html">Artículos</a></li>
       <li><a href="digital.html">Posts y redes</a></li>
       <li><a href="tablero.html">El tablero</a></li>
       <li><a href="empezar.html" aria-current="page">Empezar</a></li>
@@ -116,7 +117,7 @@ pip install -e ".[llamacpp,ui,scraping]"</code></pre>
         <tr><td><code>llamacpp</code></td><td>Correr modelos de lenguaje localmente.</td></tr>
         <tr><td><code>lmstudio</code></td><td>Usar modelos a través de LM Studio, mediante su API compatible con OpenAI.</td></tr>
         <tr><td><code>ui</code></td><td>El tablero de exploración.</td></tr>
-        <tr><td><code>scraping</code></td><td>Bajar discursos de sitios web.</td></tr>
+        <tr><td><code>scraping</code></td><td>Bajar discursos presidenciales y artículos periodísticos de sitios web.</td></tr>
         <tr><td><code>nlp</code></td><td>Análisis gramatical, que usa la etapa de modalidad referencial.</td></tr>
         <tr><td><code>bluesky</code></td><td>Adquirir posts de Bluesky. Mastodon no requiere agregado.</td></tr>
         <tr><td><code>techno</code></td><td>Lectura de emojis compuestos de varios símbolos.</td></tr>
@@ -171,22 +172,41 @@ python -m spacy download es_core_news_md</code></pre>
     <h2 id="primer-analisis"><span class="num">5</span>Un primer análisis</h2>
 
     <p>La entrada mínima es una planilla con dos columnas: un identificador único por texto y el texto
-    en sí. El programa incluye además un descargador para el sitio de Casa Rosada.</p>
+    en sí. El género elegido determina cómo se segmenta y qué contexto acompaña cada unidad.</p>
 
-<pre><code><span class="c"># Opción A: usar una planilla propia (columnas: codigo, contenido)</span>
+    <h3>Discursos presidenciales</h3>
 
-<span class="c"># Opción B: bajar discursos de Casa Rosada</span>
+<pre><code><span class="c"># Bajar discursos de Casa Rosada</span>
 emoparse scrape --source casarosada \
-  --out data/discursos.csv \
+  --output data/discursos.csv \
   --from 2024-01-01 --to 2024-12-31
 
 <span class="c"># Correr el análisis</span>
 emoparse run \
   --config config.yaml \
-  --input  data/discursos.csv \
-  --run-id mi_primer_analisis
+  --input data/discursos.csv \
+  --genre discurso_presidencial \
+  --run-id mi_primer_analisis</code></pre>
 
-<span class="c"># Ver cómo viene, desde otra consola</span>
+    <h3>Artículos periodísticos</h3>
+
+<pre><code><span class="c"># Bajar artículos de Página/12</span>
+emoparse scrape --source pagina12 \
+  --max 24 \
+  --output data/articulos.csv
+
+<span class="c"># Correr el análisis por párrafos</span>
+emoparse run \
+  --config config.yaml \
+  --input data/articulos.csv \
+  --genre articulo_periodistico \
+  --run-id articulos01</code></pre>
+
+    <p>El <a href="https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_discurso_presidencial.md">tutorial de discursos
+    presidenciales</a> y el <a href="https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_articulo_periodistico.md">tutorial de
+    artículos periodísticos</a> desarrollan ambos recorridos paso por paso.</p>
+
+<pre><code><span class="c"># Ver cómo viene, desde otra consola</span>
 emoparse status --db runs/mi_primer_analisis.sqlite
 
 <span class="c"># Abrir el tablero</span>
@@ -195,7 +215,13 @@ emoparse app</code></pre>
     <p>Conviene correr por bloques y revisar cada resultado antes de seguir, en lugar de lanzar todo
     de una vez. Las etapas se eligen con <code>--stages</code>:</p>
 
-<pre><code>emoparse run ... --stages actors,emotions,explode_emotions</code></pre>
+<pre><code>emoparse run \
+  --config config.yaml \
+  --input data/discursos.csv \
+  --genre discurso_presidencial \
+  --run-id mi_primer_analisis \
+  --resume \
+  --stages summarizer,metadata,enunciation,actors,emotions,explode_emotions</code></pre>
 
     <p>También se puede acotar una corrida con un YAML sin modificar el corpus original. Los campos
     del input se filtran al comienzo; los resultados de etapas anteriores se referencian con notación
@@ -238,7 +264,8 @@ emoparse network --db runs/tarifazo01.sqlite \
     --flujo --similitud --export-dir exports/red</code></pre>
 
     <p>Los detalles del género, sus etapas propias y las opciones de adquisición están en
-    <a href="digital.html">Posts y redes</a>.</p>
+    <a href="digital.html">Posts y redes</a> y en el
+    <a href="https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_tuits.md">tutorial de tuits y discurso nativo digital</a>.</p>
 
     <h2 id="comandos"><span class="num">7</span>Los comandos</h2>
 
@@ -278,6 +305,11 @@ emoparse network --db runs/tarifazo01.sqlite \
     <p>El tablero busca en la carpeta indicada en la configuración. Conviene abrirlo desde el mismo
     directorio donde se corrió el análisis.</p>
 
+    <p>Los tres tutoriales del repositorio recorren casos completos paso a paso:
+    <a href="https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_discurso_presidencial.md">discursos presidenciales</a>,
+    <a href="https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_articulo_periodistico.md">artículos periodísticos</a>
+    y <a href="https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_tuits.md">posts de redes sociales</a>.</p>
+
     <div class="notas">
       <h2>Notas</h2>
       <ol>
@@ -290,12 +322,6 @@ emoparse network --db runs/tarifazo01.sqlite \
         conservan la calidad de las respuestas para estas tareas. <a href="#r2">↩</a></li>
       </ol>
     </div>
-
-    <hr>
-
-    <p>Los dos tutoriales del repositorio recorren un caso completo paso a paso, uno para
-    <a href="https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_discurso_presidencial.md">discursos presidenciales</a>
-    y otro para <a href="https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_tuits.md">posts de redes sociales</a>.</p>
 
   </div>
   </main>

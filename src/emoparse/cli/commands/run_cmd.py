@@ -114,7 +114,13 @@ def handle(args: argparse.Namespace) -> int:
         logger.info(f"[run] DB existente eliminada: {db_path}")
     logger.info(f"[run] DB: {db_path}")
 
-    if args.stages:
+    if args.prepare_only and args.stages:
+        logger.error("[run] --prepare-only no se combina con --stages.")
+        return 1
+
+    if args.prepare_only:
+        enabled: tuple[str, ...] = ()
+    elif args.stages:
         try:
             enabled = _parse_stages(args.stages)
         except ValueError as e:
@@ -139,7 +145,7 @@ def handle(args: argparse.Namespace) -> int:
             f"[run] Género '{genre.genre_id}' desactiva summarizer (genre.summarizer=False)."
         )
 
-    if genre.technoparse and not args.stages:
+    if not args.prepare_only and genre.technoparse and not args.stages:
         # Solo sobre los defaults: un --stages explícito se respeta tal cual.
         # emoji_affect degrada a léxico-only si no tiene modelo asignado.
         agregar = tuple(s for s in ("technoparse", "emoji_affect") if s not in enabled)
@@ -150,7 +156,7 @@ def handle(args: argparse.Namespace) -> int:
                 f"{', '.join(agregar)} (genre.technoparse=True)."
             )
 
-    emotion_scope = _collect_emotion_scope(args)
+    emotion_scope = None if args.prepare_only else _collect_emotion_scope(args)
     if emotion_scope is not None:
         logger.info(
             f"[run] Alcance de detección de emociones: "
@@ -182,10 +188,21 @@ def handle(args: argparse.Namespace) -> int:
         if posts_bundle is not None:
             runner.ingest_posts(posts_bundle)
         try:
+            prepared_units = runner.chunk_into_frases() if args.prepare_only else None
             report = runner.run()
         except SeleccionError as e:
             logger.error(f"Selección inválida durante el pipeline: {e}")
             return 1
+
+    if args.prepare_only:
+        print()
+        print(f"=== Base {args.run_id} preparada sin LLM ===")
+        print(f"DB:      {db_path}")
+        print(f"Género:  {genre.genre_id} ({genre.display_name})")
+        print(f"Textos:  {len(df_input)}")
+        print(f"Unidades: {prepared_units}")
+        print("Stages:  ninguna")
+        return 0
 
     print()
     print(f"=== Run {args.run_id} completado ===")
@@ -369,6 +386,15 @@ def register(subparsers: argparse._SubParsersAction) -> None:
             "default; el género puede sumar etapas propias. Un --stages "
             "explícito se respeta tal como fue escrito y debe incluir las "
             "dependencias duras."
+        ),
+    )
+    p.add_argument(
+        "--prepare-only",
+        action="store_true",
+        help=(
+            "Crea o amplía la DB con la ingesta y la segmentación del corpus, "
+            "sin ejecutar stages ni cargar modelos. Se puede combinar con "
+            "--resume mientras la base siga siendo de preparación."
         ),
     )
     p.add_argument(

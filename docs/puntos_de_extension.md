@@ -5,6 +5,10 @@ plugin de género declara su unidad de análisis, roles enunciativos, tipos de d
 entrada y contexto; los agentes consumen esas declaraciones sin preguntar por un `genre_id`
 concreto.
 
+La visión general de capas, persistencia, DAG y evaluación está en
+[`docs/arquitectura.md`](arquitectura.md). Este documento se concentra en los contratos para ampliar
+el sistema.
+
 ## Descriptor `Genre`
 
 Cada género se registra mediante una factory `() -> Genre` en el grupo de entry-points

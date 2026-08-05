@@ -78,7 +78,7 @@ Abrí `config.yaml` con cualquier editor de texto y ajustá la ruta del modelo (
 
 ```bash
 pip install -e ".[scraping]"
-emoparse scrape --source casarosada --max 5 --out data/discursos.csv
+emoparse scrape --source casarosada --max 5 --output data/discursos.csv
 ```
 
 **Opción B: tu propio corpus.** Un archivo CSV con dos columnas obligatorias — `codigo` (un identificador único por discurso) y `contenido` (el texto completo) — y opcionales como `titulo`, `fecha`, `lugar`. Podés armarlo en Excel o Google Sheets y guardar como CSV.
@@ -87,27 +87,65 @@ emoparse scrape --source casarosada --max 5 --out data/discursos.csv
 
 ## Paso 2 — Correr el análisis
 
-El comando base del programa es siempre el mismo:
-
-```bash
-emoparse run --config config.yaml --input data/<tu_archivo_csv>.csv --run-id <nombre_de_tu_run> --db runs/<nombre_de_tu_run>.sqlite --stages summarizer,metadata,...
-```
-
-Con `--stages` elegís qué etapas correr en ese comando puntual. Podés interrumpir en cualquier momento con Ctrl-C y reanudar con el mismo comando: el sistema retoma exactamente donde quedó, y no repite trabajo ya hecho.⁴
+Con `--stages` elegís qué etapas correr en ese comando puntual. El primer comando crea la base;
+los siguientes usan `--resume` para continuar exactamente la misma corrida. Podés interrumpir con
+Ctrl-C: lo ya persistido no se repite.⁴
 
 Un recorrido que funciona bien en la práctica:
 
-**1. Contexto del discurso.** Corré `summarizer`, `metadata` y `enunciation`. Estas tres etapas trabajan sobre el discurso completo: arman un resumen, identifican el tipo de discurso y dónde fue pronunciado, y reconstruyen la escena enunciativa (quién habla, a quién, con qué colectivos se identifica).⁵ Cuando termine, abrí el dashboard (`emoparse app`) y en la tab "🗣 Enunciación" mirá cómo quedó todo antes de seguir: si el enunciador o el auditorio están mal identificados, todo lo que sigue va a heredar ese error.
+**1. Contexto del discurso.** Corré `summarizer`, `metadata` y `enunciation`. Estas tres etapas trabajan
+sobre el discurso completo: arman un resumen, identifican el tipo de discurso y dónde fue pronunciado,
+y reconstruyen la escena enunciativa (quién habla, a quién, con qué colectivos se identifica).⁵
 
-**2. Actores y emociones.** Corré `actors` y `emotions`. Acá el sistema empieza a trabajar frase por frase: detecta actores y, frase por frase y de forma aislada (para no "contagiar" emociones de una frase a la siguiente), detecta qué emociones hay y quién las experimenta.
+```bash
+emoparse run \
+  --config config.yaml \
+  --input data/<tu_archivo_csv>.csv \
+  --genre discurso_presidencial \
+  --run-id <nombre_de_tu_run> \
+  --db runs/<nombre_de_tu_run>.sqlite \
+  --stages summarizer,metadata,enunciation
+```
 
-**3. Explosión y siembra de referentes.** Esto pasa automáticamente, sin necesidad de pedirlo aparte: la etapa `explode_emotions` separa la lista de emociones de cada frase en filas individuales, y en el mismo paso arma los primeros vínculos entre las marcas del texto ("el presidente", "Milei", "nosotros"...) y los referentes a los que remiten.
+Cuando termine, abrí el dashboard (`emoparse app`) y revisá la tab **Enunciación**. Si el enunciador
+o el auditorio están mal identificados, lo que sigue va a heredar ese error.
 
-**4. Revisar y unificar referentes.** Antes de seguir, andá a la tab **Referentes** del dashboard y hacé una primera pasada de revisión (ver más abajo). No hace falta que quede perfecto ahora, pero conviene resolver los casos más obvios antes de generar la caracterización fina de cada emoción, porque esa caracterización va a usar el experienciador y la fuente ya resueltos.
+**2. Actores, emociones y referentes iniciales.** El siguiente comando detecta actores y emociones
+frase por frase. `explode_emotions` separa después cada emoción en una fila y siembra los primeros
+vínculos entre marcas del texto —«el presidente», «Milei», «nosotros»— y sus referentes.
 
-**5. Caracterización.** Recién ahora corré `normalize_emotions` y `characterizer`, que le dan a cada emoción su nombre canónico y su perfil detallado (foria, intensidad, dominancia, duración, temporalidad, aspecto).
+```bash
+emoparse run \
+  --config config.yaml \
+  --input data/<tu_archivo_csv>.csv \
+  --genre discurso_presidencial \
+  --run-id <nombre_de_tu_run> \
+  --db runs/<nombre_de_tu_run>.sqlite \
+  --resume \
+  --stages summarizer,metadata,enunciation,actors,emotions,explode_emotions
+```
 
-**6. Etapas opcionales, una por vez.** A partir de acá, según lo que te interese, sumá `deixis`, `modalidad`, `semas`, `actants` o `judge` (Paso 4). Corré cada una por separado y revisá sus resultados en la tab correspondiente antes de sumar la siguiente.
+**3. Revisar y unificar referentes.** Antes de seguir, andá a la tab **Referentes** del dashboard y
+hacé una primera pasada. No hace falta que quede perfecta, pero conviene resolver los casos más
+obvios antes de generar la caracterización fina.
+
+**4. Normalizar y caracterizar.** La normalización agrega un nombre canónico sin borrar la etiqueta
+original; `characterizer` produce el perfil detallado de cada emoción.
+
+```bash
+emoparse run \
+  --config config.yaml \
+  --input data/<tu_archivo_csv>.csv \
+  --genre discurso_presidencial \
+  --run-id <nombre_de_tu_run> \
+  --db runs/<nombre_de_tu_run>.sqlite \
+  --resume \
+  --stages summarizer,metadata,enunciation,actors,emotions,explode_emotions,normalize_emotions,characterizer
+```
+
+**5. Etapas opcionales, una por vez.** A partir de acá, según lo que te interese, sumá
+`emotions_pass2`, `deixis`, `modalidad`, `semas`, `actants` o `judge` (Paso 4). Revisá cada resultado
+antes de avanzar.
 
 ```bash
 # Ver el progreso en cualquier momento, desde otra terminal:
@@ -181,41 +219,70 @@ Ahí es donde entra el trabajo de revisión, en la tab **Referentes**. El dashbo
 Una vez que el flujo básico te resulte cómodo, hay varias etapas opcionales que conviene sumar de a una, revisando cada resultado antes de pasar a la siguiente:
 
 ```bash
-# Segunda lectura de emociones con contexto de las frases previas del mismo discurso
-# (detecta continuidades, contrastes y escaladas; en la práctica su aporte es
-# más marginal cuanto mejor están afinadas las demás etapas, así que conviene
-# probarla y comparar antes de dejarla activada de rutina)
-emoparse run --config config.yaml --input data/<tu_archivo_csv>.csv --run-id <nombre_de_tu_run> --db <nombre_de_tu_run> --stages emotions_pass2
+# Segunda lectura de emociones con contexto de las frases previas
+emoparse run \
+  --config config.yaml \
+  --input data/<tu_archivo_csv>.csv \
+  --genre discurso_presidencial \
+  --run-id <nombre_de_tu_run> \
+  --db runs/<nombre_de_tu_run>.sqlite \
+  --resume \
+  --stages summarizer,metadata,enunciation,emotions,emotions_pass2
 
-# Resolución de deixis: ¿a quién refiere cada "yo", cada "nosotros", cada "ustedes"?
-emoparse run ... --stages deixis
+# Resolución de deixis
+emoparse run \
+  --config config.yaml \
+  --input data/<tu_archivo_csv>.csv \
+  --genre discurso_presidencial \
+  --run-id <nombre_de_tu_run> \
+  --db runs/<nombre_de_tu_run>.sqlite \
+  --resume \
+  --stages summarizer,metadata,enunciation,emotions,explode_emotions,deixis
 
-# Modalidad referencial: ¿el vínculo entre una marca y su referente es una
-# designación directa ("el presidente"), una referencia gramatical sin nombrarlo
-# ("nosotros", "he defendido") o una identificación inferencial por lo que dice
-# o valora ("los que defienden esto...")? Útil si te interesa distinguir
-# denominación de caracterización valorativa.
-emoparse run ... --stages modalidad
+# Modalidad referencial
+emoparse run \
+  --config config.yaml \
+  --input data/<tu_archivo_csv>.csv \
+  --genre discurso_presidencial \
+  --run-id <nombre_de_tu_run> \
+  --db runs/<nombre_de_tu_run>.sqlite \
+  --resume \
+  --stages summarizer,metadata,enunciation,emotions,explode_emotions,modalidad
 
-# Semas: le asigna a cada referente canónico (los que ya unificaste en la tab
-# Referentes) rasgos de un vocabulario curado —por ejemplo actor/circunstante,
-# individual/colectivo, rol enunciativo, "+ víctima" o "+ victimario"—. Conviene
-# correrla después de haber avanzado con la unificación de referentes, porque
-# los semas se asignan sobre esos referentes ya consolidados, no sobre cada
-# marca suelta. Son los que después te permiten filtrar la curva emocional o
-# el heatmap por actor no por nombre propio, sino por estas características.
-emoparse run ... --stages semas
+# Semas de los referentes ya unificados
+emoparse run \
+  --config config.yaml \
+  --input data/<tu_archivo_csv>.csv \
+  --genre discurso_presidencial \
+  --run-id <nombre_de_tu_run> \
+  --db runs/<nombre_de_tu_run>.sqlite \
+  --resume \
+  --stages summarizer,metadata,enunciation,emotions,explode_emotions,semas
 
-# Análisis actancial de cada emoción (mediadores, verificadores normativo y
-# observacional, operador de activación/inhibición, polaridad —afirmada o negada—)
-emoparse run ... --stages actants
+# Análisis actancial de cada emoción
+emoparse run \
+  --config config.yaml \
+  --input data/<tu_archivo_csv>.csv \
+  --genre discurso_presidencial \
+  --run-id <nombre_de_tu_run> \
+  --db runs/<nombre_de_tu_run>.sqlite \
+  --resume \
+  --stages summarizer,metadata,enunciation,emotions,explode_emotions,actants
 
-# Auditoría con un segundo modelo, que revisa experienciador, fuente, tipo,
-# modo de existencia y temporalidad, y propone correcciones puntuales
-emoparse run ... --stages judge
+# Auditoría con un segundo modelo
+emoparse run \
+  --config config.yaml \
+  --input data/<tu_archivo_csv>.csv \
+  --genre discurso_presidencial \
+  --run-id <nombre_de_tu_run> \
+  --db runs/<nombre_de_tu_run>.sqlite \
+  --resume \
+  --stages summarizer,metadata,enunciation,emotions,explode_emotions,normalize_emotions,characterizer,judge
 
-# Exportar todo a CSV para tus propios análisis (R, SPSS, Excel)
-emoparse export --db runs/<nombre_de_tu_run>.sqlite --out exports/<nombre_de_tu_run>/
+# Exportar todo a CSV para R, SPSS, Excel u otra herramienta
+emoparse export \
+  --db runs/<nombre_de_tu_run>.sqlite \
+  --output-dir exports/<nombre_de_tu_run>
 ```
 
 Un par de aclaraciones sobre estas etapas:
@@ -249,6 +316,8 @@ Podés correr los dos juntos (`--similitud --semantico`) y comparar: el narrativ
 Antes de publicar resultados, medí la validez del análisis sobre tu corpus: el comando `emoparse eval` exporta muestras para anotación humana a ciegas, calcula el acuerdo entre anotadores (alpha de Krippendorff)⁹ y compara el sistema contra un conjunto de referencia. El protocolo completo está en `evals/manual_anotacion.md` y en la documentación.
 
 > ⁹ El alpha de Krippendorff es el estándar en análisis de contenido para medir cuánto acuerdan los codificadores humanos entre sí; ese acuerdo es el techo razonable de lo que puede exigírsele al sistema.
+
+La explicación técnica del diseño, la persistencia y la composición del pipeline está en la [arquitectura técnica pública](../docs/arquitectura.md).
 
 ## Preguntas frecuentes
 

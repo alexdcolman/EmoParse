@@ -116,6 +116,25 @@ def test_fetch_article_preserves_journalistic_metadata(monkeypatch) -> None:
     adapter.close()
 
 
+def test_fetch_article_prefers_paragraph_structure_over_flat_json_ld(monkeypatch) -> None:
+    flattened = ARTICLE_HTML.replace(
+        '"description": "Un subtítulo que contextualiza el acontecimiento.",',
+        '"description": "Un subtítulo que contextualiza el acontecimiento.",\n'
+        '    "articleBody": "Primer párrafo con información suficiente para formar parte '
+        "del corpus piloto. Segundo párrafo con otra voz citada y antecedentes relevantes "
+        "del caso analizado. Tercer párrafo que completa una extensión mínima razonable "
+        'para la extracción.",',
+    )
+    adapter = Pagina12Adapter(mode="http")
+    monkeypatch.setattr(adapter, "_fetch_text", lambda _url: flattened)
+
+    record = adapter.fetch_discurso("https://www.pagina12.com.ar/example")
+
+    assert record is not None
+    assert record.contenido.count("\n\n") == 2
+    adapter.close()
+
+
 def test_fetch_article_omits_bodies_too_short_for_the_pilot(monkeypatch) -> None:
     long_body = """<div class="article-body">
       <p>Primer párrafo con información suficiente para formar parte del corpus piloto.</p>

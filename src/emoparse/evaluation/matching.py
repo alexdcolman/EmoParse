@@ -6,13 +6,14 @@
 #  Estrategia por unidad (codigo, unit_idx):
 #  1. Se emparejan golden↔predichas de forma greedy por score descendente:
 #     +2 si el tipo canónico coincide,
-#     +1 si el experienciador coincide (igualdad laxa por solapamiento de
-#     tokens normalizados). Solo se aceptan pares con score > 0.
+#     +1 si el experienciador coincide y +1 si coincide la fuente (igualdad
+#     laxa por solapamiento de tokens normalizados). La fuente desempata, pero
+#     no alcanza por sí sola para aceptar un par.
 #  2. Detección: TP = pares aceptados; FP = predichas sin par; FN = golden
 #     sin par. De ahí precisión, recall y F1.
 #  3. Dimensiones: sobre los pares aceptados se mide accuracy de tipo
-#     (sobre `tipo_emocion_canonico`), experienciador (laxo), modo_existencia y foria (si el
-#     golden las trae).
+#     (sobre `tipo_emocion_canonico`), experienciador y fuente (laxos),
+#     modo_existencia y foria.
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -23,7 +24,13 @@ from dataclasses import dataclass, field
 from typing import Any
 
 #: Dimensiones evaluables sobre pares emparejados.
-DIMENSIONES: tuple[str, ...] = ("tipo", "experienciador", "modo_existencia", "foria")
+DIMENSIONES: tuple[str, ...] = (
+    "tipo",
+    "experienciador",
+    "fuente",
+    "modo_existencia",
+    "foria",
+)
 
 
 @dataclass
@@ -59,6 +66,19 @@ class MatchReport:
         n = self.dim_evaluadas.get(dim, 0)
         return self.dim_correctas.get(dim, 0) / n if n else None
 
+    def merge(self, other: MatchReport) -> None:
+        """Acumula otro reporte sin perder sus desacuerdos."""
+        self.tp += other.tp
+        self.fp += other.fp
+        self.fn += other.fn
+        self.unidades += other.unidades
+        for dim, value in other.dim_correctas.items():
+            self.dim_correctas[dim] = self.dim_correctas.get(dim, 0) + value
+        for dim, value in other.dim_evaluadas.items():
+            self.dim_evaluadas[dim] = self.dim_evaluadas.get(dim, 0) + value
+        remaining = max(0, 200 - len(self.desacuerdos))
+        self.desacuerdos.extend(other.desacuerdos[:remaining])
+
 
 def match_units(
     golden_units: dict[tuple[str, int], list[dict[str, Any]]],
@@ -91,13 +111,14 @@ def _match_one_unit(
     candidatos: list[tuple[int, int, int]] = []  # (score, g_idx, p_idx)
     for g_idx, g in enumerate(golds):
         for p_idx, p in enumerate(preds):
-            score = 0
-            if _tipo_eq(g, p):
-                score += 2
-            if _exp_eq(g, p):
-                score += 1
-            if score > 0:
-                candidatos.append((score, g_idx, p_idx))
+            type_match = _tipo_eq(g, p)
+            experiencer_match = _exp_eq(g, p)
+            source_match = _fuente_eq(g, p)
+            if not (type_match or experiencer_match):
+                continue
+            score = (2 if type_match else 0) + (1 if experiencer_match else 0)
+            score += 1 if source_match else 0
+            candidatos.append((score, g_idx, p_idx))
 
     usados_g: set[int] = set()
     usados_p: set[int] = set()
@@ -117,6 +138,8 @@ def _match_one_unit(
         g, p = golds[g_idx], preds[p_idx]
         _score_dim(report, "tipo", _tipo_eq(g, p), g, p, key)
         _score_dim(report, "experienciador", _exp_eq(g, p), g, p, key)
+        if _norm_token(str(g.get("fuente") or "")):
+            _score_dim(report, "fuente", _fuente_eq(g, p), g, p, key)
         for dim in ("modo_existencia", "foria"):
             g_val = _norm_token(str(g.get(dim) or ""))
             if not g_val:
@@ -142,8 +165,8 @@ def _score_dim(
                 "codigo": key[0],
                 "unit_idx": key[1],
                 "dimension": dim,
-                "golden": g.get(dim if dim != "tipo" else "tipo_emocion"),
-                "prediccion": p.get(dim if dim != "tipo" else "tipo_emocion"),
+                "golden": _golden_value(g, dim),
+                "prediccion": _prediction_value(p, dim),
             }
         )
 
@@ -168,6 +191,32 @@ def _exp_eq(g: dict[str, Any], p: dict[str, Any]) -> bool:
         return False
     inter = g_toks & p_toks
     return len(inter) / min(len(g_toks), len(p_toks)) >= 0.5
+
+
+def _fuente_eq(g: dict[str, Any], p: dict[str, Any]) -> bool:
+    """Igualdad laxa de fuente o desencadenante."""
+    g_toks = _tokens(str(g.get("fuente") or ""))
+    p_toks = _tokens(str(p.get("fuente_canonico") or p.get("fuente_inferencia") or ""))
+    if not g_toks or not p_toks:
+        return False
+    inter = g_toks & p_toks
+    return len(inter) / min(len(g_toks), len(p_toks)) >= 0.5
+
+
+def _golden_value(g: dict[str, Any], dim: str) -> Any:
+    if dim == "tipo":
+        return g.get("tipo_emocion")
+    return g.get(dim)
+
+
+def _prediction_value(p: dict[str, Any], dim: str) -> Any:
+    if dim == "tipo":
+        return p.get("tipo_emocion_canonico")
+    if dim == "experienciador":
+        return p.get("experienciador_canonico") or p.get("experienciador")
+    if dim == "fuente":
+        return p.get("fuente_canonico") or p.get("fuente_inferencia")
+    return p.get(dim)
 
 
 _STOP = {"el", "la", "los", "las", "un", "una", "de", "del", "al", "y", "e"}

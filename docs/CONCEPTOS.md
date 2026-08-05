@@ -116,7 +116,7 @@ Un rasgo semántico distintivo, en el sentido de la semántica estructural de Gr
 
 ## 4. La emoción detectada
 
-*(Etapa `emotions`. Es el punto donde el sistema realiza la operación central del proyecto: reconocer configuraciones de marcas como portadoras de una cualificación afectiva. La lectura se hace, por defecto, frase por frase y de forma aislada, para impedir que el modelo "contagie" emociones de una frase a otra.)*
+*(Etapa `emotions`. Es el punto donde el sistema realiza la operación central del proyecto: reconocer configuraciones de marcas como portadoras de una cualificación afectiva. La primera lectura se hace unidad por unidad —frase, párrafo o post según el género— para impedir que el modelo arrastre emociones desde una unidad anterior.)*
 
 ### Experienciador
 
@@ -211,7 +211,7 @@ Si la emoción se predica afirmada o negada, y bajo qué modalidad. La distinci�
 
 ### Género discursivo
 
-Trabajo con una acepción de raíz bajtiniana (Bajtín, 1997): tipos relativamente estables de enunciados, caracterizados por regularidades temáticas, estilísticas y composicionales, que conforman condiciones históricamente sedimentadas para la producción y la recepción de sentido. En *EmoParse*, el género se traduce en un *descriptor declarativo* que especifica cómo varía el *pipeline* para una clase de discurso: la unidad de análisis, el conjunto cerrado de roles enunciativos válidos y otros parámetros. El sistema incorpora dos géneros —`discurso_presidencial` y `tuit`— y admite agregar otros sin modificar el núcleo. Esta apertura traduce un principio del enfoque: ningún sistema receptor puede reconocer configuraciones de marcas como afectivamente cualificadas si no dispone antes de las distinciones que organizan la clase de discurso que observa. Analizar tuits con la grilla enunciativa de un discurso presidencial impondría condiciones de reconocimiento ajenas al medio.
+Trabajo con una acepción de raíz bajtiniana (Bajtín, 1997): tipos relativamente estables de enunciados, caracterizados por regularidades temáticas, estilísticas y composicionales, que conforman condiciones históricamente sedimentadas para la producción y la recepción de sentido. En *EmoParse*, el género se traduce en un *descriptor declarativo* que especifica cómo varía el *pipeline* para una clase de discurso: la unidad de análisis, el conjunto cerrado de roles enunciativos válidos y otros parámetros. El sistema incorpora tres géneros —`discurso_presidencial`, `articulo_periodistico` y `tuit`— y admite agregar otros sin modificar el núcleo. El artículo trabaja con párrafos y metadata editorial; el tuit, con el post y su materialidad de plataforma. Esta apertura traduce un principio del enfoque: ningún sistema receptor puede reconocer configuraciones de marcas como afectivamente cualificadas si no dispone antes de las distinciones que organizan la clase de discurso que observa. Analizar artículos o tuits con la grilla enunciativa de un discurso presidencial impondría condiciones de reconocimiento ajenas al material.
 
 ### Tipo de discurso
 
@@ -219,7 +219,7 @@ Trabajo con una acepción de raíz bajtiniana (Bajtín, 1997): tipos relativamen
 
 ### Unidad de *chunking*
 
-El modo en que el discurso se segmenta condiciona qué configuraciones emocionales resultan visibles para el sistema. Elegir la frase, el párrafo o el documento entero como unidad de análisis define distintas condiciones del medio sobre el que se aplicarán las operaciones de reconocimiento. Cada género fija su unidad: el `discurso_presidencial` trabaja por frase; el `tuit`, por documento (y desactiva el resumen, por la brevedad del género). Emociones que solo se reconocen en la continuidad de un discurso pueden perderse en una lectura frase por frase, y por eso el sistema conserva —como etapa opcional y en revisión— una segunda pasada que reintroduce el contexto previo para la detección emocional.
+El modo en que el discurso se segmenta condiciona qué configuraciones emocionales resultan visibles para el sistema. Elegir la frase, el párrafo o el documento entero como unidad de análisis define distintas condiciones del medio sobre el que se aplicarán las operaciones de reconocimiento. Cada género fija su unidad: el `discurso_presidencial` trabaja por frase; el `articulo_periodistico`, por párrafo; el `tuit`, por documento completo (y desactiva el resumen, por la brevedad del género). Emociones que solo se reconocen en la continuidad pueden perderse en una primera lectura aislada, y por eso los géneros de contexto discursivo admiten una segunda pasada opcional que reintroduce las unidades previas para la detección emocional.
 
 ---
 
@@ -315,40 +315,3 @@ Zappavigna, M. (2011). Ambient affiliation: A linguistic perspective on Twitter.
 
 - [*EmoParse: hacia la automatización del análisis de emociones discursivas con IA generativa*](https://github.com/alexdcolman/EmoParse/blob/main/docs/other/EMOPARSE_HACIA_LA_AUTOMATIZACION_DEL_ANALISIS_DE_EMOCIONES_DISCURSIVAS_CON_IA_GENERATIVA.pdf) — Trabajo (PDF) donde se desarrollan en extenso el enfoque teórico-metodológico y la prueba del sistema.
 - [Tipología de destinatarios por tipo de tuit: fundamentación teórica y propuesta](https://github.com/alexdcolman/EmoParse/blob/main/docs/other/tipologia_destinatarios_tuits_fundamentacion.md) — el cruce entre género y tipo de discurso en el dominio digital, y el anclaje teórico de las categorías de destinatario.
-
-<!-- EMOPARSE:VAL01-NORMALIZATION-CONCEPTS START -->
-## Detección abierta, normalización y variables derivadas
-
-La detección de emociones no obliga al modelo a elegir dentro de una lista
-canónica cerrada. `emotions` conserva la etiqueta producida por el modelo y
-`normalize_emotions` intenta vincularla después con un nombre canónico. Así se
-mantienen tanto la forma detectada como una categoría comparable para análisis
-agregados.
-
-Los recursos cumplen funciones distintas:
-
-- `emociones.json` define los modos de existencia de la emoción y puede formar
-  parte del contexto de detección;
-- `catalogo_normalizacion_emociones.json` contiene nombres canónicos y aliases,
-  se usa exclusivamente en `normalize_emotions` y no se incorpora a prompts;
-- `restricciones_caracterizacion_emociones.json` contiene las restricciones
-  empleadas por la validación V11 de la caracterización.
-
-El modelo de caracterización produce `tipo_configuracion`. A partir de ese
-valor, el sistema deriva de manera determinista `modo_semiotizacion` y
-`modo_identificacion`. Estas dos variables no desaparecen: siguen siendo
-outputs analíticos persistidos y exportados. Lo que se evita es pedirle al LLM
-tres decisiones redundantes que podrían resultar incompatibles.
-
-### Validación técnica y revisión semántica
-
-Un smoke test comprueba que el pipeline complete sus stages, respete schemas,
-persistencia, routing y límites de contexto. No exige coincidencia exacta con
-una única anotación humana. Omisiones, detecciones adicionales, atribuciones
-discutibles y lecturas ambiguas se registran para evaluación semántica y
-optimización posterior.
-
-El smoke de VAL-01 se cerró con versions v19/v54/v27/v41 y
-`gemma4-31b` en `emotions`. La validación ampliada sobre
-`bluesky_milei.jsonl` —500 posts— permanece como gate previo a v1.0.0.
-<!-- EMOPARSE:VAL01-NORMALIZATION-CONCEPTS END -->

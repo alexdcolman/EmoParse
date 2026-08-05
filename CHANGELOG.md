@@ -1,5 +1,77 @@
 # Changelog
 
+## 2.3 — comparación de runs y reportes persistidos
+
+- `run_metrics` conserva el alias efectivo por stage y permite advertir runs mixtos.
+- `emoparse eval` puede persistir reportes golden y de control en `eval_reports`.
+- El dashboard incorpora **Comparar modelos** con metadata, resultados por género, acuerdo,
+  coincidencias referenciales y violaciones de contrato.
+- La validación real con modelos queda pendiente hasta completar el golden v2.
+
+## Contexto satélite para la anotación del golden v2
+
+- `7.1A` adquiere padres, antecedentes, raíz, citas y reposts referidos por el corpus de Bluesky,
+  sin incorporar respuestas posteriores ni mezclar el corpus origen con el satélite.
+- Se congelan posts normalizados, vínculos tipados, una instantánea por unidad y un manifiesto con
+  hashes; el proceso no ejecuta stages ni modifica la base de origen.
+- El servicio local admite contexto estructurado antes de comenzar la campaña, conserva el hash de
+  la instantánea y respalda su SQLite antes de adjuntarla.
+
+## Cobertura del golden v2 por género
+
+- `FIX-GOLDEN-03`: la cobertura mínima se ajusta a 200 posts, 80 párrafos periodísticos y 200
+  frases presidenciales.
+- La preparación solicita hasta 30 artículos y 24 discursos; el protocolo manual usa 80 unidades
+  para artículos.
+
+## Corrección de estructura y cobertura del corpus periodístico
+
+- `FIX-GOLDEN-02`: Página/12 prioriza el cuerpo ANS/HTML con límites de párrafo sobre el `articleBody` aplanado de JSON-LD.
+- Se agrega una reparación transaccional del corpus periodístico ad hoc, sin LLM y con respaldo previo.
+
+## Corrección de adquisición para el golden v2
+
+- Página/12 sobreadquiere candidatos para completar 24 artículos válidos cuando algunas URLs
+  conservan metadata pero ya no exponen el cuerpo de la nota.
+- La reanudación conserva los artículos existentes, deduplica y corta exactamente en el objetivo.
+
+## Organización de referencias y lineamientos de escritura
+
+- Se incorpora un índice documental que identifica la fuente de verdad de cada tema y la función de
+  las duplicaciones públicas e internas.
+- La antigua referencia monolítica `emoparse_docs.md` queda como redireccionador; sus detalles únicos
+  se distribuyen en referencias de pipeline, ejecución LLM, persistencia y gobernanza de prompts.
+- `docs/arquitectura.md` documenta backends, batches y cache, y se agrega una guía pública de solución
+  de problemas.
+- La página de artículos periodísticos se reescribe con los lineamientos visuales y retóricos del
+  proyecto.
+
+## Documentación pública y género periodístico
+
+- El sitio incorpora una página propia para artículos periodísticos y presenta de forma consistente
+  los tres géneros incluidos.
+- Se agrega un tutorial completo de artículos, una referencia técnica pública de arquitectura y una
+  navegación actualizada en todas las páginas.
+- Se corrigen los comandos de adquisición de discursos y se documentan la metadata editorial, la
+  segmentación por párrafos y su presentación y exportación genéricas.
+- El SVG del recorrido general incluye artículos; las capturas reales pendientes quedan especificadas
+  para la revisión previa a la próxima publicación minor.
+
+## 2.1 — preparación del golden set v2 multigénero
+
+- `emoparse eval --make-sample` incorpora género, metadata de anotación, fuente y modo de
+  existencia, y permite exigir diversidad mínima y un máximo de unidades por texto.
+- `--freeze-sample` valida y congela planillas completas como JSONL; `--make-retest` prepara una
+  segunda pasada ciega de 30 unidades.
+- `--agreement` compara anotadores o pasadas sobre presencia, tipo, experienciador, fuente, modo y
+  foria.
+- `--golden --por-genero` acepta un `--db` por género y produce resultados agregados y separados.
+- El manual y `evals/golden/v2/README.md` fijan el protocolo de anotación de autor.
+- `emoparse run --prepare-only` crea bases con ingesta y segmentación, sin stages ni modelos.
+- `scripts/prepare_golden_v2_corpora.sh` adquiere tres corpus locales nuevos y prepara una SQLite
+  independiente por género; `validate_golden_v2_corpora.py` verifica cobertura y ausencia de salidas
+  analíticas.
+
 <!-- EMOPARSE:VAL01-LOTE1-CHANGELOG START -->
 ## VAL-01 · Cierre técnico del lote 1
 
@@ -26,7 +98,7 @@
 - elimina el catálogo canónico de todos los prompts, agentes de detección y juez;
 - `emotions` y `emotions_pass2` vuelven a vocabulario abierto y `normalize_emotions` canonicaliza ex post; la evaluación consume `tipo_emocion_canonico` ya persistido;
 - renombra y divide el antiguo recurso: `catalogo_normalizacion_emociones.json` queda exclusivo de `normalize_emotions`, mientras V11 usa `restricciones_caracterizacion_emociones.json`;
-- fija en `.assistant/PROMPT_GOVERNANCE.md` la prohibición absoluta y la diferencia con `emociones.json`, que contiene los modos de existencia;
+- fija en `.dev/referencia/GOBERNANZA_DE_PROMPTS.md` la prohibición absoluta y la diferencia con `emociones.json`, que contiene los modos de existencia;
 - añade contratos para impedir regresiones y reduce nuevamente la huella de prompt de Gemma 4.
 
 
@@ -43,7 +115,7 @@
   atribuciones al enunciador sustentadas solo en matrices epistémicas.
 - Añade contratos con contraejemplos, presupuesto de prompt, medición
   reproducible y una regresión preparada para `gemma4-31b`.
-- Documenta la gobernanza de prompts en `.assistant/PROMPT_GOVERNANCE.md`.
+- Documenta la gobernanza de prompts en `.dev/referencia/GOBERNANZA_DE_PROMPTS.md`.
 - Versiones: `knowledge=v18`, `prompt=v53`, `ontology=v26`, `schema=v41`.
 
 Los cambios públicos relevantes de EmoParse se registran en este archivo. El mantenimiento formal
@@ -100,7 +172,7 @@ El formato sigue los principios de Keep a Changelog y el proyecto usa versionado
 - `normalize_emotions` y `judge` reutilizan la misma ontología configurada.
 - Se agregan contratos del cableado real del runner para evitar regresiones.
 
-## [Sin publicar] — v0.7.0
+## [v0.7.0] — 2026-08-05
 
 ### Agregado
 
@@ -225,3 +297,10 @@ El formato sigue los principios de Keep a Changelog y el proyecto usa versionado
 
 v0.6.5 es la primera versión tomada como línea de base por este changelog. Los cambios anteriores
 se consultan en el historial de Git y la documentación histórica del proyecto.
+
+### 4.1A-CTX-01 · Contexto intradocumental de anotación
+
+- Se incorporaron instantáneas reproducibles de metadata y unidades vecinas para artículos y
+  discursos del golden v2.
+- El servicio de anotación distingue contexto conversacional externo y contexto contenido en el
+  mismo documento, sin usar resultados de modelos para orientar al anotador.

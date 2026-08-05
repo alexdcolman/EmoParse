@@ -27,6 +27,7 @@
       <li><a href="index.html">Portada</a></li>
       <li><a href="enfoque.html">El enfoque</a></li>
       <li><a href="pipeline.html" aria-current="page">Cómo funciona</a></li>
+      <li><a href="periodistico.html">Artículos</a></li>
       <li><a href="digital.html">Posts y redes</a></li>
       <li><a href="tablero.html">El tablero</a></li>
       <li><a href="empezar.html">Empezar</a></li>
@@ -130,13 +131,14 @@
     <h2 id="unidades"><span class="num">2</span>En qué se corta el texto</h2>
 
     <p>El modo de segmentar condiciona qué configuraciones emocionales resultan visibles. Cada género
-    declara su unidad: los discursos presidenciales se cortan por frase, los posts se toman enteros,
-    porque un post es de por sí una unidad breve.</p>
+    declara su unidad: los discursos presidenciales se cortan por frase, los artículos periodísticos
+    por párrafo y los posts se toman enteros, porque un post es de por sí una unidad breve.</p>
 
     <p>El cortador de frases contempla las abreviaturas del español, junta oraciones muy cortas y
-    parte las muy largas por punto y coma o por coma. Una emoción que solo se reconoce en la
-    continuidad de varias frases puede perderse en una lectura frase por frase, y esa es la carencia
-    que la segunda lectura intenta cubrir.</p>
+    parte las muy largas por punto y coma o por coma. En los artículos, el párrafo conserva juntas
+    varias oraciones que desarrollan una misma escena, explicación o cita. Una emoción que solo se
+    reconoce en la continuidad de varias unidades puede perderse en la primera lectura, y esa es la
+    carencia que la segunda lectura intenta cubrir cuando el género la admite.</p>
 
     <h2 id="escena"><span class="num">3</span>Quién habla y a quiénes</h2>
 
@@ -357,43 +359,7 @@
     </div>
 
   </div>
-  <!-- EMOPARSE:VAL01-NORMALIZATION-PIPELINE START -->
-<section id="normalizacion-emociones-val01">
-  <h2>Detección, normalización y caracterización</h2>
-  <p>
-    La stage <code>emotions</code> trabaja con vocabulario abierto.
-    <code>normalize_emotions</code> asigna después un nombre canónico sin
-    reemplazar la etiqueta original.
-  </p>
-  <ul>
-    <li>
-      <code>emociones.json</code> define los modos de existencia utilizados
-      durante la detección.
-    </li>
-    <li>
-      <code>catalogo_normalizacion_emociones.json</code> contiene nombres
-      canónicos y aliases; se usa únicamente en
-      <code>normalize_emotions</code> y no entra en prompts.
-    </li>
-    <li>
-      <code>restricciones_caracterizacion_emociones.json</code> reúne las
-      restricciones de caracterización utilizadas por V11.
-    </li>
-  </ul>
-  <p>
-    <code>characterizer</code> produce <code>tipo_configuracion</code>. El
-    sistema deriva determinísticamente
-    <code>modo_semiotizacion</code> y <code>modo_identificacion</code>, que
-    continúan disponibles como variables analíticas y columnas exportadas.
-  </p>
-  <p>
-    El smoke técnico VAL-01 con versions v19/v54/v27/v41 y
-    <code>gemma4-31b</code> en <code>emotions</code> comprobó la integración
-    multigénero. La evaluación semántica ampliada de 500 posts queda pendiente
-    antes de v1.0.0.
-  </p>
-</section>
-<!-- EMOPARSE:VAL01-NORMALIZATION-PIPELINE END -->
+
 </main>
 
   <footer class="pie">
