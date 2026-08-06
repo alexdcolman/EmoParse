@@ -1,4 +1,4 @@
-# EmoParse v0.6.5
+# EmoParse v0.7.0
 
 > Análisis de emociones en discursos con modelos de lenguaje locales.
 
@@ -19,7 +19,7 @@ Está pensado para investigadores en lingüística, semiótica, ciencias del len
 
 ---
 
-> 📖 **[Documentación completa (v0.6.5) →](https://alexdcolman.github.io/EmoParse/)**
+> 📖 **[Documentación completa (v0.7.0) →](https://alexdcolman.github.io/EmoParse/)**
 
 ---
 
@@ -54,7 +54,7 @@ pip install -e ".[nlp]"
 python -m spacy download es_core_news_md
 ```
 
-> Una imagen Docker oficial está en preparación.
+> Las imágenes Docker oficiales para CPU y CUDA están en preparación; los modelos se montarán desde afuera.
 
 ---
 

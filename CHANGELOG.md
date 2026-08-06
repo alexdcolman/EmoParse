@@ -1,5 +1,12 @@
 # Changelog
 
+## [Sin publicar]
+
+### Corregido
+
+- Las etiquetas de versión del README y del sitio público se sincronizan con la versión publicada
+  v0.7.0.
+
 ## 2.3 — comparación de runs y reportes persistidos
 
 - `run_metrics` conserva el alias efectivo por stage y permite advertir runs mixtos.
