@@ -80,7 +80,7 @@ jobs:
           cache-dependency-path: pyproject.toml
 
       - name: Instalar proyecto y dependencias de pruebas
-        run: python -m pip install -e ".[dev,scraping]"
+        run: python -m pip install -e ".[dev,scraping,ui]"
 
       - name: Contratos permanentes
         run: python -m pytest tests/contrato -q

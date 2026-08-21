@@ -49,6 +49,31 @@ def test_ci_uses_supported_python_matrix() -> None:
     assert matrix["python-version"] == ["3.11", "3.12"]
 
 
+def test_ci_test_job_installs_ui_for_full_collection() -> None:
+    jobs = _workflow()["jobs"]
+    assert isinstance(jobs, dict)
+    test_job = jobs["test"]
+    assert isinstance(test_job, dict)
+    steps = test_job["steps"]
+    assert isinstance(steps, list)
+
+    install = next(
+        step
+        for step in steps
+        if isinstance(step, dict)
+        and step.get("name") == "Instalar proyecto y dependencias de pruebas"
+    )
+    assert install["run"] == 'python -m pip install -e ".[dev,scraping,ui]"'
+
+    project = _pyproject()["project"]
+    assert isinstance(project, dict)
+    optional = project["optional-dependencies"]
+    assert isinstance(optional, dict)
+    ui = optional["ui"]
+    assert isinstance(ui, list)
+    assert any(item.startswith("streamlit>=") for item in ui)
+
+
 def test_contract_tests_are_blocking() -> None:
     text = WORKFLOW_PATH.read_text(encoding="utf-8")
     assert "python -m pytest tests/contrato -q" in text
