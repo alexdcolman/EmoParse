@@ -11,6 +11,7 @@ from pathlib import Path
 import streamlit as st
 
 from emoparse.app import data as data_layer
+from emoparse.version import __version__
 
 
 def render(runs_dir: Path) -> Path | None:
@@ -19,17 +20,7 @@ def render(runs_dir: Path) -> Path | None:
     Devuelve `None` si no hay runs disponibles.
     """
     st.sidebar.markdown(
-        """
-    <div style='padding: 1.2rem 0.5rem 1rem;'>
-        <div style='font-family:"DM Serif Display",serif; font-size:1.5rem; color:var(--accent); letter-spacing:-0.02em;'>
-            🧭 EmoParse
-        </div>
-        <div style='font-family:"DM Mono",monospace; font-size:0.7rem; color:var(--dim); margin-top:0.1rem;'>
-            v0.6.5 · análisis discursivo
-        </div>
-    </div>
-    <hr style='border-color:var(--border); margin: 0 0 1rem;'>
-    """,
+        _brand_markup(),
         unsafe_allow_html=True,
     )
 
@@ -66,6 +57,21 @@ def render(runs_dir: Path) -> Path | None:
     return selected.path
 
 
+def _brand_markup() -> str:
+    """Marca lateral con la versión canónica del paquete."""
+    return f"""
+    <div style='padding: 1.2rem 0.5rem 1rem;'>
+        <div style='font-family:"DM Serif Display",serif; font-size:1.5rem; color:var(--accent); letter-spacing:-0.02em;'>
+            🧭 EmoParse
+        </div>
+        <div style='font-family:"DM Mono",monospace; font-size:0.7rem; color:var(--dim); margin-top:0.1rem;'>
+            v{__version__} · análisis discursivo
+        </div>
+    </div>
+    <hr style='border-color:var(--border); margin: 0 0 1rem;'>
+    """
+
+
 def _format_run_option(run: data_layer.RunInfo) -> str:
     badge = ""
     if run.status == "completed":
@@ -86,6 +92,7 @@ def _render_run_stats(db_path: Path) -> None:
         return
 
     status = stats.get("status") or "—"
+    genre_label = data_layer.format_run_genre_label(stats)
     badge_class = {
         "completed": "badge-ok",
         "failed": "badge-err",
@@ -99,6 +106,13 @@ def _render_run_stats(db_path: Path) -> None:
         <div style='font-family:"DM Mono",monospace;font-size:0.85rem;color:var(--text);
                     word-break:break-all;line-height:1.3;margin-top:0.2rem;'>
             {stats.get("run_id") or "—"}
+        </div>
+        <div style='font-family:"DM Mono",monospace;font-size:0.7rem;color:var(--dim);
+                    text-transform:uppercase;letter-spacing:0.05em;margin-top:0.65rem;'>
+            Género
+        </div>
+        <div style='font-size:0.82rem;color:var(--text-dim);margin-top:0.15rem;'>
+            {genre_label}
         </div>
         <div style='margin-top:0.5rem;'>
             <span class='badge {badge_class}'>{status}</span>

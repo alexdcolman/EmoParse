@@ -7,7 +7,10 @@
 from __future__ import annotations
 
 import csv
+import json
+import sys
 from pathlib import Path
+from typing import Any
 
 from loguru import logger
 
@@ -24,6 +27,26 @@ _REQUIRED_COLUMNS: tuple[str, ...] = (
 )
 
 
+def _ensure_large_csv_fields() -> None:
+    """Permite reabrir CSV con snapshots ``raw`` grandes sin romper el dedupe."""
+    limit = sys.maxsize
+    while True:
+        try:
+            csv.field_size_limit(limit)
+            return
+        except OverflowError:
+            limit //= 10
+
+
+def _serialize_cell(value: Any) -> Any:
+    """Serializa valores estructurados como JSON estable para celdas CSV."""
+    if value is None:
+        return ""
+    if isinstance(value, (dict, list, tuple)):
+        return json.dumps(value, ensure_ascii=False, sort_keys=True, default=str)
+    return value
+
+
 class CsvAppender:
     """Append-only CSV writer con dedupe por URL."""
 
@@ -38,6 +61,7 @@ class CsvAppender:
         """Carga URLs y header si el CSV existe."""
         if not self.path.exists():
             return
+        _ensure_large_csv_fields()
         try:
             with self.path.open("r", encoding="utf-8-sig", newline="") as f:
                 reader = csv.DictReader(f)
@@ -76,7 +100,7 @@ class CsvAppender:
             writer = csv.DictWriter(f, fieldnames=self._existing_columns)
             if is_new:
                 writer.writeheader()
-            writer.writerow({k: d.get(k, "") for k in self._existing_columns})
+            writer.writerow({k: _serialize_cell(d.get(k, "")) for k in self._existing_columns})
 
         self._existing_urls.add(record.url)
 

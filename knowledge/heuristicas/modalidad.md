@@ -1,0 +1,12 @@
+- La unidad es cada arista. Identificá la subexpresión que sostiene ESE vínculo; no copies una decisión a todos los referentes de la marca.
+- `designacion`: la subexpresión nombra o categoriza directamente al referente. Si en la misma arista coexiste denominación léxica y referencia gramatical, prima `designacion`.
+- `referencia_gramatical`: pronombre, posesivo, clítico, concordancia o flexión refiere al referente sin nombrarlo. La metadata de deixis por sí sola no alcanza.
+- `predicacion`: antes de asignarla, verificá que el referente sea el evento, proceso o estado mismo. Si el referente es quien actúa, padece o cumple un rol, `predicacion` está prohibida. Una acción puede identificar inferencialmente a su agente o rol.
+- `identificacion_inferencial`: evidencia semántica o discursiva permite identificar al referente por actitud, valor, juicio, acción, conducta, rol o relación causal/funcional, sin nombrarlo ni referirlo gramaticalmente. Exigí evidencia defendible.
+- `atacar ↔ quienes_atacan` → `identificacion_inferencial`, no `predicacion`.
+- `tiró a la calle ↔ gobierno` → nunca `predicacion`.
+- El `canonical_id` nominal no decide la modalidad. En la MARCA, nombrar o categorizar el evento es `designacion`; construir predicativamente ese mismo evento puede ser `predicacion`.
+- En sintagmas mixtos, el núcleo nominal puede sostener `designacion` hacia un referente y el posesivo/deíctico `referencia_gramatical` hacia otro.
+- La primera persona plural puede incluir audiencia; no impongas una correspondencia rígida persona→rol.
+- Un vínculo upstream inferido no se vuelve `referencia_gramatical` solo porque la marca contenga un pronombre o flexión verbal.
+- Si ninguna de las cuatro modalidades sostiene la arista con evidencia suficiente, pedí revisión upstream.

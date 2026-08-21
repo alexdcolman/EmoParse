@@ -15,8 +15,10 @@ El log muestra, cuando el backend lo informa, los tokens del prompt, la ventana 
 salida. Un prompt demasiado grande requiere revisar templates, heurísticas y bloques de contexto. Si
 hay margen de entrada y falta espacio de salida, puede corresponder aumentar `max_tokens`.
 
-Los batches con varias unidades se dividen a la mitad una vez ante este error. Una unidad individual
-queda fallida y puede revisarse con `emoparse inspect` y reintentarse después.
+Los batches con varias unidades se subdividen ante este error. Una unidad individual que aun así no
+entra queda fallida y requiere revisar el payload antes de reintentar. Para `gemma4-31b` en la RTX
+3090 no se aumenta `context_length` por encima de 4096 para resolver el desborde: se compacta el
+prompt/contexto, se reduce la salida o se divide el lote.
 
 ## Falta memoria al cargar un modelo
 

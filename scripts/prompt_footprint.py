@@ -7,7 +7,8 @@ from pathlib import Path
 
 import yaml
 
-from emoparse.core.prompts import characterizer, emotions
+from emoparse.agents.actants import ACTANTS_COMPONENTS
+from emoparse.core.prompts import actants, characterizer, emotions, modalidad
 from emoparse.knowledge.loader import KnowledgeLoader
 
 
@@ -36,9 +37,21 @@ def build_footprint(root: Path) -> dict[str, int]:
         enunciador="@autor.bsky.social",
         heuristicas=knowledge.load_heuristics("heuristicas/characterizer.md"),
     )
+    modalidad_prompt = modalidad.render_system(
+        heuristicas=knowledge.load_heuristics("heuristicas/modalidad.md"),
+    )
+    actants_prompt = actants.render_system(
+        titulo="",
+        tipo_discurso="discurso_presidencial",
+        enabled_components=ACTANTS_COMPONENTS,
+        disabled_components=(),
+        heuristicas=knowledge.load_heuristics("heuristicas/actants.md"),
+    )
     return {
         "emotions_tuit_system_chars": len(emotion_prompt),
         "characterizer_system_chars": len(characterizer_prompt),
+        "modalidad_system_chars": len(modalidad_prompt),
+        "actants_system_chars": len(actants_prompt),
     }
 
 
@@ -72,19 +85,22 @@ def main() -> None:
 
     context_length = int(gemma.get("context_length", 0) or 0)
     if context_length:
-        emotions_tokens = math.ceil(footprint["emotions_tuit_system_chars"] / chars_per_token)
-        if emotions_tokens >= context_length:
-            print(
-                "ADVERTENCIA GEMMA4: la estimación conservadora del system "
-                "prompt alcanza o supera context_length=4096. "
-                "El tokenizer real y el corpus largo deben probarse."
-            )
-        else:
-            remaining = context_length - emotions_tokens
-            print(
-                "Margen estimado Gemma4 antes de user prompt y salida: "
-                f"~{remaining} tokens. Esta cifra no reemplaza la prueba real."
-            )
+        for key in ("emotions_tuit_system_chars", "actants_system_chars"):
+            if key not in footprint:
+                continue
+            estimated = math.ceil(footprint[key] / chars_per_token)
+            if estimated >= context_length:
+                print(
+                    f"ADVERTENCIA GEMMA4 {key}: la estimación conservadora del "
+                    f"system prompt alcanza o supera context_length={context_length}. "
+                    "El tokenizer real y el corpus largo deben probarse."
+                )
+            else:
+                remaining = context_length - estimated
+                print(
+                    f"Margen estimado Gemma4 para {key} antes de user prompt y salida: "
+                    f"~{remaining} tokens. Esta cifra no reemplaza la prueba real."
+                )
 
     if failed:
         raise SystemExit(1)

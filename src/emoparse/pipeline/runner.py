@@ -52,6 +52,7 @@ from emoparse.pipeline.stages import (
     VisionDescribeStage,
     _FraseStage,
 )
+from emoparse.storage.checkpoints import StageCheckpointsRepository
 from emoparse.storage.db import Database
 from emoparse.storage.discursos import DiscursosRepository
 from emoparse.storage.emociones import EmocionesRepository
@@ -287,6 +288,7 @@ class PipelineRunner:
         self._current_accumulator: StageMetricsAccumulator | None = None
         self._ctx = self._build_run_context()
         self._runs_repo.bootstrap(self._ctx)
+        self._checkpoint_repo = StageCheckpointsRepository(self._db)
         self._registry = BackendRegistry(
             {
                 alias: cfg.model_config_for_alias(alias)
@@ -491,6 +493,17 @@ class PipelineRunner:
             if isinstance(stage, (_FraseStage, EmotionsPass2Stage)):
                 stage.parallel = self._effective_parallel(stage_name)
             ok = stage.run_pending()
+        except Exception:
+            # Modalidad usa fail-fast deliberado; conservar su telemetría evita
+            # que un aborto estructural desaparezca del diagnóstico del run.
+            if stage_name == "modalidad":
+                self._metrics_repo.insert(
+                    run_id=self._run_id,
+                    stage_name=stage_name,
+                    snapshot=accumulator.snapshot(),
+                    model_alias=self._cfg.pipeline.stages.get(stage_name),
+                )
+            raise
         finally:
             self._current_accumulator = None
 
@@ -909,6 +922,7 @@ class PipelineRunner:
                 self._e_repo,
                 self._m_repo,
                 referentes_kb=self._load_referentes_kb_safe(),
+                checkpoints_repo=self._checkpoint_repo,
             )
 
         if name == "deixis":
@@ -920,26 +934,27 @@ class PipelineRunner:
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
+                checkpoints_repo=self._checkpoint_repo,
             )
 
         if name == "modalidad":
-            # LLM por defecto para los casos ambiguos; si no hay backend
-            # configurado para esta stage, degrada a NLP-only sin romper.
-            backend = None
-            try:
-                backend = self._get_backend(name)
-            except Exception:
-                backend = None
+            # Si la stage está habilitada en el pipeline, su backend es parte del
+            # contrato del run: un fallo de carga no degrada silenciosamente a NLP.
+            backend = self._get_backend(name)
+            alias = self._cfg.pipeline.stages[name]
+            model_cfg = self._cfg.models[alias]
             nlp_model = getattr(getattr(self._cfg, "modalidad", None), "nlp_model", None)
             return ModalidadStage(
                 self._d_repo,
                 self._m_repo,
                 backend=backend,
-                use_llm=backend is not None,
+                use_llm=True,
                 nlp_model=nlp_model,
                 agent_version=self._cfg.versions.prompt,
                 retry_config=self._retry_config,
                 genre=self._genre,
+                heuristicas=self._heuristics_for("modalidad", "heuristicas/modalidad.md"),
+                context_length=model_cfg.context_length,
             )
 
         if name == "normalize_emotions":

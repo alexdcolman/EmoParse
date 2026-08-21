@@ -283,6 +283,28 @@ CREATE INDEX IF NOT EXISTS idx_run_metrics_run_id
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+#  Tabla `stage_checkpoints`: estado idempotente de stages sin payload propio.
+# ══════════════════════════════════════════════════════════════════════════════
+
+CREATE_STAGE_CHECKPOINTS = """
+CREATE TABLE IF NOT EXISTS stage_checkpoints (
+    stage_name        TEXT NOT NULL,
+    scope_key         TEXT NOT NULL,
+    input_fingerprint TEXT NOT NULL,
+    stage_version     TEXT,
+    completed_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (stage_name, scope_key)
+)
+""".strip()
+
+
+CREATE_STAGE_CHECKPOINTS_STAGE_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_stage_checkpoints_stage
+    ON stage_checkpoints(stage_name)
+""".strip()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 #  Tabla `eval_reports`: reportes estructurados de evaluación.
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -417,16 +439,23 @@ CREATE TABLE IF NOT EXISTS mencion_canonico (
     -- es un vínculo deíctico. El canonical_id sigue siendo el referente concreto.
     deixis_tipo     TEXT,
     -- Modalidad referencial del vínculo marca→referente (stage `modalidad`):
-    --   'designacion'              (SN/nombre propio que nombra/categoriza)
-    --   'referencia_gramatical'    (deixis/morfología: pronombres, concordancia)
-    --   'identificacion_inferencial' (se identifica por la actitud/valores)
-    -- NULL si no fue clasificado.
+    --   'designacion'                (nombra/categoriza directamente)
+    --   'referencia_gramatical'      (deixis/morfología)
+    --   'predicacion'                (construye un evento/proceso/estado)
+    --   'identificacion_inferencial' (identificación semántica/discursiva)
+    -- NULL si no fue clasificado o si la arista requiere revisión upstream.
     modalidad       TEXT,
-    -- Naturaleza del referente al que apunta la marca:
-    --   'persona'|'colectivo'|'institucion'|'objeto_proceso'|'otro'. NULL si no.
+    -- Columna legacy de naturaleza. La modalidad nueva no la escribe; se
+    -- conserva por compatibilidad con datos y ediciones anteriores.
     naturaleza      TEXT,
-    -- Procedencia de la clasificación de modalidad/naturaleza: 'nlp'|'llm'|'human'.
+    -- Procedencia de la clasificación de modalidad: 'nlp'|'llm'|'human'.
     modalidad_origin TEXT,
+    -- Versión del último contrato automático que produjo modalidad o revisión.
+    -- Una edición humana posterior conserva este antecedente.
+    modalidad_version TEXT,
+    -- Motivo operativo cuando ninguna modalidad sostiene la arista y debe
+    -- revisarse el vínculo upstream. No es una modalidad.
+    modalidad_review_reason TEXT,
     -- Estado de la última pasada de semas para el referente. Se replica en
     -- todos sus vínculos para representar también un resultado vacío.
     semas_version   TEXT,
@@ -454,14 +483,15 @@ CREATE INDEX IF NOT EXISTS idx_mencion_canonico_mencion
 CREATE_CANONICO_SEMAS = """
 CREATE TABLE IF NOT EXISTS canonico_semas (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
-    -- Referente canónico (slug en referentes_kb). El sema se adjunta al
-    -- referente, no a una mención puntual.
+    -- Referente canónico (slug en referentes_kb). Los semas guardados aquí
+    -- describen rasgos intrínsecos del referente, no relaciones contextuales.
     canonical_id    TEXT NOT NULL,
-    sema            TEXT NOT NULL,    -- del vocabulario curado (knowledge/semas.json)
+    dimension       TEXT NOT NULL,    -- dimensión de knowledge/semas.json; 'legacy' en migraciones
+    sema            TEXT NOT NULL,    -- valor dentro de la dimensión
     status          TEXT NOT NULL DEFAULT 'proposed',  -- 'proposed'|'accepted'|'rejected'
     origin          TEXT NOT NULL DEFAULT 'llm',        -- 'llm'|'human'
     created_at      TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (canonical_id, sema)
+    UNIQUE (canonical_id, dimension, sema)
 )
 """.strip()
 
@@ -469,6 +499,12 @@ CREATE TABLE IF NOT EXISTS canonico_semas (
 CREATE_CANONICO_SEMAS_CANONICAL_INDEX = """
 CREATE INDEX IF NOT EXISTS idx_canonico_semas_canonical
     ON canonico_semas(canonical_id)
+""".strip()
+
+
+CREATE_CANONICO_SEMAS_DIMENSION_INDEX = """
+CREATE INDEX IF NOT EXISTS idx_canonico_semas_dimension
+    ON canonico_semas(dimension)
 """.strip()
 
 
@@ -731,6 +767,8 @@ ALL_TABLES_DDL: list[str] = [
     CREATE_VALIDATION_ISSUES_INDEX,
     CREATE_RUN_METRICS,
     CREATE_RUN_METRICS_INDEX,
+    CREATE_STAGE_CHECKPOINTS,
+    CREATE_STAGE_CHECKPOINTS_STAGE_INDEX,
     CREATE_EVAL_REPORTS,
     CREATE_EVAL_REPORTS_INDEX,
     CREATE_JUDGMENTS,
@@ -745,6 +783,7 @@ ALL_TABLES_DDL: list[str] = [
     CREATE_MENCION_CANONICO_MENCION_INDEX,
     CREATE_CANONICO_SEMAS,
     CREATE_CANONICO_SEMAS_CANONICAL_INDEX,
+    CREATE_CANONICO_SEMAS_DIMENSION_INDEX,
     CREATE_CANONICO_SEMAS_SEMA_INDEX,
     CREATE_POSTS,
     CREATE_POSTS_CONVERSACION_INDEX,

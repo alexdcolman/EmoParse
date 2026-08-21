@@ -505,7 +505,7 @@ def _render_frase(
     for i in range(0, len(activos), _EMOS_PER_ROW):
         fila = activos[i : i + _EMOS_PER_ROW]
         cols = st.columns(_EMOS_PER_ROW, gap="small")
-        for col, em in zip(cols, fila):
+        for col, em in zip(cols, fila, strict=False):
             with col:
                 _render_emocion_card(
                     ov,

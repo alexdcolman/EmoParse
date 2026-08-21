@@ -51,7 +51,7 @@ except ModuleNotFoundError:
     sys.modules["emoparse.core.backend"] = types.ModuleType("emoparse.core.backend")
     sys.modules["emoparse.core.backend.exceptions"] = exc_mod
 
-from emoparse.core.backend.retry import RetryConfig, retry_with_backoff
+from emoparse.core.backend.retry import RetryConfig, retry_with_backoff  # noqa: E402
 
 # ── RetryConfig ──────────────────────────────────────────────────────────────
 
@@ -76,7 +76,7 @@ class TestRetryConfig:
 
     def test_frozen(self):
         cfg = RetryConfig(max_retries=1, delays_seconds=[1])
-        with pytest.raises(Exception):  # dataclass frozen
+        with pytest.raises(Exception):  # noqa: B017  # dataclass frozen
             cfg.max_retries = 2  # type: ignore
 
 

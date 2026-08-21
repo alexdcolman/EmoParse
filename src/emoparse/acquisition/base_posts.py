@@ -79,7 +79,7 @@ class PostSourceAdapter(ABC):
     ) -> Iterator[PostRecord]:
         """Itera los posts de una cuenta."""
 
-    def close(self) -> None:
+    def close(self) -> None:  # noqa: B027
         """Libera recursos (sesiones HTTP, clientes). Default: no-op."""
 
     # ── Context manager ──────────────────────────────────────────────────────

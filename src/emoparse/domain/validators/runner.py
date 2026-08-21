@@ -235,6 +235,14 @@ class ValidationRunner:
             return "no identificado", []
 
         enunciador = payload.get("enunciador", "no identificado") or "no identificado"
-        enunciatarios = payload.get("enunciatarios", []) or []
+        enunciatarios_raw = payload.get("enunciatarios", []) or []
+        if isinstance(enunciatarios_raw, str):
+            try:
+                enunciatarios_raw = json.loads(enunciatarios_raw)
+            except (json.JSONDecodeError, TypeError):
+                enunciatarios_raw = []
+        if not isinstance(enunciatarios_raw, list):
+            enunciatarios_raw = []
+        enunciatarios = [item for item in enunciatarios_raw if isinstance(item, dict)]
 
         return enunciador, enunciatarios

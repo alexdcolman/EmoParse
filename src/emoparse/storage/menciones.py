@@ -21,11 +21,11 @@ from datetime import UTC
 from typing import Any
 
 from emoparse.core.text import canonical_slug
-from emoparse.pipeline.deixis import is_first_person_deictic
 from emoparse.storage.db import Database
 from emoparse.storage.referencia import (
     es_canonico_invalido,
     es_referente_desconocido,
+    is_first_person_deictic,
     split_coordinacion,
 )
 
@@ -697,20 +697,23 @@ class MencionesRepository:
     # ── Modalidad referencial (stage `modalidad`) ────────────────────────────
 
     def list_links_for_modalidad(self, codigo: str) -> list[dict[str, Any]]:
-        """Vínculos no rechazados de un discurso a clasificar por modalidad.
-
-        Devuelve, por vínculo: mencion_id, canonical_id, marca, frase (contexto).
-        """
+        """Aristas activas todavía pendientes de una decisión de modalidad."""
         with self._db.transaction() as cur:
             rows = cur.execute(
                 "SELECT mc.mencion_id AS mencion_id, mc.canonical_id AS canonical_id, "
-                "       m.marca AS marca, f.frase AS frase "
+                "       mc.origin AS origen_vinculo, mc.deixis_tipo AS deixis_tipo, "
+                "       m.marca AS marca, m.llm_inferencia AS llm_inferencia, "
+                "       f.frase AS frase, "
+                "       (SELECT group_concat(mf.funcion) FROM mencion_funcion mf "
+                "         WHERE mf.mencion_id = m.id) AS funciones "
                 "FROM mencion_canonico mc "
                 "JOIN menciones m ON m.id = mc.mencion_id "
                 "LEFT JOIN frases f ON f.codigo = m.codigo AND f.unit_idx = m.unit_idx "
                 "WHERE m.codigo = ? AND mc.status != 'rejected' "
                 "  AND mc.modalidad IS NULL "
-                "ORDER BY m.unit_idx, mc.mencion_id",
+                "  AND mc.modalidad_review_reason IS NULL "
+                "  AND COALESCE(mc.modalidad_origin, '') != 'human' "
+                "ORDER BY m.unit_idx, mc.mencion_id, mc.canonical_id",
                 (codigo,),
             ).fetchall()
         return [dict(r) for r in rows]
@@ -722,26 +725,38 @@ class MencionesRepository:
         modalidad: str | None,
         naturaleza: str | None,
         origin: str,
+        *,
+        version: str | None = None,
+        review_reason: str | None = None,
     ) -> None:
-        """Fija modalidad/naturaleza de un vínculo marca↔canónico.
+        """Fija modalidad de una arista sin pisar revisiones humanas.
 
-        `origin` indica la procedencia de la clasificación: 'nlp'|'llm'|'human'.
-        No pisa una clasificación humana con una automática.
+        `naturaleza` se conserva solo por compatibilidad con la edición manual
+        legacy; la stage automática de modalidad ya no la clasifica ni la escribe.
+        `modalidad_version` registra el antecedente automático y no se altera al
+        editar después con `origin='human'`.
         """
         with self._db.transaction() as cur:
             if origin != "human":
-                # No sobrescribir lo revisado a mano.
                 cur.execute(
-                    "UPDATE mencion_canonico SET modalidad = ?, naturaleza = ?, "
-                    "    modalidad_origin = ? "
+                    "UPDATE mencion_canonico SET modalidad = ?, "
+                    "    modalidad_origin = ?, modalidad_version = ?, "
+                    "    modalidad_review_reason = ? "
                     "WHERE mencion_id = ? AND canonical_id = ? "
                     "  AND (modalidad_origin IS NULL OR modalidad_origin != 'human')",
-                    (modalidad, naturaleza, origin, mencion_id, canonical_id),
+                    (
+                        modalidad,
+                        origin,
+                        version,
+                        review_reason,
+                        mencion_id,
+                        canonical_id,
+                    ),
                 )
             else:
                 cur.execute(
                     "UPDATE mencion_canonico SET modalidad = ?, naturaleza = ?, "
-                    "    modalidad_origin = 'human' "
+                    "    modalidad_origin = 'human', modalidad_review_reason = NULL "
                     "WHERE mencion_id = ? AND canonical_id = ?",
                     (modalidad, naturaleza, mencion_id, canonical_id),
                 )
@@ -775,70 +790,94 @@ class MencionesRepository:
     def propose_semas(
         self,
         canonical_id: str,
-        semas: list[str],
+        semas: list[tuple[str, str]],
         *,
-        allowed: set[str] | None = None,
+        allowed: dict[str, set[str]] | None = None,
         origin: str = "llm",
     ) -> int:
-        """Agrega semas propuestos a un referente, normalizados al vocabulario.
+        """Agrega semas dimensionados a un referente.
 
-        Si `allowed` se pasa, descarta los semas fuera del vocabulario curado.
-        No pisa un sema ya existente (respeta decisiones humanas). Devuelve
-        cuántos agregó.
+        `allowed`, cuando se pasa, valida cada valor dentro de su dimensión.
+        No pisa decisiones humanas ni colapsa valores homónimos de dimensiones
+        distintas.
         """
         canonical_id = canonical_slug(canonical_id)
         added = 0
         with self._db.transaction() as cur:
-            for sema in semas:
+            for dimension, sema in semas:
+                dimension = (dimension or "").strip().lower()
                 sema = (sema or "").strip().lower()
-                if not sema or (allowed is not None and sema not in allowed):
+                if not dimension or not sema:
                     continue
+                if allowed is not None:
+                    if dimension not in allowed or sema not in allowed[dimension]:
+                        continue
                 cur.execute(
                     "INSERT OR IGNORE INTO canonico_semas "
-                    "(canonical_id, sema, status, origin) "
-                    "VALUES (?, ?, 'proposed', ?)",
-                    (canonical_id, sema, origin),
+                    "(canonical_id, dimension, sema, status, origin) "
+                    "VALUES (?, ?, ?, 'proposed', ?)",
+                    (canonical_id, dimension, sema, origin),
                 )
                 added += cur.rowcount
         return added
 
-    def set_sema(self, canonical_id: str, sema: str, status: str = "accepted") -> None:
-        """Acepta/rechaza o agrega (humano) un sema de un referente."""
+    def set_sema(
+        self,
+        canonical_id: str,
+        dimension: str,
+        sema: str,
+        status: str = "accepted",
+    ) -> None:
+        """Acepta/rechaza o agrega manualmente un sema dentro de su dimensión."""
         canonical_id = canonical_slug(canonical_id)
+        dimension = (dimension or "").strip().lower()
         sema = (sema or "").strip().lower()
-        if not canonical_id or not sema:
+        if not canonical_id or not dimension or not sema:
             return
         with self._db.transaction() as cur:
             cur.execute(
                 "INSERT INTO canonico_semas "
-                "(canonical_id, sema, status, origin) "
-                "VALUES (?, ?, ?, 'human') "
-                "ON CONFLICT(canonical_id, sema) DO UPDATE SET status = excluded.status",
-                (canonical_id, sema, status),
+                "(canonical_id, dimension, sema, status, origin) "
+                "VALUES (?, ?, ?, ?, 'human') "
+                "ON CONFLICT(canonical_id, dimension, sema) DO UPDATE SET "
+                "status = excluded.status, origin = 'human'",
+                (canonical_id, dimension, sema, status),
             )
 
-    def remove_sema(self, canonical_id: str, sema: str) -> None:
-        """Elimina un sema de un referente."""
+    def remove_sema(self, canonical_id: str, dimension: str, sema: str) -> None:
+        """Elimina un sema de una dimensión concreta."""
         with self._db.transaction() as cur:
             cur.execute(
-                "DELETE FROM canonico_semas WHERE canonical_id = ? AND sema = ?",
-                (canonical_slug(canonical_id), (sema or "").strip().lower()),
+                "DELETE FROM canonico_semas WHERE canonical_id = ? AND dimension = ? AND sema = ?",
+                (
+                    canonical_slug(canonical_id),
+                    (dimension or "").strip().lower(),
+                    (sema or "").strip().lower(),
+                ),
             )
 
     def list_semas(self, canonical_id: str) -> list[dict[str, Any]]:
-        """Semas de un referente con su estado y origen."""
+        """Semas de un referente con dimensión, estado y origen."""
         rows = self._db.execute(
-            "SELECT sema, status, origin FROM canonico_semas WHERE canonical_id = ? ORDER BY sema",
+            "SELECT dimension, sema, status, origin FROM canonico_semas "
+            "WHERE canonical_id = ? ORDER BY dimension, sema",
             (canonical_slug(canonical_id),),
         ).fetchall()
         return [dict(r) for r in rows]
 
-    def canonicos_by_sema(self, sema: str, status: str = "accepted") -> set[str]:
-        """Canónicos que tienen un sema dado (por defecto, aceptado)."""
-        rows = self._db.execute(
-            "SELECT canonical_id FROM canonico_semas WHERE sema = ? AND status = ?",
-            ((sema or "").strip().lower(), status),
-        ).fetchall()
+    def canonicos_by_sema(
+        self,
+        sema: str,
+        status: str = "accepted",
+        dimension: str | None = None,
+    ) -> set[str]:
+        """Canónicos con un sema; opcionalmente restringidos por dimensión."""
+        params: list[str] = [(sema or "").strip().lower(), status]
+        sql = "SELECT canonical_id FROM canonico_semas WHERE sema = ? AND status = ?"
+        if dimension is not None:
+            sql += " AND dimension = ?"
+            params.append((dimension or "").strip().lower())
+        rows = self._db.execute(sql, tuple(params)).fetchall()
         return {r["canonical_id"] for r in rows}
 
     def list_canonicos(
@@ -877,9 +916,18 @@ class MencionesRepository:
         return out
 
     def canonicos_semas_procesados(self) -> set[str]:
-        """Canónicos ya barridos por la stage, incluso con resultado vacío."""
+        """Canónicos cerrados por semas sin error pendiente.
+
+        Un referente con ``semas_error`` conserva versión y diagnóstico, pero no se
+        considera resuelto: puede volver a ser elegible para ``retry`` o una corrida
+        posterior de la stage.
+        """
         rows = self._db.execute(
-            "SELECT DISTINCT canonical_id FROM mencion_canonico WHERE semas_version IS NOT NULL"
+            "SELECT canonical_id FROM mencion_canonico "
+            "WHERE status != 'rejected' "
+            "GROUP BY canonical_id "
+            "HAVING SUM(CASE WHEN semas_version IS NULL OR semas_error IS NOT NULL "
+            "THEN 1 ELSE 0 END) = 0"
         ).fetchall()
         return {r["canonical_id"] for r in rows}
 

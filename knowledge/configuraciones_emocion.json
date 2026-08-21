@@ -1,45 +1,73 @@
 {
-  "version": "v3",
+  "version": "v4",
   "configuraciones": {
     "sostenido_en_sustantivos": {
       "id": 1,
       "definicion": "La emoción es portada por sustantivos de la familia léxica de una emoción (ira, dolor, esperanza, sorpresa) que operan como núcleo del sintagma, con determinantes, modificadores o complementos, o en estructuras predicativas o transitivas. El actor afectado se determina por contexto.",
-      "ejemplos": ["la indignación de los presentes", "un profundo dolor", "su tristeza era evidente"]
+      "ejemplos": [
+        "la indignación de los presentes",
+        "un profundo dolor",
+        "su tristeza era evidente"
+      ]
     },
     "sostenido_en_adjetivos": {
       "id": 2,
       "definicion": "La emoción se expresa mediante adjetivos de la familia léxica de una emoción, que atribuyen una cualidad afectiva a un sustantivo o funcionan como predicativo con verbo copulativo. Asociar el adjetivo al actor que experimenta la emoción.",
-      "ejemplos": ["una situación inquietante", "los testigos estaban nerviosos"]
+      "ejemplos": [
+        "una situación inquietante",
+        "los testigos estaban nerviosos"
+      ]
     },
     "ordenado_alrededor_de_verbos_psicologicos": {
       "id": 3,
       "definicion": "La emoción se estructura alrededor de verbos psicológicos que designan procesos o estados afectivos (temer, alegrarse, lamentar). La transitividad, la reflexividad o la pasiva determinan cuál es la fuente y cuál el experienciador.",
-      "ejemplos": ["el informe preocupó a los analistas", "los manifestantes se enojaron", "lamentó la pérdida de su amigo"]
+      "ejemplos": [
+        "el informe preocupó a los analistas",
+        "los manifestantes se enojaron",
+        "lamentó la pérdida de su amigo"
+      ]
     },
     "cualificacion_por_indicadores_cognitivos": {
       "id": 4,
       "definicion": "La emoción se infiere de juicios, evaluaciones o procesos mentales que implican cambios en la atención, la certeza o la valoración, y que activan un estado afectivo asociado sin nombrarlo.",
-      "ejemplos": ["tendió a concentrar la atención en el problema", "no podía soportar la injusticia", "consideró improbable la hipótesis"]
+      "ejemplos": [
+        "tendió a concentrar la atención en el problema",
+        "no podía soportar la injusticia",
+        "consideró improbable la hipótesis"
+      ]
     },
     "cualificacion_por_indicadores_comportamiento": {
       "id": 5,
       "definicion": "La emoción se sostiene en verbos de acción o descripciones conductuales (gestos, posturas, actitudes) que son manifestación externa convencionalmente asociable a un estado afectivo.",
-      "ejemplos": ["levantó la voz en señal de protesta", "evitó el contacto visual", "se tapó la cara y comenzó a llorar"]
+      "ejemplos": [
+        "levantó la voz en señal de protesta",
+        "evitó el contacto visual",
+        "se tapó la cara y comenzó a llorar"
+      ]
     },
     "cualificacion_por_indicadores_axiologicos": {
       "id": 6,
-      "definicion": "La emoción se construye con juicios de valor explícitos o implícitos y oposiciones axiológicas (deseable/indeseable, legítimo/ilegítimo) que organizan el discurso y activan disposiciones afectivas.",
-      "ejemplos": ["una medida injusta y arbitraria", "la condena unánime del accionar represivo"]
+      "definicion": "La emoción se infiere de un juicio de valor atribuible al punto de vista del experienciador, incluso cuando ese punto de vista es representado o ecoico. No transfieras a otro actor una valoración que pertenece solo al enunciador principal.",
+      "ejemplos": [
+        "una medida injusta y arbitraria",
+        "la condena unánime del accionar represivo"
+      ]
     },
     "cualificacion_por_componentes_descriptivo_narrativos": {
       "id": 7,
-      "definicion": "La emoción emerge de la escenificación de situaciones o secuencias narrativas (amenaza, conflicto, tensión, alivio) que activan convenciones socioculturales, más que de marcas léxicas explícitas.",
-      "ejemplos": ["los agentes irrumpieron durante la madrugada en el edificio", "el incendio devoró todo el vecindario mientras ellos huían despavoridamente"]
+      "definicion": "La emoción se reconstruye desde la situación o secuencia que afecta al experienciador, sin marca léxica o conductual clara ni valoración atribuible a su propio punto de vista.",
+      "ejemplos": [
+        "los agentes irrumpieron durante la madrugada en el edificio",
+        "el incendio devoró todo el vecindario mientras ellos huían despavoridamente"
+      ]
     },
     "transposicion_situacion_reconocimiento_potencial": {
       "id": 8,
       "definicion": "La emoción se sostiene en construcciones impersonales, axiológicas o situacionales donde el enunciatario reconstruye el afecto desde su propia lectura. Usar cuando ninguna marca léxica ni conductual determina la emoción con claridad.",
-      "ejemplos": ["la situación exige cautela", "resulta evidente la gravedad del contexto"]
+      "ejemplos": [
+        "la situación exige cautela",
+        "resulta evidente la gravedad del contexto"
+      ]
     }
   }
 }

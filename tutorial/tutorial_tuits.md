@@ -137,7 +137,7 @@ emoparse run \
   --stages metadata,enunciation,emotions,explode_emotions,deixis,modalidad,normalize_emotions
 ```
 
-`deixis` resuelve a quién remite cada "yo", "nosotros", "ustedes"; `modalidad` clasifica el tipo de vínculo entre marca y referente; `normalize_emotions` asigna después un nombre canónico sin reemplazar la etiqueta original. Revisá en el dashboard primero **🧭 Deixis** y después **🧩 Referentes**.
+`deixis` resuelve a quién remite cada "yo", "nosotros", "ustedes"; `modalidad` clasifica el tipo de vínculo entre marca y referente; `normalize_emotions` asigna después un nombre canónico sin reemplazar la etiqueta original. Revisá en el dashboard primero **🧭 Deixis** y después **🏷 Referentes**.
 
 Una advertencia propia del género: en tuits, posiblemente, vas a encontrar **mayor dispersión de referentes** que en un discurso político clásico. La brevedad y la multiplicidad de voces generan más variabilidad en cómo se nombra cada entidad ("Milei", "el peluca", "gorda papuda", "@JMilei"). La revisión de deixis y referentes sigue siendo el paso humano más lento: para 500 posts, contá varias horas de trabajo.⁴
 
@@ -185,7 +185,6 @@ Se abre el dashboard. Además de las tabs generales (curva emocional, por actor,
 
 - **✳ Tecno** — la distribución de tecnolingüísticos y el uso en contexto de menciones, tecnografismos y links, más el afecto de cada emoji con las frases donde aparece.
 
-  ![tab Tecno](screenshots/tuits/7.png)
 
 - **🕸 Red** — la red de interacción y de similitud, que tiene su propia sección (abajo).
 

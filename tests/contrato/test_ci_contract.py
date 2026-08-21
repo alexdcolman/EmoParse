@@ -97,6 +97,7 @@ def test_ci_checks_types_and_generated_docs() -> None:
         "src/emoparse/config",
         "src/emoparse/core/text.py",
         "src/emoparse/core/grammar.py",
+        "src/emoparse/core/schemas.py",
         "src/emoparse/core/backend/exceptions.py",
         "src/emoparse/core/backend/retry.py",
         "src/emoparse/domain/validators/base.py",
@@ -121,7 +122,11 @@ def test_ruff_configuration_is_explicit() -> None:
     assert ruff["line-length"] == 100
     assert ruff["target-version"] == "py311"
     assert lint["select"] == ["E", "F", "I", "UP", "B"]
-    assert set(lint["ignore"]) >= {"E402", "F841", "B027", "B905"}
+    ignored = set(lint["ignore"])
+    assert ignored == {"E501"}
+    per_file_ignores = lint["per-file-ignores"]
+    assert isinstance(per_file_ignores, dict)
+    assert set(per_file_ignores["tests/**/*.py"]) == {"B011"}
 
 
 def test_development_extra_contains_ci_tools() -> None:

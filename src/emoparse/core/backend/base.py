@@ -145,13 +145,13 @@ class LLMBackend(ABC):
         Devuelve True si la llamada tiene éxito, False si hay error.
         """
 
-    def close(self) -> None:
+    def close(self) -> None:  # noqa: B027
         """Libera recursos del backend.
 
         Default: no-op. Override en backends con estado pesado.
         """
 
-    def reset_state(self) -> None:
+    def reset_state(self) -> None:  # noqa: B027
         """Vacía estado interno persistente entre llamadas.
 
         Ejemplo: KV-cache en llama.cpp. Default: no-op. Override en backends con estado.

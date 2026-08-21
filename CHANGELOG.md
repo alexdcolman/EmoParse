@@ -2,8 +2,44 @@
 
 ## [Sin publicar]
 
+### Documentación
+
+- Se completa la revisión DOC-02 de los tres tutoriales y sus capturas sobre la interfaz vigente.
+- El tutorial de artículos periodísticos usa un corpus de seis notas `static` como ejemplo y
+  simplifica sus capturas a las vistas necesarias.
+- El tutorial de tuits conserva una sola captura de la vista Tecno.
+
+
+### Configuración
+
+- `metadata` usa `gemma4-31b` como routing recomendado y de producción. La decisión surge de una
+  comparación controlada sobre artículos periodísticos y no modifica el contrato de la stage: se
+  mantienen las versiones de knowledge, prompt, ontology y schema.
+
+### Adquisición de Página/12 V4
+
+- El adapter de Página/12 conserva metadata, paratexto y estructura fuente en `raw`, mientras
+  `contenido` queda reservado al cuerpo textual normalizado.
+- `emoparse scrape` admite `--section` para una o varias secciones y `--subtype static`,
+  `--subtype lbp_article` o la selección combinada de ambos subtipos. La zona cultural admite los
+  nombres públicos asociados a Cultura y Cultura y Espectáculos.
+- Los `lbp_article` se normalizan a partir de sus `lbp_update` en orden editorial; embeds, contactos,
+  media, bylines aisladas y recirculación permanecen fuera del cuerpo y disponibles para auditoría
+  cuando corresponde.
+- `--max N` cuenta artículos efectivamente extraídos, aceptados y escritos; candidatos fallidos,
+  filtrados, vacíos o ya persistidos no consumen el límite.
+- El cierre V4 quedó validado con la suite focal y una auditoría real que cubrió artículos `static` y
+  `lbp_article`.
+
 ### Corregido
 
+- El dashboard toma su versión desde `emoparse.version` y muestra el género del run tanto en la
+  tarjeta lateral como en el encabezado de Resultados; `(inferido)` queda reservado para bases legacy
+  sin snapshot persistido.
+- V-10 vuelve a validar `enunciatarios` persistidos como JSON anidado sin fallar al tratarlos como strings.
+- `--resume` evita reconstruir materializaciones sin cambios mediante checkpoints persistentes; los resultados vacíos válidos de `deixis` quedan marcados como completos y las emociones sin match canónico no se normalizan repetidamente.
+- `modalidad` vuelve a clasificarse por cada arista `marca ↔ referente`, con correlación estable por `link_id`, revisión upstream cuando ninguna modalidad sostiene el vínculo y recovery singleton sólo para ítems no reconciliados. `predicacion` queda reservada para eventos, procesos o estados construidos por la marca, sin inferirla por la forma nominal del referente ni por la mera presencia de un verbo.
+- Se precisa la frontera entre configuración axiológica y descriptivo-narrativa: una valoración solo se atribuye al experienciador cuando pertenece a su punto de vista representado o ecoico; el ajuste incrementa `ontology` a v28 sin ampliar templates ni duplicar reglas ya presentes.
 - Las etiquetas de versión del README y del sitio público se sincronizan con la versión publicada
   v0.7.0.
 
@@ -26,21 +62,17 @@
 
 ## Cobertura del golden v2 por género
 
-- `FIX-GOLDEN-03`: la cobertura mínima se ajusta a 200 posts, 80 párrafos periodísticos y 200
+- `FIX-GOLDEN-03`: la cobertura se ajusta a 200 posts, exactamente 80 párrafos periodísticos y 200
   frases presidenciales.
-- La preparación solicita hasta 30 artículos y 24 discursos; el protocolo manual usa 80 unidades
-  para artículos.
+- La reconstrucción periodística posterior a Página/12 V4 mantiene `parrafo` como unidad y deja de
+  usar cantidades históricas de artículos como requisito del corpus.
 
-## Corrección de estructura y cobertura del corpus periodístico
+## Evolución previa del corpus periodístico
 
-- `FIX-GOLDEN-02`: Página/12 prioriza el cuerpo ANS/HTML con límites de párrafo sobre el `articleBody` aplanado de JSON-LD.
-- Se agrega una reparación transaccional del corpus periodístico ad hoc, sin LLM y con respaldo previo.
-
-## Corrección de adquisición para el golden v2
-
-- Página/12 sobreadquiere candidatos para completar 24 artículos válidos cuando algunas URLs
-  conservan metadata pero ya no exponen el cuerpo de la nota.
-- La reanudación conserva los artículos existentes, deduplica y corta exactamente en el objetivo.
+- `FIX-GOLDEN-02` corrigió la extracción del cuerpo y agregó una reparación transaccional del corpus
+  periodístico ad hoc, sin LLM y con respaldo previo.
+- Las estrategias anteriores de sobreadquisición con una cantidad fija de artículos quedan como
+  antecedente del desarrollo y no gobiernan la reconstrucción posterior a Página/12 V4.
 
 ## Organización de referencias y lineamientos de escritura
 

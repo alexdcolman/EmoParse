@@ -312,8 +312,8 @@ def mencion_set_modalidad(
 #  Promoción de referentes aceptados → referentes_kb.json
 # ══════════════════════════════════════════════════════════════════════════════
 
-import json
-import os
+import json  # noqa: E402
+import os  # noqa: E402
 
 
 def _default_referentes_kb_path() -> Path:
@@ -677,6 +677,7 @@ def merge_canonicals(
         return {"links_merged": 0, "semas_merged": 0}
 
     db = Database(Path(db_path))
+    RunsRepository(db).ensure_migrations()
     with db.transaction() as cur:
         # Vínculos que colisionarían (marca ya ligada a dst): eliminar el de src.
         cur.execute(
@@ -695,8 +696,9 @@ def merge_canonicals(
         # Mover semas de src a dst (sin pisar los ya presentes en dst).
         cur.execute(
             "INSERT OR IGNORE INTO canonico_semas "
-            "(canonical_id, sema, status, origin) "
-            "SELECT ?, sema, status, origin FROM canonico_semas WHERE canonical_id = ?",
+            "(canonical_id, dimension, sema, status, origin) "
+            "SELECT ?, dimension, sema, status, origin "
+            "FROM canonico_semas WHERE canonical_id = ?",
             (dst_id, src_id),
         )
         semas_merged = cur.rowcount
@@ -716,15 +718,23 @@ def merge_canonicals(
 
 
 def referente_set_sema(
-    db_path: Path, canonical_id: str, sema: str, status: str = "accepted"
+    db_path: Path,
+    canonical_id: str,
+    dimension: str,
+    sema: str,
+    status: str = "accepted",
 ) -> None:
-    """Agrega/acepta/rechaza un sema de un referente (decisión humana)."""
-    MencionesRepository(Database(Path(db_path))).set_sema(canonical_id, sema, status)
+    """Agrega/acepta/rechaza un sema dimensionado (decisión humana)."""
+    db = Database(Path(db_path))
+    RunsRepository(db).ensure_migrations()
+    MencionesRepository(db).set_sema(canonical_id, dimension, sema, status)
 
 
-def referente_remove_sema(db_path: Path, canonical_id: str, sema: str) -> None:
-    """Elimina un sema de un referente."""
-    MencionesRepository(Database(Path(db_path))).remove_sema(canonical_id, sema)
+def referente_remove_sema(db_path: Path, canonical_id: str, dimension: str, sema: str) -> None:
+    """Elimina un sema de una dimensión concreta."""
+    db = Database(Path(db_path))
+    RunsRepository(db).ensure_migrations()
+    MencionesRepository(db).remove_sema(canonical_id, dimension, sema)
 
 
 # ══════════════════════════════════════════════════════════════════════════════

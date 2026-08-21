@@ -213,7 +213,7 @@ def _modular(color_hex: str, delta_luz: float) -> str:
     luz = min(max(luz + delta_luz, 0.18), 0.76)
     sat = min(max(sat * (1 + delta_luz * 0.6), 0.06), 1.0)
     r2, g2, b2 = colorsys.hls_to_rgb(h, luz, sat)
-    return "#%02x%02x%02x" % (round(r2 * 255), round(g2 * 255), round(b2 * 255))
+    return "#%02x%02x%02x" % (round(r2 * 255), round(g2 * 255), round(b2 * 255))  # noqa: UP031
 
 
 def _fold(s: object) -> str:

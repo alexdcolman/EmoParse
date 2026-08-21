@@ -291,6 +291,19 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
         es la fila original asociada a su `unit_idx`.
         """
 
+    def _quality_control_item(
+        self,
+        item: BaseModel,
+        row: pd.Series,
+    ) -> BaseModel:
+        """Control opcional de calidad posterior al parseo de un ítem.
+
+        El default es no-op. Las subclases pueden reparar o rechazar un ítem
+        ya validado sin obligar a regenerar ni descartar sus hermanos del batch.
+        Deben elevar ``BackendError`` cuando el ítem no pueda recuperarse.
+        """
+        return item
+
     # ── API pública ──────────────────────────────────────────────────────────
 
     def run(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -488,7 +501,18 @@ class BaseBatchAgent(ABC, Generic[ResultT]):
             )
 
         for j, item in pares:
-            row_outputs[j].update(self._map_item_to_columns(item, unit_idx_to_row[j]))
+            try:
+                checked = self._quality_control_item(item, unit_idx_to_row[j])
+                row_outputs[j].update(self._map_item_to_columns(checked, unit_idx_to_row[j]))
+            except BackendError as e:
+                motivo = f"control de calidad: {type(e).__name__}: {e}"
+                logger.warning(
+                    "[{}] unidad {} sin resolver: {}",
+                    self.NAME,
+                    j,
+                    motivo,
+                )
+                row_outputs[j][self.ERROR_COLUMN] = motivo
 
     def _rechazar_batch(
         self,

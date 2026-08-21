@@ -17,7 +17,7 @@
 from __future__ import annotations
 
 import sqlite3
-from collections.abc import Iterable, Iterator
+from collections.abc import Iterable, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import datetime
@@ -87,7 +87,7 @@ class RunInfo:
 #  ya consumen, para que ninguna tenga que cambiar de import.
 # ══════════════════════════════════════════════════════════════════════════════
 
-from emoparse.storage.simulacros import (
+from emoparse.storage.simulacros import (  # noqa: E402
     _build_filter_sql,
     _canon_col,
     _canonico_semas_map,
@@ -98,10 +98,10 @@ from emoparse.storage.simulacros import (
     _resolve_marca_canonicos,
     _unpack_json_dict,
 )
-from emoparse.storage.simulacros import (
+from emoparse.storage.simulacros import (  # noqa: E402
     get_emociones as get_emociones,
 )
-from emoparse.storage.simulacros import (
+from emoparse.storage.simulacros import (  # noqa: E402
     get_emociones_enriched as get_emociones_enriched,
 )
 
@@ -210,6 +210,9 @@ def get_run_stats(db_path: Path) -> dict[str, Any]:
     """Devuelve el resumen de metadata general de un run.
 
     Se utiliza para renderizar el header informativo del sidebar.
+    El género proviene del snapshot persistido cuando existe. Sólo en bases
+    legacy sin snapshot se recurre a la inferencia compatible usada por la
+    comparación de runs.
     """
     with _ro_connect(db_path) as conn:
         run_row = conn.execute(
@@ -217,9 +220,30 @@ def get_run_stats(db_path: Path) -> dict[str, Any]:
             "knowledge_version, prompt_version, ontology_version, schema_version, notes "
             "FROM runs LIMIT 1"
         ).fetchone()
+        presentation = _genre_presentation_from_conn(conn)
         n_d = conn.execute("SELECT COUNT(*) AS n FROM discursos").fetchone()["n"]
         n_f = conn.execute("SELECT COUNT(*) AS n FROM frases").fetchone()["n"]
         n_e = conn.execute("SELECT COUNT(*) AS n FROM emociones").fetchone()["n"]
+
+    genre_id: str | None = None
+    genre_display_name: str | None = None
+    genre_inferred = False
+    if presentation is not None:
+        genre_id = presentation.genre_id
+        genre_display_name = presentation.display_name
+    else:
+        from emoparse.evaluation.run_comparison import load_run_overview
+
+        try:
+            overview = load_run_overview(db_path)
+        except (OSError, RuntimeError, ValueError, sqlite3.Error):
+            overview = None
+        if overview is not None:
+            genre_id = overview.genre
+            genre_display_name = overview.genre
+            genre_inferred = bool(
+                overview.genre and overview.genre_source not in {None, "snapshot"}
+            )
 
     return {
         "run_id": run_row["run_id"] if run_row else None,
@@ -231,10 +255,24 @@ def get_run_stats(db_path: Path) -> dict[str, Any]:
         "ontology_version": run_row["ontology_version"] if run_row else None,
         "schema_version": run_row["schema_version"] if run_row else None,
         "notes": (run_row["notes"] if run_row else None) or "",
+        "genre_id": genre_id,
+        "genre_display_name": genre_display_name,
+        "genre_inferred": genre_inferred,
         "n_discursos": n_d,
         "n_frases": n_f,
         "n_emociones": n_e,
     }
+
+
+def format_run_genre_label(stats: Mapping[str, Any]) -> str:
+    """Etiqueta legible del género, marcando sólo inferencias legacy."""
+    value = stats.get("genre_display_name") or stats.get("genre_id")
+    if not value:
+        return "—"
+    label = str(value)
+    if stats.get("genre_inferred"):
+        return f"{label} (inferido)"
+    return label
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -1094,10 +1132,19 @@ def list_canonico_semas(db_path: Path, canonical_id: str) -> list[dict[str, Any]
             is None
         ):
             return []
-        rows = conn.execute(
-            "SELECT sema, status, origin FROM canonico_semas WHERE canonical_id = ? ORDER BY sema",
-            (canonical_id,),
-        ).fetchall()
+        cols = {r["name"] for r in conn.execute("PRAGMA table_info(canonico_semas)")}
+        if "dimension" in cols:
+            rows = conn.execute(
+                "SELECT dimension, sema, status, origin FROM canonico_semas "
+                "WHERE canonical_id = ? ORDER BY dimension, sema",
+                (canonical_id,),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT 'legacy' AS dimension, sema, status, origin FROM canonico_semas "
+                "WHERE canonical_id = ? ORDER BY sema",
+                (canonical_id,),
+            ).fetchall()
     return [dict(r) for r in rows]
 
 
@@ -1405,7 +1452,7 @@ def _embedding_candidate_pairs(
 
     kept: list[str] = []
     vecs: list[Any] = []
-    for cid, doc in zip(cids, nlp.pipe(c.replace("_", " ") for c in cids)):
+    for cid, doc in zip(cids, nlp.pipe(c.replace("_", " ") for c in cids), strict=False):
         v = getattr(doc, "vector", None)
         if v is None:
             continue
@@ -1490,7 +1537,7 @@ def suggest_referent_merges(
             buckets[t].append(c)
 
     scored: dict[tuple[str, str], float] = {}
-    for t, members in buckets.items():
+    for _t, members in buckets.items():
         if len(members) < 2 or len(members) > max_block:
             continue
         for i in range(len(members)):
@@ -2204,7 +2251,9 @@ def agrupar_por_conversacion(db_path: Path, df: pd.DataFrame, modo: str) -> pd.D
     secuenciales representen la evolución de la conversación.
     """
     ctx = get_post_contexto(db_path)
-    fechas = dict(zip(ctx["codigo"].astype(str), ctx["fecha"])) if not ctx.empty else {}
+    fechas = (
+        dict(zip(ctx["codigo"].astype(str), ctx["fecha"], strict=False)) if not ctx.empty else {}
+    )
     if modo == "hashtag":
         pares = get_post_hashtags(db_path)
         if pares.empty:

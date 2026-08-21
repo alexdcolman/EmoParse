@@ -1,23 +1,7 @@
 # ══════════════════════════════════════════════════════════════════════════════
 #  emoparse.pipeline.modalidad_nlp
 #
-#  Clasificación NLP (spaCy) de la modalidad referencial de una marca respecto de
-#  su referente, y de la naturaleza del referente. Es el pre-pass barato de la
-#  stage `modalidad`: resuelve con alta precisión los casos claros
-#  (pronombres/verbos → referencia gramatical; nombres propios → designación) y
-#  deja los ambiguos (SN de nombre común, que puede ser designación o epíteto
-#  valorativo) para el LLM.
-#
-#  Ejes:
-#    - modalidad:  cómo la marca refiere al referente
-#        * designacion               → SN / nombre propio que nombra o categoriza
-#        * referencia_gramatical      → deixis/morfología (pronombres, concordancia)
-#        * identificacion_inferencial → se identifica por la actitud/valores
-#    - naturaleza: qué tipo de referente
-#        * persona | colectivo | institucion | objeto_proceso | otro
-#
-#  spaCy es opcional: si el modelo no está instalado, `available()` devuelve
-#  False y la clasificación NLP se omite (la stage puede caer a LLM o dejar NULL).
+#  Pre-pass conservador y link-aware de modalidad referencial.
 # ══════════════════════════════════════════════════════════════════════════════
 
 from __future__ import annotations
@@ -27,29 +11,18 @@ import unicodedata
 from dataclasses import dataclass
 from typing import Any
 
-#: Etiquetas válidas (deben coincidir con el schema/persistencia).
 MODALIDADES = frozenset(
     {
         "designacion",
         "referencia_gramatical",
+        "predicacion",
         "identificacion_inferencial",
     }
 )
-NATURALEZAS = frozenset(
-    {
-        "persona",
-        "colectivo",
-        "institucion",
-        "objeto_proceso",
-        "otro",
-    }
-)
 
-#: Modelo spaCy por defecto (ES). Se puede overridear al construir el clasificador.
 DEFAULT_MODEL = "es_core_news_md"
 _FALLBACK_MODELS = ("es_core_news_md", "es_core_news_sm", "es_core_news_lg")
 
-#: Pronombres/determinantes deícticos frecuentes (respaldo si el POS falla).
 _PRONOUNS = frozenset(
     {
         "yo",
@@ -95,17 +68,14 @@ _PRONOUNS = frozenset(
     }
 )
 
+_GRAMMATICAL_LINK_ORIGINS = frozenset({"coref", "deixis", "deixis_llm"})
+
 
 @dataclass(frozen=True)
 class ModalidadGuess:
-    """Resultado de la clasificación NLP de una marca.
-
-    `confident=True` significa que el caso es claro y no necesita LLM.
-    `modalidad`/`naturaleza` pueden ser None si no se pudo determinar.
-    """
+    """Resultado del pre-pass. Solo `confident=True` se persiste sin LLM."""
 
     modalidad: str | None
-    naturaleza: str | None
     confident: bool
     method: str = "nlp"
 
@@ -117,25 +87,29 @@ def _strip_accents(s: str) -> str:
 
 def _normalize(s: str) -> str:
     s = _strip_accents(s).lower()
-    s = re.sub(r"\(.*?\)", "", s)  # quita parentéticos
+    s = re.sub(r"\(.*?\)", "", s)
     return s.strip().strip("'\"").strip()
 
 
-class ModalidadNLP:
-    """Clasificador NLP perezoso basado en spaCy (ES).
+def _tokens(s: str) -> list[str]:
+    return [t for t in re.split(r"[^a-z0-9]+", _normalize(s)) if t]
 
-    Carga el modelo la primera vez que se usa. Si spaCy o el modelo no están
-    disponibles, queda inactivo (`available()` → False) y `classify` devuelve un
-    guess vacío no confiable.
-    """
+
+def _direct_lexical_match(marca: str, canonical_id: str) -> bool:
+    """True solo ante coincidencia léxica clara entre target y superficie."""
+    ref = _tokens(canonical_id.replace("_", " "))
+    surface = set(_tokens(marca))
+    return bool(ref) and all(tok in surface for tok in ref)
+
+
+class ModalidadNLP:
+    """Clasificador NLP conservador de una arista concreta."""
 
     def __init__(self, model: str | None = None) -> None:
         self._model_name = model or DEFAULT_MODEL
         self._nlp: Any | None = None
         self._loaded = False
         self._ok = False
-
-    # ── Carga perezosa ───────────────────────────────────────────────────────
 
     def _load(self) -> None:
         if self._loaded:
@@ -161,76 +135,86 @@ class ModalidadNLP:
         self._load()
         return self._ok
 
-    # ── Clasificación ────────────────────────────────────────────────────────
+    def classify(
+        self,
+        marca: str,
+        frase: str = "",
+        *,
+        canonical_id: str = "",
+        link_origin: str = "",
+        deixis_tipo: str | None = None,
+        funciones: str = "",
+    ) -> ModalidadGuess:
+        """Clasifica una arista; metadata aislada nunca basta para cerrar un caso."""
+        del frase, deixis_tipo, funciones  # contexto reservado para reglas futuras verificadas
 
-    def classify(self, marca: str, frase: str = "") -> ModalidadGuess:
-        """Clasifica la marca (opcionalmente en el contexto de su frase)."""
         norm = _normalize(marca)
         if not norm:
-            return ModalidadGuess(None, None, confident=False)
+            return ModalidadGuess(None, confident=False)
 
-        # Respaldo léxico barato: marca compuesta solo por pronombres/deícticos.
-        tokens_norm = [t for t in re.split(r"[^a-z0-9]+", norm) if t]
+        tokens_norm = _tokens(norm)
+        direct_match = _direct_lexical_match(marca, canonical_id)
+        grammatical_origin = str(link_origin or "") in _GRAMMATICAL_LINK_ORIGINS
+
+        # Pronombre/deíctico puro: solo es seguro si el vínculo ya viene resuelto
+        # por coref/deixis, o si la superficie coincide directamente con el target.
         if tokens_norm and all(t in _PRONOUNS for t in tokens_norm):
-            return ModalidadGuess("referencia_gramatical", None, confident=True)
+            if grammatical_origin or direct_match:
+                return ModalidadGuess("referencia_gramatical", confident=True)
+            return ModalidadGuess("referencia_gramatical", confident=False)
 
         if not self.available():
-            # Sin spaCy: solo lo resuelto por el respaldo léxico es confiable.
-            return ModalidadGuess(None, None, confident=False)
+            return ModalidadGuess(None, confident=False)
 
         doc = self._nlp(marca)  # type: ignore[misc]
         toks = [t for t in doc if not t.is_space and not t.is_punct]
         if not toks:
-            return ModalidadGuess(None, None, confident=False)
+            return ModalidadGuess(None, confident=False)
 
         pos = {t.pos_ for t in toks}
         has_propn = "PROPN" in pos
         has_noun = "NOUN" in pos
-        has_finite_verb = any(
-            t.pos_ in ("VERB", "AUX") and t.morph.get("VerbForm") != ["Inf"] for t in toks
+        finite_verbs = [
+            t for t in toks if t.pos_ in ("VERB", "AUX") and t.morph.get("VerbForm") != ["Inf"]
+        ]
+        has_finite_verb = bool(finite_verbs)
+        has_personal_finite_verb = any(
+            any(person in {"1", "2"} for person in t.morph.get("Person")) for t in finite_verbs
         )
+        nominal_subjects = [
+            t
+            for t in toks
+            if getattr(t, "dep_", "") in {"nsubj", "csubj"} and t.pos_ in ("NOUN", "PROPN")
+        ]
         only_pron = all(t.pos_ in ("PRON", "DET") for t in toks)
 
-        # Naturaleza vía NER (si el modelo la trae).
-        naturaleza = self._naturaleza_ner(doc, toks)
-
-        # 1) Pronombres/determinantes → referencia gramatical (deixis).
         if only_pron:
-            return ModalidadGuess("referencia_gramatical", naturaleza, confident=True)
+            if grammatical_origin or direct_match:
+                return ModalidadGuess("referencia_gramatical", confident=True)
+            return ModalidadGuess("referencia_gramatical", confident=False)
 
-        # 2) Nombre propio como núcleo → designación (caso claro).
-        if has_propn and not has_finite_verb:
-            return ModalidadGuess("designacion", naturaleza or "persona", confident=True)
+        # Designación directa: la superficie contiene de manera inequívoca el
+        # target lexical. Esto permite, por ejemplo, núcleo nominal ↔ su canónico
+        # sin extender la decisión al posesivo o a otros targets de la misma marca.
+        if (has_propn or has_noun) and direct_match and not has_finite_verb:
+            return ModalidadGuess("designacion", confident=True)
 
-        # 3) Verbo finito sin núcleo nominal → referencia predicativa/gramatical.
-        if has_finite_verb and not has_noun and not has_propn:
-            return ModalidadGuess("referencia_gramatical", naturaleza, confident=True)
+        # Flexión personal: solo se cierra automáticamente cuando el vínculo
+        # proviene de una resolución gramatical upstream. Si fue linking LLM,
+        # queda ambiguo aunque la forma verbal sea clara.
+        if has_personal_finite_verb and not nominal_subjects:
+            if grammatical_origin:
+                return ModalidadGuess("referencia_gramatical", confident=True)
+            return ModalidadGuess("referencia_gramatical", confident=False)
 
-        # 4) SN de nombre común: AMBIGUO (designación vs epíteto valorativo).
-        #    Guess tentativo = designación, pero NO confiable → lo decide el LLM.
-        if has_noun:
-            nat = naturaleza or self._naturaleza_por_numero(toks)
-            return ModalidadGuess("designacion", nat, confident=False)
+        # Una predicación verbal no se convierte automáticamente en predicacion:
+        # la equivalencia evento/proceso/estado ↔ referente requiere decisión LLM.
+        if has_finite_verb:
+            return ModalidadGuess(None, confident=False)
 
-        return ModalidadGuess(None, naturaleza, confident=False)
+        # SN sin coincidencia directa con el target: puede designar otro referente
+        # o sostener identificación inferencial. Lo decide el LLM.
+        if has_noun or has_propn:
+            return ModalidadGuess("designacion", confident=False)
 
-    # ── Helpers de naturaleza ────────────────────────────────────────────────
-
-    @staticmethod
-    def _naturaleza_ner(doc: Any, toks: list) -> str | None:
-        labels = {getattr(e, "label_", "") for e in getattr(doc, "ents", [])}
-        if "PER" in labels:
-            return "persona"
-        if "ORG" in labels:
-            return "institucion"
-        return None
-
-    @staticmethod
-    def _naturaleza_por_numero(toks: list) -> str | None:
-        """Heurística débil: SN plural → colectivo; singular → sin decidir."""
-        for t in toks:
-            if t.pos_ in ("NOUN", "PROPN"):
-                if t.morph.get("Number") == ["Plur"]:
-                    return "colectivo"
-                break
-        return None
+        return ModalidadGuess(None, confident=False)

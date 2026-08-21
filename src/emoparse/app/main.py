@@ -107,7 +107,11 @@ def main() -> None:
         tab_ejecutar.render(db_path)
         return
 
-    st.markdown("# Resultados")
+    try:
+        result_stats = data.get_run_stats(db_path)
+    except Exception:  # pragma: no cover — defensa contra DB corrupta
+        result_stats = {}
+    st.markdown(_results_title(result_stats))
     st.markdown(
         "<p style='color:var(--text-dim);margin-top:-0.5rem;'>"
         "Explorá los outputs del run seleccionado.</p>",
@@ -207,6 +211,14 @@ def main() -> None:
             tab_hashtags.render(db_path)
         with tab_tec:
             tab_tecno.render(db_path)
+
+
+def _results_title(stats: dict[str, object]) -> str:
+    """Título de Resultados con el género persistido o su fallback legacy."""
+    genre_label = data.format_run_genre_label(stats)
+    if genre_label == "—":
+        return "# Resultados"
+    return f"# Resultados · {genre_label}"
 
 
 def _render_runbar(db_path: Path) -> None:

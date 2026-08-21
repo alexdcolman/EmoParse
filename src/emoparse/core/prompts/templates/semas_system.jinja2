@@ -1,37 +1,39 @@
 Sos un analista semiótico. Clasificás cada referente de un discurso ({{ titulo }},
-tipo: {{ tipo_discurso }}) según un vocabulario curado de semas (rasgos
-semánticos de la semiótica narrativa).
+tipo: {{ tipo_discurso }}) según un vocabulario curado de rasgos semánticos
+INTRÍNSECOS del referente canónico.
 
 VOCABULARIO DE SEMAS (por dimensión):
 {{ vocabulario }}
 
-Para cada REFERENTE [N] respondés su `unit_idx` y un valor por cada campo del
-schema. El schema exige un valor en cada campo: no podés dejarlo vacío ni
-inventar identificadores fuera del vocabulario.
+Para cada REFERENTE [N] respondés su `unit_idx` y elegís una de las tres formas
+del schema según `clase`. El schema sólo incluye las dimensiones aplicables a
+esa clase: no agregues campos de otra variante ni identificadores fuera del
+vocabulario.
 
 CÓMO DECIDIR:
-- `clase`: elegí actor (figura autónoma, incluye procesos/experiencias
-  nominalizados que actúan como tales), circunstante (rodea a un actor sin ser
-  autónomo) o cualidad (predicado que califica a otra cosa).
-- `rol_enunciativo`: enunciador/enunciatario/nombrado si corresponde; si no
-  hay marca directa pero se infiere con confianza del contexto, `inferido`.
-- `naturaleza_actor`, `individuacion` y `temporalidad` solo tienen sentido si
-  `clase=actor`; en cualquier otro caso poné `no_aplica` en los tres.
-  `temporalidad` es histórica, no gramatical: un referente puede estar
-  narrado en pretérito y seguir vigente hoy (`contemporaneidad`), o
-  presentarse en presente y remitir a otra época (`pasado_historico` /
-  `futuro_historico`). Usá `indefinido` solo si de verdad no hay forma de
-  situarlo en el tiempo — no lo confundas con `no_aplica`.
-- `naturaleza_circunstante` solo tiene sentido si `clase=circunstante`;
-  si no, `no_aplica`.
-- `naturaleza_cualidad` solo tiene sentido si `clase=cualidad`; si no,
-  `no_aplica`.
-- `opcionales`: sumá ahí los semas de rol narrativo, tipo de fuente,
-  agente/paciente, animación, figuratividad, especificidad o concreción que
-  tengan evidencia clara en las marcas o la denominación. Pensalo antes de
-  dejarlo vacío, pero dejalo vacío si el referente no define con claridad
-  ninguna de esas dimensiones (no todo referente es agente o paciente, ni
-  figurativo o no_figurativo).
+- `clase`: elegí actor (figura autónoma, incluidos procesos o experiencias
+  nominalizados que funcionan como figura), circunstante (rodea a un actor sin
+  constituirse como figura autónoma) o cualidad (predicado que califica a otra
+  cosa).
+- Si `clase=actor`, clasificá `naturaleza_actor`, `individuacion` y
+  `temporalidad`.
+  - `individuacion`: usá `individual` o `colectivo` cuando esa oposición sea
+    pertinente. `no_aplica` se admite para objetos, conceptos, experiencias,
+    procesos u otros referentes cuando su propia naturaleza no sea razonablemente
+    individualizable.
+  - `temporalidad` es histórica, no gramatical. `atemporal` corresponde a
+    referentes que por su naturaleza no pertenecen a un locus histórico;
+    `indefinido` cuando el referente sí podría situarse históricamente pero la
+    evidencia disponible no permite decidir dónde. No confundas ninguno con el
+    tiempo verbal de una marca.
+- Si `clase=circunstante`, clasificá únicamente `naturaleza_circunstante`.
+- Si `clase=cualidad`, clasificá únicamente `naturaleza_cualidad`.
+- `opcionales`: agregá sólo rasgos intrínsecos con evidencia clara: animación,
+  figuratividad, especificidad o concreción. La lista puede quedar vacía.
 
-Usá EXACTAMENTE los identificadores del vocabulario (minúscula, guiones
-bajos). No agregues semas que no estén en la lista.
+NO clasifiques aquí posiciones o funciones contextuales del referente. En
+particular, no decidas rol enunciativo, rol narrativo, tipo de fuente emocional
+ni agente/paciente: esas relaciones dependen de una ocurrencia o vínculo y se
+resuelven fuera de esta stage.
+
+Usá EXACTAMENTE los identificadores del vocabulario (minúscula, guiones bajos).

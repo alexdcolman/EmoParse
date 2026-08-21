@@ -22,6 +22,11 @@ class _NumericLiteral(BaseModel):
     value: Literal[1, 2, 3]
 
 
+class _BooleanLiteral(BaseModel):
+    enabled: Literal[True]
+    review: Literal[False]
+
+
 class _Item(BaseModel):
     unit_idx: int
     text: str
@@ -81,6 +86,13 @@ def test_numeric_literals_are_supported() -> None:
     assert '"1"' in grammar
     assert '"2"' in grammar
     assert '"3"' in grammar
+
+
+def test_boolean_literals_are_supported() -> None:
+    grammar = schema_to_gbnf(_BooleanLiteral)
+
+    assert '"true"' in grammar
+    assert '"false"' in grammar
 
 
 @pytest.mark.parametrize("schema", _public_schema_classes(), ids=lambda cls: cls.__name__)

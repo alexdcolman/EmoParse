@@ -54,10 +54,13 @@ Copiá la configuración de ejemplo y ajustá las rutas de los modelos:
 cp config.example.yaml config.yaml
 ```
 
+![config.yaml](screenshots/articulo_periodistico/1.png)
+
 ## Paso 1 — Conseguir un corpus
 
-EmoParse incluye una fuente para Página/12. Descubre artículos mediante el sitemap y feeds RSS,
-extrae el cuerpo y conserva la metadata editorial disponible.
+EmoParse incluye una fuente para Página/12. El adapter V4 descubre artículos mediante feeds RSS de
+secciones y, cuando corresponde, el sitemap oficial. Normaliza el cuerpo y conserva por separado la
+metadata, el paratexto y la estructura fuente disponible.
 
 ```bash
 emoparse scrape \
@@ -65,16 +68,33 @@ emoparse scrape \
   --output data/pagina12_julio_2026.csv \
   --from 2026-07-01 \
   --to 2026-07-31 \
-  --max 24 \
-  --max-after-filter
+  --section economia,cultura \
+  --subtype static \
+  --max 20
 ```
 
-La adquisición es incremental: si el CSV ya existe, agrega artículos nuevos sin repetir las URLs
-que ya contiene. Para empezar conviene reunir entre 15 y 30 notas, de varias secciones y firmas.
+`--section` puede repetirse o recibir varias secciones separadas por coma. Para la zona cultural se
+aceptan los nombres asociados a Cultura y Cultura y Espectáculos. `--subtype` permite seleccionar
+`static`, `lbp_article` o ambos, por ejemplo `--subtype static,lbp_article`. Si se omite, el adapter
+admite ambos subtipos públicos.
 
-El archivo resultante incluye las columnas generales —como `codigo`, `titulo`, `fecha`, `contenido`
-y `url`— y, cuando la página las ofrece, `medio`, `seccion`, `volanta`, `subtitulo`, `autoria`,
-`agencia`, `epigrafe` e `idioma`.
+Los `lbp_article` se reconstruyen a partir de sus actualizaciones `lbp_update` en orden editorial.
+Embeds, contactos, media, bylines aisladas y recirculación no se mezclan con el cuerpo textual. Esa
+información, junto con metadata y paratexto fuente, se conserva en `raw` para auditoría.
+
+La adquisición es incremental: si el CSV ya existe, agrega artículos nuevos sin repetir las URLs
+que ya contiene. `--max N` cuenta artículos efectivamente extraídos, aceptados y escritos; una URL
+fallida, vacía, filtrada o ya existente no consume el límite.
+
+El archivo resultante incluye las columnas generales -como `codigo`, `titulo`, `fecha`, `contenido`
+y `url`- y, cuando la página las ofrece, `medio`, `seccion`, `volanta`, `subtitulo`, `autoria`,
+`agencia`, `epigrafe` e `idioma`. `raw` conserva la evidencia fuente estructurada sin convertirse en
+parte de `contenido`.
+
+Las capturas de este tutorial usan como ejemplo un corpus pequeño de seis artículos `static` de
+Página/12, uno por sección. No hace falta construir un corpus especial para reproducir las vistas.
+
+![corpus periodístico de ejemplo](screenshots/articulo_periodistico/2.png)
 
 También podés usar un corpus propio. Como mínimo debe tener `codigo` y `contenido`. Las columnas
 editoriales son opcionales, pero enriquecen la escena y ayudan a revisar la extracción.
@@ -130,8 +150,12 @@ En **Enunciación**, comprobá especialmente:
 - que los roles de destinatario tengan actores concretos y no etiquetas genéricas;
 - que las voces citadas no se confundan automáticamente con quien escribe.
 
+![tab Enunciación de un artículo](screenshots/articulo_periodistico/4.png)
+
 La tab **Revisión** muestra la metadata editorial con sus etiquetas. La tab **Tabla** mantiene los
 nombres estables del corpus para que las exportaciones sean comparables.
+
+![tab Revisión con metadata editorial y párrafo](screenshots/articulo_periodistico/5.png)
 
 ## Paso 4 — Detectar emociones por párrafo
 
@@ -153,8 +177,10 @@ fragmento antes de detectar emociones. `explode_emotions` separa cada emoción y
 vínculos entre sus marcas y los referentes.
 
 Antes de seguir, hacé una primera revisión en **Referentes**. En artículos periodísticos es frecuente
-que una misma entidad aparezca como nombre propio, cargo, institución o pronombre, y que una fuente
-citada cambie de denominación entre párrafos.
+que una misma entidad aparezca como nombre propio, cargo, institución o pronombre. La vista permite
+recorrer las entidades detectadas y decidir si alguna denominación debe unificarse con otra.
+
+![tab Referentes en el corpus periodístico](screenshots/articulo_periodistico/6.png)
 
 ## Paso 5 — Normalizar y caracterizar
 
@@ -302,12 +328,6 @@ emoparse eval \
 La planilla no muestra las respuestas del modelo. La anotación humana permite medir después cuánto
 cambia la salida entre configuraciones o versiones.
 
-## Capturas del tutorial
-
-Las capturas específicas de este tutorial se incorporarán bajo
-`tutorial/screenshots/articulo_periodistico/`. La guía local
-`.dev/operativo/GUIA_ACTUALIZACION_IMAGENES_SITIO.md` fija qué debe mostrar cada una para no reutilizar
-imágenes de discursos presidenciales o posts.
 
 ## Preguntas frecuentes
 

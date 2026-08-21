@@ -85,7 +85,7 @@ class TestPragmas:
             );
             """
         )
-        with pytest.raises(Exception):
+        with pytest.raises(Exception):  # noqa: B017
             # parent_id=99 no existe en parent.
             db.execute("INSERT INTO child VALUES (1, 99)")
 

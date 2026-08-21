@@ -210,13 +210,14 @@
 
     <h2 id="modalidad">emoparse modalidad</h2>
 
-    <p>Clasifica, con el pre-pass NLP (spaCy) y sin LLM, la modalidad referencial (designacion / referencia_gramatical / identificacion_inferencial) y la naturaleza del referente de cada vínculo marca→referente de una DB existente. Idempotente: solo clasifica lo que aún no tiene modalidad y no pisa lo editado a mano. La variante con LLM (para los casos ambiguos) se corre vía `emoparse run --stages ...,modalidad`.</p>
+    <p>Clasifica, con el pre-pass NLP (spaCy) y sin LLM, únicamente los vínculos cuya modalidad puede resolverse con alta confianza. Los casos ambiguos quedan pendientes; no se persiste un fallback tentativo. Idempotente y respetuoso de ediciones humanas. La variante con LLM se corre vía `emoparse run --stages ...,modalidad`.</p>
 
     <div class="tabla-caja tabla-comandos">
     <table>
       <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
       <tbody>
         <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>Path al .sqlite del run.</td></tr>
+        <tr><td><code>--config, -c</code></td><td><code>CONFIG</code></td><td><code>config.yaml</code></td><td>Path al YAML de config. Default: config.yaml.</td></tr>
         <tr><td><code>--nlp-model</code></td><td><code>NLP_MODEL</code></td><td></td><td>Modelo spaCy a usar (ES). Default: es_core_news_md con fallback a sm/lg. Instalá el modelo con `python -m spacy download &lt;modelo&gt;`.</td></tr>
       </tbody>
     </table>
@@ -277,10 +278,11 @@
       <tbody>
         <tr><td><code>--source</code></td><td><code>casarosada | pagina12</code></td><td><code>requerido</code></td><td>Fuente registrada a scrapear.</td></tr>
         <tr><td><code>--output</code></td><td><code>OUTPUT</code></td><td><code>requerido</code></td><td>CSV de salida. Se crea si no existe; append si ya existe.</td></tr>
-        <tr><td><code>--max</code></td><td><code>MAX</code></td><td></td><td>Máximo de discursos a extraer en esta corrida. None = sin tope.</td></tr>
+        <tr><td><code>--max</code></td><td><code>MAX</code></td><td></td><td>Máximo de discursos efectivamente extraídos y escritos en esta corrida. Las URLs fallidas, omitidas o ya presentes no consumen el tope.</td></tr>
         <tr><td><code>--from</code></td><td><code>YYYY-MM-DD</code></td><td></td><td>Solo discursos con fecha &gt;= esta. Best-effort si la fuente no expone fechas en el listado.</td></tr>
         <tr><td><code>--to</code></td><td><code>YYYY-MM-DD</code></td><td></td><td>Solo discursos con fecha &lt;= esta.</td></tr>
-        <tr><td><code>--max-after-filter</code></td><td></td><td></td><td>Si se usa junto con --from/--to, --max cuenta discursos ya filtrados por fecha (no el listado crudo del adapter). Por defecto --max se pasa tal cual al adapter, que puede cortar el listado antes de que se aplique el filtro de fechas, dando menos resultados de los esperados.</td></tr>
+        <tr><td><code>--section</code></td><td><code>SECCION</code></td><td></td><td>Página/12: limitar el descubrimiento a una o varias secciones RSS. Puede repetirse o recibir valores separados por coma, por ejemplo --section economia --section deportes.</td></tr>
+        <tr><td><code>--subtype</code></td><td><code>SUBTIPO</code></td><td></td><td>Página/12: limitar la salida a subtipos de artículo. Valores públicos: static y lbp_article. Puede repetirse o recibir valores separados por coma. Si se omite, se aceptan ambos.</td></tr>
         <tr><td><code>--mode</code></td><td><code>auto | http | selenium</code></td><td><code>auto</code></td><td>Cómo descargar páginas. auto = HTTP con fallback Selenium.</td></tr>
         <tr><td><code>--timeout</code></td><td><code>TIMEOUT</code></td><td><code>20.0</code></td><td>Timeout HTTP por request (segundos).</td></tr>
       </tbody>

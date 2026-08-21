@@ -51,6 +51,19 @@ models:
     max_tokens: 1024
     seed: 42
 
+  # Modelo recomendado para metadata en la configuración de producción vigente.
+  # La adopción se validó sobre artículos periodísticos con el mismo prompt/schema
+  # y no implica una versión nueva del contrato de la stage.
+  gemma4-31b:
+    backend: llama_cpp
+    path: ${EMOPARSE_MODELS_DIR:-models}/gemma-4-31B-it-Q4_K_M.gguf
+    context_length: 4096
+    n_gpu_layers: -1
+    temperature: 1.0
+    max_tokens: 2048
+    seed: 42
+    flash_attn: true
+
   # Ejemplo con LM Studio (descomentar si usás).
   # mi-modelo-lmstudio:
   #   backend: lmstudio
@@ -114,7 +127,7 @@ models:
 pipeline:
   stages:
     summarizer:      qwen3-14b
-    metadata:        phi4-mini
+    metadata:        gemma4-31b
     enunciation:     qwen3-14b
     # Sub-paso de identificación del enunciador (schema mínimo, apto para
     # un modelo chico). Opcional: sin esta línea usa el modelo de enunciation.
@@ -136,11 +149,11 @@ pipeline:
     # identificación). Requiere `enunciation` corrido previamente.
     deixis:          qwen3-14b
 
-    # Clasificación de la modalidad referencial de cada vínculo marca→referente
-    # (designacion / referencia_gramatical / identificacion_inferencial) y la
-    # naturaleza del referente. Pre-pass NLP (spaCy) + LLM solo para los casos
-    # ambiguos. Requiere `explode_emotions` (y idealmente `deixis`) previos.
-    # Si no se le asigna modelo o falla el backend, corre NLP-only.
+    # Clasificación por vínculo marca→referente: designacion,
+    # referencia_gramatical, predicacion o identificacion_inferencial. El
+    # pre-pass NLP solo cierra casos seguros; los ambiguos requieren el backend
+    # configurado. Si ese backend no carga, la stage aborta en vez de degradar
+    # silenciosamente a NLP-only.
     modalidad:       qwen3-14b
 
     # Asignación de semas a actores, experienciadores y fuentes.

@@ -14,13 +14,13 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-import argparse
-from collections.abc import Callable
+import argparse  # noqa: E402
+from collections.abc import Callable  # noqa: E402
 
-from loguru import logger
+from loguru import logger  # noqa: E402
 
-from emoparse.cli import logging_setup
-from emoparse.cli.commands import COMMANDS
+from emoparse.cli import logging_setup  # noqa: E402
+from emoparse.cli.commands import COMMANDS  # noqa: E402
 
 #: Handler de subcomando: recibe argparse.Namespace y devuelve exit code.
 HandlerFn = Callable[[argparse.Namespace], int]

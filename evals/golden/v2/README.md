@@ -1,16 +1,17 @@
 # Golden set v2 de autor, multigénero
 
-Estado: infraestructura preparada; las anotaciones todavía no están incorporadas.
+Estado: infraestructura preparada; las anotaciones todavía no están incorporadas. El componente
+`articulo_periodistico` fue reconstruido y adoptado el 2026-08-19 con Página/12 V4.
 
 El tamaño se define según la unidad de análisis de cada género:
 
 - `tuit`: 200 posts;
-- `articulo_periodistico`: 80 párrafos;
+- `articulo_periodistico`: exactamente 80 párrafos;
 - `discurso_presidencial`: 200 frases.
 
-Un párrafo periodístico suele contener varias frases y exige más lectura que un post o una frase de
-discurso. El corpus de artículos se congela sobre hasta 30 notas para conservar diversidad sin
-inflar la muestra manual.
+El género periodístico mantiene `parrafo` como unidad. Para reconstruirlo se adquieren tantos
+artículos actuales como hagan falta para obtener exactamente 80 unidades finales; no se fija una
+cantidad histórica de notas ni se preservan URLs anteriores como baseline.
 
 Cada línea JSONL representa una unidad e incluye:
 
@@ -56,26 +57,23 @@ data/golden_v2/source/discurso_presidencial.csv
 runs/golden_v2/discurso_presidencial.sqlite
 ```
 
-El script `scripts/prepare_golden_v2_corpora.sh` realiza una adquisición local y reproducible por
-archivos congelados:
+La preparación vigente conserva dos componentes ya construidos: el corpus de posts y el corpus de
+discursos presidenciales. El tramo periodístico del script
+`scripts/prepare_golden_v2_corpora.sh` documenta la preparación anterior y **no gobierna la
+reconstrucción post Página/12 V4**. No ejecutar ese tramo para fijar otra vez una cantidad histórica
+de artículos.
 
-- 240 posts públicos en español obtenidos de Bluesky mediante una búsqueda configurable
-  (`Milei` por defecto);
-- hasta 30 artículos recientes de Página/12;
-- 24 discursos de Casa Rosada.
+El componente `articulo_periodistico` vigente se reconstruyó desde cero con Página/12 V4: 12
+artículos `static` nuevos, dos por cada una de las seis secciones generales, produjeron 142 párrafos
+preparados sin LLM. La muestra adoptada contiene exactamente 80 unidades `parrafo`, con seed
+`20260819`, y su contexto intradocumental fue regenerado sobre esas mismas 80 unidades. No se usó el
+corpus histórico para comparar, filtrar ni seleccionar la muestra. `lbp_article` queda reservado para
+un pipeline específico posterior.
 
-Después ejecuta `emoparse run --prepare-only` para ingerir y segmentar cada corpus sin ejecutar
-stages ni cargar modelos. La validación exige al menos 200 posts, 80 párrafos periodísticos y 200
-frases presidenciales. Los artículos y discursos deben provenir de entre 15 y 30 textos; el corpus
-de tuits debe incluir al menos 15 autores. Los textos adquiridos y las bases permanecen locales y no
-se incorporan al repositorio ni a paquetes de actualización.
-
-```bash
-bash scripts/prepare_golden_v2_corpora.sh
-```
-
-El resultado se registra en `runs/golden_v2/manifest_preparacion.json`. Recién después de aprobar
-esta preparación se ejecuta el pipeline real sobre cada base con `--resume`.
+Los textos adquiridos y las bases permanecen locales y no se incorporan al repositorio ni a paquetes
+de actualización. Una vez aprobada la preparación de cada componente, el pipeline real se ejecuta
+sobre una copia independiente de la base con `--resume`; nunca sobre la base de preparación del
+golden.
 
 ## 1. Crear una planilla ciega por género
 
@@ -92,18 +90,19 @@ emoparse eval \
   --out evals/golden/v2/tuit_pasada1.csv
 ```
 
-Artículos, 80 párrafos distribuidos entre al menos 20 notas:
+Artículos, exactamente 80 párrafos. La muestra vigente se construyó sin `--min-textos` ni
+`--max-por-texto`, sobre la base periodística V4 adoptada:
 
 ```bash
 emoparse eval \
   --db runs/golden_v2/articulo_periodistico.sqlite \
   --make-sample \
   --n 80 \
-  --seed 42 \
-  --min-textos 20 \
-  --max-por-texto 4 \
+  --seed 20260819 \
   --out evals/golden/v2/articulo_periodistico_pasada1.csv
 ```
+
+No reutilizar los valores históricos `--min-textos 20` / `--max-por-texto 4`.
 
 Discursos, 200 frases distribuidas entre al menos 15 discursos:
 

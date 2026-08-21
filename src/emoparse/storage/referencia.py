@@ -22,6 +22,89 @@ MarcaMap = dict[str, dict[str, tuple[int, int, int]]]
 #: Índice de marcas de una función: (codigo, unit_idx) → MarcaMap.
 MarcaIndex = dict[tuple[str, int], MarcaMap]
 
+#: Deícticos de 1ª persona que refieren al enunciador del discurso.
+FIRST_PERSON_DEICTICS = frozenset(
+    {
+        "yo",
+        "mi",
+        "me",
+        "conmigo",
+        "mio",
+        "mia",
+        "mios",
+        "mias",
+        "nosotros",
+        "nosotras",
+        "nos",
+        "nuestro",
+        "nuestra",
+        "nuestros",
+        "nuestras",
+    }
+)
+
+#: Deícticos de 2ª persona (refieren al auditorio / enunciatario).
+SECOND_PERSON_DEICTICS = frozenset(
+    {
+        "vos",
+        "tu",
+        "te",
+        "ti",
+        "contigo",
+        "tuyo",
+        "tuya",
+        "tuyos",
+        "tuyas",
+        "usted",
+        "ustedes",
+        "ud",
+        "uds",
+        "vosotros",
+        "vosotras",
+        "os",
+        "su",
+        "sus",
+        "le",
+        "les",
+    }
+)
+
+#: Sufijos verbales típicos de 1ª persona del plural ("tenemos", "vamos",
+#: "logramos"). Recall-oriented: la stage LLM filtra los falsos positivos.
+_FIRST_PERSON_PLURAL_SUFFIXES = ("emos", "amos", "imos", "remos")
+
+
+def normalize_deictic(mencion: str) -> str:
+    """Normaliza una marca: sin acentos, minúsculas, sin parentéticos ni comillas."""
+    import unicodedata
+
+    s = unicodedata.normalize("NFKD", str(mencion or ""))
+    s = "".join(c for c in s if not unicodedata.combining(c)).lower()
+    s = re.sub(r"\(.*?\)", "", s)
+    return s.strip().strip("'\"").strip()
+
+
+def is_first_person_deictic(mencion: str) -> bool:
+    """True si la mención es un deíctico de 1ª persona."""
+    return normalize_deictic(mencion) in FIRST_PERSON_DEICTICS
+
+
+def is_deictic(mencion: str) -> bool:
+    """True si la marca contiene deixis de 1ª o 2ª persona candidata a resolver."""
+    s = normalize_deictic(mencion)
+    if not s:
+        return False
+    tokens = re.split(r"[^a-z0-9]+", s)
+    for token in tokens:
+        if not token:
+            continue
+        if token in FIRST_PERSON_DEICTICS or token in SECOND_PERSON_DEICTICS:
+            return True
+        if len(token) > 4 and token.endswith(_FIRST_PERSON_PLURAL_SUFFIXES):
+            return True
+    return False
+
+
 #: Valores que cuentan como "sin referente" y no generan canónico.
 _DESCONOCIDO = frozenset(
     {

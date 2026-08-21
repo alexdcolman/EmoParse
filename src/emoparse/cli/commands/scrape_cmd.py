@@ -52,7 +52,10 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         "--max",
         type=int,
         default=None,
-        help="Máximo de discursos a extraer en esta corrida. None = sin tope.",
+        help=(
+            "Máximo de discursos efectivamente extraídos y escritos en esta corrida. "
+            "Las URLs fallidas, omitidas o ya presentes no consumen el tope."
+        ),
     )
     p.add_argument(
         "--from",
@@ -74,11 +77,29 @@ def register(subparsers: argparse._SubParsersAction) -> None:
     p.add_argument(
         "--max-after-filter",
         action="store_true",
-        help="Si se usa junto con --from/--to, --max cuenta discursos ya "
-        "filtrados por fecha (no el listado crudo del adapter). Por "
-        "defecto --max se pasa tal cual al adapter, que puede cortar "
-        "el listado antes de que se aplique el filtro de fechas, "
-        "dando menos resultados de los esperados.",
+        help=argparse.SUPPRESS,
+    )
+    p.add_argument(
+        "--section",
+        action="append",
+        default=None,
+        metavar="SECCION",
+        help=(
+            "Página/12: limitar el descubrimiento a una o varias secciones RSS. "
+            "Puede repetirse o recibir valores separados por coma, por ejemplo "
+            "--section economia --section deportes."
+        ),
+    )
+    p.add_argument(
+        "--subtype",
+        action="append",
+        default=None,
+        metavar="SUBTIPO",
+        help=(
+            "Página/12: limitar la salida a subtipos de artículo. "
+            "Valores públicos: static y lbp_article. Puede repetirse o "
+            "recibir valores separados por coma. Si se omite, se aceptan ambos."
+        ),
     )
     p.add_argument(
         "--mode",
@@ -105,6 +126,29 @@ def parse_date(s: str) -> date:
         ) from e
 
 
+def _parse_multi_values(values: list[str] | None) -> tuple[str, ...]:
+    """Normaliza una opción repetible/coma-separada preservando el orden."""
+    if not values:
+        return ()
+    parsed: list[str] = []
+    for raw in values:
+        for part in raw.split(","):
+            value = part.strip()
+            if value and value not in parsed:
+                parsed.append(value)
+    return tuple(parsed)
+
+
+def _parse_sections(values: list[str] | None) -> tuple[str, ...]:
+    """Compatibilidad interna para la opción ``--section``."""
+    return _parse_multi_values(values)
+
+
+def _parse_subtypes(values: list[str] | None) -> tuple[str, ...]:
+    """Normaliza la opción pública ``--subtype`` de Página/12."""
+    return _parse_multi_values(values)
+
+
 def run(args: argparse.Namespace) -> int:
     """Ejecuta el subcomando. Devuelve exit code (0 = ok)."""
     logger.info(
@@ -112,21 +156,15 @@ def run(args: argparse.Namespace) -> int:
         f"max={args.max} from={args.from_date} to={args.to_date} mode={args.mode}"
     )
 
-    # Si hay rango de fechas y se pidió --max-after-filter, --max debe
-    # contar discursos ya filtrados (los que realmente se van a extraer),
-    # no el listado crudo de URLs. Para eso no le pasamos el tope al
-    # adapter (que podría cortar el listado antes de aplicar el filtro
-    # de fechas) y dejamos que el loop de abajo corte usando n_extracted,
-    # que solo cuenta lo que pasó _date_in_range.
-    has_date_range = args.from_date is not None or args.to_date is not None
-    if has_date_range and args.max_after_filter:
-        max_items_for_listing = None
+    # `--max` cuenta siempre registros efectivamente escritos. No se pasa el
+    # tope al listado porque una URL descubierta puede fallar, quedar vacía,
+    # estar ya persistida o caer fuera del rango de fechas.
+    max_items_for_listing = None
+    if args.max_after_filter:
         logger.debug(
-            "[scrape] --max-after-filter activo: no se limita el listado "
-            "crudo, --max se aplica sobre discursos ya filtrados por fecha."
+            "[scrape] --max-after-filter se conserva por compatibilidad; "
+            "--max ya cuenta siempre registros efectivamente extraídos."
         )
-    else:
-        max_items_for_listing = args.max
 
     # Filtros aplicados post-fetch; la fuente puede no exponer fechas en el listado.
     def _date_in_range(record_fecha: str) -> bool:
@@ -148,10 +186,23 @@ def run(args: argparse.Namespace) -> int:
         "mode": args.mode,
         "timeout": args.timeout,
     }
+    sections = _parse_sections(getattr(args, "section", None))
+    subtypes = _parse_subtypes(getattr(args, "subtype", None))
+    if sections or subtypes:
+        if args.source != "pagina12":
+            option = "--section" if sections else "--subtype"
+            logger.error(f"[scrape] {option} sólo está disponible para --source pagina12.")
+            return 2
+    if sections:
+        adapter_kwargs["sections"] = sections
+    if subtypes:
+        adapter_kwargs["subtypes"] = subtypes
 
-    n_extracted = 0
+    n_written = 0
+    n_counted = 0
     n_skipped = 0
     n_filtered = 0
+    n_source_filtered = 0
     n_failed = 0
 
     try:
@@ -190,16 +241,26 @@ def run(args: argparse.Namespace) -> int:
                     n_filtered += 1
                     continue
 
+                if not adapter.accepts_record(record):
+                    n_source_filtered += 1
+                    logger.debug(f"[scrape] Filtrado por el adapter: {record.url}")
+                    continue
+
                 appender.append(record)
-                n_extracted += 1
+                n_written += 1
+                counts = adapter.counts_toward_max(record)
+                if counts:
+                    n_counted += 1
+                marker = "✓" if counts else "·"
                 logger.info(
-                    f"[scrape] ✓ {n_extracted:4d}  {record.fecha or '----------'}  "
-                    f"{record.titulo[:80]}"
+                    f"[scrape] {marker} escritos={n_written:4d} objetivo={n_counted:4d}  "
+                    f"{record.fecha or '----------'}  {record.titulo[:80]}"
                 )
 
-                # Respeto al --max independiente del listado: si devuelve más de lo
-                # requerido, se detiene.
-                if args.max is not None and n_extracted >= args.max:
+                # ``--max`` cuenta el tipo principal definido por el adapter.
+                # Los documentos auxiliares preservados pueden escribirse sin
+                # consumir el cupo (por ejemplo, índices editoriales de Página/12).
+                if args.max is not None and n_counted >= args.max:
                     break
 
     except KeyboardInterrupt:
@@ -208,8 +269,8 @@ def run(args: argparse.Namespace) -> int:
         adapter.close()
 
     logger.info(
-        f"[scrape] DONE. extraídos={n_extracted} ya_estaban={n_skipped} "
-        f"fuera_de_rango={n_filtered} fallidos={n_failed} "
-        f"→ {args.output}"
+        f"[scrape] DONE. escritos={n_written} objetivo={n_counted} "
+        f"ya_estaban={n_skipped} fuera_de_rango={n_filtered} "
+        f"filtrados_fuente={n_source_filtered} fallidos={n_failed} → {args.output}"
     )
     return 0

@@ -14,6 +14,7 @@ import pandas as pd
 
 from emoparse.agents.base import BaseBatchAgent
 from emoparse.core.backend.base import LLMBackend
+from emoparse.core.output_quality import repair_model_text_fields_once
 from emoparse.core.prompts import actants as prompts
 from emoparse.core.schemas import (
     ActantesBatchItemSchema,
@@ -41,7 +42,22 @@ ACTANTS_COMPONENTS: tuple[str, ...] = (
 #: configuración. Permite distinguir, downstream, los componentes
 #: marcados como ausentes por el modelo de los que nunca fueron
 #: solicitados.
-_DISABLED_JUSTIFICATION: str = "componente deshabilitado por configuración"
+_DISABLED_JUSTIFICATION: str = "componente deshabilitado por configuración."
+
+
+#: Campos de lenguaje natural producidos por el LLM. Los enums, booleanos y
+#: demás decisiones estructuradas quedan deliberadamente fuera del guard.
+_ACTANTS_GENERATED_TEXT_FIELDS: tuple[tuple[str, ...], ...] = (
+    ("actantes", "mediador", "descripcion"),
+    ("actantes", "mediador", "justificacion"),
+    ("actantes", "verificador_normativo", "descripcion"),
+    ("actantes", "verificador_normativo", "justificacion"),
+    ("actantes", "verificador_observacional", "descripcion"),
+    ("actantes", "verificador_observacional", "justificacion"),
+    ("actantes", "operador_modificacion", "descripcion"),
+    ("actantes", "operador_modificacion", "justificacion"),
+    ("actantes", "polaridad", "justificacion"),
+)
 
 
 class ActantsAgent(BaseBatchAgent[ListaActantesBatchSchema]):
@@ -150,10 +166,12 @@ class ActantsAgent(BaseBatchAgent[ListaActantesBatchSchema]):
     # ── Hooks de BaseBatchAgent ──────────────────────────────────────────────
 
     def _build_system(self) -> str:
+        disabled = tuple(c for c in ACTANTS_COMPONENTS if c not in self._enabled)
         return prompts.render_system(
             titulo=self._titulo,
             tipo_discurso=self._tipo_discurso,
             enabled_components=self._enabled,
+            disabled_components=disabled,
             heuristicas=self._heuristicas,
         )
 
@@ -163,6 +181,8 @@ class ActantsAgent(BaseBatchAgent[ListaActantesBatchSchema]):
             codigo = str(row.get("codigo", ""))
             frase = str(row.get("frase", ""))
             experienciador = str(row.get("experienciador", ""))
+            fuente = str(row.get("fuente_inferencia", ""))
+            fuente_marca = str(row.get("fuente_marca", ""))
             tipo_emocion = str(row.get("tipo_emocion", ""))
             modo = str(row.get("modo_existencia", ""))
             tipo_conf = str(row.get("tipo_configuracion", "") or "")
@@ -170,6 +190,8 @@ class ActantsAgent(BaseBatchAgent[ListaActantesBatchSchema]):
             bloque = (
                 f"EMOCIÓN [{i}] (codigo={codigo}):\n"
                 f"  Experienciador:    {experienciador}\n"
+                f"  Fuente fijada:     {fuente}\n"
+                f"  Marca de fuente:   {fuente_marca}\n"
                 f"  Tipo emoción:      {tipo_emocion}\n"
                 f"  Modo existencia:   {modo}\n"
             )
@@ -180,6 +202,42 @@ class ActantsAgent(BaseBatchAgent[ListaActantesBatchSchema]):
 
         unidades_block = "\n\n".join(bloques)
         return prompts.render_user(unidades_block=unidades_block)
+
+    def _quality_control_item(
+        self,
+        item: ActantesBatchItemSchema,
+        row: pd.Series,
+    ) -> ActantesBatchItemSchema:
+        """Repara una contaminación de escritura sin regenerar el análisis."""
+        source_text = "\n".join(
+            [
+                self._titulo,
+                self._tipo_discurso,
+                *(
+                    str(row.get(name, "") or "")
+                    for name in (
+                        "frase",
+                        "experienciador",
+                        "fuente_inferencia",
+                        "fuente_marca",
+                        "tipo_emocion",
+                        "tipo_configuracion",
+                    )
+                ),
+            ]
+        )
+        generated_fields = tuple(
+            path for path in _ACTANTS_GENERATED_TEXT_FIELDS if path[1] in self._enabled
+        )
+        repaired = repair_model_text_fields_once(
+            item,
+            field_paths=generated_fields,
+            source_text=source_text,
+            backend=self._backend,
+        )
+        if not isinstance(repaired, ActantesBatchItemSchema):
+            raise TypeError("El control de calidad alteró el tipo del item de actants")
+        return repaired
 
     def _map_item_to_columns(
         self,
@@ -224,9 +282,8 @@ class ActantsAgent(BaseBatchAgent[ListaActantesBatchSchema]):
     ) -> ActantesEmocionSchema:
         """Sobrescribe los componentes deshabilitados con un placeholder.
 
-        Aun cuando el system prompt instruye al modelo a marcar como
-        ausentes los componentes deshabilitados, se fuerza acá el
-        valor canónico para garantizar consistencia downstream
+        El system prompt sólo informa cuáles componentes están deshabilitados;
+        el valor canónico se fuerza acá para garantizar consistencia downstream
         independientemente del comportamiento del backend.
         """
         if set(self._enabled) == set(ACTANTS_COMPONENTS):

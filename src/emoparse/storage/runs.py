@@ -12,7 +12,13 @@ from typing import Any
 
 from emoparse.storage.db import Database
 from emoparse.storage.models import RunContext, Versions
-from emoparse.storage.schema import ALL_TABLES_DDL
+from emoparse.storage.schema import (
+    ALL_TABLES_DDL,
+    CREATE_CANONICO_SEMAS,
+    CREATE_CANONICO_SEMAS_CANONICAL_INDEX,
+    CREATE_CANONICO_SEMAS_DIMENSION_INDEX,
+    CREATE_CANONICO_SEMAS_SEMA_INDEX,
+)
 
 
 class RunsRepository:
@@ -25,6 +31,9 @@ class RunsRepository:
 
     def bootstrap(self, ctx: RunContext) -> None:
         """Inicializa la DB para un run nuevo."""
+        # Debe ocurrir antes de crear índices que usan `dimension`: una DB
+        # histórica puede tener `canonico_semas` sin esa columna.
+        self._migrate_canonico_semas_dimension()
         with self._db.transaction() as cur:
             for ddl in ALL_TABLES_DDL:
                 cur.execute(ddl)
@@ -100,6 +109,7 @@ class RunsRepository:
         re-bootstrapear. Todo el DDL es `CREATE TABLE IF NOT EXISTS`, por lo
         que crear las tablas faltantes también es idempotente.
         """
+        self._migrate_canonico_semas_dimension()
         with self._db.transaction() as cur:
             for ddl in ALL_TABLES_DDL:
                 cur.execute(ddl)
@@ -150,6 +160,16 @@ class RunsRepository:
         self._add_column_if_missing(
             table="mencion_canonico",
             column="modalidad_origin",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="mencion_canonico",
+            column="modalidad_version",
+            type_def="TEXT",
+        )
+        self._add_column_if_missing(
+            table="mencion_canonico",
+            column="modalidad_review_reason",
             type_def="TEXT",
         )
         self._add_column_if_missing(
@@ -242,6 +262,57 @@ class RunsRepository:
             column="model_alias",
             type_def="TEXT",
         )
+
+    def _migrate_canonico_semas_dimension(self) -> None:
+        """Migra `canonico_semas` al contrato dimensionado, sin perder datos.
+
+        El schema histórico no almacenaba la dimensión y usaba
+        UNIQUE(canonical_id, sema). No es posible reconstruir con seguridad la
+        dimensión de filas previas cuando un valor pertenece a más de una; por
+        eso se preservan honestamente como `dimension='legacy'`.
+        """
+        if not self._db.table_exists("canonico_semas"):
+            return
+
+        cols = {
+            row["name"] for row in self._db.execute("PRAGMA table_info(canonico_semas)").fetchall()
+        }
+        row = self._db.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='canonico_semas'"
+        ).fetchone()
+        ddl = str(row["sql"] or "") if row is not None else ""
+        normalized = "".join(ddl.lower().split())
+        triple_unique = "unique(canonical_id,dimension,sema)" in normalized
+        if "dimension" in cols and triple_unique:
+            return
+
+        had_dimension = "dimension" in cols
+        with self._db.transaction() as cur:
+            cur.execute("DROP INDEX IF EXISTS idx_canonico_semas_canonical")
+            cur.execute("DROP INDEX IF EXISTS idx_canonico_semas_dimension")
+            cur.execute("DROP INDEX IF EXISTS idx_canonico_semas_sema")
+            cur.execute("DROP TABLE IF EXISTS canonico_semas_pre_dimension")
+            cur.execute("ALTER TABLE canonico_semas RENAME TO canonico_semas_pre_dimension")
+            cur.execute(CREATE_CANONICO_SEMAS)
+            if had_dimension:
+                cur.execute(
+                    "INSERT INTO canonico_semas "
+                    "(canonical_id, dimension, sema, status, origin, created_at) "
+                    "SELECT canonical_id, "
+                    "CASE WHEN TRIM(COALESCE(dimension, '')) = '' THEN 'legacy' ELSE dimension END, "
+                    "sema, status, origin, created_at FROM canonico_semas_pre_dimension"
+                )
+            else:
+                cur.execute(
+                    "INSERT INTO canonico_semas "
+                    "(canonical_id, dimension, sema, status, origin, created_at) "
+                    "SELECT canonical_id, 'legacy', sema, status, origin, created_at "
+                    "FROM canonico_semas_pre_dimension"
+                )
+            cur.execute("DROP TABLE canonico_semas_pre_dimension")
+            cur.execute(CREATE_CANONICO_SEMAS_CANONICAL_INDEX)
+            cur.execute(CREATE_CANONICO_SEMAS_DIMENSION_INDEX)
+            cur.execute(CREATE_CANONICO_SEMAS_SEMA_INDEX)
 
     def _add_column_if_missing(
         self,

@@ -140,5 +140,5 @@ def filter_panel(
         out = out[_mask_list_col(out, "fuente_semas", fte_semas)]
     for col, sel in carac_sel.items():
         folded = {_fold(v) for v in sel}
-        out = out[out[col].apply(lambda v: _fold(v) in folded)]
+        out = out[out[col].apply(lambda v: _fold(v) in folded)]  # noqa: B023
     return out

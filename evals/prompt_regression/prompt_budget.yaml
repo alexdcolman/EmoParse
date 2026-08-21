@@ -3,10 +3,14 @@ assumed_chars_per_token: 3
 limits:
   emotions_tuit_system_chars: 11200
   characterizer_system_chars: 7600
+  modalidad_system_chars: 2400
+  actants_system_chars: 9300
 reference:
   fix_val01_08:
     emotions_tuit_system_chars: 18562
     characterizer_system_chars: 9132
+  actants_v64_pre_dedupe:
+    actants_system_chars: 10548
   fix_val01_10:
     emotions_tuit_system_chars: 10785
     characterizer_system_chars: 7288
@@ -20,3 +24,5 @@ notes:
   limits: "Topes de regresión en caracteres; no garantizan encaje en la ventana real."
   emotions_tuit_system_chars: "Incluye modos de existencia, configuraciones y heurísticas base+tuit; excluye por contrato el catálogo ex post."
   characterizer_system_chars: "Incluye heurísticas del characterizer."
+  modalidad_system_chars: "Contrato + heurística genérica de modalidad; debe permanecer compacto."
+  actants_system_chars: "Contrato operativo compacto + única fuente semántica en heuristicas/actants.md; todos los componentes habilitados."

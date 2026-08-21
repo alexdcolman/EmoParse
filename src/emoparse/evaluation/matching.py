@@ -123,7 +123,7 @@ def _match_one_unit(
     usados_g: set[int] = set()
     usados_p: set[int] = set()
     pares: list[tuple[int, int]] = []
-    for score, g_idx, p_idx in sorted(candidatos, key=lambda t: -t[0]):
+    for _score, g_idx, p_idx in sorted(candidatos, key=lambda t: -t[0]):
         if g_idx in usados_g or p_idx in usados_p:
             continue
         usados_g.add(g_idx)

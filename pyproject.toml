@@ -250,25 +250,15 @@ select = [
     "B",
 ]
 
-# Línea de base de v0.7.0. Se excluyen reglas que exigen decisiones
-# semánticas o refactors fuera del alcance de la normalización mecánica.
+# E501 permanece fuera del gate: la presentación la gobierna Ruff format con
+# line-length=100. Las excepciones semánticas restantes se individualizan por línea.
 ignore = [
     "E501",
-    "E402",
-    "F841",
-    "UP031",
-    "B007",
-    "B008",
-    "B017",
-    "B023",
-    "B027",
-    "B905",
 ]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = [
     "B011",
-    "F841",
 ]
 
 [tool.ruff.format]
@@ -291,6 +281,7 @@ files = [
     "src/emoparse/config",
     "src/emoparse/core/text.py",
     "src/emoparse/core/grammar.py",
+  "src/emoparse/core/schemas.py",
     "src/emoparse/core/backend/exceptions.py",
     "src/emoparse/core/backend/retry.py",
     "src/emoparse/domain/validators/base.py",

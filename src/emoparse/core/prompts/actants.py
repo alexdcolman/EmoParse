@@ -16,6 +16,7 @@ def render_system(
     titulo: str = "",
     tipo_discurso: str = "",
     enabled_components: Iterable[str] = (),
+    disabled_components: Iterable[str] = (),
     heuristicas: str | None = None,
 ) -> str:
     """Renderiza el system prompt del agente de actantes.
@@ -23,9 +24,9 @@ def render_system(
     Args:
         titulo: Título del discurso.
         tipo_discurso: Clasificación del discurso.
-        enabled_components: Componentes actanciales habilitados para este
-            run. Los componentes ausentes de esta colección se piden al
-            modelo como deshabilitados (presente=false, tipo='ausente').
+        enabled_components: Componentes actanciales habilitados para este run.
+        disabled_components: Componentes excluidos del análisis LLM. El agente
+            los reemplaza luego por placeholders determinísticos.
         heuristicas: Reglas heurísticas opcionales para el dominio.
     """
     return render(
@@ -33,6 +34,7 @@ def render_system(
         titulo=titulo,
         tipo_discurso=tipo_discurso,
         enabled_components=list(enabled_components),
+        disabled_components=list(disabled_components),
         heuristicas=heuristicas,
     )
 

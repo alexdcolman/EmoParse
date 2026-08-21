@@ -267,3 +267,9 @@ paths:
 """
         cfg = load_config(_write(tmp_path, yaml_text))
         assert cfg.paths.runs_dir == "/var/runs"
+
+
+def test_production_gemma4_context_length_remains_4096() -> None:
+    """La RTX 3090 no usa aumentos de contexto como salida a prompts grandes."""
+    cfg = load_config(Path(__file__).parents[2] / "config.yaml")
+    assert cfg.models["gemma4-31b"].context_length == 4096

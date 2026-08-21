@@ -418,10 +418,11 @@ def get_emociones_enriched(
     exp_raw = base["experienciador"].fillna("").astype(str)
     fte_raw = base.get("fuente_inferencia", pd.Series([""] * len(base))).fillna("").astype(str)
     base["experienciador_efectivo"] = [
-        c if c else (raw or "—") for c, raw in zip(base["experienciador_canonico"], exp_raw)
+        c if c else (raw or "—")
+        for c, raw in zip(base["experienciador_canonico"], exp_raw, strict=False)
     ]
     base["fuente_efectiva"] = [
-        c if c else (raw or "—") for c, raw in zip(base["fuente_canonico"], fte_raw)
+        c if c else (raw or "—") for c, raw in zip(base["fuente_canonico"], fte_raw, strict=False)
     ]
     base["enunciador"] = base["codigo"].map(enun_map).fillna("")
     base["pos_max_discurso"] = base["codigo"].map(len_map)

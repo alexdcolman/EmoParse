@@ -148,7 +148,7 @@ def freeze_annotations(
             )
         _validate_iso_date(row_date, row_number=row_number)
 
-        hay = _normalizar_hay(_cell(row, "hay_emocion"), row_number)
+        _hay = _normalizar_hay(_cell(row, "hay_emocion"), row_number)
         emociones = _row_emotions(row, row_number)
 
         records.append(

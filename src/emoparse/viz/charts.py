@@ -169,7 +169,7 @@ def _curva_hover(
     )
     pos_fmt = (lambda p: f"{p:.0f}%") if relativa else (lambda p: f"{int(p)}")
     out: list[str] = []
-    for p, a, m, f, t in zip(df_emo["posicion"], actores, modos, fuentes, textos):
+    for p, a, m, f, t in zip(df_emo["posicion"], actores, modos, fuentes, textos, strict=False):
         linea_f = f"<br>Fuente: {f}" if f not in (None, "", "—") else ""
         out.append(
             f"<b>{emo}</b>{prefix}<br>Pos: {pos_fmt(p)}<br>Actor: {a}<br>"

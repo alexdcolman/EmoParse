@@ -386,11 +386,15 @@ class EmocionesRepository:
         self,
         codigo: str | None = None,
     ) -> list[tuple[str, int, int]]:
-        """Emociones con tipo_emocion no nulo y tipo_emocion_canonico nulo."""
+        """Emociones cuya normalización todavía no fue ejecutada.
+
+        Un canónico NULL puede ser un resultado legítimo cuando la etiqueta libre
+        no pertenece al catálogo. La versión, no el canónico, marca completitud.
+        """
         base_sql = (
             "SELECT codigo, frase_idx, emocion_idx FROM emociones "
             "WHERE tipo_emocion IS NOT NULL "
-            "AND tipo_emocion_canonico IS NULL"
+            "AND normalize_emotions_version IS NULL"
         )
         if codigo is None:
             rows = self._db.execute(base_sql).fetchall()

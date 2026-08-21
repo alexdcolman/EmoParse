@@ -568,7 +568,7 @@ class TestExportEmocionesCsv:
 class TestExportFullRun:
     def test_creates_declared_files(self, populated_db: Database, tmp_path: Path) -> None:
         out_dir = tmp_path / "csvs"
-        counts = export_full_run(populated_db, out_dir)
+        _counts = export_full_run(populated_db, out_dir)
 
         assert (out_dir / "discursos.csv").is_file()
         assert (out_dir / "metadata_genero.csv").is_file()

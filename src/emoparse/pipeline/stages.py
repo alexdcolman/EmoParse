@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import threading
@@ -35,6 +36,11 @@ from emoparse.agents.judge import JudgeAgent
 from emoparse.agents.modalidad import ModalidadAgent
 from emoparse.agents.semas import SemasAgent
 from emoparse.core.backend.base import LLMBackend
+from emoparse.core.backend.exceptions import (
+    BackendError,
+    ContextLengthExceededError,
+    SchemaViolationError,
+)
 from emoparse.core.backend.retry import RetryConfig
 from emoparse.core.text import canonical_slug
 from emoparse.genres.base import Genre
@@ -70,6 +76,7 @@ from emoparse.pipeline.technoparse import (
     menciones_handles,
     parse_texto,
 )
+from emoparse.storage.checkpoints import StageCheckpointsRepository
 from emoparse.storage.discursos import DiscursosRepository
 from emoparse.storage.emociones import EmocionesRepository
 from emoparse.storage.frases import FrasesRepository
@@ -84,6 +91,18 @@ from emoparse.storage.referencia import (
     split_coordinacion,
 )
 from emoparse.storage.tecno import TecnoRepository
+
+
+def _stable_fingerprint(payload: Any) -> str:
+    """SHA-256 estable de una entrada serializable usada por un checkpoint."""
+    raw = json.dumps(
+        payload,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+        default=str,
+    )
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
 class Stage(ABC):
@@ -1214,6 +1233,7 @@ class ExplodeEmotionsStage(Stage):
     """Explota emociones detectadas a la tabla `emociones`."""
 
     NAME = "explode_emotions"
+    CHECKPOINT_VERSION = "explode-v1"
 
     def __init__(
         self,
@@ -1222,6 +1242,7 @@ class ExplodeEmotionsStage(Stage):
         emociones_repo: EmocionesRepository,
         menciones_repo: MencionesRepository | None = None,
         referentes_kb: dict[str, Any] | None = None,
+        checkpoints_repo: StageCheckpointsRepository | None = None,
     ) -> None:
         super().__init__()
         self._d_repo = discursos_repo
@@ -1229,6 +1250,8 @@ class ExplodeEmotionsStage(Stage):
         self._e_repo = emociones_repo
         self._m_repo = menciones_repo
         self._referentes_kb = referentes_kb
+        self._checkpoints = checkpoints_repo
+        self._referentes_kb_fingerprint = _stable_fingerprint(referentes_kb or {})
 
     def run_pending(self) -> int:
         """Procesa discursos y explota emociones pendientes."""
@@ -1287,6 +1310,24 @@ class ExplodeEmotionsStage(Stage):
                         "fuente_canonico": emo.get("fuente_canonico"),
                     }
                 )
+        fingerprint = _stable_fingerprint(
+            {
+                "frases": frases,
+                "enunciador": enunciador,
+                "auditorio": auditorio,
+                "actores_by_unit": actores_by_unit,
+                "emociones_by_unit": emociones_by_unit,
+                "referentes_kb": self._referentes_kb_fingerprint,
+            }
+        )
+        if self._checkpoints is not None and self._checkpoints.is_current(
+            self.NAME,
+            codigo,
+            fingerprint,
+            stage_version=self.CHECKPOINT_VERSION,
+        ):
+            return 0
+
         if rows:
             df_rows = pd.DataFrame(rows)
             self._validate(EmocionExplodedContract, df_rows, "salida")
@@ -1296,6 +1337,13 @@ class ExplodeEmotionsStage(Stage):
             self._m_repo.propose_coref_equivalences(codigo)
             self._m_repo.add_deixis_suggestions(codigo, enunciador)
             self._m_repo.propose_kb_equivalences(codigo, self._referentes_kb)
+        if self._checkpoints is not None:
+            self._checkpoints.mark_completed(
+                self.NAME,
+                codigo,
+                fingerprint,
+                stage_version=self.CHECKPOINT_VERSION,
+            )
         return len(rows)
 
     def _select_emociones_payload(self, codigo: str, frase_idx: int) -> Any:
@@ -2150,6 +2198,7 @@ class DeixisStage(Stage):
     """
 
     NAME = "deixis"
+    CHECKPOINT_VERSION = "deixis-v1"
 
     #: Cantidad de marcas deícticas por llamada al LLM (configurable vía
     #: genre.batch_size["deixis"]). Mantiene acotado el contexto y la salida.
@@ -2166,6 +2215,7 @@ class DeixisStage(Stage):
         retry_config: RetryConfig | None = None,
         genre: Genre | None = None,
         marcas_per_call: int | None = None,
+        checkpoints_repo: StageCheckpointsRepository | None = None,
     ) -> None:
         super().__init__()
         self.validate_contracts = False  # no hay contrato de DataFrame acá
@@ -2175,25 +2225,74 @@ class DeixisStage(Stage):
         self._version = agent_version
         self._retry_config = retry_config
         self._genre = genre
+        self._checkpoints = checkpoints_repo
         n = marcas_per_call
         if n is None and genre is not None:
             n = genre.batch_size.get("deixis")
         self._marcas_per_call = max(1, int(n)) if n else self.MARCAS_PER_CALL
 
     def run_pending(self) -> int:
-        """Resuelve la deixis de los discursos que aún no la tienen."""
-        codigos = self._scope_codes(
-            [c for c in self._d_repo.list_codigos() if not self._m_repo.has_deixis_llm(c)]
-        )
-        if not codigos:
+        """Resuelve deixis pendiente y recuerda también resultados vacíos válidos."""
+        codigos = self._scope_codes(self._d_repo.list_codigos())
+        pendientes: list[tuple[str, str]] = []
+        for codigo in codigos:
+            if self._checkpoints is None:
+                if not self._m_repo.has_deixis_llm(codigo):
+                    pendientes.append((codigo, ""))
+                continue
+            fingerprint = self._checkpoint_fingerprint(codigo)
+            if self._checkpoints.is_current(
+                self.NAME,
+                codigo,
+                fingerprint,
+                stage_version=self._checkpoint_version(),
+            ):
+                continue
+            pendientes.append((codigo, fingerprint))
+
+        if not pendientes:
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
 
         total = 0
-        for codigo in self.progress.track(codigos, "discursos"):
-            total += self._resolve_for_codigo(codigo)
+        for codigo, fingerprint in self.progress.track(pendientes, "discursos"):
+            linked, completed = self._resolve_for_codigo(codigo)
+            total += linked
+            if completed and self._checkpoints is not None:
+                self._checkpoints.mark_completed(
+                    self.NAME,
+                    codigo,
+                    fingerprint,
+                    stage_version=self._checkpoint_version(),
+                )
         logger.info(f"[Stage:{self.NAME}] {total} vínculos deícticos propuestos.")
         return total
+
+    def _checkpoint_version(self) -> str:
+        return f"{self.CHECKPOINT_VERSION}:{self._version or ''}"
+
+    def _checkpoint_fingerprint(self, codigo: str) -> str:
+        """Huella de las entradas que gobiernan la resolución deíctica."""
+        enun = self._d_repo.get_payload(codigo, "enunciation") or {}
+        enunciador, auditorio, colectivos = _extract_enunciation_referentes(enun)
+        marcas = [
+            {
+                "id": int(m["id"]),
+                "unit_idx": int(m["unit_idx"]),
+                "marca": str(m["marca"]),
+            }
+            for m in self._m_repo.list_marcas_for_deixis(codigo)
+            if is_deictic(str(m["marca"]))
+        ]
+        return _stable_fingerprint(
+            {
+                "enunciador": enunciador,
+                "auditorio": auditorio,
+                "colectivos": colectivos,
+                "resumen": self._resumen_for(codigo),
+                "marcas": marcas,
+            }
+        )
 
     def _resumen_for(self, codigo: str) -> str:
         """Resumen del discurso para contexto: summarizer → fallback contenido."""
@@ -2206,11 +2305,11 @@ class DeixisStage(Stage):
             resumen = resumen[: self._RESUMEN_CHAR_LIMIT] + "..."
         return resumen
 
-    def _resolve_for_codigo(self, codigo: str) -> int:
+    def _resolve_for_codigo(self, codigo: str) -> tuple[int, bool]:
         enun = self._d_repo.get_payload(codigo, "enunciation") or {}
         enunciador, auditorio, colectivos = _extract_enunciation_referentes(enun)
         if not (enunciador or auditorio or colectivos):
-            return 0
+            return 0, True
 
         # Pre-filtro determinista: solo marcas con deixis de 1ª/2ª persona.
         marca_ids: dict[str, list[int]] = {}
@@ -2219,7 +2318,7 @@ class DeixisStage(Stage):
             if is_deictic(marca):
                 marca_ids.setdefault(marca.strip().lower(), []).append(int(m["id"]))
         if not marca_ids:
-            return 0
+            return 0, True
 
         marcas_unicas = sorted({m for m in marca_ids})
         # Una fila por chunk de marcas: acota contexto y salida del LLM.
@@ -2248,18 +2347,23 @@ class DeixisStage(Stage):
         except Exception as e:
             logger.error(f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}")
             self.metrics.record_item_failed()
-            return 0
+            return 0, False
 
         resoluciones: list[Any] = []
+        completed = "deixis" in df_out.columns and len(df_out) == len(df_in)
         for raw in df_out.get("deixis", []):
             if raw is None or (isinstance(raw, float) and pd.isna(raw)):
+                completed = False
                 continue
             try:
                 parsed = json.loads(raw)
             except (json.JSONDecodeError, TypeError):
+                completed = False
                 continue
             if isinstance(parsed, list):
                 resoluciones.extend(parsed)
+            else:
+                completed = False
 
         linked = 0
         for res in resoluciones:
@@ -2285,30 +2389,26 @@ class DeixisStage(Stage):
         )
         for _ in range(linked):
             self.metrics.record_item_ok()
-        return linked
+        return linked, completed
 
 
 class ModalidadStage(Stage):
-    """Clasifica la MODALIDAD REFERENCIAL de cada vínculo marca→referente.
-
-    Corre después de deixis/coref (necesita los vínculos en `mencion_canonico`).
-    Pre-pass NLP (spaCy) para los casos claros (pronombres/verbos → referencia
-    gramatical; nombres propios → designación); LLM solo para los ambiguos (SN de
-    nombre común, que puede ser designación o identificación inferencial).
-    Persiste `modalidad`, `naturaleza` y `modalidad_origin` ('nlp'|'llm') por
-    vínculo. Opt-in. Si `use_llm=False` o no hay backend, corre NLP-only y
-    persiste el guess tentativo del NLP.
-    """
+    """Clasifica modalidad por arista con pre-pass conservador + LLM."""
 
     NAME = "modalidad"
-    MARCAS_PER_CALL = 8
-    _RESUMEN_CHAR_LIMIT = 1500
+    MARCAS_PER_CALL = 6
+    MAX_MARCAS_PER_CALL = 6
+    _RESUMEN_CHAR_LIMIT = 800
+    _FRASE_CHAR_LIMIT = 700
+    _INFERENCIA_CHAR_LIMIT = 240
+    _CONTEXT_MARGIN_TOKENS = 256
+    _MAX_SCHEMA_FAILURES = 2
     _VALID_MOD = {
         "designacion",
         "referencia_gramatical",
+        "predicacion",
         "identificacion_inferencial",
     }
-    _VALID_NAT = {"persona", "colectivo", "institucion", "objeto_proceso", "otro"}
 
     def __init__(
         self,
@@ -2321,6 +2421,8 @@ class ModalidadStage(Stage):
         retry_config: RetryConfig | None = None,
         genre: Genre | None = None,
         marcas_per_call: int | None = None,
+        heuristicas: str = "",
+        context_length: int | None = None,
     ) -> None:
         super().__init__()
         self.validate_contracts = False
@@ -2331,19 +2433,30 @@ class ModalidadStage(Stage):
         self._version = agent_version
         self._retry_config = retry_config
         self._genre = genre
+        self._heuristicas = heuristicas
+        self._context_length = int(context_length) if context_length else None
         self._nlp = ModalidadNLP(nlp_model)
+        self._schema_failures = 0
         n = marcas_per_call
         if n is None and genre is not None:
             n = genre.batch_size.get("modalidad")
-        self._marcas_per_call = max(1, int(n)) if n else self.MARCAS_PER_CALL
+        requested = max(1, int(n)) if n else self.MARCAS_PER_CALL
+        self._marcas_per_call = min(requested, self.MAX_MARCAS_PER_CALL)
 
     def run_pending(self) -> int:
         total = 0
         codigos = self._scope_codes(self._d_repo.list_codigos())
         for codigo in self.progress.track(codigos, "discursos"):
             total += self._classify_for_codigo(codigo)
-        logger.info(f"[Stage:{self.NAME}] {total} vínculos clasificados.")
+        logger.info(f"[Stage:{self.NAME}] {total} vínculos resueltos.")
         return total
+
+    @staticmethod
+    def _compact(value: Any, limit: int) -> str:
+        text = " ".join(str(value or "").split())
+        if len(text) <= limit:
+            return text
+        return text[: max(1, limit - 1)].rstrip() + "…"
 
     def _resumen_for(self, codigo: str) -> str:
         summ = self._d_repo.get_payload(codigo, "summarizer") or {}
@@ -2351,24 +2464,33 @@ class ModalidadStage(Stage):
         if not resumen:
             inp = self._d_repo.get_input(codigo) or {}
             resumen = str(inp.get("contenido") or "").strip()
-        if len(resumen) > self._RESUMEN_CHAR_LIMIT:
-            resumen = resumen[: self._RESUMEN_CHAR_LIMIT] + "..."
-        return resumen
+        return self._compact(resumen, self._RESUMEN_CHAR_LIMIT)
 
     def _classify_for_codigo(self, codigo: str) -> int:
         links = self._m_repo.list_links_for_modalidad(codigo)
         if not links:
             return 0
 
-        nlp_guess: dict[tuple[int, str], Any] = {}
         ambiguous: list[dict[str, Any]] = []
         done = 0
         for lk in links:
-            g = self._nlp.classify(str(lk["marca"]), str(lk.get("frase") or ""))
-            key = (int(lk["mencion_id"]), str(lk["canonical_id"]))
-            nlp_guess[key] = g
-            if g.confident:
-                self._m_repo.set_modalidad(key[0], key[1], g.modalidad, g.naturaleza, "nlp")
+            g = self._nlp.classify(
+                str(lk["marca"]),
+                str(lk.get("frase") or ""),
+                canonical_id=str(lk["canonical_id"]),
+                link_origin=str(lk.get("origen_vinculo") or ""),
+                deixis_tipo=lk.get("deixis_tipo"),
+                funciones=str(lk.get("funciones") or ""),
+            )
+            if g.confident and g.modalidad in self._VALID_MOD:
+                self._m_repo.set_modalidad(
+                    int(lk["mencion_id"]),
+                    str(lk["canonical_id"]),
+                    g.modalidad,
+                    None,
+                    "nlp",
+                    version=self._version,
+                )
                 done += 1
                 self.metrics.record_item_ok()
             else:
@@ -2378,114 +2500,218 @@ class ModalidadStage(Stage):
             return done
 
         if not self._use_llm:
-            for lk in ambiguous:
-                key = (int(lk["mencion_id"]), str(lk["canonical_id"]))
-                g = nlp_guess[key]
-                self._m_repo.set_modalidad(key[0], key[1], g.modalidad, g.naturaleza, "nlp")
-                done += 1
-                self.metrics.record_item_ok()
+            logger.info(
+                f"[Stage:{self.NAME}] {codigo}: {len(ambiguous)} vínculos ambiguos "
+                "quedan pendientes en modo NLP-only."
+            )
             return done
 
-        return done + self._classify_llm(codigo, ambiguous, nlp_guess)
+        return done + self._classify_llm(codigo, ambiguous)
 
-    def _classify_llm(
-        self,
-        codigo: str,
-        ambiguous: list[dict[str, Any]],
-        nlp_guess: dict[tuple[int, str], Any],
-    ) -> int:
-        # Índice (marca_lower, canonical) → [mencion_id] para el match-back.
-        index: dict[tuple[str, str], list[int]] = {}
-        for lk in ambiguous:
-            k = (str(lk["marca"]).strip().lower(), str(lk["canonical_id"]))
-            index.setdefault(k, []).append(int(lk["mencion_id"]))
+    def _format_link(self, lk: dict[str, Any]) -> str:
+        fields = [
+            f"link_id={int(lk['_link_id'])}",
+            f"marca={self._compact(lk.get('marca'), 260)!r}",
+            f"referente={str(lk.get('canonical_id') or '')}",
+            f"frase={self._compact(lk.get('frase'), self._FRASE_CHAR_LIMIT)!r}",
+        ]
+        inferencia = self._compact(lk.get("llm_inferencia"), self._INFERENCIA_CHAR_LIMIT)
+        if inferencia:
+            fields.append(f"inferencia_upstream={inferencia!r}")
+        origin = str(lk.get("origen_vinculo") or "").strip()
+        if origin:
+            fields.append(f"origen={origin}")
+        deixis = str(lk.get("deixis_tipo") or "").strip()
+        if deixis:
+            fields.append(f"deixis={deixis}")
+        funciones = str(lk.get("funciones") or "").strip()
+        if funciones:
+            fields.append(f"funciones={funciones}")
+        return " | ".join(fields)
 
-        # Ítems únicos (marca, referente, frase) para el prompt.
-        seen: set[tuple[str, str]] = set()
-        items: list[dict[str, Any]] = []
-        for lk in ambiguous:
-            k = (str(lk["marca"]).strip().lower(), str(lk["canonical_id"]))
-            if k in seen:
-                continue
-            seen.add(k)
-            items.append(lk)
-
-        n = self._marcas_per_call
-        rows = [
+    def _row_for_batch(self, codigo: str, batch: list[dict[str, Any]]) -> pd.Series:
+        return pd.Series(
             {
                 "codigo": codigo,
-                "vinculos": "\n".join(
-                    f'- marca: "{c["marca"]}" · referente: {c["canonical_id"]} '
-                    f'· frase: "{str(c.get("frase") or "").strip()}"'
-                    for c in items[i : i + n]
-                ),
+                "vinculos": "\n".join(self._format_link(lk) for lk in batch),
             }
-            for i in range(0, len(items), n)
-        ]
+        )
+
+    def _classify_llm(self, codigo: str, ambiguous: list[dict[str, Any]]) -> int:
+        items: list[dict[str, Any]] = []
+        link_map: dict[int, tuple[int, str]] = {}
+        for link_id, lk in enumerate(ambiguous):
+            item = dict(lk)
+            item["_link_id"] = link_id
+            items.append(item)
+            link_map[link_id] = (int(lk["mencion_id"]), str(lk["canonical_id"]))
+
         agent = ModalidadAgent(
-            self._backend,
+            self._backend,  # type: ignore[arg-type]
             resumen=self._resumen_for(codigo),
+            heuristicas=self._heuristicas,
             retry_config=self._retry_config,
             genre=self._genre,
         )
-        try:
-            df_out = agent.run(pd.DataFrame(rows))
-        except Exception as e:
-            logger.error(f"[Stage:{self.NAME}] {codigo}: error LLM: {e}")
-            df_out = pd.DataFrame()
 
-        clasif: list[Any] = []
-        for raw in df_out.get("modalidad", []) if not df_out.empty else []:
-            if raw is None or (isinstance(raw, float) and pd.isna(raw)):
-                continue
-            try:
-                parsed = json.loads(raw)
-            except (json.JSONDecodeError, TypeError):
-                continue
-            if isinstance(parsed, list):
-                clasif.extend(parsed)
-
-        resolved: set[tuple[int, str]] = set()
         done = 0
-        for c in clasif:
-            if not isinstance(c, dict):
-                continue
-            marca = str(c.get("marca", "")).strip().lower()
-            ref_raw = str(c.get("referente", "")).strip()
-            mod = str(c.get("modalidad", "")).strip()
-            nat = str(c.get("naturaleza", "")).strip()
-            mod = mod if mod in self._VALID_MOD else None
-            nat = nat if nat in self._VALID_NAT else None
-            # Match-back: por (marca, canonical). El referente vuelve como el
-            # slug que le pasamos; por robustez probamos también su slug.
-            for cand in (ref_raw, canonical_slug(ref_raw)):
-                mids = index.get((marca, cand))
-                if mids:
-                    canonical = cand
-                    break
-            else:
-                # Si la marca es única entre los ambiguos, resolvés igual.
-                marca_keys = [k for k in index if k[0] == marca]
-                if len(marca_keys) == 1:
-                    canonical = marca_keys[0][1]
-                    mids = index[marca_keys[0]]
-                else:
-                    continue
-            for mid in mids:
-                self._m_repo.set_modalidad(mid, canonical, mod, nat, "llm")
-                resolved.add((mid, canonical))
-                done += 1
-                self.metrics.record_item_ok()
-
-        # Ambiguos que el LLM no resolvió → fallback al guess del NLP.
-        for lk in ambiguous:
-            key = (int(lk["mencion_id"]), str(lk["canonical_id"]))
-            if key in resolved:
-                continue
-            g = nlp_guess[key]
-            self._m_repo.set_modalidad(key[0], key[1], g.modalidad, g.naturaleza, "nlp")
-            done += 1
+        n = self._marcas_per_call
+        for i in range(0, len(items), n):
+            done += self._process_batch(
+                codigo,
+                items[i : i + n],
+                link_map,
+                agent,
+            )
         return done
+
+    def _process_batch(
+        self,
+        codigo: str,
+        batch: list[dict[str, Any]],
+        link_map: dict[int, tuple[int, str]],
+        agent: ModalidadAgent,
+        *,
+        recovery: bool = False,
+    ) -> int:
+        if recovery and len(batch) != 1:
+            raise ValueError("modalidad recovery requiere exactamente un vínculo")
+
+        row = self._row_for_batch(codigo, batch)
+        estimated_prompt = agent.estimate_prompt_tokens(row)
+        if self._context_length is not None:
+            required = estimated_prompt + agent.MAX_TOKENS + self._CONTEXT_MARGIN_TOKENS
+            if required > self._context_length:
+                if len(batch) == 1:
+                    self.metrics.record_item_failed()
+                    raise ContextLengthExceededError(
+                        prompt_tokens=estimated_prompt,
+                        max_tokens=agent.MAX_TOKENS,
+                        context_length=self._context_length,
+                    )
+                mid = len(batch) // 2
+                logger.info(
+                    f"[Stage:{self.NAME}] {codigo}: batch de {len(batch)} no entra "
+                    f"(~{required}>{self._context_length}); subdividiendo."
+                )
+                return self._process_batch(
+                    codigo, batch[:mid], link_map, agent
+                ) + self._process_batch(codigo, batch[mid:], link_map, agent)
+
+        try:
+            parsed = agent.process_recovery_unit(row) if recovery else agent.process_unit(row)
+        except ContextLengthExceededError:
+            if len(batch) == 1:
+                self.metrics.record_item_failed()
+                raise
+            mid = len(batch) // 2
+            logger.warning(
+                f"[Stage:{self.NAME}] {codigo}: backend rechazó contexto; "
+                f"subdividiendo batch de {len(batch)}."
+            )
+            return self._process_batch(codigo, batch[:mid], link_map, agent) + self._process_batch(
+                codigo, batch[mid:], link_map, agent
+            )
+        except SchemaViolationError as exc:
+            self._schema_failures += 1
+            for _ in batch:
+                self.metrics.record_item_failed()
+            logger.error(
+                f"[Stage:{self.NAME}] {codigo}: SchemaViolationError "
+                f"({self._schema_failures}/{self._MAX_SCHEMA_FAILURES}): {exc}"
+            )
+            if self._schema_failures >= self._MAX_SCHEMA_FAILURES:
+                raise RuntimeError(
+                    "modalidad abortada: errores estructurados repetidos; "
+                    "revisar schema/GBNF/prompt antes de continuar."
+                ) from exc
+            return 0
+        except BackendError:
+            for _ in batch:
+                self.metrics.record_item_failed()
+            raise
+
+        expected = {int(lk["_link_id"]) for lk in batch}
+        counts: dict[int, int] = {}
+        by_id: dict[int, Any] = {}
+        for item in parsed.clasificaciones:
+            link_id = int(item.link_id)
+            counts[link_id] = counts.get(link_id, 0) + 1
+            by_id[link_id] = item
+
+        resolved: set[int] = set()
+        unresolved_reason: dict[int, str] = {}
+        for link_id in expected:
+            count = counts.get(link_id, 0)
+            if count == 0:
+                unresolved_reason[link_id] = "faltante"
+                continue
+            if count != 1:
+                unresolved_reason[link_id] = "duplicado"
+                continue
+
+            item = by_id[link_id]
+            mod = item.modalidad
+            review = bool(item.revisar_vinculo)
+            if mod is not None and not review:
+                mid, canonical = link_map[link_id]
+                self._m_repo.set_modalidad(
+                    mid,
+                    canonical,
+                    mod,
+                    None,
+                    "llm",
+                    version=self._version,
+                )
+            elif mod is None and review:
+                mid, canonical = link_map[link_id]
+                self._m_repo.set_modalidad(
+                    mid,
+                    canonical,
+                    None,
+                    None,
+                    "llm",
+                    version=self._version,
+                    review_reason=str(item.justificacion).strip(),
+                )
+            else:
+                unresolved_reason[link_id] = "incoherente"
+                continue
+            resolved.add(link_id)
+            self.metrics.record_item_ok()
+
+        unresolved = expected - resolved
+        if unresolved and not recovery:
+            batch_by_id = {int(lk["_link_id"]): lk for lk in batch}
+            detail = ", ".join(
+                f"link_id={link_id}:{unresolved_reason[link_id]}" for link_id in sorted(unresolved)
+            )
+            logger.warning(
+                f"[Stage:{self.NAME}] {codigo}: {len(unresolved)}/{len(expected)} "
+                f"vínculos no reconciliados; recuperación singleton: {detail}."
+            )
+            recovered = 0
+            for link_id in sorted(unresolved):
+                recovered += self._process_batch(
+                    codigo,
+                    [batch_by_id[link_id]],
+                    link_map,
+                    agent,
+                    recovery=True,
+                )
+            return len(resolved) + recovered
+
+        if unresolved:
+            for _ in unresolved:
+                self.metrics.record_item_failed()
+            detail = ", ".join(
+                f"link_id={link_id}:{unresolved_reason[link_id]}" for link_id in sorted(unresolved)
+            )
+            logger.warning(
+                f"[Stage:{self.NAME}] {codigo}: vínculo singleton pendiente "
+                f"tras recuperación: {detail}."
+            )
+        return len(resolved)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -3058,11 +3284,17 @@ class ActantsStage(Stage):
                 frase_idx = int(row["frase_idx"])
                 emo_idx = int(row["emocion_idx"])
                 if payload is None:
+                    agent_error = row.get(agent.ERROR_COLUMN)
+                    error_message = (
+                        str(agent_error)
+                        if isinstance(agent_error, str) and agent_error.strip()
+                        else "Backend error (ver logs)"
+                    )
                     self._e_repo.set_actantes_error(
                         codigo,
                         frase_idx,
                         emo_idx,
-                        "Backend error (ver logs)",
+                        error_message,
                     )
                     self.metrics.record_item_failed()
                     continue
@@ -3511,9 +3743,18 @@ def _format_semas_vocabulario(vocab: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
-def _semas_allowed(vocab: dict[str, Any]) -> set[str]:
-    """Conjunto de semas válidos del vocabulario."""
-    return {str(s).strip().lower() for s in (vocab.get("semas") or [])}
+def _semas_allowed(vocab: dict[str, Any]) -> dict[str, set[str]]:
+    """Valores válidos por dimensión del vocabulario intrínseco."""
+    out: dict[str, set[str]] = {}
+    for dim, info in (vocab.get("dimensiones") or {}).items():
+        if not isinstance(info, dict):
+            continue
+        out[str(dim)] = {
+            str(s).strip().lower()
+            for s in (info.get("valores") or [])
+            if str(s).strip() and str(s).strip().lower() != "no_aplica"
+        }
+    return out
 
 
 class SemasStage(Stage):
@@ -3579,38 +3820,103 @@ class SemasStage(Stage):
         out = agent.run(df)
         self.progress.finish()
 
+        def _semas_error_text(value: Any) -> str:
+            # pandas materializa las celdas vacías de una columna textual como NaN.
+            # NaN es truthy, por lo que ``str(value or "")`` produciría el falso
+            # error literal "nan". Semas normaliza localmente sólo la representación
+            # de ausencia; los errores reales del agente se conservan intactos.
+            if value is None:
+                return ""
+            try:
+                if bool(pd.isna(value)):
+                    return ""
+            except (TypeError, ValueError):
+                pass
+            return str(value).strip()
+
+        # Un error de schema/backend invalida un batch completo en BaseBatchAgent.
+        # Semas recupera localmente sólo esas unidades como singleton para que un
+        # referente problemático no arrastre a su compañero de batch. No se toca
+        # BaseBatchAgent ni el comportamiento de otras stages.
+        unresolved = [
+            i
+            for i, row in out.iterrows()
+            if not isinstance(row.get("semas"), str) or not str(row.get("semas")).strip()
+        ]
+        recovered = 0
+        if unresolved:
+            logger.warning(
+                f"[Stage:{self.NAME}] {len(unresolved)} referente(s) sin salida en batch; "
+                "reintento singleton local."
+            )
+            progress_cb = agent.on_progress
+            agent.on_progress = None
+            try:
+                for i in unresolved:
+                    retry = agent.run(df.iloc[[i]].copy())
+                    retry_row = retry.iloc[0]
+                    raw_retry = retry_row.get("semas")
+                    if isinstance(raw_retry, str) and raw_retry.strip():
+                        out.at[i, "semas"] = raw_retry
+                        out.at[i, SemasAgent.ERROR_COLUMN] = None
+                        recovered += 1
+                        continue
+                    retry_error = _semas_error_text(retry_row.get(SemasAgent.ERROR_COLUMN))
+                    previous_error = _semas_error_text(out.iloc[i].get(SemasAgent.ERROR_COLUMN))
+                    reason = (
+                        retry_error
+                        or previous_error
+                        or "sin salida válida tras reintento singleton"
+                    )
+                    out.at[i, SemasAgent.ERROR_COLUMN] = reason
+            finally:
+                agent.on_progress = progress_cb
+            logger.info(
+                f"[Stage:{self.NAME}] recuperación singleton: {recovered}/{len(unresolved)} ok."
+            )
+
         total = 0
+        ok_referentes = 0
+        failed_referentes = 0
         for _, row in out.iterrows():
             canonical_id = str(row["canonical_id"])
-            error = str(row.get("semas_error") or "").strip()
+            error = _semas_error_text(row.get(SemasAgent.ERROR_COLUMN))
+            raw = row.get("semas")
+            if not isinstance(raw, str) or not raw.strip():
+                error = error or "sin salida válida de semas"
             if error:
                 self._m_repo.mark_semas_processed(
                     canonical_id,
                     version=self._version,
                     error=error,
                 )
+                self.metrics.record_item_failed()
+                failed_referentes += 1
                 continue
 
-            raw = row.get("semas")
             try:
-                semas = json.loads(raw) if raw else []
+                semas = json.loads(raw)
             except (json.JSONDecodeError, TypeError):
                 self._m_repo.mark_semas_processed(
                     canonical_id,
                     version=self._version,
                     error="salida de semas inválida",
                 )
+                self.metrics.record_item_failed()
+                failed_referentes += 1
                 continue
-            if not isinstance(semas, list):
+            if not isinstance(semas, list) or not all(isinstance(s, dict) for s in semas):
                 self._m_repo.mark_semas_processed(
                     canonical_id,
                     version=self._version,
-                    error="salida de semas no es una lista",
+                    error="salida de semas no es una lista dimensionada",
                 )
+                self.metrics.record_item_failed()
+                failed_referentes += 1
                 continue
             total += self._m_repo.propose_semas(
                 canonical_id,
-                [str(s) for s in semas],
+                [(str(s.get("dimension") or ""), str(s.get("sema") or "")) for s in semas],
                 allowed=allowed,
                 origin="llm",
             )
@@ -3618,5 +3924,10 @@ class SemasStage(Stage):
                 canonical_id,
                 version=self._version,
             )
-        logger.info(f"[Stage:{self.NAME}] {len(pendientes)} referentes, {total} semas propuestos.")
+            self.metrics.record_item_ok()
+            ok_referentes += 1
+        logger.info(
+            f"[Stage:{self.NAME}] {len(pendientes)} referentes: {ok_referentes} ok, "
+            f"{failed_referentes} con error, {total} semas propuestos."
+        )
         return total

@@ -485,8 +485,44 @@ def _referente_stage(conn: sqlite3.Connection, stage: str, ejecutada: bool) -> S
             ),
         )
 
-    attr = _REFERENTE_STAGE_ATTR[stage]
     cols = _columnas(conn, "mencion_canonico")
+    if stage == "modalidad":
+        if "modalidad" not in cols:
+            return StageStatus(stage=stage, ejecutada=ejecutada)
+        aplica = "mc.status != 'rejected'" if "status" in cols else "1"
+        selector = _selector_clause(conn, stage, "m.codigo")
+        base = "FROM mencion_canonico mc JOIN menciones m ON m.id = mc.mencion_id "
+        en_alcance = _uno(
+            conn,
+            f"SELECT COUNT(*) {base} WHERE ({aplica}) AND ({selector})",
+        )
+        review_expr = (
+            "mc.modalidad_review_reason IS NOT NULL" if "modalidad_review_reason" in cols else "0"
+        )
+        completed = _uno(
+            conn,
+            f"SELECT COUNT(*) {base} WHERE ({aplica}) AND ({selector}) "
+            f"AND (mc.modalidad IS NOT NULL OR {review_expr})",
+        )
+        rechazados = _uno(
+            conn,
+            f"SELECT COUNT(*) {base} WHERE NOT ({aplica}) AND ({selector})",
+        )
+        fuera = _uno(
+            conn,
+            f"SELECT COUNT(*) {base} WHERE NOT ({selector})",
+        )
+        return StageStatus(
+            stage=stage,
+            pending=max(en_alcance - completed, 0),
+            completed=completed,
+            no_aplica=rechazados,
+            fuera_alcance=fuera,
+            ejecutada=ejecutada,
+            unidad="vínculos marca-referente",
+        )
+
+    attr = _REFERENTE_STAGE_ATTR[stage]
     if attr not in cols:
         return StageStatus(stage=stage, ejecutada=ejecutada)
     # Dos cosas quedan fuera del universo de la stage: los vínculos rechazados

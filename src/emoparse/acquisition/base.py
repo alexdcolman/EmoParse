@@ -24,10 +24,12 @@ class DiscursoRecord:
         fecha: ISO 'YYYY-MM-DD' o vacío.
         contenido: Texto limpio.
         fuente: source_id del adapter.
-        extras: metadata adicional como tupla de pares.
+        extras: metadata normalizada adicional como tupla de pares.
+        raw: snapshot estructurado de la fuente para auditoría y reprocesamiento.
 
-    `frozen=True` para que sean hashables y comparables: dedupe trivial
-    con `set(records)`.
+    `frozen=True` conserva el contrato hashable/comparable. `raw` queda fuera
+    de igualdad y hash porque puede contener dicts/listas y no debe alterar la
+    identidad normalizada del registro.
     """
 
     codigo: str
@@ -37,6 +39,7 @@ class DiscursoRecord:
     contenido: str
     fuente: str
     extras: tuple[tuple[str, Any], ...] = field(default_factory=tuple)
+    raw: dict[str, Any] | None = field(default=None, compare=False, hash=False, repr=False)
 
     def to_dict(self) -> dict[str, Any]:
         """Convierte el record a dict, expandiendo `extras` al top-level.
@@ -51,6 +54,8 @@ class DiscursoRecord:
             "contenido": self.contenido,
             "fuente": self.fuente,
         }
+        if self.raw is not None:
+            d["raw"] = self.raw
         nativos = set(d.keys())
         for k, v in self.extras:
             if k in nativos:
@@ -80,7 +85,26 @@ class SourceAdapter(ABC):
     def fetch_discurso(self, url: str) -> DiscursoRecord | None:
         """Extrae el contenido de un discurso individual."""
 
-    def close(self) -> None:
+    def accepts_record(self, record: DiscursoRecord) -> bool:
+        """Indica si un registro extraído debe persistirse en la corrida actual.
+
+        El default conserva el contrato histórico: todo registro válido se
+        persiste. Una fuente puede sobrescribirlo cuando expone filtros
+        semánticos que sólo pueden resolverse después de identificar el
+        documento (por ejemplo, subtipos editoriales).
+        """
+        return True
+
+    def counts_toward_max(self, record: DiscursoRecord) -> bool:
+        """Indica si un registro escrito consume el tope de ``scrape --max``.
+
+        El default conserva el contrato histórico: todo registro válido cuenta.
+        Una fuente puede sobrescribirlo cuando preserva documentos auxiliares
+        que deben escribirse pero no representan el tipo principal solicitado.
+        """
+        return True
+
+    def close(self) -> None:  # noqa: B027
         """Libera recursos (sesiones HTTP, drivers, etc.). Default no-op."""
 
     def __enter__(self) -> SourceAdapter:

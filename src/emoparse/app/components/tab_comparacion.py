@@ -56,7 +56,7 @@ def render(db_path: Path) -> None:
         st.info("Seleccioná al menos un discurso.")
         return
 
-    df_sel = df_em[df_em["codigo"].isin(seleccionados)]
+    _df_sel = df_em[df_em["codigo"].isin(seleccionados)]
 
     subtab_perfil, subtab_radar, subtab_traj, subtab_timeline = st.tabs(
         [

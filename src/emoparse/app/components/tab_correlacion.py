@@ -187,7 +187,11 @@ def _agrupar(
             _sumar(f"{row.codigo}·u{row.frase_idx}", row)
     elif unidad == "hilo":
         ctx = data_layer.get_post_contexto(db_path)
-        conv = dict(zip(ctx["codigo"].astype(str), ctx["conversacion_id"])) if not ctx.empty else {}
+        conv = (
+            dict(zip(ctx["codigo"].astype(str), ctx["conversacion_id"], strict=False))
+            if not ctx.empty
+            else {}
+        )
         for row in df.itertuples(index=False):
             clave = conv.get(str(row.codigo))
             if (

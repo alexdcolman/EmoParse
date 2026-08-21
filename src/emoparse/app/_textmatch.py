@@ -46,7 +46,7 @@ def _expand_optionals(phrase: str) -> list[str]:
     optional_idx = [i for i, (_, opt) in enumerate(parts) if opt]
     variants: list[str] = []
     for combo in itertools.product([True, False], repeat=len(optional_idx)):
-        keep = dict(zip(optional_idx, combo))
+        keep = dict(zip(optional_idx, combo, strict=False))
         chunks = [txt for i, (txt, opt) in enumerate(parts) if not opt or keep.get(i, False)]
         variants.append(normalize("".join(chunks)))
         if len(variants) >= _MAX_VARIANTS:
@@ -68,7 +68,7 @@ def parse_query(query: str) -> list[list[str]]:
     matcher, al menos una de sus variantes es substring del texto normalizado.
     """
     matchers: list[list[str]] = []
-    pos = 0
+    _pos = 0
     pattern = re.compile(r"\"([^\"]*)\"|'([^']*)'|(\S+)")
     for m in pattern.finditer(query):
         phrase = m.group(1) if m.group(1) is not None else m.group(2)

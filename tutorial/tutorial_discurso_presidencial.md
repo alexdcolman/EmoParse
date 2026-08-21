@@ -22,7 +22,7 @@ EmoParse no hace análisis de sentimientos, sino que reconstruye el **simulacro 
 
 1. Qué emoción tiene presencia en el discurso.
 2. Quién la experimenta (enunciador, enunciatarios, actores discursivos nombrados).
-3. Según qué modo de existencia discursivo (realizada, potencial, virtual, actual), con qué intensidad (alta, baja, media), y qué dominancia (corporal, cognoscitiva o mixta) y foria (euforia, disforia, aforia, ambiforia) tiene esa emoción.
+3. Según qué modo de existencia discursivo (realizada, potencial, virtual, actual o inducida/proyectada, `inducida_proyectada` en la salida estructurada), con qué intensidad (alta, baja, media), y qué dominancia (corporal, cognoscitiva o mixta) y foria (euforia, disforia, aforia, ambiforia) tiene esa emoción.
 4. Cuál es su duración, su temporalidad y su aspectualidad.
 5. Qué fuente desencadena la emoción (objetos, espacios, discursos, acontecimientos, etc.) y si hay alguna entidad que medie su circulación.
 6. Si hay instancias que verifican si la emoción es adecuada a una norma o a una situación, o si la emoción fue efectivamente realizada o no.
@@ -125,11 +125,15 @@ emoparse run \
   --stages summarizer,metadata,enunciation,actors,emotions,explode_emotions
 ```
 
-**3. Revisar y unificar referentes.** Antes de seguir, andá a la tab **Referentes** del dashboard y
+**3. Segunda lectura de emociones, si la vas a usar.** `emotions_pass2` es opcional, pero conviene
+correrla antes de considerar cerrada la primera revisión de referentes, porque puede incorporar nuevas
+detecciones y, con ellas, nuevas marcas referenciales. El comando completo está en el Paso 4.
+
+**4. Revisar y unificar referentes.** Antes de seguir, andá a la tab **Referentes** del dashboard y
 hacé una primera pasada. No hace falta que quede perfecta, pero conviene resolver los casos más
 obvios antes de generar la caracterización fina.
 
-**4. Normalizar y caracterizar.** La normalización agrega un nombre canónico sin borrar la etiqueta
+**5. Normalizar y caracterizar.** La normalización agrega un nombre canónico sin borrar la etiqueta
 original; `characterizer` produce el perfil detallado de cada emoción.
 
 ```bash
@@ -143,16 +147,18 @@ emoparse run \
   --stages summarizer,metadata,enunciation,actors,emotions,explode_emotions,normalize_emotions,characterizer
 ```
 
-**5. Etapas opcionales, una por vez.** A partir de acá, según lo que te interese, sumá
-`emotions_pass2`, `deixis`, `modalidad`, `semas`, `actants` o `judge` (Paso 4). Revisá cada resultado
-antes de avanzar.
+**6. Profundizar, una etapa por vez.** A partir de acá, según lo que te interese, sumá `deixis`,
+`modalidad`, `actants`, `judge` o `semas` (Paso 4). Como recorrido de trabajo, conviene resolver primero
+los enriquecimientos referenciales (`deixis` y `modalidad`), después auditar el simulacro con `actants`
+y `judge`, y correr `semas` sobre referentes ya revisados. Es un orden recomendado para la revisión
+humana, no una afirmación de que todas esas etapas sean dependencias duras entre sí.
 
 ```bash
 # Ver el progreso en cualquier momento, desde otra terminal:
 emoparse status --db runs/<nombre_de_tu_run>.sqlite
 ```
 
-> ⁴ Cada etapa es un modelo de IA con un prompt especializado y un esquema de salida estricto (Pydantic + GBNF). Todo se guarda en una base SQLite por corrida, con un cache que evita repetir trabajo: si volvés a correr una etapa que ya se ejecutó con la misma configuración, el sistema reusa la respuesta guardada en vez de volver a consultar el modelo.
+> ⁴ El pipeline combina etapas de inferencia con LLM y etapas determinísticas. Las etapas que realizan inferencia usan un prompt especializado y un esquema de salida estricto (Pydantic + GBNF); otras transforman, normalizan o resuelven información sin una nueva inferencia generativa. Todo se guarda en una base SQLite por corrida y, cuando corresponde, el cache permite reutilizar respuestas ya calculadas en vez de volver a consultar el modelo.
 
 > ⁵ Para discurso político, usamos las categorías de Verón (1983): prodestinatario (el propio); paradestinatario (el indeciso a persuadir); contradestinatario (el adversario). La etapa `enunciation` identifica además el auditorio (el destinatario directo del discurso) y los colectivos con los que el enunciador se identifica ("los argentinos", un movimiento político, etc.); esto es la base sobre la que trabaja después la resolución de deixis.
 
@@ -164,7 +170,7 @@ emoparse app
 
 Se abre el dashboard en tu navegador, con una tab por cada clase de exploración. Estas son algunas de las que vas a usar:
 
-- **📈 Curva emocional** — la trayectoria emocional del discurso: en qué partes se concentran ciertas emociones, filtrable según quiénes las experimentan, qué rasgos semánticos comparten esos experienciadores (por ejemplo, "+ víctima" o "+ victimario") — para eso hay que correr la etapa `semas` — y qué fuentes las originan. Por ejemplo, los discursos políticos suelen tener *arquitecturas* fóricas reconocibles: diagnóstico disfórico → resolución eufórica, etc.
+- **📈 Curva emocional** — la trayectoria emocional del discurso: en qué partes se concentran ciertas emociones, filtrable según quiénes las experimentan, qué rasgos semánticos persistidos a nivel del referente comparten esos experienciadores (por ejemplo, `humano`, `institucional`, `concepto`, `individual`, `colectivo`, `abstracto` o `concreto`) – para eso hay que correr la etapa `semas` – y qué fuentes las originan. Los roles situados, como enunciador/enunciatario, víctima/victimario o agente/paciente, no se guardan como propiedades globales del referente dentro de `semas`. Por ejemplo, los discursos políticos suelen tener *arquitecturas* fóricas reconocibles: diagnóstico disfórico → resolución eufórica, etc.
 
   ![Curva emocional](screenshots/discursos/3.png)
 
@@ -180,7 +186,7 @@ Se abre el dashboard en tu navegador, con una tab por cada clase de exploración
 
   ![Matriz de co-ocurrencias](screenshots/discursos/6.png)
 
-- **🎭 Simulacros** — la reconstrucción analítica de cada emoción con sus funciones actanciales principales y —si corriste actants— secundarias: experienciador, emoción, fuente, mediador, verificadores, operador de modificación.
+- **🎭 Simulacros** — la reconstrucción analítica de cada emoción con sus funciones actanciales principales y, si corriste `actants`, componentes secundarios: experienciador, emoción, fuente, mediador, verificadores, operador de modificación y polaridad de la predicación emocional.
 
   ![Simulacros](screenshots/discursos/7.png)
 
@@ -198,7 +204,7 @@ Se abre el dashboard en tu navegador, con una tab por cada clase de exploración
 
 - **🔁 Estado del run** — el progreso de cada etapa, y algunas herramientas de triage: actores nuevos que aparecieron, experienciadores para consolidar, y un editor de la base de actores conocidos.
 
-- **🧩 Referentes** — todas las marcas del corpus agrupadas por el referente al que remiten, con herramientas para fusionar, corregir o descartar vínculos. Le dedicamos la sección siguiente porque es, en la práctica, donde más tiempo de trabajo humano se invierte.
+- **🏷 Referentes** — todas las marcas del corpus agrupadas por el referente al que remiten, con herramientas para fusionar, corregir o descartar vínculos. Si corriste `semas`, también muestra y permite revisar sus rasgos semánticos persistidos a nivel del referente, agrupados por dimensión. Le dedicamos la sección siguiente porque es, en la práctica, donde más tiempo de trabajo humano se invierte.
 
   ![Sugerencias de agrupación en tab Referentes](screenshots/discursos/12.png)
 
@@ -216,7 +222,7 @@ Ahí es donde entra el trabajo de revisión, en la tab **Referentes**. El dashbo
 
 ## Paso 4 — Profundizar (opcional)
 
-Una vez que el flujo básico te resulte cómodo, hay varias etapas opcionales que conviene sumar de a una, revisando cada resultado antes de pasar a la siguiente:
+Una vez que el flujo básico te resulte cómodo, hay varias etapas opcionales que conviene sumar de a una, revisando cada resultado antes de pasar a la siguiente. El orden de los bloques que sigue es una recomendación de trabajo: `emotions_pass2` antes de cerrar referentes; luego `deixis` y `modalidad`; después `actants` y `judge`; finalmente `semas` sobre referentes ya revisados.
 
 ```bash
 # Segunda lectura de emociones con contexto de las frases previas
@@ -227,7 +233,7 @@ emoparse run \
   --run-id <nombre_de_tu_run> \
   --db runs/<nombre_de_tu_run>.sqlite \
   --resume \
-  --stages summarizer,metadata,enunciation,emotions,emotions_pass2
+  --stages summarizer,metadata,enunciation,emotions,emotions_pass2,explode_emotions
 
 # Resolución de deixis
 emoparse run \
@@ -249,16 +255,6 @@ emoparse run \
   --resume \
   --stages summarizer,metadata,enunciation,emotions,explode_emotions,modalidad
 
-# Semas de los referentes ya unificados
-emoparse run \
-  --config config.yaml \
-  --input data/<tu_archivo_csv>.csv \
-  --genre discurso_presidencial \
-  --run-id <nombre_de_tu_run> \
-  --db runs/<nombre_de_tu_run>.sqlite \
-  --resume \
-  --stages summarizer,metadata,enunciation,emotions,explode_emotions,semas
-
 # Análisis actancial de cada emoción
 emoparse run \
   --config config.yaml \
@@ -269,7 +265,7 @@ emoparse run \
   --resume \
   --stages summarizer,metadata,enunciation,emotions,explode_emotions,actants
 
-# Auditoría con un segundo modelo
+# Auditoría con un segundo modelo, incluyendo los actantes ya calculados
 emoparse run \
   --config config.yaml \
   --input data/<tu_archivo_csv>.csv \
@@ -277,7 +273,17 @@ emoparse run \
   --run-id <nombre_de_tu_run> \
   --db runs/<nombre_de_tu_run>.sqlite \
   --resume \
-  --stages summarizer,metadata,enunciation,emotions,explode_emotions,normalize_emotions,characterizer,judge
+  --stages summarizer,metadata,enunciation,emotions,explode_emotions,normalize_emotions,characterizer,actants,judge
+
+# Semas de los referentes ya unificados
+emoparse run \
+  --config config.yaml \
+  --input data/<tu_archivo_csv>.csv \
+  --genre discurso_presidencial \
+  --run-id <nombre_de_tu_run> \
+  --db runs/<nombre_de_tu_run>.sqlite \
+  --resume \
+  --stages summarizer,metadata,enunciation,emotions,explode_emotions,semas
 
 # Exportar todo a CSV para R, SPSS, Excel u otra herramienta
 emoparse export \
@@ -288,8 +294,9 @@ emoparse export \
 Un par de aclaraciones sobre estas etapas:
 
 - **`modalidad`** no cambia si un vínculo está aceptado o rechazado; le agrega una clasificación aparte. Esto importa porque una misma frase valorativa puede a la vez nombrar a alguien y, sin nombrarlo, caracterizar a otro actor distinto —rechazar el vínculo para "limpiar" la base perdería al experienciador de la emoción—.
-- **`judge`** no vuelve a discutir la caracterización fina (foria, intensidad, dominancia): se concentra en los elementos donde el error es más costoso y más verificable —quién siente la emoción y qué la dispara—. Sus sugerencias se aceptan o rechazan en la tab Revisión, con un filtro para ver solo lo que todavía no resolviste.
-- **`actants`** es configurable componente por componente: si en tu corpus alguno de los cuatro (mediador, los dos verificadores, operador de modificación) no aporta nada, se puede desactivar sin tocar código.
+- **`judge`** no vuelve a discutir la caracterización fina (foria, intensidad, dominancia, duración, atribución o aspecto). Audita un conjunto acotado y tipado de campos: experienciador, tipo de emoción, fuente, modo de existencia, temporalidad y, cuando están disponibles, mediador, verificadores, operador de modificación y polaridad. Sus sugerencias se aceptan o rechazan en la tab Revisión, con un filtro para ver solo lo que todavía no resolviste.
+- **`actants`** es configurable componente por componente: mediador, verificador normativo, verificador observacional, operador de modificación y polaridad. La polaridad indica si la emoción se predica afirmada o negada y, si está negada, bajo qué modalidad; no equivale a valencia emocional positiva o negativa.
+- **`semas`** clasifica, en la implementación actual, rasgos semánticos que se persisten a nivel del referente y los guarda con una dimensión explícita (`clase`, naturaleza, individuación, temporalidad y dimensiones opcionales como animación, figuratividad, especificidad y concreción). Los roles enunciativos, narrativos, de fuente y actanciales se mantienen fuera de esta stage porque dependen del contexto de uso del referente.
 
 ## Paso 4bis — Agrupar los discursos por su parecido (opcional)
 
@@ -325,8 +332,8 @@ La explicación técnica del diseño, la persistencia y la composición del pipe
 
 **¿Necesito GPU?** No es obligatoria en sentido estricto, pero acelera mucho. Sin GPU, usá modelos chicos y corpus acotados.
 
-**¿Los resultados son reproducibles?** Altamente: mismo modelo + misma semilla + mismo corpus = mismos resultados (determinísticos bajo condiciones idénticas de backend, hardware y configuración). Cada run registra las versiones de prompts y ontologías usadas.
+**¿Los resultados son reproducibles?** EmoParse está diseñado para favorecer la reproducibilidad: cada run conserva sus resultados en SQLite, registra las versiones de prompts, ontologías y schemas, y puede reutilizar respuestas mediante cache. Aun con el mismo modelo, corpus, semilla y configuración, una nueva inferencia LLM puede presentar variaciones según el backend y las condiciones de ejecución. Por eso, para reproducir un análisis concreto conviene conservar la base del run y su evidencia persistida, no asumir que volver a inferir producirá una copia idéntica.
 
 **¿La unificación de referentes se puede automatizar del todo?** No, al menos no sin perder distinciones que probablemente te interesen. El sistema hace la parte que puede hacer de forma determinística y conservadora, y te deja a vos las decisiones donde el criterio analítico pesa más que el parecido textual. Cuanto más grande el corpus, más tiempo hay que reservar para esto.
 
-**¿Puedo analizar otros géneros?** Sí: el sistema de géneros adapta el pipeline (discursos, y también tuits). Para sumar otros géneros, tenés que adaptar el código. El sistema está armado para que esa adaptación intente ser lo más fácil posible, pero también puede implicar modificaciones sustanciales. No todos los géneros corresponden a los mismos tipos de objetos, ni se pueden tratar todos como "documentos" de texto plano metodológicamente. Por ejemplo, el tuit implica un pipeline bastante diferente — [ver el tutorial correspondiente](https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_tuits.md).
+**¿Puedo analizar otros géneros?** Sí. EmoParse incluye actualmente tres géneros built-in: `discurso_presidencial`, `articulo_periodistico` y `tuit`. El sistema de géneros adapta el pipeline porque no todos los objetos discursivos admiten el mismo tratamiento; un tuit, por ejemplo, incorpora propiedades nativas digitales y tiene un recorrido diferente al de un discurso presidencial. También se pueden registrar géneros adicionales mediante el sistema de extensiones, aunque definir un género nuevo puede requerir decisiones metodológicas y técnicas sustanciales. Para tuits, [ver el tutorial correspondiente](https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_tuits.md).

@@ -176,6 +176,14 @@ class _GrammarBuilder:
         if node_type == "array":
             return self._visit_array(node, path=path)
         if node_type == "string":
+            pattern = node.get("pattern")
+            if pattern is not None:
+                if pattern == r'^[^"\\\r\n]{7,239}[.!?]$':
+                    return self._complete_sentence_no_double_quotes_rule(
+                        min_len=node.get("minLength", 8),
+                        max_len=node.get("maxLength", 240),
+                    )
+                raise GrammarError(f"Pattern de string no soportado en {path}: {pattern!r}")
             # Bound opcional por maxLength (Pydantic `Field(max_length=N)` sobre
             # un str). Sin maxLength se conserva la primitiva `string` ilimitada.
             if "maxLength" in node:
@@ -397,15 +405,54 @@ class _GrammarBuilder:
         self._rules[rule_name] = r'"\"" ' + cuerpo + r' "\""'
         return rule_name
 
+    # ── oración JSON acotada para justificaciones de ACTANTS ────────────────
+
+    def _complete_sentence_no_double_quotes_rule(
+        self,
+        *,
+        min_len: int,
+        max_len: int,
+    ) -> str:
+        """String JSON de una sola línea, sin comillas dobles y con cierre.
+
+        Se activa únicamente para el patrón JSON Schema estándar usado por
+        ``ActantsJustification``. Impide por construcción que una comilla
+        interna cierre prematuramente el string JSON. La primitiva ``string``
+        usada por las demás stages no cambia.
+        """
+        lo = max(1, int(min_len))
+        hi = int(max_len)
+        if hi < lo:
+            raise GrammarError(f"Oración con maxLength ({hi}) < minLength ({lo}): inconsistente")
+        if hi < 2:
+            raise GrammarError("La oración necesita cuerpo y puntuación final")
+
+        char_rule = "actants-justification-char"
+        if char_rule not in self._rules:
+            # Visible Unicode excepto comilla doble, barra inversa y controles.
+            # Espacios sí se permiten; la longitud acotada evita runaways.
+            self._rules[char_rule] = r'[^"\\\x7F\x00-\x1F]'
+
+        body_min = max(lo - 1, 1)
+        body_max = hi - 1
+        rule_name = f"actants-justification-{lo}-{hi}"
+        if rule_name in self._rules:
+            return rule_name
+
+        self._rules[rule_name] = (
+            r'"\"" ' + char_rule + "{" + f"{body_min},{body_max}" + "} " + r'[.!?] "\""'
+        )
+        return rule_name
+
     # ── enum ─────────────────────────────────────────────────────────────────
 
     def _visit_enum(self, values: list[Any], *, path: str) -> str:
         """Genera regla GBNF para un enum.
 
-        Soporta enums de strings y de enteros; otros tipos lanzan error. Los
-        enteros se emiten como literal JSON sin comillas, lo que permite
-        vocabularios cerrados cortos (un id en lugar de un identificador
-        largo) sin perder la restricción del sampler.
+        Soporta enums de strings, enteros y booleanos; otros tipos lanzan
+        error. Los enteros y booleanos se emiten como literales JSON sin
+        comillas, de modo que `Literal[True]`/`Literal[False]` conserve la
+        restricción estructural en la gramática.
         """
         if not values:
             raise GrammarError(f"Enum vacío en {path}")
@@ -413,7 +460,9 @@ class _GrammarBuilder:
         for v in values:
             if isinstance(v, str):
                 alternatives.append(self._json_string_literal(v))
-            elif isinstance(v, int) and not isinstance(v, bool):
+            elif isinstance(v, bool):
+                alternatives.append('"true"' if v else '"false"')
+            elif isinstance(v, int):
                 alternatives.append(f'"{v}"')
             else:
                 raise GrammarError(

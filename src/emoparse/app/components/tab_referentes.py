@@ -221,7 +221,7 @@ def render(db_path: Path) -> None:
         for start in range(0, len(fichas), per_row):
             fila = fichas[start : start + per_row]
             cols = st.columns(len(fila))
-            for col, letra in zip(cols, fila):
+            for col, letra in zip(cols, fila, strict=False):
                 es_todos = letra == "Todos"
                 activa = (es_todos and not inicial_sel) or (letra == inicial_sel)
                 if col.button(
@@ -243,7 +243,7 @@ def render(db_path: Path) -> None:
     labels = [lab for _, lab in items]
     cids = [cid for cid, _ in items]
     sel_cids = [_enc(c) for c in cids]
-    label_by_sel = dict(zip(sel_cids, labels))
+    label_by_sel = dict(zip(sel_cids, labels, strict=False))
 
     # ── Resolver / clampear el cid activo dentro de la lista actual ───────────
     # Si el referente activo desapareció (p. ej. al quitar su último vínculo),
@@ -753,14 +753,8 @@ _SEMA_COLOR = {"accepted": "var(--ok)", "proposed": "var(--accent)", "rejected":
 
 
 def _render_semas_panel(db_path: Path, canonical_id: str) -> None:
-    """Panel de semas del referente, agrupados por su estructura jerárquica.
-
-    Muestra las dimensiones aplicables según la `clase` actancial del referente
-    (base → específicas de la clase → generales) con sus semas asignados, y
-    permite quitarlos o sumar valores del vocabulario dentro de esa estructura.
-    """
+    """Panel de semas del referente, agrupados por dimensión persistida."""
     with st.expander("🏷 Semas del referente", expanded=False):
-        # Semas vigentes (no rechazados; `no_aplica` es relleno, se oculta).
         vig = [
             s
             for s in data_layer.list_canonico_semas(db_path, canonical_id)
@@ -768,41 +762,42 @@ def _render_semas_panel(db_path: Path, canonical_id: str) -> None:
             and str(s.get("sema") or "").strip()
             and str(s.get("sema")) != "no_aplica"
         ]
-        by_sema = {str(s["sema"]): s for s in vig}
-        asignados = set(by_sema)
 
-        # La clase actancial sale del propio sema de dimensión `clase`.
-        clases = set(_knowledge.semas_by_dimension().get("clase") or [])
-        clase = next((s for s in asignados if s in clases), None)
-
+        clase = next(
+            (str(s.get("sema")) for s in vig if str(s.get("dimension") or "") == "clase"),
+            None,
+        )
         estructura = _knowledge.semas_estructura(clase)
-        claimed: set[str] = set()
-        for dim, valores in estructura:
-            # First-match en orden jerárquico: la clase resuelve los valores
-            # que se repiten entre dimensiones (p. ej. `objeto`).
-            recs = [by_sema[v] for v in valores if v in by_sema and v not in claimed]
-            claimed.update(str(r["sema"]) for r in recs)
+        dims_aplicables = {dim for dim, _ in estructura}
+
+        for dim, _ in estructura:
+            recs = [s for s in vig if str(s.get("dimension") or "") == dim]
             _render_sema_dim(db_path, canonical_id, dim, recs)
 
-        # Semas vigentes que no caen en ninguna dimensión aplicable.
-        sobrantes = sorted(asignados - claimed)
+        sobrantes = [s for s in vig if str(s.get("dimension") or "legacy") not in dims_aplicables]
         if sobrantes:
-            _render_sema_dim(
-                db_path,
-                canonical_id,
-                "otros",
-                [by_sema[s] for s in sobrantes],
-                muted=True,
-            )
+            for dim in sorted({str(s.get("dimension") or "legacy") for s in sobrantes}):
+                _render_sema_dim(
+                    db_path,
+                    canonical_id,
+                    dim,
+                    [s for s in sobrantes if str(s.get("dimension") or "legacy") == dim],
+                    muted=True,
+                )
 
-        # ── Agregar: valores aplicables no asignados, etiquetados por dimensión ─
+        # ── Agregar: la opción conserva dimensión + valor ─────────────────────
+        asignados = {(str(s.get("dimension") or "legacy"), str(s.get("sema") or "")) for s in vig}
         opciones: list[str] = []
         etiqueta: dict[str, str] = {}
+        payload: dict[str, tuple[str, str]] = {}
         for dim, valores in estructura:
-            for v in valores:
-                if v not in asignados and v not in etiqueta:
-                    opciones.append(v)
-                    etiqueta[v] = f"{dim} · {v}"
+            for valor in valores:
+                if (dim, valor) in asignados:
+                    continue
+                key = f"{dim}::{valor}"
+                opciones.append(key)
+                etiqueta[key] = f"{dim} · {valor}"
+                payload[key] = (dim, valor)
         if opciones:
             st.divider()
             ac1, ac2 = st.columns([5, 1])
@@ -822,8 +817,11 @@ def _render_semas_panel(db_path: Path, canonical_id: str) -> None:
                     use_container_width=True,
                     disabled=not nuevos,
                 ):
-                    for sema in nuevos:
-                        actions_layer.referente_set_sema(db_path, canonical_id, sema, "accepted")
+                    for key in nuevos:
+                        dim, sema = payload[key]
+                        actions_layer.referente_set_sema(
+                            db_path, canonical_id, dim, sema, "accepted"
+                        )
                     st.toast(f"{len(nuevos)} sema(s) agregado(s).", icon="✅")
                     st.rerun()
 
@@ -850,6 +848,7 @@ def _render_sema_dim(
         return
     for s in records:
         sema = str(s["sema"])
+        dimension = str(s.get("dimension") or dim or "legacy")
         status = str(s.get("status") or "")
         origin = str(s.get("origin") or "")
         color = _SEMA_COLOR.get(status, "var(--text-dim)")
@@ -862,9 +861,12 @@ def _render_sema_dim(
             unsafe_allow_html=True,
         )
         if c2.button(
-            "✗", key=f"sema_rm_{canonical_id}_{sema}", help="Quitar sema", use_container_width=True
+            "✗",
+            key=f"sema_rm_{canonical_id}_{dimension}_{sema}",
+            help="Quitar sema",
+            use_container_width=True,
         ):
-            actions_layer.referente_remove_sema(db_path, canonical_id, sema)
+            actions_layer.referente_remove_sema(db_path, canonical_id, dimension, sema)
             st.toast(f"Sema «{sema}» quitado.", icon="🗑")
             st.rerun()
 

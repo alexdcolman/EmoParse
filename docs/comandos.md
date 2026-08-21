@@ -93,11 +93,12 @@ Read-only: imprime el resumen de juicios persistidos en la tabla `judgments`. La
 
 ## `emoparse modalidad`
 
-Clasifica, con el pre-pass NLP (spaCy) y sin LLM, la modalidad referencial (designacion / referencia_gramatical / identificacion_inferencial) y la naturaleza del referente de cada vínculo marca→referente de una DB existente. Idempotente: solo clasifica lo que aún no tiene modalidad y no pisa lo editado a mano. La variante con LLM (para los casos ambiguos) se corre vía `emoparse run --stages ...,modalidad`.
+Clasifica, con el pre-pass NLP (spaCy) y sin LLM, únicamente los vínculos cuya modalidad puede resolverse con alta confianza. Los casos ambiguos quedan pendientes; no se persiste un fallback tentativo. Idempotente y respetuoso de ediciones humanas. La variante con LLM se corre vía `emoparse run --stages ...,modalidad`.
 
 | Opción | Valor | Default | Qué hace |
 |---|---|---|---|
 | `--db` | DB | requerido | Path al .sqlite del run. |
+| `--config, -c` | CONFIG | config.yaml | Path al YAML de config. Default: config.yaml. |
 | `--nlp-model` | NLP_MODEL |  | Modelo spaCy a usar (ES). Default: es_core_news_md con fallback a sm/lg. Instalá el modelo con `python -m spacy download <modelo>`. |
 
 ## `emoparse semas`
@@ -138,10 +139,11 @@ Scrapea discursos de una fuente registrada. Modo append incremental: se puede in
 |---|---|---|---|
 | `--source` | casarosada \| pagina12 | requerido | Fuente registrada a scrapear. |
 | `--output` | OUTPUT | requerido | CSV de salida. Se crea si no existe; append si ya existe. |
-| `--max` | MAX |  | Máximo de discursos a extraer en esta corrida. None = sin tope. |
+| `--max` | MAX |  | Máximo de discursos efectivamente extraídos y escritos en esta corrida. Las URLs fallidas, omitidas o ya presentes no consumen el tope. |
 | `--from` | YYYY-MM-DD |  | Solo discursos con fecha >= esta. Best-effort si la fuente no expone fechas en el listado. |
 | `--to` | YYYY-MM-DD |  | Solo discursos con fecha <= esta. |
-| `--max-after-filter` |  |  | Si se usa junto con --from/--to, --max cuenta discursos ya filtrados por fecha (no el listado crudo del adapter). Por defecto --max se pasa tal cual al adapter, que puede cortar el listado antes de que se aplique el filtro de fechas, dando menos resultados de los esperados. |
+| `--section` | SECCION |  | Página/12: limitar el descubrimiento a una o varias secciones RSS. Puede repetirse o recibir valores separados por coma, por ejemplo --section economia --section deportes. |
+| `--subtype` | SUBTIPO |  | Página/12: limitar la salida a subtipos de artículo. Valores públicos: static y lbp_article. Puede repetirse o recibir valores separados por coma. Si se omite, se aceptan ambos. |
 | `--mode` | auto \| http \| selenium | auto | Cómo descargar páginas. auto = HTTP con fallback Selenium. |
 | `--timeout` | TIMEOUT | 20.0 | Timeout HTTP por request (segundos). |
 

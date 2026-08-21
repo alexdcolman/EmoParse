@@ -15,8 +15,12 @@ from emoparse.agents.base import BaseBatchAgent
 from emoparse.core.backend.base import LLMBackend
 from emoparse.core.prompts import semas as prompts
 from emoparse.core.schemas import (
+    SEMA_OPCIONAL_INTRINSECO_DIMENSION,
     ListaSemasBatchSchema,
+    SemasActorBatchItemSchema,
     SemasBatchItemSchema,
+    SemasCircunstanteBatchItemSchema,
+    SemasCualidadBatchItemSchema,
 )
 
 if TYPE_CHECKING:
@@ -91,19 +95,30 @@ class SemasAgent(BaseBatchAgent[ListaSemasBatchSchema]):
         item: SemasBatchItemSchema,
         row: pd.Series,
     ) -> dict[str, Any]:
-        # Los campos de clasificación son obligatorios en el schema (el
-        # grammar los fuerza); `no_aplica` señala que la dimensión no
-        # corresponde a la `clase` del referente y se descarta antes de
-        # persistir, para no ensuciar `canonico_semas` con ruido.
-        semas = [item.clase, item.rol_enunciativo]
-        for valor in (
-            item.naturaleza_actor,
-            item.individuacion,
-            item.temporalidad,
-            item.naturaleza_circunstante,
-            item.naturaleza_cualidad,
-        ):
-            if valor != "no_aplica":
-                semas.append(valor)
-        semas.extend(item.opcionales)
+        """Materializa semas intrínsecos conservando su dimensión.
+
+        `no_aplica` no se persiste: expresa que la oposición individual/colectivo
+        no es pertinente para ciertos actores conceptuales/procesuales. Las
+        dimensiones contextuales fueron retiradas de esta stage.
+        """
+        semas: list[dict[str, str]] = [{"dimension": "clase", "sema": item.clase}]
+
+        if isinstance(item, SemasActorBatchItemSchema):
+            semas.append({"dimension": "naturaleza_actor", "sema": item.naturaleza_actor})
+            if item.individuacion != "no_aplica":
+                semas.append({"dimension": "individuacion", "sema": item.individuacion})
+            semas.append({"dimension": "temporalidad", "sema": item.temporalidad})
+        elif isinstance(item, SemasCircunstanteBatchItemSchema):
+            semas.append(
+                {
+                    "dimension": "naturaleza_circunstante",
+                    "sema": item.naturaleza_circunstante,
+                }
+            )
+        elif isinstance(item, SemasCualidadBatchItemSchema):
+            semas.append({"dimension": "naturaleza_cualidad", "sema": item.naturaleza_cualidad})
+
+        for sema in item.opcionales:
+            semas.append({"dimension": SEMA_OPCIONAL_INTRINSECO_DIMENSION[sema], "sema": sema})
+
         return {"semas": json.dumps(semas, ensure_ascii=False)}

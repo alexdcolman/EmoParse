@@ -97,12 +97,23 @@ un lugar central en esa reconstrucción.</p>
 <p>La revisión humana corrige atribuciones, unifica denominaciones de un mismo actor y descarta
 lecturas que no tienen apoyo suficiente en el fragmento.</p>
 <h2 id="corpus"><span class="num">6</span>Conseguir un corpus</h2>
-<p>EmoParse puede descargar artículos públicos de Página/12 y guardarlos en CSV. También admite un
-archivo propio con un código único y el cuerpo de cada texto.</p>
+<p>EmoParse puede descargar artículos públicos de Página/12 y guardarlos en CSV. El adapter separa el
+cuerpo normalizado de la metadata, el paratexto y la estructura fuente, que conserva en
+<code>raw</code> para auditoría. También admite un archivo propio con un código único y el cuerpo de
+cada texto.</p>
 <pre><code>emoparse scrape \
   --source pagina12 \
-  --max 24 \
+  --section economia,cultura \
+  --subtype static \
+  --max 20 \
   --output data/articulos.csv</code></pre>
+<p><code>--section</code> permite una o varias secciones. La zona cultural contempla Cultura y Cultura y
+Espectáculos. <code>--subtype</code> permite <code>static</code>, <code>lbp_article</code> o ambos;
+si se omite, se admiten los dos subtipos. Los live blogs se normalizan a partir de sus
+<code>lbp_update</code> en orden editorial, sin mezclar embeds, contactos, media o recirculación con el
+cuerpo.</p>
+<p><code>--max N</code> cuenta artículos efectivamente extraídos, aceptados y escritos. Una URL fallida,
+filtrada, vacía o ya presente en el CSV no consume el límite.</p>
 <p>La preparación de la base permite revisar la ingesta y la segmentación antes de ejecutar modelos:</p>
 <pre><code>emoparse run \
   --input data/articulos.csv \
