@@ -53,6 +53,7 @@ from emoparse.pipeline import (
     PipelineRunner,
 )
 from emoparse.pipeline.thread_builder import build_threads
+from emoparse.pipeline.token_budget import TokenBudgetReached
 from emoparse.storage.db import Database
 from emoparse.storage.runs import RunsRepository
 
@@ -77,7 +78,11 @@ def handle(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        df_input, posts_bundle = _load_input(args.input, genre=genre)
+        df_input, posts_bundle = _load_input(
+            args.input,
+            genre=genre,
+            mapping=getattr(args, "mapping", None),
+        )
     except InputError as e:
         logger.error(f"Input inválido: {e}")
         return 1
@@ -163,6 +168,14 @@ def handle(args: argparse.Namespace) -> int:
             f"{', '.join(emotion_scope)} (aplica a emotions y emotions_pass2)."
         )
 
+    budget_tokens = getattr(args, "budget_tokens", None)
+    if budget_tokens is not None and not cfg.pipeline.cache_enabled:
+        logger.error(
+            "[run] --budget-tokens requiere pipeline.cache_enabled=true para "
+            "reanudar respuestas ya pagadas sin volver a consumir tokens."
+        )
+        return 1
+
     knowledge_dir = Path(cfg.paths.knowledge_dir).expanduser().resolve()
     if not knowledge_dir.is_dir():
         logger.error(
@@ -182,17 +195,33 @@ def handle(args: argparse.Namespace) -> int:
         emotion_scope=emotion_scope,
         embed_context=bool(getattr(args, "embed", False)),
         selection=seleccion,
+        token_budget=budget_tokens,
     ) as runner:
         runner.ingest(df_input)
         _registrar_alcance(db_path, resumen_seleccion, n_input, len(df_input))
         if posts_bundle is not None:
             runner.ingest_posts(posts_bundle)
+        paused_budget: TokenBudgetReached | None = None
         try:
             prepared_units = runner.chunk_into_frases() if args.prepare_only else None
             report = runner.run()
+        except TokenBudgetReached as pause:
+            paused_budget = pause
+            report = {}
         except SeleccionError as e:
             logger.error(f"Selección inválida durante el pipeline: {e}")
             return 1
+
+    if paused_budget is not None:
+        print()
+        print(f"=== Run {args.run_id} pausado por presupuesto ===")
+        print(f"DB:      {db_path}")
+        print(f"Tokens:  {paused_budget.spent} / {paused_budget.limit}")
+        print(
+            "Estado:   pausa controlada; los ítems no resueltos siguen pendientes. "
+            "Para continuar, usá --resume con un --budget-tokens acumulado mayor."
+        )
+        return 0
 
     if args.prepare_only:
         print()
@@ -297,6 +326,7 @@ def _load_input(
     input_arg: str,
     *,
     genre: Genre,
+    mapping: str | None = None,
 ) -> tuple[pd.DataFrame, PostsBundle | None]:
     """Carga el input según su extensión.
 
@@ -306,7 +336,9 @@ def _load_input(
       por discurso; los reposts puros quedan solo en el bundle).
     """
     if Path(input_arg).suffix.lower() != ".jsonl":
-        return load_discursos(input_arg, genre=genre), None
+        return load_discursos(input_arg, genre=genre, mapping=mapping), None
+    if mapping is not None:
+        raise InputError("--mapping solo se admite con corpus CSV de discursos/artículos.")
 
     bundle = load_posts(input_arg)
     df_posts, df_hilos = build_threads(bundle.posts)
@@ -358,6 +390,17 @@ def _parse_stages(raw: str) -> tuple[str, ...]:
     if unknown:
         raise ValueError(f"Stages desconocidas: {unknown}. Válidas: {', '.join(STAGE_ORDER)}")
     return tuple(parts)
+
+
+def _positive_int(raw: str) -> int:
+    """Entero CLI estrictamente positivo."""
+    try:
+        value = int(raw)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("debe ser un entero") from exc
+    if value <= 0:
+        raise argparse.ArgumentTypeError("debe ser mayor que cero")
+    return value
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -423,6 +466,16 @@ def register(subparsers: argparse._SubParsersAction) -> None:
         ),
     )
     p.add_argument(
+        "--mapping",
+        default=None,
+        metavar="ARCHIVO.yaml",
+        help=(
+            "Mapping YAML para adaptar un CSV tabular de terceros sin reescribirlo. "
+            "Define encoding, delimitador, fila de encabezado y columnas de origen. "
+            "Puede generarse con `emoparse ingest-map`."
+        ),
+    )
+    p.add_argument(
         "--enunciador",
         dest="scope_enunciador",
         action="store_true",
@@ -456,6 +509,17 @@ def register(subparsers: argparse._SubParsersAction) -> None:
             "imágenes) en emotions, emotions_pass2, enunciation y metadata. "
             "Las descripciones de vision_describe ya se inyectan solas si "
             "esa stage corrió antes."
+        ),
+    )
+    p.add_argument(
+        "--budget-tokens",
+        type=_positive_int,
+        default=None,
+        metavar="N",
+        help=(
+            "Techo acumulado de tokens reales para esta DB/run. Al alcanzarlo no se "
+            "inicia otra llamada LLM; el run queda pausado y puede reanudarse con "
+            "--resume y un techo mayor. Requiere pipeline.cache_enabled=true."
         ),
     )
     p.add_argument(

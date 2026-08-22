@@ -19,9 +19,11 @@ from typing import Protocol
 from emoparse.cli.commands import (
     acquire_cmd,
     app_cmd,
+    doctor_cmd,
     eval_cmd,
     export_cmd,
     follows_cmd,
+    ingest_map_cmd,
     inspect_cmd,
     judge_cmd,
     metrics_cmd,
@@ -48,6 +50,8 @@ class CommandModule(Protocol):
 #: Subcomandos registrados, en orden de aparición en la ayuda.
 COMMANDS: tuple[CommandModule, ...] = (
     run_cmd,
+    doctor_cmd,
+    ingest_map_cmd,
     status_cmd,
     retry_cmd,
     inspect_cmd,

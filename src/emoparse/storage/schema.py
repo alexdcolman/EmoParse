@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS runs (
     run_id              TEXT PRIMARY KEY,
     started_at          TIMESTAMP NOT NULL,
     finished_at         TIMESTAMP,
-    status              TEXT NOT NULL DEFAULT 'running',  -- running|completed|failed
+    status              TEXT NOT NULL DEFAULT 'running',  -- running|completed|failed|paused_budget
     -- Versions inyectadas por el caller. NULL si no aplica.
     knowledge_version   TEXT,
     prompt_version      TEXT,

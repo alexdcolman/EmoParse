@@ -73,7 +73,7 @@ class RunInfo:
     name: str
     run_id: str | None
     started_at: datetime | None
-    status: str | None  # 'running' | 'completed' | 'failed' | None
+    status: str | None  # 'running' | 'completed' | 'failed' | 'paused_budget' | None
     n_discursos: int
     n_frases: int
 

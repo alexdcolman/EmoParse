@@ -16,6 +16,17 @@
   comparación controlada sobre artículos periodísticos y no modifica el contrato de la stage: se
   mantienen las versiones de knowledge, prompt, ontology y schema.
 
+### Ejecución
+
+- `emoparse run --budget-tokens N` fija un techo acumulado de tokens reales por DB/run. Al
+  alcanzarlo, la corrida queda en `paused_budget` sin marcar ítems como fallidos y puede retomarse
+  con `--resume` y un techo mayor; los cache hits no consumen presupuesto nuevo.
+
+### Ingesta de corpus tabulares
+
+- `emoparse doctor` diagnostica CSV de terceros sin modificarlos: codificación, delimitador, fila de encabezado, identificadores, contenido, fechas, HTML y granularidad respecto del género.
+- `emoparse ingest-map` genera un YAML revisable con una propuesta determinista de correspondencia de columnas; `emoparse run --mapping` aplica únicamente el archivo aprobado y conserva las columnas no mapeadas como metadata del input.
+
 ### Adquisición de Página/12 V4
 
 - El adapter de Página/12 conserva metadata, paratexto y estructura fuente en `raw`, mientras

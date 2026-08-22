@@ -14,7 +14,7 @@ lugar donde se vuelve necesario.
 
 El recorrido tiene cinco momentos:
 
-1. **Entrada**. Un archivo CSV, JSON o JSONL aporta los textos y su metadata.
+1. **Entrada**. Un archivo CSV, JSON o JSONL aporta los textos y su metadata. Los CSV con una estructura ajena al contrato pueden diagnosticarse y mapearse de forma determinista antes de ingresar al pipeline; el YAML de mapping queda como parte reproducible de la preparación del corpus.
 2. **Ingesta y segmentación**. El género valida la metadata y decide si la unidad de análisis es una
    frase, un párrafo o el documento completo.
 3. **Pipeline**. Una secuencia de etapas produce resúmenes, escena enunciativa, emociones,
@@ -198,6 +198,8 @@ consultas frecuentes o integridad relacional tienen tablas propias.
 etapas o cargar modelos. Sirve para verificar un corpus y preparar bases de anotación sin producir
 salidas analíticas.
 
+Para corpus CSV de terceros, `doctor` detecta el formato y problemas estructurales sin escribir el archivo; `ingest-map` propone un YAML revisable; y `run --mapping` aplica únicamente el mapping aprobado. Los campos de origen que no se asignan a un nombre conocido permanecen en la metadata del input, por lo que la adaptación no descarta información lateral.
+
 ## 10. Selección y reanudación
 
 `--select` permite acotar una corrida sin crear un corpus alternativo. Puede filtrar:
@@ -209,6 +211,8 @@ salidas analíticas.
 Los filtros sobre resultados se activan solo cuando la etapa que los produce está completa. El
 alcance se persiste por etapa, y `status` distingue pendiente, completado, fallido, no aplicable y
 fuera de alcance. Una corrida posterior sin selector retoma lo excluido sin repetir lo ya guardado.
+
+`--budget-tokens N` agrega una segunda forma de interrupción controlada. El techo se calcula sobre los tokens nuevos acumulados en la misma DB; cuando se alcanza, el run queda en `paused_budget` y las unidades aún no materializadas permanecen pendientes. Una reanudación con un techo mayor continúa desde ese estado. Como la capa de presupuesto se aplica a las llamadas reales por dentro de la cache, un hit no vuelve a consumir tokens. Con presupuesto activo se mantiene una sola llamada LLM en vuelo para que el corte sea determinista.
 
 ## 11. Evaluación
 
@@ -338,3 +342,5 @@ Las cuatro versiones permiten invalidar una parte concreta del trabajo:
 El versionado no reemplaza el registro de configuración de la corrida. La SQLite conserva las
 versiones y el routing usados, de modo que dos resultados pueden compararse con su procedencia. Un
 cambio de prompt invalida las llamadas que dependían de él y deja disponibles las demás respuestas.
+
+La misma telemetría de uso permite fijar un presupuesto acumulado de tokens a una corrida. El presupuesto no duplica contadores en otra tabla: se reconstruye desde las métricas persistidas y considera consumo nuevo únicamente cuando hubo una llamada real al backend.

@@ -39,6 +39,8 @@
 <!-- indice:inicio -->
       <li><a href="#globales">Opciones globales</a></li>
       <li><a href="#run">emoparse run</a></li>
+      <li><a href="#doctor">emoparse doctor</a></li>
+      <li><a href="#ingest-map">emoparse ingest-map</a></li>
       <li><a href="#status">emoparse status</a></li>
       <li><a href="#retry">emoparse retry</a></li>
       <li><a href="#inspect">emoparse inspect</a></li>
@@ -112,12 +114,45 @@
         <tr><td><code>--prepare-only</code></td><td></td><td></td><td>Crea o amplía la DB con la ingesta y la segmentación del corpus, sin ejecutar stages ni cargar modelos. Se puede combinar con --resume mientras la base siga siendo de preparación.</td></tr>
         <tr><td><code>--genre</code></td><td><code>GENRE</code></td><td></td><td>ID del género de discurso a aplicar. Default: &#x27;discurso_presidencial&#x27;. Los géneros disponibles dependen de los entry-points &#x27;emoparse.genres&#x27; instalados. El género determina los roles enunciativos válidos, la unidad de chunking (frase/parrafo/documento), y opcionalmente overrides de modelos y batch_sizes.</td></tr>
         <tr><td><code>--select</code></td><td><code>ARCHIVO.YAML</code></td><td></td><td>Archivo YAML que acota qué unidades se analizan. Admite campos del input y payloads de stages previas con notación punto, por ejemplo metadata.tipo_discurso o enunciation.enunciador. Los filtros de payload empiezan a regir después de que su stage productora queda completa. Ver data/ejemplos/seleccion.yaml y seleccion_payload_v070.yaml.</td></tr>
+        <tr><td><code>--mapping</code></td><td><code>ARCHIVO.YAML</code></td><td></td><td>Mapping YAML para adaptar un CSV tabular de terceros sin reescribirlo. Define encoding, delimitador, fila de encabezado y columnas de origen. Puede generarse con `emoparse ingest-map`.</td></tr>
         <tr><td><code>--enunciador</code></td><td></td><td></td><td>Acota la detección de emociones (ambos pases) a las del enunciador. Combinable con --enunciatarios y --actores (se unen). Si no se pasa ninguna de las tres, se analizan todos los experienciadores.</td></tr>
         <tr><td><code>--enunciatarios</code></td><td></td><td></td><td>Acota la detección de emociones (ambos pases) a las de los enunciatarios.</td></tr>
         <tr><td><code>--actores</code></td><td></td><td></td><td>Acota la detección de emociones (ambos pases) a las de otros actores (distintos del enunciador y los enunciatarios).</td></tr>
         <tr><td><code>--embed</code></td><td></td><td></td><td>Inyecta como contexto la información adjunta de cada post (título/descripción/sitio de links del campo embed, alt de imágenes) en emotions, emotions_pass2, enunciation y metadata. Las descripciones de vision_describe ya se inyectan solas si esa stage corrió antes.</td></tr>
+        <tr><td><code>--budget-tokens</code></td><td><code>N</code></td><td></td><td>Techo acumulado de tokens reales para esta DB/run. Al alcanzarlo no se inicia otra llamada LLM; el run queda pausado y puede reanudarse con --resume y un techo mayor. Requiere pipeline.cache_enabled=true.</td></tr>
         <tr><td><code>--overwrite-db</code></td><td></td><td></td><td>Si la DB del run ya existe, la elimina y empieza de cero sin preguntar. Sin esta flag (ni --resume), una DB existente dispara una pregunta interactiva (o un error si no hay TTY).</td></tr>
         <tr><td><code>--resume</code></td><td></td><td></td><td>Si la DB del run ya existe, reanuda sin preguntar (el comportamiento clásico de re-correr el mismo run-id).</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="doctor">emoparse doctor</h2>
+
+    <p>Inspecciona encoding, delimitador, encabezado, columnas, identificadores, contenido, fechas, HTML y granularidad antes de adaptar un corpus tabular. No escribe el input.</p>
+
+    <div class="tabla-caja tabla-comandos">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--input, -i</code></td><td><code>INPUT</code></td><td><code>requerido</code></td><td>CSV a diagnosticar.</td></tr>
+        <tr><td><code>--genre</code></td><td><code>GENRE</code></td><td></td><td>Género con el que se evaluará la granularidad. Default: discurso_presidencial.</td></tr>
+        <tr><td><code>--mapping</code></td><td><code>ARCHIVO.YAML</code></td><td></td><td>Mapping ya editado que se quiere verificar en lugar de usar la propuesta automática.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="ingest-map">emoparse ingest-map</h2>
+
+    <p>Detecta el formato y propone correspondencias de columnas. Escribe un YAML revisable; nunca transforma ni reescribe el corpus de origen.</p>
+
+    <div class="tabla-caja tabla-comandos">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--input, -i</code></td><td><code>INPUT</code></td><td><code>requerido</code></td><td>CSV de origen.</td></tr>
+        <tr><td><code>--out</code></td><td><code>OUT</code></td><td><code>requerido</code></td><td>YAML de mapping a escribir.</td></tr>
+        <tr><td><code>--genre</code></td><td><code>GENRE</code></td><td></td><td>Género para incluir, cuando corresponda, su metadata propia en la propuesta.</td></tr>
+        <tr><td><code>--overwrite</code></td><td></td><td></td><td>Permite reemplazar el archivo --out si ya existe.</td></tr>
       </tbody>
     </table>
     </div>

@@ -52,6 +52,7 @@ from emoparse.pipeline.stages import (
     VisionDescribeStage,
     _FraseStage,
 )
+from emoparse.pipeline.token_budget import BudgetedBackend, TokenBudget, TokenBudgetReached
 from emoparse.storage.checkpoints import StageCheckpointsRepository
 from emoparse.storage.db import Database
 from emoparse.storage.discursos import DiscursosRepository
@@ -177,6 +178,7 @@ class PipelineRunner:
         genre: Genre | None = None,
         embed_context: bool = False,
         selection: Seleccion | None = None,
+        token_budget: int | None = None,
     ) -> None:
         """
         Args:
@@ -222,6 +224,9 @@ class PipelineRunner:
             genre: Género del discurso.
             selection: Selector declarativo. Los filtros del input ya llegan
                 resueltos; los de payload se activan por stage.
+            token_budget: Techo acumulado de tokens reales para esta DB/run.
+                Requiere cache habilitado para que una pausa pueda reanudar
+                resultados ya pagados sin volver a consumirlos.
         """
         self._run_id = run_id
         self._cfg = config
@@ -288,6 +293,23 @@ class PipelineRunner:
         self._current_accumulator: StageMetricsAccumulator | None = None
         self._ctx = self._build_run_context()
         self._runs_repo.bootstrap(self._ctx)
+        if token_budget is not None and not self._cfg.pipeline.cache_enabled:
+            raise ValueError("token_budget requiere pipeline.cache_enabled=true")
+        self._token_budget = (
+            TokenBudget(
+                token_budget,
+                initial_spent=self._metrics_repo.total_tokens_for_run(self._run_id),
+            )
+            if token_budget is not None
+            else None
+        )
+        if self._token_budget is not None:
+            logger.info(
+                "[Runner] Presupuesto de tokens: acumulado={}/{}; restante={}",
+                self._token_budget.spent,
+                self._token_budget.limit,
+                self._token_budget.remaining,
+            )
         self._checkpoint_repo = StageCheckpointsRepository(self._db)
         self._registry = BackendRegistry(
             {
@@ -320,6 +342,12 @@ class PipelineRunner:
                 self._genre,
             ),
         )
+
+    def _wrap_with_budget(self, backend: LLMBackend) -> LLMBackend:
+        """Envuelve solo llamadas reales; la cache debe quedar por fuera."""
+        if self._token_budget is None:
+            return backend
+        return BudgetedBackend(backend, self._token_budget)
 
     def _wrap_with_cache(self, backend: LLMBackend) -> LLMBackend:
         """Envuelve el backend con CachedBackend si el cache está habilitado."""
@@ -458,6 +486,7 @@ class PipelineRunner:
             self.chunk_into_frases()
 
         self._payload_selection.prepare()
+        self._runs_repo.mark_running_if_paused()
         report: dict[str, int] = {}
         try:
             for stage_name in STAGE_ORDER:
@@ -473,6 +502,14 @@ class PipelineRunner:
                 self._maybe_unload_for_next(stage_name)
 
             self._runs_repo.mark_completed()
+        except TokenBudgetReached as pause:
+            logger.info(
+                "[Runner] Pausa controlada por presupuesto: {}/{} tokens.",
+                pause.spent,
+                pause.limit,
+            )
+            self._runs_repo.mark_budget_paused(spent=pause.spent, limit=pause.limit)
+            raise
         except Exception as e:
             logger.exception(f"[Runner] Falló: {e}")
             self._runs_repo.mark_failed(str(e))
@@ -493,6 +530,17 @@ class PipelineRunner:
             if isinstance(stage, (_FraseStage, EmotionsPass2Stage)):
                 stage.parallel = self._effective_parallel(stage_name)
             ok = stage.run_pending()
+        except TokenBudgetReached:
+            # Una pausa puede ocurrir a mitad de stage. Persistir la telemetría
+            # consumida hasta ese punto permite que --resume reconstruya el
+            # presupuesto acumulado sin contar otra vez los cache hits.
+            self._metrics_repo.insert(
+                run_id=self._run_id,
+                stage_name=stage_name,
+                snapshot=accumulator.snapshot(),
+                model_alias=self._cfg.pipeline.stages.get(stage_name),
+            )
+            raise
         except Exception:
             # Modalidad usa fail-fast deliberado; conservar su telemetría evita
             # que un aborto estructural desaparezca del diagnóstico del run.
@@ -1044,6 +1092,15 @@ class PipelineRunner:
         requested = int(getattr(self._cfg.pipeline, "parallel", 1) or 1)
         if requested <= 1:
             return 1
+        if self._token_budget is not None:
+            logger.info(
+                "[Runner] pipeline.parallel={} se acota a 1 para '{}' mientras "
+                "--budget-tokens está activo: no se inician llamadas LLM "
+                "concurrentes contra el mismo presupuesto.",
+                requested,
+                stage_name,
+            )
+            return 1
         alias = self._cfg.pipeline.stages.get(stage_name)
         if alias is None or alias not in self._cfg.models:
             return 1
@@ -1117,7 +1174,8 @@ class PipelineRunner:
                 f"{list(self._cfg.pipeline.stages)}"
             )
         raw = self._registry.get(alias)
-        cached = self._wrap_with_cache(raw)
+        budgeted = self._wrap_with_budget(raw)
+        cached = self._wrap_with_cache(budgeted)
         accumulator = getattr(self, "_current_accumulator", None)
         if accumulator is not None:
             return self._wrap_with_metrics(cached, accumulator)

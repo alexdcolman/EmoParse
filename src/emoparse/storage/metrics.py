@@ -152,6 +152,25 @@ class MetricsRepository:
                 ),
             )
 
+    def total_tokens_for_run(self, run_id: str) -> int:
+        """Tokens reales acumulados en todas las ejecuciones del run.
+
+        ``StageMetricsAccumulator`` excluye cache hits, por lo que esta suma
+        representa consumo nuevo observado por los backends a lo largo de
+        reanudaciones del mismo run.
+        """
+        if not self._db.table_exists("run_metrics"):
+            return 0
+        row = self._db.execute(
+            """
+            SELECT COALESCE(SUM(total_prompt_tokens + total_completion_tokens), 0) AS total
+            FROM run_metrics
+            WHERE run_id = ?
+            """,
+            (run_id,),
+        ).fetchone()
+        return int(row["total"] or 0) if row is not None else 0
+
     def list_for_run(self, run_id: str) -> list[dict[str, Any]]:
         """Todas las métricas de un run, ordenadas por recorded_at."""
         model_column = self._model_alias_select()

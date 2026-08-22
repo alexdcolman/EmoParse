@@ -335,6 +335,11 @@
     de las instrucciones, de las listas de categorías y de los formatos de salida. Cambiar solo una
     instrucción invalida únicamente lo que dependía de ella, y el resto del trabajo se conserva.</p>
 
+    <p>También se puede fijar un techo acumulado con <code>--budget-tokens</code>. Cuando la corrida
+    alcanza ese presupuesto, queda pausada sin convertir las unidades restantes en errores. Se
+    retoma con <code>--resume</code> y un techo mayor. Las respuestas que ya estaban en la memoria
+    interna no consumen presupuesto nuevo al reutilizarse.</p>
+
     <div class="notas">
       <h2>Notas</h2>
       <ol>

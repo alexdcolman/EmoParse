@@ -78,7 +78,9 @@ emoparse run \
 emoparse app
 ```
 
-El input mínimo es un CSV con columnas `codigo` (identificador único) y `contenido` (texto). EmoParse también incluye un scraper para Casa Rosada:
+El input mínimo es un CSV con columnas `codigo` (identificador único) y `contenido` (texto). Si un corpus tabular viene de otro sistema con nombres de columnas, delimitador, codificación o fila de encabezado diferentes, se puede diagnosticar con `emoparse doctor`, generar una propuesta editable con `emoparse ingest-map` y pasar ese YAML a `run --mapping`. El diagnóstico no modifica el corpus y las columnas que no se mapean se conservan como metadata del input.
+
+EmoParse también incluye un scraper para Casa Rosada:
 
 ```bash
 emoparse scrape --source casarosada \
@@ -95,6 +97,8 @@ emoparse run --config config.yaml --input data/discursos.csv \
 
 Los ejemplos están en `data/ejemplos/seleccion.yaml` y `data/ejemplos/seleccion_payload_v070.yaml`. Una corrida posterior sin selector procesa lo que quedó fuera de alcance sin repetir los resultados ya persistidos.
 
+Para corridas largas, `--budget-tokens N` fija un techo acumulado de tokens nuevos para esa DB. Cuando se alcanza, la corrida queda pausada de forma controlada y puede retomarse con `--resume` y un techo mayor. Las respuestas reutilizadas desde cache no consumen presupuesto nuevo.
+
 ---
 
 ## Comandos disponibles
@@ -102,6 +106,8 @@ Los ejemplos están en `data/ejemplos/seleccion.yaml` y `data/ejemplos/seleccion
 ```
 emoparse app         Abre el dashboard de revisión y visualización
 emoparse run         Ejecuta el pipeline completo
+emoparse doctor      Diagnostica un CSV de terceros sin modificarlo
+emoparse ingest-map  Propone un mapping YAML editable para un CSV de terceros
 emoparse scrape      Adquiere discursos y artículos desde una fuente registrada
 emoparse acquire     Adquiere posts (Bluesky, Mastodon, X API, dumps JSONL/CSV) a un corpus incremental
 emoparse follows     Adquiere el grafo de seguimiento entre las cuentas del corpus
@@ -145,7 +151,7 @@ La etapa opcional `deixis` resuelve las marcas de 1ª y 2ª persona ("yo", "noso
 
 La etapa opcional `modalidad` clasifica **cómo** se sostiene cada vínculo marca ↔ referente. Usa cuatro modalidades: `designacion` (nombra o categoriza directamente), `referencia_gramatical` (deixis o morfología), `predicacion` (la construcción verbal construye como referente un evento, proceso o estado) e `identificacion_inferencial` (identificación semántica o discursiva suficientemente sostenida). Un pre-pass con spaCy resuelve solo los casos seguros y el modelo interviene en los ambiguos. Si ninguna modalidad sostiene legítimamente una arista, queda señalada para revisión upstream en lugar de forzar una clasificación.
 
-El dashboard incluye además tabs de **Búsqueda** (por texto o por selección de emoción/actor/experienciador/fuente), **Co-ocurrencia** de emociones y **Simulacros** (reconstrucción de cada emoción con sus funciones actanciales).
+El dashboard incluye además tabs de **Búsqueda** (por texto o por selección de emoción/actor/experienciador/fuente), **Co-ocurrencia** de emociones y **Simulacros** (reconstrucción de cada emoción con sus funciones actanciales). También puede **comparar modelos** entre runs del mismo corpus: muestra el routing efectivamente observado, señala si una stage mezcló modelos y, cuando existe una referencia de evaluación, reúne sus métricas sin reescribir las salidas analíticas.
 
 ---
 

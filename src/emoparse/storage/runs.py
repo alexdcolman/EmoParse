@@ -396,6 +396,30 @@ class RunsRepository:
 
     # ── Status updates ───────────────────────────────────────────────────────
 
+    def mark_running_if_paused(self) -> None:
+        """Reactiva una corrida pausada por presupuesto al reanudarla."""
+        with self._db.transaction() as cur:
+            cur.execute(
+                """
+                UPDATE runs SET status = 'running', finished_at = NULL
+                WHERE status = 'paused_budget'
+                """
+            )
+
+    def mark_budget_paused(self, *, spent: int, limit: int) -> None:
+        """Marca una pausa controlada sin convertirla en fallo del run."""
+        note = f"\n\n[PAUSED_BUDGET] tokens={spent} limit={limit}"
+        with self._db.transaction() as cur:
+            cur.execute(
+                """
+                UPDATE runs SET
+                    status = 'paused_budget',
+                    finished_at = NULL,
+                    notes = COALESCE(notes, '') || ?
+                """,
+                (note,),
+            )
+
     def mark_completed(self) -> None:
         """Marca el run como completado exitosamente."""
         with self._db.transaction() as cur:

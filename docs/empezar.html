@@ -202,6 +202,30 @@ emoparse run \
   --genre articulo_periodistico \
   --run-id articulos01</code></pre>
 
+    <h3>Corpus tabulares propios</h3>
+
+    <p>Un CSV no tiene que usar de antemano los mismos nombres de columnas que EmoParse. Antes de
+    analizarlo, <code>doctor</code> puede revisar codificación, delimitador, fila de encabezado,
+    identificadores, contenido, fechas y restos de HTML sin modificar el archivo.
+    <code>ingest-map</code> propone después un YAML editable de correspondencia de columnas; solo ese
+    archivo, cuando se pasa explícitamente a <code>run</code>, se usa para la ingesta.</p>
+
+<pre><code><span class="c"># Diagnosticar sin escribir el corpus</span>
+emoparse doctor --input corpus_externo.csv --genre discurso_presidencial
+
+<span class="c"># Crear una propuesta y revisarla a mano</span>
+emoparse ingest-map --input corpus_externo.csv --out mapping.yaml
+
+<span class="c"># Verificar el mapping editado</span>
+emoparse doctor --input corpus_externo.csv --mapping mapping.yaml
+
+<span class="c"># Usarlo en la corrida</span>
+emoparse run --config config.yaml --input corpus_externo.csv \
+  --run-id corpus01 --mapping mapping.yaml</code></pre>
+
+    <p>Las columnas que no forman parte de esa correspondencia se conservan como metadata del input.
+    El archivo original no se reescribe.</p>
+
     <p>El <a href="https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_discurso_presidencial.md">tutorial de discursos
     presidenciales</a> y el <a href="https://github.com/alexdcolman/EmoParse/blob/main/tutorial/tutorial_articulo_periodistico.md">tutorial de
     artículos periodísticos</a> desarrollan ambos recorridos paso por paso.</p>
@@ -236,6 +260,11 @@ emoparse app</code></pre>
 
     <p>El comando <code>emoparse status</code> distingue lo pendiente, lo no aplicable y lo excluido
     por el selector en cada etapa.</p>
+
+    <p>Si la corrida debe respetar un techo de uso, <code>--budget-tokens N</code> fija un presupuesto
+    acumulado para esa base. Al alcanzarlo, el run queda pausado y se puede continuar con
+    <code>--resume</code> y un techo mayor; las respuestas recuperadas de cache no vuelven a sumar
+    tokens.</p>
 
     <div class="nota">
       <span class="rotulo">Dónde queda todo</span>

@@ -14,6 +14,8 @@ import pandas as pd
 from loguru import logger
 from pydantic import ValidationError
 
+from emoparse.inputs.tabular_mapping import MappingError, load_mapping, read_mapped_csv
+
 if TYPE_CHECKING:
     from emoparse.genres.base import Genre
 
@@ -30,6 +32,7 @@ def load_discursos(
     path: Path | str,
     *,
     genre: Genre | None = None,
+    mapping: Path | str | None = None,
 ) -> pd.DataFrame:
     """Carga discursos y valida la metadata declarada por el género."""
     p = Path(path).expanduser().resolve()
@@ -38,8 +41,16 @@ def load_discursos(
 
     ext = p.suffix.lower()
     if ext == ".csv":
-        df = _load_csv(p)
+        if mapping is None:
+            df = _load_csv(p)
+        else:
+            try:
+                df = read_mapped_csv(p, load_mapping(mapping))
+            except MappingError as e:
+                raise InputError(str(e)) from e
     elif ext == ".json":
+        if mapping is not None:
+            raise InputError("--mapping solo se admite con inputs CSV.")
         df = _load_json(p)
     else:
         raise InputError(

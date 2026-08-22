@@ -26,7 +26,10 @@ def _subcommands(parser: argparse.ArgumentParser) -> dict[str, argparse.Argument
 def test_parser_registers_every_command_module_once() -> None:
     parser = cli_main.build_parser()
     registered = tuple(_subcommands(parser))
-    expected = tuple(module.__name__.rsplit(".", 1)[-1].removesuffix("_cmd") for module in COMMANDS)
+    expected = tuple(
+        getattr(module, "COMMAND_NAME", module.__name__.rsplit(".", 1)[-1].removesuffix("_cmd"))
+        for module in COMMANDS
+    )
 
     assert registered == expected
     assert len(registered) == len(set(registered))

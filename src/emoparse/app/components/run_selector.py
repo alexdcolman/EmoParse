@@ -80,6 +80,8 @@ def _format_run_option(run: data_layer.RunInfo) -> str:
         badge = " ✗"
     elif run.status == "running":
         badge = " ◐"
+    elif run.status == "paused_budget":
+        badge = " ⏸"
     return f"{run.name}{badge}"
 
 
@@ -97,6 +99,7 @@ def _render_run_stats(db_path: Path) -> None:
         "completed": "badge-ok",
         "failed": "badge-err",
         "running": "badge-warn",
+        "paused_budget": "badge-warn",
     }.get(status, "badge-dim")
 
     st.sidebar.markdown(
