@@ -138,6 +138,19 @@ pip install -e ".[llamacpp,ui,scraping]"</code></pre>
 <pre><code>pip install -e ".[nlp]"
 python -m spacy download es_core_news_md</code></pre>
 
+    <h3>Instalar dentro de un contenedor</h3>
+
+    <p>También se puede aislar la instalación con Docker. El perfil <code>cpu</code> sirve para el tablero y para backends accesibles por API; el perfil <code>cuda</code> agrega <code>llama-cpp-python</code> compilado con CUDA para modelos locales. Ambos se construyen desde el repositorio y mantienen los modelos, corpus, configuraciones y bases fuera de la imagen.</p>
+
+<pre><code>docker build -f docker/Dockerfile.cpu -t emoparse:cpu .
+docker build -f docker/Dockerfile.cuda -t emoparse:cuda .
+
+<span class="c"># Comprobar la imagen sin cargar un modelo</span>
+python scripts/container_smoke.py --profile cpu --image emoparse:cpu --no-build
+python scripts/container_smoke.py --profile cuda --image emoparse:cuda --no-build</code></pre>
+
+    <p class="marginal">Las etiquetas se crean en la computadora donde se hace el build. Los modelos GGUF se montan desde afuera, por ejemplo sobre <code>/models</code>; los resultados persistentes se escriben en un directorio montado sobre <code>/runs</code>. El perfil CUDA requiere NVIDIA Container Toolkit y acceso explícito a la GPU con <code>--gpus all</code>; las bibliotecas del driver se inyectan desde el host al iniciar el contenedor.</p>
+
     <h2 id="modelos"><span class="num">3</span>Los modelos</h2>
 
     <p>EmoParse no incluye los modelos de lenguaje: se descargan por separado y se guardan en la

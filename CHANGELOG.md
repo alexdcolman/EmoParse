@@ -2,6 +2,10 @@
 
 ## [Sin publicar]
 
+### Contenedores
+
+- Perfiles locales `emoparse:cpu` y `emoparse:cuda` construibles desde fuente, con modelos y datos montados externamente. El perfil CUDA compila `llama-cpp-python` con CUDA y ambos perfiles tienen smokes sin modelo para CLI, imports, tablero, mounts y SQLite.
+
 ### Documentación
 
 - Se completa la revisión DOC-02 de los tres tutoriales y sus capturas sobre la interfaz vigente.

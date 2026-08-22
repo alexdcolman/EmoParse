@@ -1,0 +1,30 @@
+# syntax=docker/dockerfile:1
+FROM python:3.12-slim-bookworm
+
+ARG EMOPARSE_UID=1000
+ARG EMOPARSE_GID=1000
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    PIP_NO_CACHE_DIR=1 \
+    STREAMLIT_SERVER_ADDRESS=0.0.0.0 \
+    STREAMLIT_SERVER_HEADLESS=true \
+    STREAMLIT_BROWSER_GATHER_USAGE_STATS=false
+
+WORKDIR /opt/emoparse
+COPY pyproject.toml README.md LICENSE ./
+COPY src ./src
+
+RUN python -m pip install --upgrade pip \
+    && python -m pip install ".[ui,lmstudio]"
+
+RUN groupadd --gid "${EMOPARSE_GID}" emoparse \
+    && useradd --uid "${EMOPARSE_UID}" --gid "${EMOPARSE_GID}" --create-home --shell /bin/sh emoparse \
+    && install -d -o emoparse -g emoparse /models /data /runs /config
+
+USER emoparse
+WORKDIR /data
+
+ENTRYPOINT ["emoparse"]
+CMD ["--help"]

@@ -54,7 +54,16 @@ pip install -e ".[nlp]"
 python -m spacy download es_core_news_md
 ```
 
-> Las imágenes Docker oficiales para CPU y CUDA están en preparación; los modelos se montarán desde afuera.
+El repositorio incluye dos perfiles de contenedor que se construyen localmente desde el código fuente: `emoparse:cpu`, preparado para el tablero y backends compatibles con OpenAI, y `emoparse:cuda`, que compila `llama-cpp-python` con soporte CUDA. No incorporan modelos, corpus, bases ni credenciales: esos recursos se montan desde afuera. Estos perfiles se construyen localmente desde fuente y no son imágenes oficiales publicadas. El perfil CUDA requiere NVIDIA Container Toolkit y se ejecuta con acceso explícito a la GPU (`docker run --gpus all ...`); el driver del host se inyecta en runtime y no forma parte de la imagen.
+
+```bash
+docker build -f docker/Dockerfile.cpu -t emoparse:cpu .
+docker build -f docker/Dockerfile.cuda -t emoparse:cuda .
+
+# Smokes sin modelo real
+python scripts/container_smoke.py --profile cpu --image emoparse:cpu --no-build
+python scripts/container_smoke.py --profile cuda --image emoparse:cuda --no-build
+```
 
 ---
 

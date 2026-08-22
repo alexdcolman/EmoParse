@@ -344,3 +344,11 @@ versiones y el routing usados, de modo que dos resultados pueden compararse con 
 cambio de prompt invalida las llamadas que dependían de él y deja disponibles las demás respuestas.
 
 La misma telemetría de uso permite fijar un presupuesto acumulado de tokens a una corrida. El presupuesto no duplica contadores en otra tabla: se reconstruye desde las métricas persistidas y considera consumo nuevo únicamente cuando hubo una llamada real al backend.
+
+## 19. Perfiles de contenedor
+
+El repositorio define dos perfiles de construcción local. `docker/Dockerfile.cpu` instala la interfaz y el cliente compatible con OpenAI sobre Python 3.12; `docker/Dockerfile.cuda` compila `llama-cpp-python` con `GGML_CUDA=on` en una etapa de desarrollo CUDA y copia el entorno resultante a una imagen de ejecución. Los perfiles se construyen desde la misma fuente y no alteran el contrato del pipeline.
+
+Los modelos, corpus, configuraciones y bases no forman parte de las imágenes. El esquema de montaje separa `/models` y `/data` como entradas externas, `/config` para configuración y `/runs` como salida escribible. El script `scripts/container_smoke.py` construye cada perfil y comprueba, sin cargar un modelo real, la superficie del CLI, imports, el arranque del tablero, los bind mounts y escritura/lectura SQLite. En el perfil CUDA, el propio build exige que `llama-cpp-python` haya producido la biblioteca del backend CUDA. Esa verificación inspecciona el artefacto instalado sin importar `llama_cpp`, porque `libcuda.so.1` pertenece al driver del host y se inyecta al ejecutar el contenedor con NVIDIA Container Toolkit y `--gpus all`.
+
+Estas imágenes son perfiles reproducibles de construcción desde fuente y no etiquetas oficiales de release.
