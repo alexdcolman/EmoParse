@@ -54,6 +54,7 @@
       <li><a href="#validate">emoparse validate</a></li>
       <li><a href="#scrape">emoparse scrape</a></li>
       <li><a href="#acquire">emoparse acquire</a></li>
+      <li><a href="#cite-corpus">emoparse cite-corpus</a></li>
       <li><a href="#network">emoparse network</a></li>
       <li><a href="#follows">emoparse follows</a></li>
       <li><a href="#eval">emoparse eval</a></li>
@@ -367,6 +368,24 @@
         <tr><td><code>--with-author-profile</code></td><td></td><td></td><td>Completa autor_bio/autor_seguidores/autor_siguiendo/autor_verificado con una llamada extra por autor (cache en memoria). Solo si la fuente lo soporta; se ignora con un warning si no.</td></tr>
         <tr><td><code>--pseudonymize</code></td><td></td><td></td><td>Seudonimiza handles al escribir (sal persistida en &lt;out&gt;.salt). Ver emoparse/acquisition/README.md.</td></tr>
         <tr><td><code>--timeout</code></td><td><code>TIMEOUT</code></td><td><code>20.0</code></td><td>Timeout HTTP por request (segundos), si la fuente lo usa.</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="cite-corpus">emoparse cite-corpus</h2>
+
+    <p>Parte de una SQLite de posts ya preparada, resuelve padres, raíz, citas y reposts fuera del corpus y publica una SQLite satélite independiente. No ejecuta LLM.</p>
+
+    <div class="tabla-caja tabla-comandos">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--db</code></td><td><code>DB</code></td><td><code>requerido</code></td><td>SQLite origen ya preparada.</td></tr>
+        <tr><td><code>--source</code></td><td><code>SOURCE</code></td><td></td><td>Fuente capaz de resolver ids concretos. Default: plataforma única del corpus.</td></tr>
+        <tr><td><code>--out</code></td><td><code>OUT</code></td><td></td><td>SQLite satélite. Default: &lt;db&gt;.satellite.sqlite.</td></tr>
+        <tr><td><code>--profundidad</code></td><td><code>N</code></td><td><code>1</code></td><td>Generaciones de contexto saliente a resolver. Default: 1.</td></tr>
+        <tr><td><code>--max</code></td><td><code>N</code></td><td></td><td>Máximo de posts externos que puede incorporar el satélite.</td></tr>
+        <tr><td><code>--timeout</code></td><td><code>TIMEOUT</code></td><td><code>20.0</code></td><td>Timeout de la fuente si su adapter lo admite.</td></tr>
       </tbody>
     </table>
     </div>
