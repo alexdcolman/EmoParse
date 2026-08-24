@@ -5,7 +5,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   focal:
@@ -72,6 +72,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: assistant/7-1b-rc1-preflight
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -80,10 +82,12 @@ jobs:
         run: python scripts/gen_cli_reference.py
       - name: Verificar diff generado
         run: git diff --check -- docs/comandos.md docs/comandos.html
-      - name: Empaquetar referencia generada
-        uses: actions/upload-artifact@v4
-        with:
-          name: cli-reference-71b
-          path: |
-            docs/comandos.md
-            docs/comandos.html
+      - name: Versionar referencia generada en la rama temporal
+        run: |
+          if ! git diff --quiet -- docs/comandos.md docs/comandos.html; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add docs/comandos.md docs/comandos.html
+            git commit -m "docs(7.1B): regenerate CLI reference"
+            git push origin HEAD:assistant/7-1b-rc1-preflight
+          fi
