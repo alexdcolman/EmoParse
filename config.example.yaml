@@ -24,6 +24,9 @@
 #    localmente; un server administrado por fuera puede usar sólo `base_url`.
 #  - lmstudio: API OpenAI-compatible expuesta por LM Studio. En este caso, en
 #    lugar de `path`, usar `base_url`.
+#  - openai / anthropic: APIs remotas opt-in. Requieren `model_id` y una clave
+#    por variable de entorno; sólo las stages que apunten a esos aliases envían
+#    sus prompts fuera de la máquina.
 # ──────────────────────────────────────────────────────────────────────────────
 
 models:
@@ -70,6 +73,27 @@ models:
   #   backend: lmstudio
   #   base_url: http://localhost:1234/v1
   #   model_name: nombre_del_modelo_en_lmstudio
+  #   temperature: 0.0
+  #   max_tokens: 2048
+
+  # APIs remotas (opt-in). Las credenciales no se persisten en el run.
+  # No se fijan precios por default: cambian con el proveedor/modelo. Si querés
+  # estimar costo, declaralos en USD por millón de tokens.
+  # mi-modelo-openai:
+  #   backend: openai
+  #   model_id: gpt-model-id
+  #   api_key_env: OPENAI_API_KEY
+  #   # precio_input: 0.0
+  #   # precio_output: 0.0
+  #   temperature: 0.0
+  #   max_tokens: 2048
+  #
+  # mi-modelo-anthropic:
+  #   backend: anthropic
+  #   model_id: claude-model-id
+  #   api_key_env: ANTHROPIC_API_KEY
+  #   # precio_input: 0.0
+  #   # precio_output: 0.0
   #   temperature: 0.0
   #   max_tokens: 2048
 

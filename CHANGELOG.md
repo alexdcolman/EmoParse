@@ -22,6 +22,9 @@
 
 ### Ejecución
 
+- Se incorporan backends remotos opt-in `openai` y `anthropic` sobre HTTP directo, con salida estructurada, taxonomía común de errores y respeto de `Retry-After`. Anthropic usa structured outputs nativos y revalida la respuesta contra el schema Pydantic original.
+- Los aliases remotos pueden declarar precios de entrada/salida por millón de tokens; `run_metrics` conserva el costo estimado de tokens nuevos. Las credenciales se redactan antes de persistir el snapshot del run y no integran la clave de cache.
+- La implementación remota queda cubierta por contratos y gates locales; los smokes reales contra cada proveedor se difieren hasta disponer de crédito de API y siguen siendo necesarios antes de recomendar estos backends para producción.
 - `emoparse server` puede mostrar, iniciar en primer plano y comprobar un `llama-server` definido en
   `config.yaml`; el perfil efectivo explicita slots, contexto por request, continuous batching y KV
   cache. Los runs que usan ese backend registran además la configuración declarada y observable del

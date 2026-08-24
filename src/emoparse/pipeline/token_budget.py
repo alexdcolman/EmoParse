@@ -13,6 +13,7 @@ from typing import TypeVar
 from pydantic import BaseModel
 
 from emoparse.core.backend.base import LLMBackend, LLMResponse
+from emoparse.core.backend.exceptions import BackendError
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -94,18 +95,27 @@ class BudgetedBackend(LLMBackend):
     ) -> LLMResponse:
         self._budget.ensure_can_start()
         extra_kwargs: dict[str, list[str]] = {"images": images} if images else {}
-        response = self._wrapped.generate(
-            system=system,
-            user=user,
-            schema=schema,
-            max_tokens=max_tokens,
-            temperature=temperature,
-            seed=seed,
-            stop=stop,
-            reset_before=reset_before,
-            max_items=max_items,
-            **extra_kwargs,
-        )
+        try:
+            response = self._wrapped.generate(
+                system=system,
+                user=user,
+                schema=schema,
+                max_tokens=max_tokens,
+                temperature=temperature,
+                seed=seed,
+                stop=stop,
+                reset_before=reset_before,
+                max_items=max_items,
+                **extra_kwargs,
+            )
+        except BackendError as exc:
+            # APIs remotas pueden devolver usage facturable aun cuando la
+            # respuesta falle luego por refusal, truncamiento o validación.
+            self._budget.record(
+                int(getattr(exc, "prompt_tokens", 0) or 0)
+                + int(getattr(exc, "completion_tokens", 0) or 0)
+            )
+            raise
         self._budget.record(response.usage.total_tokens)
         return response
 

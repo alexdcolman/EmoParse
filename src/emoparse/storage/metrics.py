@@ -121,8 +121,9 @@ class MetricsRepository:
         snapshot: StageMetricsSnapshot,
         *,
         model_alias: str | None = None,
+        estimated_cost_usd: float | None = None,
     ) -> None:
-        """Persiste un snapshot de métricas y el modelo efectivo de la ejecución."""
+        """Persiste telemetría, alias y costo estimado de la ejecución."""
         with self._db.transaction() as cur:
             cur.execute(
                 """
@@ -132,8 +133,8 @@ class MetricsRepository:
                     total_latency_ms, p50_latency_ms, p99_latency_ms,
                     total_prompt_tokens, total_completion_tokens,
                     cache_hits, cache_misses,
-                    recorded_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    estimated_cost_usd, recorded_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     run_id,
@@ -148,6 +149,7 @@ class MetricsRepository:
                     snapshot.total_completion_tokens,
                     snapshot.cache_hits,
                     snapshot.cache_misses,
+                    estimated_cost_usd,
                     datetime.now(UTC),
                 ),
             )
@@ -171,9 +173,26 @@ class MetricsRepository:
         ).fetchone()
         return int(row["total"] or 0) if row is not None else 0
 
+    def total_estimated_cost_for_run(self, run_id: str) -> float | None:
+        """Suma costos conocidos; None si no existen precios estimables."""
+        if not self._has_column("estimated_cost_usd"):
+            return None
+        row = self._db.execute(
+            """
+            SELECT SUM(estimated_cost_usd) AS total
+            FROM run_metrics
+            WHERE run_id = ? AND estimated_cost_usd IS NOT NULL
+            """,
+            (run_id,),
+        ).fetchone()
+        if row is None or row["total"] is None:
+            return None
+        return float(row["total"])
+
     def list_for_run(self, run_id: str) -> list[dict[str, Any]]:
         """Todas las métricas de un run, ordenadas por recorded_at."""
         model_column = self._model_alias_select()
+        cost_column = self._estimated_cost_select()
         rows = self._db.execute(
             f"""
             SELECT
@@ -181,7 +200,7 @@ class MetricsRepository:
                 n_items_ok, n_items_failed,
                 total_latency_ms, p50_latency_ms, p99_latency_ms,
                 total_prompt_tokens, total_completion_tokens,
-                cache_hits, cache_misses,
+                cache_hits, cache_misses, {cost_column},
                 recorded_at
             FROM run_metrics
             WHERE run_id = ?
@@ -244,11 +263,19 @@ class MetricsRepository:
             return "model_alias"
         return "NULL AS model_alias"
 
+    def _estimated_cost_select(self) -> str:
+        if self._has_column("estimated_cost_usd"):
+            return "estimated_cost_usd"
+        return "NULL AS estimated_cost_usd"
+
     def _has_model_alias_column(self) -> bool:
+        return self._has_column("model_alias")
+
+    def _has_column(self, column: str) -> bool:
         if not self._db.table_exists("run_metrics"):
             return False
         columns = {
             str(row["name"])
             for row in self._db.execute("PRAGMA table_info(run_metrics)").fetchall()
         }
-        return "model_alias" in columns
+        return column in columns

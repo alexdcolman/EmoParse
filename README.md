@@ -10,7 +10,7 @@ Está pensado para investigadores en lingüística, semiótica, ciencias del len
 
 - **Reproducible**: una base de resultados por corrida, versionado fino de prompts y ontologías, semilla fija.
 - **Trazable**: cada emoción detectada lleva su justificación textual y queda enlazada a la unidad original.
-- **Local-first**: corre con modelos GGUF locales, dentro del proceso con llama.cpp o mediante `llama-server`, y también vía LM Studio, sin enviar el corpus a servicios externos. La arquitectura admite además backends de API.
+- **Local-first**: el recorrido predeterminado usa modelos locales, dentro del proceso con llama.cpp, mediante `llama-server` o vía LM Studio. También puede usar OpenAI o Anthropic de forma explícita por stage; en ese caso los prompts de esas stages se envían al proveedor remoto.
 - **Extensible**: el pipeline (la cadena de etapas del análisis) está organizado como un grafo declarativo; sumar géneros, fuentes de adquisición o agentes es código aislado. La arquitectura completa está en [`docs/arquitectura.md`](docs/arquitectura.md), el mapa de extensiones en [`docs/puntos_de_extension.md`](docs/puntos_de_extension.md) y los diagnósticos habituales en [`docs/solucion_de_problemas.md`](docs/solucion_de_problemas.md).
 
 ![Curva emocional de un discurso: cada emoción ubicada en el punto donde aparece, coloreada por foria](docs/img/readme/curva-emocional.png)
@@ -96,6 +96,23 @@ in-process. `server_parallel` fija los slots del servidor y `pipeline.parallel` 
 solicita EmoParse. `cache_reuse` es opcional: algunos contextos de llama.cpp no admiten el
 desplazamiento necesario y lo desactivan al iniciar; en ese caso debe declararse `0`. La configuración
 efectiva declarada y, cuando el server se usa, la observada se conservan dentro del snapshot del run.
+
+OpenAI y Anthropic son backends remotos opt-in y usan el cliente HTTP incluido en la instalación base. Cada alias declara `model_id` y la variable de entorno que contiene la credencial; `precio_input` y `precio_output`, si se informan, se expresan en USD por millón de tokens y alimentan una estimación en `run_metrics`. Las claves no se guardan en el snapshot del run ni participan de la cache. No hay routing remoto por defecto.
+
+```yaml
+models:
+  mi-openai:
+    backend: openai
+    model_id: gpt-model-id
+    api_key_env: OPENAI_API_KEY
+
+  mi-anthropic:
+    backend: anthropic
+    model_id: claude-model-id
+    api_key_env: ANTHROPIC_API_KEY
+```
+
+Para usar uno de estos aliases, asignalo explícitamente a una stage en `pipeline.stages`. El cache de EmoParse sigue funcionando y `--budget-tokens` continúa imponiendo un techo de tokens nuevos; `emoparse metrics` muestra el costo estimado cuando el alias declara precios.
 
 ---
 

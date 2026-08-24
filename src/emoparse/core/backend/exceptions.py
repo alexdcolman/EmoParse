@@ -9,12 +9,35 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from emoparse.core.backend.base import TokenUsage
+
 
 class BackendError(Exception):
     """Raíz de todos los errores del backend LLM.
 
-    Errores específicos heredan de esta clase para captura genérica.
+    Puede transportar telemetría facturable cuando el proveedor la devuelve
+    aun en una respuesta que termina en error. Esa metadata no cambia la
+    taxonomía del error y permite que las métricas del run no pierdan consumo.
     """
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)
+        self.prompt_tokens = 0
+        self.completion_tokens = 0
+        self.latency_ms = 0.0
+
+    def attach_usage(
+        self,
+        usage: "TokenUsage",  # noqa: UP037
+        *,
+        latency_ms: float = 0.0,
+    ) -> None:
+        self.prompt_tokens = int(usage.prompt_tokens)
+        self.completion_tokens = int(usage.completion_tokens)
+        self.latency_ms = float(latency_ms)
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -24,6 +47,10 @@ class BackendError(Exception):
 
 class TransientBackendError(BackendError):
     """Categoría base para errores reintentables."""
+
+    def __init__(self, message: str, *, retry_after_seconds: float | None = None) -> None:
+        super().__init__(message)
+        self.retry_after_seconds = retry_after_seconds
 
 
 class BackendTimeoutError(TransientBackendError):
@@ -67,7 +94,7 @@ class ContextLengthExceededError(PermanentBackendError):
         if max_tokens is not None:
             msg_parts.append(f"max_completion={max_tokens} tokens")
         super().__init__(" | ".join(msg_parts))
-        self.prompt_tokens = prompt_tokens
+        self.context_prompt_tokens = prompt_tokens
         self.max_tokens = max_tokens
         self.context_length = context_length
 

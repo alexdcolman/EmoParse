@@ -270,6 +270,11 @@ class RunsRepository:
             column="model_alias",
             type_def="TEXT",
         )
+        self._add_column_if_missing(
+            table="run_metrics",
+            column="estimated_cost_usd",
+            type_def="REAL",
+        )
 
     def _migrate_canonico_semas_dimension(self) -> None:
         """Migra `canonico_semas` al contrato dimensionado, sin perder datos.

@@ -116,6 +116,7 @@ pip install -e ".[llamacpp,ui,scraping]"</code></pre>
       <tbody>
         <tr><td><code>llamacpp</code></td><td>Correr modelos de lenguaje localmente.</td></tr>
         <tr><td><code>lmstudio</code></td><td>Usar modelos a través de LM Studio, mediante su API compatible con OpenAI.</td></tr>
+        <tr><td><code>openai</code> / <code>anthropic</code></td><td>Usar APIs remotas de forma explícita por stage. No requieren un extra de Python.</td></tr>
         <tr><td><code>ui</code></td><td>El tablero de exploración.</td></tr>
         <tr><td><code>scraping</code></td><td>Bajar discursos presidenciales y artículos periodísticos de sitios web.</td></tr>
         <tr><td><code>nlp</code></td><td>Análisis gramatical, que usa la etapa de modalidad referencial.</td></tr>
@@ -158,6 +159,33 @@ emoparse server --config config.yaml --model mi-modelo-server --check</code></pr
     para <code>llama_server</code>; no se aplican al backend en proceso <code>llama_cpp</code>.
     <code>cache_reuse</code> sólo debe activarse cuando el contexto del modelo lo admite; si
     llama.cpp informa que lo desactiva al iniciar, conviene declararlo en <code>0</code>.</p>
+
+    <h3>APIs remotas opcionales</h3>
+
+    <p>EmoParse también puede ejecutar una stage con OpenAI o Anthropic. Es una opción explícita: el
+    routing local no cambia y sólo los prompts de las stages asignadas a un alias remoto se envían al
+    proveedor. Las claves se leen desde variables de entorno y se omiten del snapshot persistido del
+    run.</p>
+
+<pre><code>export OPENAI_API_KEY="..."
+export ANTHROPIC_API_KEY="..."
+
+<span class="c"># En config.yaml</span>
+models:
+  mi-openai:
+    backend: openai
+    model_id: gpt-model-id
+    api_key_env: OPENAI_API_KEY
+
+  mi-anthropic:
+    backend: anthropic
+    model_id: claude-model-id
+    api_key_env: ANTHROPIC_API_KEY</code></pre>
+
+    <p class="marginal">Los campos opcionales <code>precio_input</code> y <code>precio_output</code>
+    expresan USD por millón de tokens y permiten guardar un costo estimado en las métricas. No hay
+    precios predefinidos porque cambian según proveedor y modelo. El cache de EmoParse se mantiene y
+    <code>--budget-tokens</code> sigue contando únicamente tokens nuevos.</p>
 
     <p>La etapa de modalidad referencial necesita además un modelo gramatical del español, que se baja
     una vez:</p>

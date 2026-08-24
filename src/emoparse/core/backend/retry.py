@@ -64,7 +64,13 @@ def retry_with_backoff(
             last_exc = exc
             if attempt < config.max_retries:
                 delay_idx = min(attempt, len(config.delays_seconds) - 1)
-                delay = config.delays_seconds[delay_idx]
+                configured_delay = float(config.delays_seconds[delay_idx])
+                retry_after = getattr(exc, "retry_after_seconds", None)
+                delay = (
+                    max(configured_delay, float(retry_after))
+                    if retry_after is not None
+                    else configured_delay
+                )
                 logger.warning(
                     "[retry] TransientBackendError en intento {}/{}: {}. Reintentando en {}s.",
                     attempt + 1,
@@ -72,7 +78,7 @@ def retry_with_backoff(
                     exc,
                     delay,
                 )
-                sleep_fn(float(delay))
+                sleep_fn(delay)
             else:
                 logger.error(
                     "[retry] TransientBackendError tras {} intento(s). Desistiendo: {}",

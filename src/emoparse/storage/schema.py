@@ -270,6 +270,8 @@ CREATE TABLE IF NOT EXISTS run_metrics (
     total_completion_tokens INTEGER NOT NULL DEFAULT 0,
     cache_hits              INTEGER NOT NULL DEFAULT 0,
     cache_misses            INTEGER NOT NULL DEFAULT 0,
+    -- Estimación declarativa; NULL si el alias no define precios.
+    estimated_cost_usd      REAL,
     recorded_at             TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (run_id, stage_name, recorded_at)
 )

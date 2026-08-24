@@ -57,6 +57,7 @@ def handle(args: argparse.Namespace) -> int:
         ("prompt_tok", 11),
         ("compl_tok", 10),
         ("tok/s", 8),
+        ("cost_usd", 10),
         ("hits", 6),
         ("misses", 7),
     ]
@@ -77,6 +78,11 @@ def handle(args: argparse.Namespace) -> int:
             (str(r["total_prompt_tokens"]), 11, "right"),
             (str(r["total_completion_tokens"]), 10, "right"),
             (_fmt_tok_s(r["total_completion_tokens"], r["total_latency_ms"]), 8, "right"),
+            (
+                _fmt_cost(r["estimated_cost_usd"] if "estimated_cost_usd" in r.keys() else None),
+                10,
+                "right",
+            ),
             (str(r["cache_hits"]), 6, "right"),
             (str(r["cache_misses"]), 7, "right"),
         ]
@@ -96,6 +102,13 @@ def handle(args: argparse.Namespace) -> int:
             print(f"  - {stage}: {', '.join(aliases)}")
     print()
     return 0
+
+
+def _fmt_cost(value: float | None) -> str:
+    """Costo estimado en USD; '-' cuando no hay precios declarados."""
+    if value is None:
+        return "-"
+    return f"{float(value):.6f}"
 
 
 def _fmt_tok_s(tokens: int | None, total_ms: float | None) -> str:

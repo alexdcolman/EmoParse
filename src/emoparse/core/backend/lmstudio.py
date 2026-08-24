@@ -30,6 +30,7 @@ from emoparse.core.backend.exceptions import (
     ContextLengthExceededError,
     SchemaViolationError,
 )
+from emoparse.core.backend.structured import openai_response_format
 
 if TYPE_CHECKING:
     from openai import OpenAI
@@ -64,7 +65,7 @@ class LMStudioBackend(LLMBackend):
         self.alias = alias
         self._cfg = dict(model_config)
 
-        self._model_id = self._cfg.get("model_id", _DEFAULT_MODEL_ID)
+        self._model_id = self._cfg.get("model_id") or self._cfg.get("model_name", _DEFAULT_MODEL_ID)
         self._base_url = self._cfg.get("base_url", _DEFAULT_BASE_URL)
         self._default_max_tokens = self._cfg.get("max_tokens", _DEFAULT_MAX_TOKENS)
         self._default_temperature = self._cfg.get("temperature", _DEFAULT_TEMPERATURE)
@@ -143,7 +144,7 @@ class LMStudioBackend(LLMBackend):
 
         # Salida estructurada vía JSON Schema (modo estándar OpenAI).
         if schema is not None:
-            kwargs["response_format"] = self._make_response_format(schema, max_items=max_items)
+            kwargs["response_format"] = openai_response_format(schema, max_items=max_items)
 
         # Inferencia.
         t_start = time.perf_counter()
@@ -216,50 +217,5 @@ class LMStudioBackend(LLMBackend):
         *,
         max_items: int | None = None,
     ) -> dict[str, Any]:
-        """Construye response_format para API OpenAI/LM Studio.
-
-        Usa json_schema y strict:true. Si `max_items` viene y el top-level es un
-        array (schema de batch), lo acota a EXACTAMENTE `max_items` elementos
-        para evitar que el modelo repita ítems indefinidamente.
-        """
-
-        json_schema = schema.model_json_schema()
-        # Se agrega additionalProperties:false requerido por OpenAI strict mode.
-        _add_strict_flags(json_schema)
-        if max_items is not None and json_schema.get("type") == "array":
-            n = max(1, int(max_items))
-            json_schema["minItems"] = n
-            json_schema["maxItems"] = n
-
-        return {
-            "type": "json_schema",
-            "json_schema": {
-                "name": schema.__name__,
-                "schema": json_schema,
-                "strict": True,
-            },
-        }
-
-
-def _add_strict_flags(node: dict[str, Any]) -> None:
-    """Agrega additionalProperties:false a todos los type:object.
-
-    Para strict mode de OpenAI.
-    """
-    if not isinstance(node, dict):
-        return
-    if node.get("type") == "object":
-        node.setdefault("additionalProperties", False)
-        # Strict mode requiere todos los campos en required; Pydantic
-        # ya maneja optional con anyOf null.
-        properties = node.get("properties", {})
-        if properties:
-            node["required"] = list(properties.keys())
-    # Recurse.
-    for value in node.values():
-        if isinstance(value, dict):
-            _add_strict_flags(value)
-        elif isinstance(value, list):
-            for item in value:
-                if isinstance(item, dict):
-                    _add_strict_flags(item)
+        """Compatibilidad interna: delega al helper compartido."""
+        return openai_response_format(schema, max_items=max_items)

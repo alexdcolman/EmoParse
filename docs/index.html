@@ -110,8 +110,10 @@
 
     <p>El trabajo lo hacen <span class="term">modelos de lenguaje</span> <span class="glosa">(los programas
     que están detrás de asistentes como ChatGPT: reciben un texto y producen otro)</span>, con una
-    diferencia respecto del uso habitual. Corren en la computadora de quien analiza, sin conexión con
-    ningún servicio externo, así que el corpus no sale de esa máquina. Y no responden en prosa libre:
+    diferencia respecto del uso habitual. El recorrido predeterminado usa modelos que corren en la
+    computadora de quien analiza, así que el corpus no sale de esa máquina. De forma opcional, una
+    stage puede configurarse para usar OpenAI o Anthropic; sólo en ese caso su prompt se envía al
+    proveedor elegido. Los modelos no responden en prosa libre:
     cada paso les exige devolver una ficha con campos fijos, cuyos valores posibles están declarados
     previamente.</p>
 
@@ -225,10 +227,11 @@
       <dd>Ninguna emoción se registra sin el fragmento que la justifica, y ese fragmento queda
       enlazado a la unidad de la que salió.</dd>
 
-      <dt>Todo corre en la máquina de quien analiza</dt>
-      <dd>Los modelos se descargan una vez y trabajan sin conexión. Para corpus sensibles, o sujetos
-      a resguardo, el material no atraviesa ningún servidor ajeno. La arquitectura admite además
-      conectarse a servicios externos, si el caso lo justifica.</dd>
+      <dt>El recorrido puede mantenerse enteramente local</dt>
+      <dd>Los backends locales trabajan sin enviar el corpus a servicios externos. Para corpus
+      sensibles o sujetos a resguardo, ese sigue siendo el recorrido predeterminado. La arquitectura
+      admite además OpenAI y Anthropic como opciones explícitas por stage cuando el caso lo
+      justifica.</dd>
 
       <dt>Las categorías son editables</dt>
       <dd>Las listas de emociones, de rasgos de los actores y de reglas de coherencia viven en

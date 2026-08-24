@@ -79,8 +79,8 @@ class RegistryConfig:
 def build_backend(alias: str, model_config: dict[str, Any]) -> LLMBackend:
     """Construye un backend LLM según model_config['backend'].
 
-    Soporta llama_cpp y lmstudio. Raises BackendConfigError si backend
-    desconocido o config inválida.
+    Soporta backends locales y APIs remotas. Raises BackendConfigError si
+    backend desconocido o config inválida.
     """
     backend_key = model_config.get("backend")
     if backend_key == "llama_cpp":
@@ -95,9 +95,17 @@ def build_backend(alias: str, model_config: dict[str, Any]) -> LLMBackend:
         from emoparse.core.backend.llama_server import LlamaServerBackend
 
         return LlamaServerBackend(alias=alias, model_config=model_config)
+    if backend_key == "openai":
+        from emoparse.core.backend.openai_api import OpenAIBackend
+
+        return OpenAIBackend(alias=alias, model_config=model_config)
+    if backend_key == "anthropic":
+        from emoparse.core.backend.anthropic_api import AnthropicBackend
+
+        return AnthropicBackend(alias=alias, model_config=model_config)
     raise BackendConfigError(
         f"Backend '{backend_key}' no reconocido para alias '{alias}'. "
-        f"Opciones: llama_cpp, llama_server, lmstudio"
+        "Opciones: llama_cpp, llama_server, lmstudio, openai, anthropic"
     )
 
 

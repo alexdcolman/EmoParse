@@ -209,3 +209,16 @@ class TestRetryWithBackoff:
             retry_with_backoff(fn, self._cfg(max_retries=3), _sleep=sleep)
         fn.assert_called_once()
         sleep.assert_not_called()
+
+
+def test_retry_after_header_extends_configured_backoff() -> None:
+    exc = TransientBackendError("rate limited", retry_after_seconds=12.5)
+    fn = MagicMock(side_effect=[exc, "ok"])
+    sleep = MagicMock()
+    result = retry_with_backoff(
+        fn,
+        RetryConfig(max_retries=1, delays_seconds=[2]),
+        _sleep=sleep,
+    )
+    assert result == "ok"
+    sleep.assert_called_once_with(12.5)

@@ -10,6 +10,7 @@ import pytest
 
 from emoparse.cli.commands.run_cmd import _positive_int
 from emoparse.core.backend.base import LLMResponse, TokenUsage
+from emoparse.core.backend.exceptions import SchemaViolationError
 from emoparse.core.cache.backend import CachedBackend
 from emoparse.core.cache.repository import CacheRepository
 from emoparse.pipeline.runner import PipelineRunner
@@ -52,6 +53,21 @@ def test_budget_allows_finishing_crossing_call_then_blocks_next_real_call() -> N
     assert captured.value.spent == 5
     assert captured.value.limit == 4
     assert len(raw.calls) == 1
+
+
+class _BillableFailureBackend(FakeBackend):
+    def generate(self, *_args: Any, **_kwargs: Any) -> LLMResponse:
+        err = SchemaViolationError("structured output inválido")
+        err.attach_usage(TokenUsage(prompt_tokens=6, completion_tokens=3), latency_ms=5.0)
+        raise err
+
+
+def test_budget_counts_usage_attached_to_billable_backend_error() -> None:
+    budget = TokenBudget(20)
+    backend = BudgetedBackend(_BillableFailureBackend(), budget)
+    with pytest.raises(SchemaViolationError):
+        backend.generate("system", "user")
+    assert budget.spent == 9
 
 
 def test_budget_signal_is_control_flow_not_item_error() -> None:

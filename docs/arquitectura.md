@@ -307,11 +307,15 @@ controles deterministas han pasado y respetan el routing real de `config.yaml`.
 ## 17. Backends y ejecución por lotes
 
 Los agentes usan un contrato común y el routing de `config.yaml` decide qué alias ejecuta cada stage.
-EmoParse incluye tres rutas locales:
+EmoParse incluye tres rutas locales y dos remotas opt-in:
 
 - `llama_cpp`, que carga un GGUF dentro del proceso;
 - `llama_server`, que se conecta a `llama-server` por HTTP;
-- `lmstudio`, que usa la interfaz compatible con OpenAI de LM Studio.
+- `lmstudio`, que usa la interfaz compatible con OpenAI de LM Studio;
+- `openai`, mediante Chat Completions y JSON Schema estricto;
+- `anthropic`, mediante Messages y structured outputs nativos.
+
+Las APIs remotas sólo reciben texto cuando una stage apunta explícitamente a su alias. Sus credenciales se leen desde variables de entorno y se redactan antes de guardar el snapshot de configuración. OpenAI y Anthropic revalidan la respuesta contra el schema Pydantic del agente; Anthropic adapta a su subconjunto de JSON Schema las restricciones que no compila el proveedor y las comprueba después en EmoParse.
 
 El backend servidor puede aprovechar procesamiento concurrente, reutilización de prefijos, cache KV
 o modelos multimodales según la forma en que fue iniciado. Esas capacidades pertenecen al motor; el
@@ -329,6 +333,8 @@ Al usar un alias servidor durante un run, el snapshot `_emoparse.llm` guarda el 
 paralelismo pedido y efectivo, el perfil declarado del server y la configuración observable. Esto no
 convierte a `llama_server` en backend predeterminado: el routing sigue dependiendo exclusivamente de
 `pipeline.stages`.
+
+Para APIs remotas, `pipeline.parallel` permite varias requests en vuelo salvo que `--budget-tokens` esté activo, caso en que se fuerza secuencialidad. Los errores 429 y 5xx entran al retry común y respetan `Retry-After`; errores de credenciales, schema y contexto se tratan como permanentes. Si un alias declara `precio_input` y `precio_output` en USD por millón de tokens, la telemetría persiste un costo estimado de los tokens nuevos. Es una estimación reproducible del run, no una factura del proveedor.
 
 En una llamada por lotes, cada ítem declara el índice de la unidad a la que corresponde. La
 asignación se hace por ese índice y puede incorporar un ancla textual adicional. El orden en que el

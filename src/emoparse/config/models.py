@@ -19,7 +19,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 #: Backends válidos. Centralizado para generar error claro si se usa
 #: "ollama" en el YAML (no soportado).
-BackendName = Literal["llama_cpp", "llama_server", "lmstudio"]
+BackendName = Literal["llama_cpp", "llama_server", "lmstudio", "openai", "anthropic"]
 
 
 class ModelConfig(BaseModel):
@@ -36,7 +36,8 @@ class ModelConfig(BaseModel):
         description="Tipo de backend: llama_cpp para GGUFs locales "
         "in-process, llama_server para llama.cpp en modo server "
         "(continuous batching, cache de prefijo, draft models, "
-        "multimodal), lmstudio para API OpenAI-compatible.",
+        "multimodal), lmstudio para API local OpenAI-compatible, "
+        "openai/anthropic para APIs remotas opt-in.",
     )
     temperature: float = Field(
         default=0.0,
@@ -81,6 +82,37 @@ class ModelConfig(BaseModel):
         default=None,
         gt=0,
         description="(llama_server) Timeout HTTP por request, en segundos.",
+    )
+
+    # APIs remotas. `api_key` puede venir de ${VAR}, pero se elimina del
+    # snapshot persistido del run; `api_key_env` evita incluso materializar el
+    # secreto dentro del objeto de configuración.
+    model_id: str | None = Field(
+        default=None,
+        description="(lmstudio/openai/anthropic) Identificador del modelo servido.",
+    )
+    api_key: str | None = Field(
+        default=None,
+        repr=False,
+        description="(openai/anthropic) Secreto de API. Se redacta al persistir el run.",
+    )
+    api_key_env: str | None = Field(
+        default=None,
+        description="(openai/anthropic) Variable de entorno que contiene la clave.",
+    )
+    anthropic_version: str | None = Field(
+        default=None,
+        description="(anthropic) Valor del header anthropic-version.",
+    )
+    precio_input: float | None = Field(
+        default=None,
+        ge=0,
+        description="Costo estimado de entrada en USD por millón de tokens.",
+    )
+    precio_output: float | None = Field(
+        default=None,
+        ge=0,
+        description="Costo estimado de salida en USD por millón de tokens.",
     )
     server_binary: str | None = Field(
         default=None,
@@ -133,6 +165,10 @@ class ModelConfig(BaseModel):
                 "cpu_moe/n_cpu_moe se soportan sólo con backend=llama_server; "
                 "llama_cpp in-process no declara overrides de tensores en este contrato"
             )
+        if self.backend in {"openai", "anthropic"} and not (self.model_id or "").strip():
+            raise ValueError(f"backend={self.backend} requiere model_id")
+        if (self.precio_input is None) != (self.precio_output is None):
+            raise ValueError("precio_input y precio_output deben declararse juntos")
         return self
 
 
@@ -155,11 +191,9 @@ class PipelineConfig(BaseModel):
     parallel: int = Field(
         default=1,
         ge=1,
-        description="Discursos procesados en simultáneo dentro de cada stage "
-        "por-frase. Solo tiene efecto con backends servidor "
-        "(llama_server con --parallel N --cont-batching, "
-        "lmstudio); con llama_cpp in-process el runner lo "
-        "fuerza a 1.",
+        description="Unidades LLM procesadas en simultáneo dentro de cada stage. "
+        "Tiene efecto con backends HTTP (llama_server, lmstudio, openai, anthropic); "
+        "con llama_cpp in-process el runner lo fuerza a 1.",
     )
     max_retries: int = Field(default=3, ge=0)
     retry_delays_seconds: list[int] = Field(

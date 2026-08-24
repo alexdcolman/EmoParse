@@ -338,3 +338,59 @@ models:
 """
         with pytest.raises(ConfigError, match="backend=llama_server"):
             load_config(_write(tmp_path, bad))
+
+
+class TestRemoteApiModelConfig:
+    def test_accepts_openai_and_anthropic_with_model_id(self, tmp_path: Path) -> None:
+        p = _write(
+            tmp_path,
+            """
+models:
+  oa:
+    backend: openai
+    model_id: gpt-test
+    api_key_env: OPENAI_API_KEY
+    precio_input: 1.5
+    precio_output: 6.0
+  an:
+    backend: anthropic
+    model_id: claude-test
+    api_key_env: ANTHROPIC_API_KEY
+pipeline:
+  stages:
+    metadata: oa
+""",
+        )
+        cfg = load_config(p)
+        assert cfg.models["oa"].backend == "openai"
+        assert cfg.models["an"].backend == "anthropic"
+        assert cfg.models["oa"].precio_input == 1.5
+        assert cfg.models["oa"].precio_output == 6.0
+
+    def test_remote_backend_requires_model_id(self, tmp_path: Path) -> None:
+        p = _write(
+            tmp_path,
+            """
+models:
+  oa:
+    backend: openai
+pipeline: {}
+""",
+        )
+        with pytest.raises(ConfigError, match="model_id"):
+            load_config(p)
+
+    def test_prices_must_be_declared_as_pair(self, tmp_path: Path) -> None:
+        p = _write(
+            tmp_path,
+            """
+models:
+  oa:
+    backend: openai
+    model_id: gpt-test
+    precio_input: 1.0
+pipeline: {}
+""",
+        )
+        with pytest.raises(ConfigError, match="precio_input y precio_output"):
+            load_config(p)

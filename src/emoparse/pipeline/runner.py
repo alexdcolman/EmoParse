@@ -18,7 +18,9 @@ from emoparse.agents.enunciation import EnunciationAgent, EnunciatorIdAgent
 from emoparse.agents.metadata import MetadataAgent
 from emoparse.agents.summarizer import SummarizerAgent
 from emoparse.config.models import RunConfig
+from emoparse.config.secrets import sanitize_config_snapshot
 from emoparse.core.backend.base import LLMBackend
+from emoparse.core.backend.exceptions import BackendError
 from emoparse.core.backend.registry import BackendRegistry
 from emoparse.core.backend.retry import RetryConfig
 from emoparse.core.cache.backend import CachedBackend
@@ -72,6 +74,7 @@ from emoparse.storage.menciones import MencionesRepository
 from emoparse.storage.metrics import (
     MetricsRepository,
     StageMetricsAccumulator,
+    StageMetricsSnapshot,
 )
 from emoparse.storage.models import RunContext, Versions
 from emoparse.storage.posts import PostsRepository
@@ -133,7 +136,23 @@ class _MeteredBackend(LLMBackend):
         self.alias = wrapped.alias
 
     def generate(self, *args: Any, **kwargs: Any) -> Any:
-        response = self._wrapped.generate(*args, **kwargs)
+        try:
+            response = self._wrapped.generate(*args, **kwargs)
+        except BackendError as exc:
+            # Algunos proveedores facturan una respuesta que luego falla la
+            # validación estructurada. Si la excepción transporta usage,
+            # conservarlo como llamada real en la telemetría del stage.
+            prompt_tokens = int(getattr(exc, "prompt_tokens", 0) or 0)
+            completion_tokens = int(getattr(exc, "completion_tokens", 0) or 0)
+            if prompt_tokens or completion_tokens:
+                with self._metrics_lock:
+                    self._accumulator.record_llm_call(
+                        latency_ms=float(getattr(exc, "latency_ms", 0.0) or 0.0),
+                        prompt_tokens=prompt_tokens,
+                        completion_tokens=completion_tokens,
+                        cache_hit=False,
+                    )
+            raise
         with self._metrics_lock:
             self._accumulator.record_llm_call(
                 latency_ms=response.latency_ms,
@@ -341,7 +360,7 @@ class PipelineRunner:
         """Construye RunContext desde config y run_id."""
         v = self._cfg.versions
         config_snapshot = attach_genre_presentation(
-            self._cfg.model_dump(by_alias=False, exclude_none=True),
+            sanitize_config_snapshot(self._cfg.model_dump(by_alias=False, exclude_none=True)),
             self._genre,
         )
         config_snapshot = attach_llm_runtime(
@@ -552,34 +571,60 @@ class PipelineRunner:
             # Una pausa puede ocurrir a mitad de stage. Persistir la telemetría
             # consumida hasta ese punto permite que --resume reconstruya el
             # presupuesto acumulado sin contar otra vez los cache hits.
+            snapshot = accumulator.snapshot()
             self._metrics_repo.insert(
                 run_id=self._run_id,
                 stage_name=stage_name,
-                snapshot=accumulator.snapshot(),
+                snapshot=snapshot,
                 model_alias=self._cfg.pipeline.stages.get(stage_name),
+                estimated_cost_usd=self._estimated_cost_usd(stage_name, snapshot),
             )
             raise
         except Exception:
             # Modalidad usa fail-fast deliberado; conservar su telemetría evita
             # que un aborto estructural desaparezca del diagnóstico del run.
             if stage_name == "modalidad":
+                snapshot = accumulator.snapshot()
                 self._metrics_repo.insert(
                     run_id=self._run_id,
                     stage_name=stage_name,
-                    snapshot=accumulator.snapshot(),
+                    snapshot=snapshot,
                     model_alias=self._cfg.pipeline.stages.get(stage_name),
+                    estimated_cost_usd=self._estimated_cost_usd(stage_name, snapshot),
                 )
             raise
         finally:
             self._current_accumulator = None
 
+        snapshot = accumulator.snapshot()
         self._metrics_repo.insert(
             run_id=self._run_id,
             stage_name=stage_name,
-            snapshot=accumulator.snapshot(),
+            snapshot=snapshot,
             model_alias=self._cfg.pipeline.stages.get(stage_name),
+            estimated_cost_usd=self._estimated_cost_usd(stage_name, snapshot),
         )
         return ok
+
+    def _estimated_cost_usd(
+        self,
+        stage_name: str,
+        snapshot: StageMetricsSnapshot,
+    ) -> float | None:
+        """Calcula costo estimado cuando el alias declara precios por millón."""
+        alias = self._cfg.pipeline.stages.get(stage_name)
+        models = getattr(self._cfg, "models", {})
+        if alias is None or alias not in models:
+            return None
+        model_cfg = models[alias]
+        input_price = model_cfg.precio_input
+        output_price = model_cfg.precio_output
+        if input_price is None or output_price is None:
+            return None
+        return (
+            snapshot.total_prompt_tokens * float(input_price)
+            + snapshot.total_completion_tokens * float(output_price)
+        ) / 1_000_000.0
 
     def _frases_exist(self) -> bool:
         """True si ya existen frases en DB."""
