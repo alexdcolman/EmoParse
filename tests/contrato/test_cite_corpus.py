@@ -150,9 +150,10 @@ def test_cite_corpus_records_unavailable_without_inventing_post(tmp_path, monkey
     conn = sqlite3.connect(satellite)
     try:
         assert conn.execute("SELECT COUNT(*) FROM posts").fetchone() == (0,)
-        assert conn.execute(
-            "SELECT status, target_location FROM corpus_vinculos"
-        ).fetchone() == ("unavailable", "external")
+        assert conn.execute("SELECT status, target_location FROM corpus_vinculos").fetchone() == (
+            "unavailable",
+            "external",
+        )
     finally:
         conn.close()
 
