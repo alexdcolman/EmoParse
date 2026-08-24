@@ -1,3 +1,4 @@
+# Trigger final sobre bytes sellados de 7.1B.
 name: Preflight 7.1B temporal
 
 on:
