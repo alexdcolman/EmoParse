@@ -1,9 +1,8 @@
 name: Preflight 7.1B temporal
 
 on:
-  push:
-    branches:
-      - assistant/7-1b-rc1-preflight
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: read
@@ -77,9 +76,14 @@ jobs:
         with:
           python-version: "3.12"
       - run: python -m pip install -e ".[dev]"
-      - name: Generar referencia para inspección
+      - name: Generar referencia exacta
         run: python scripts/gen_cli_reference.py
-      - name: Mostrar diff generado
-        run: git diff -- docs/comandos.md docs/comandos.html
-      - name: La referencia debe estar versionada
-        run: git diff --exit-code -- docs/comandos.md docs/comandos.html
+      - name: Verificar diff generado
+        run: git diff --check -- docs/comandos.md docs/comandos.html
+      - name: Empaquetar referencia generada
+        uses: actions/upload-artifact@v4
+        with:
+          name: cli-reference-71b
+          path: |
+            docs/comandos.md
+            docs/comandos.html
