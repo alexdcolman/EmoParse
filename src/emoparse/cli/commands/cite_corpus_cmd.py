@@ -109,8 +109,7 @@ def handle(args: argparse.Namespace) -> int:
             logger.error("[cite-corpus] La DB no es un run de posts preparado por EmoParse.")
             return 1
         origin_rows = [
-            dict(r)
-            for r in origin_db.execute("SELECT * FROM posts ORDER BY post_id").fetchall()
+            dict(r) for r in origin_db.execute("SELECT * FROM posts ORDER BY post_id").fetchall()
         ]
         if not origin_rows:
             logger.error("[cite-corpus] La DB origen no contiene posts.")
@@ -343,7 +342,9 @@ def _references(
         relation = base_relation
         if field == "en_respuesta_a" and generation > 1:
             origin_root = _clean(origin_row.get("conversacion_id"))
-            relation = "reply_root" if origin_root and target_id == origin_root else "reply_ancestor"
+            relation = (
+                "reply_root" if origin_root and target_id == origin_root else "reply_ancestor"
+            )
         if field == "conversacion_id" and root_id == source_id:
             continue
         yield target_id, relation
