@@ -14,6 +14,7 @@ from loguru import logger
 from emoparse.acquisition import get_post_source
 from emoparse.acquisition.base_posts import PostSourceError
 from emoparse.acquisition.post_record import PostRecord
+from emoparse.inputs.loader import InputError
 from emoparse.inputs.posts_loader import PostsBundle, load_posts, posts_to_discursos
 from emoparse.pipeline.thread_builder import build_threads
 from emoparse.storage.db import Database
@@ -23,6 +24,8 @@ from emoparse.storage.models import RunContext
 from emoparse.storage.posts import PostsRepository
 from emoparse.storage.runs import RunsRepository
 from emoparse.storage.satellites import SatelliteRegistration, SatellitesRepository
+
+COMMAND_NAME = "cite-corpus"
 
 _REL_FIELDS: tuple[tuple[str, str], ...] = (
     ("en_respuesta_a", "reply_parent"),
@@ -35,7 +38,7 @@ _REL_FIELDS: tuple[tuple[str, str], ...] = (
 def register(subparsers: argparse._SubParsersAction) -> None:  # type: ignore[type-arg]
     """Registra `cite-corpus` en el CLI."""
     p = subparsers.add_parser(
-        "cite-corpus",
+        COMMAND_NAME,
         help="Construir un corpus satélite desde relaciones entre posts.",
         description=(
             "Parte de una SQLite de posts ya preparada, resuelve padres, raíz, citas y reposts "
@@ -105,7 +108,10 @@ def handle(args: argparse.Namespace) -> int:
         if not origin_db.table_exists("runs") or not origin_db.table_exists("posts"):
             logger.error("[cite-corpus] La DB no es un run de posts preparado por EmoParse.")
             return 1
-        origin_rows = [dict(r) for r in origin_db.execute("SELECT * FROM posts ORDER BY post_id").fetchall()]
+        origin_rows = [
+            dict(r)
+            for r in origin_db.execute("SELECT * FROM posts ORDER BY post_id").fetchall()
+        ]
         if not origin_rows:
             logger.error("[cite-corpus] La DB origen no contiene posts.")
             return 1
@@ -169,10 +175,13 @@ def handle(args: argparse.Namespace) -> int:
         print(f"=== Corpus satélite {satellite_id} ===")
         print(f"Origen:      {origin_path}")
         print(f"Satélite:    {out_path}")
-        print(f"Marco:       bola_de_nieve")
+        print("Marco:       bola_de_nieve")
         print(f"Profundidad: {args.profundidad}")
         print(f"Posts nuevos: {len(result.acquired)}")
-        print(f"Vínculos:     {len(result.links)} ({resolved} resueltos, {unavailable} no disponibles, {limited} por límite)")
+        print(
+            f"Vínculos:     {len(result.links)} ({resolved} resueltos, "
+            f"{unavailable} no disponibles, {limited} por límite)"
+        )
         return 0
     except Exception as exc:  # noqa: BLE001
         logger.error(f"[cite-corpus] Falló la construcción: {exc}")
@@ -218,7 +227,11 @@ def _expand(
     for generation in range(1, profundidad + 1):
         pending: list[tuple[str, str, str, str]] = []
         for origin_id, source_post_id, row in frontier:
-            for target_id, relation in _references(row, generation=generation, origin_row=origin[origin_id]):
+            for target_id, relation in _references(
+                row,
+                generation=generation,
+                origin_row=origin[origin_id],
+            ):
                 key = (origin_id, source_post_id, target_id, relation, generation)
                 if key in seen_link_keys:
                     continue
@@ -243,8 +256,9 @@ def _expand(
         received: dict[str, PostRecord] = {}
         if to_fetch:
             received = {record.id: record for record in adapter.fetch_posts(to_fetch)}
+            requested = set(to_fetch)
             for post_id in sorted(received):
-                if post_id in origin:
+                if post_id not in requested or post_id in origin:
                     continue
                 record = received[post_id]
                 acquired[post_id] = record
@@ -374,7 +388,11 @@ def _write_satellite(
             try:
                 jsonl_path.write_text(
                     "".join(
-                        json.dumps(acquired[post_id].to_json_dict(), ensure_ascii=False, sort_keys=True)
+                        json.dumps(
+                            acquired[post_id].to_json_dict(),
+                            ensure_ascii=False,
+                            sort_keys=True,
+                        )
                         + "\n"
                         for post_id in sorted(acquired)
                     ),
@@ -407,7 +425,7 @@ def _write_satellite(
                 HilosRepository(db).upsert_hilos(bundle.hilos.to_dict(orient="records"))
             try:
                 discursos = posts_to_discursos(bundle.posts)
-            except Exception:
+            except InputError:
                 discursos = None
             if discursos is not None:
                 DiscursosRepository(db).upsert_inputs(
