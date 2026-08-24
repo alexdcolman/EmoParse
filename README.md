@@ -169,6 +169,7 @@ emoparse doctor      Diagnostica un CSV de terceros sin modificarlo
 emoparse ingest-map  Propone un mapping YAML editable para un CSV de terceros
 emoparse scrape      Adquiere discursos y artículos desde una fuente registrada
 emoparse acquire     Adquiere posts (Bluesky, Mastodon, X API, dumps JSONL/CSV) a un corpus incremental
+emoparse cite-corpus Construye una SQLite satélite desde relaciones estructurales entre posts
 emoparse follows     Adquiere el grafo de seguimiento entre las cuentas del corpus
 emoparse network     Construye y analiza las redes de un run (interacción, similitud, semántica)
 emoparse eval        Evaluación de validez: golden sets, acuerdo inter-anotador, controles
@@ -185,6 +186,8 @@ emoparse export      Exporta las tablas a CSV
 ```
 
 Todos aceptan `--help`. La referencia completa, con todas las opciones de cada comando, está en [`docs/comandos.md`](docs/comandos.md) y en la página **Comandos** del sitio; se genera desde el propio CLI con `python scripts/gen_cli_reference.py`.
+
+`emoparse cite-corpus` parte de una SQLite de posts ya preparada y construye otra SQLite físicamente separada con los posts externos alcanzados por respuestas, raíz de hilo, citas y reposts. El satélite conserva vínculos tipados con el corpus origen, declara `marco = bola_de_nieve`, usa profundidad 1 por defecto y no ejecuta stages LLM.
 
 `emoparse export` genera `discursos.csv`, `metadata_genero.csv`, `frases.csv` y `emociones.csv`. La metadata propia de cada género se conserva en `discursos.csv` con nombres estables y también se ofrece en formato largo, con etiquetas y presencia por campo, dentro de `metadata_genero.csv`.
 

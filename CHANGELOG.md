@@ -39,6 +39,11 @@
   alcanzarlo, la corrida queda en `paused_budget` sin marcar ítems como fallidos y puede retomarse
   con `--resume` y un techo mayor; los cache hits no consumen presupuesto nuevo.
 
+### Corpus satélite
+
+- `emoparse cite-corpus` generaliza el contexto externo de posts a una SQLite satélite separada, construida desde `en_respuesta_a`, `conversacion_id`, `cita_a` y `reposteo_a` sin depender de una stage LLM.
+- El satélite conserva `corpus_vinculos`, registra `marco = bola_de_nieve`, admite `--profundidad` y `--max`, distingue destinos no disponibles de los omitidos por límite y sólo registra el satélite en la DB origen después de publicarlo correctamente.
+
 ### Ingesta de corpus tabulares
 
 - `emoparse doctor` diagnostica CSV de terceros sin modificarlos: codificación, delimitador, fila de encabezado, identificadores, contenido, fechas, HTML y granularidad respecto del género.

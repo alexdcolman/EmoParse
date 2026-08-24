@@ -34,6 +34,7 @@ class BlueskyAdapter(PostSourceAdapter):
     source_id = "bluesky"
     supports_author_profile = True
     supports_follows = True
+    supports_fetch_posts = True
 
     def __init__(
         self,
