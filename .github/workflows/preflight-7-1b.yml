@@ -8,6 +8,78 @@ permissions:
   contents: write
 
 jobs:
+  seal-public-surface:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: assistant/7-1b-rc1-preflight
+      - name: Completar superficie pública 7.1B
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          def replace_once(path: str, old: str, new: str, marker: str) -> None:
+              p = Path(path)
+              text = p.read_text(encoding="utf-8")
+              if marker in text:
+                  return
+              if old not in text:
+                  raise SystemExit(f"ancla no encontrada: {path}")
+              p.write_text(text.replace(old, new, 1), encoding="utf-8")
+
+          replace_once(
+              "src/emoparse/acquisition/sources/bluesky.py",
+              '    supports_follows = True\n',
+              '    supports_follows = True\n    supports_fetch_posts = True\n',
+              'supports_fetch_posts = True',
+          )
+
+          replace_once(
+              "README.md",
+              'emoparse acquire     Adquiere posts (Bluesky, Mastodon, X API, dumps JSONL/CSV) a un corpus incremental\n',
+              'emoparse acquire     Adquiere posts (Bluesky, Mastodon, X API, dumps JSONL/CSV) a un corpus incremental\n'
+              'emoparse cite-corpus Construye una SQLite satélite desde relaciones estructurales entre posts\n',
+              'emoparse cite-corpus Construye una SQLite satélite',
+          )
+          replace_once(
+              "README.md",
+              'Todos aceptan `--help`. La referencia completa, con todas las opciones de cada comando, está en [`docs/comandos.md`](docs/comandos.md) y en la página **Comandos** del sitio; se genera desde el propio CLI con `python scripts/gen_cli_reference.py`.\n',
+              'Todos aceptan `--help`. La referencia completa, con todas las opciones de cada comando, está en [`docs/comandos.md`](docs/comandos.md) y en la página **Comandos** del sitio; se genera desde el propio CLI con `python scripts/gen_cli_reference.py`.\n\n'
+              '`emoparse cite-corpus` parte de una SQLite de posts ya preparada y construye otra SQLite físicamente separada con los posts externos alcanzados por respuestas, raíz de hilo, citas y reposts. El satélite conserva vínculos tipados con el corpus origen, declara `marco = bola_de_nieve`, usa profundidad 1 por defecto y no ejecuta stages LLM.\n',
+              '`emoparse cite-corpus` parte de una SQLite de posts ya preparada',
+          )
+
+          replace_once(
+              "CHANGELOG.md",
+              '### Ingesta de corpus tabulares\n',
+              '### Corpus satélite\n\n'
+              '- `emoparse cite-corpus` generaliza el contexto externo de posts a una SQLite satélite separada, construida desde `en_respuesta_a`, `conversacion_id`, `cita_a` y `reposteo_a` sin depender de una stage LLM.\n'
+              '- El satélite conserva `corpus_vinculos`, registra `marco = bola_de_nieve`, admite `--profundidad` y `--max`, distingue destinos no disponibles de los omitidos por límite y sólo registra el satélite en la DB origen después de publicarlo correctamente.\n\n'
+              '### Ingesta de corpus tabulares\n',
+              '### Corpus satélite\n',
+          )
+
+          replace_once(
+              "docs/arquitectura.md",
+              '## 16. Pruebas y controles de integración\n',
+              '### Corpus satélite de posts\n\n'
+              '`emoparse cite-corpus` construye contexto externo sin mezclarlo con el corpus de partida. La DB origen conserva sus `posts`, `discursos` y métricas y registra únicamente la referencia al satélite; la DB satélite usa las tablas normales de posts, autores, hilos y discursos, agrega `corpus_vinculos` y marca su run con `marco = bola_de_nieve`. Las aristas se derivan de los campos estructurales `en_respuesta_a`, `conversacion_id`, `cita_a` y `reposteo_a`; una salida de una stage LLM no es prerrequisito para adquirir contexto. Los destinos pueden quedar `unavailable` o `limit_reached`, y la publicación del satélite precede a su registro transaccional en el origen.\n\n'
+              '## 16. Pruebas y controles de integración\n',
+              '### Corpus satélite de posts\n',
+          )
+          PY
+
+          if ! git diff --quiet -- README.md CHANGELOG.md docs/arquitectura.md src/emoparse/acquisition/sources/bluesky.py; then
+            git diff --check
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add README.md CHANGELOG.md docs/arquitectura.md src/emoparse/acquisition/sources/bluesky.py
+            git commit -m "docs(7.1B): document satellite corpus surface"
+            git push origin HEAD:assistant/7-1b-rc1-preflight
+          fi
+
   focal:
     runs-on: ubuntu-latest
     steps:
