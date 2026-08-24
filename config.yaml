@@ -102,7 +102,15 @@ models:
     seed: 42
   qwen3.6-35b-a3b-server:
     backend: llama_server
+    path: ${EMOPARSE_MODELS_DIR:-models}/Qwen3.6-35B-A3B-UD-Q4_K_M.gguf
     base_url: http://127.0.0.1:8080
+    context_length: 8192
+    n_gpu_layers: -1
+    server_parallel: 4
+    cont_batching: true
+    cache_reuse: 0
+    cache_type_k: f16
+    cache_type_v: f16
     temperature: 0.3
     top_p: 0.8
     top_k: 20

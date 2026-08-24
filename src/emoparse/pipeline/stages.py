@@ -180,9 +180,19 @@ class Stage(ABC):
 
 
 class _DiscursoStage(Stage):
-    """Base para etapas que procesan discursos en la tabla discursos."""
+    """Base para etapas que procesan discursos en la tabla discursos.
+
+    `parallel` > 1 permite varias inferencias de discursos en simultáneo para
+    backends servidor. La preparación de inputs permanece secuencial y la
+    persistencia se serializa bajo lock, de modo que las conexiones SQLite y
+    los acumuladores de métricas no compitan entre workers.
+    """
 
     STAGE_KEY: str  # "summarizer" | "metadata" | "enunciation"
+
+    #: Discursos procesados en simultáneo. Lo asigna el runner según
+    #: `pipeline.parallel` y el tipo de backend; 1 = secuencial.
+    parallel: int = 1
 
     def __init__(
         self,
@@ -194,6 +204,7 @@ class _DiscursoStage(Stage):
         self._agent = agent
         self._repo = discursos_repo
         self._version = agent_version
+        self._persist_lock = threading.Lock()
 
     def run_pending(self) -> int:
         codigos = self._scope_codes(
@@ -203,18 +214,40 @@ class _DiscursoStage(Stage):
             logger.info(f"[Stage:{self.NAME}] Nada pendiente.")
             return 0
 
-        ok = 0
-        for codigo in self.progress.track(codigos, "discursos"):
+        preparados: list[tuple[str, dict[str, Any]]] = []
+        for codigo in codigos:
             row_dict = self._prepare_row(codigo)
-            if row_dict is None:
-                continue
-            ok += self._process_one(codigo, row_dict)
+            if row_dict is not None:
+                preparados.append((codigo, row_dict))
 
+        ok = self._run_prepared(preparados)
         logger.info(
             f"[Stage:{self.NAME}] Completado: {ok}/{len(codigos)} ok, "
             f"{len(codigos) - ok} con error."
         )
         return ok
+
+    def _run_prepared(self, preparados: list[tuple[str, dict[str, Any]]]) -> int:
+        """Ejecuta inputs ya preparados, paralelizando sólo la inferencia."""
+        total_ok = 0
+        self.progress.start(len(preparados), "discursos")
+        try:
+            if self.parallel <= 1:
+                for codigo, row_dict in preparados:
+                    total_ok += self._process_one(codigo, row_dict)
+                    self.progress.advance()
+            else:
+                with ThreadPoolExecutor(max_workers=self.parallel) as pool:
+                    futures = {
+                        pool.submit(self._process_one, codigo, row_dict): codigo
+                        for codigo, row_dict in preparados
+                    }
+                    for future in as_completed(futures):
+                        total_ok += future.result()
+                        self.progress.advance()
+        finally:
+            self.progress.finish()
+        return total_ok
 
     def _prepare_row(self, codigo: str) -> dict[str, Any] | None:
         """Input del discurso aumentado por la stage, o None si no hay input."""
@@ -234,29 +267,32 @@ class _DiscursoStage(Stage):
             df_out = self._agent.run(df_in)
         except Exception as e:
             logger.error(f"[Stage:{self.NAME}] {codigo}: error inesperado: {e}")
-            self._repo.set_error(codigo, self.STAGE_KEY, str(e))  # type: ignore[arg-type]
-            self.metrics.record_item_failed()
+            with self._persist_lock:
+                self._repo.set_error(codigo, self.STAGE_KEY, str(e))  # type: ignore[arg-type]
+                self.metrics.record_item_failed()
             return 0
 
         # El agente devuelve None en las columnas si falló internamente.
         row = df_out.iloc[0]
         payload = self._extract_payload(row)
         if payload is None:
-            self._repo.set_error(
-                codigo,
-                self.STAGE_KEY,  # type: ignore[arg-type]
-                "Backend error (ver logs del agente)",
-            )
-            self.metrics.record_item_failed()
+            with self._persist_lock:
+                self._repo.set_error(
+                    codigo,
+                    self.STAGE_KEY,  # type: ignore[arg-type]
+                    "Backend error (ver logs del agente)",
+                )
+                self.metrics.record_item_failed()
             return 0
 
-        self._repo.set_payload(
-            codigo,
-            self.STAGE_KEY,  # type: ignore[arg-type]
-            payload,
-            version=self._version,
-        )
-        self.metrics.record_item_ok()
+        with self._persist_lock:
+            self._repo.set_payload(
+                codigo,
+                self.STAGE_KEY,  # type: ignore[arg-type]
+                payload,
+                version=self._version,
+            )
+            self.metrics.record_item_ok()
         return 1
 
     def _augment_input(self, codigo: str, row_dict: dict[str, Any]) -> dict[str, Any]:
@@ -423,9 +459,7 @@ class EnunciationStage(_DiscursoStage):
                     f"sub-paso de enunciador: {e}"
                 )
 
-        ok = 0
-        for codigo, row_dict in self.progress.track(preparados, "discursos"):
-            ok += self._process_one(codigo, row_dict)
+        ok = self._run_prepared(preparados)
 
         logger.info(
             f"[Stage:{self.NAME}] Completado: {ok}/{len(codigos)} ok, "

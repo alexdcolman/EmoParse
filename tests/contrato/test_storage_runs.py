@@ -144,3 +144,33 @@ class TestVersions:
         assert loaded.versions.prompt is None
         assert loaded.versions.ontology == "ov1"
         assert loaded.versions.schema is None
+
+
+def test_sync_runtime_config_updates_only_reserved_runtime(db: Database, ctx: RunContext) -> None:
+    repo = RunsRepository(db)
+    runtime_ctx = RunContext(
+        run_id=ctx.run_id,
+        versions=ctx.versions,
+        started_at=ctx.started_at,
+        config={
+            "modelo": "phi4-mini",
+            "_emoparse": {"genre": {"genre_id": "discurso_presidencial"}},
+        },
+        notes=ctx.notes,
+    )
+    repo.bootstrap(runtime_ctx)
+
+    repo.sync_runtime_config(
+        {
+            "modelo": "otro-modelo-que-no-debe-reemplazar-el-config",
+            "_emoparse": {
+                "genre": {"genre_id": "discurso_presidencial"},
+                "llm": {"pipeline_parallel_requested": 4},
+            },
+        }
+    )
+
+    loaded = repo.get_run()
+    assert loaded is not None
+    assert loaded.config["modelo"] == "phi4-mini"
+    assert loaded.config["_emoparse"]["llm"]["pipeline_parallel_requested"] == 4

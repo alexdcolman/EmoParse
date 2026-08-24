@@ -8,10 +8,11 @@ Corpus fijo (500–1000 posts), seed fija, cache deshabilitado o DB nueva por
 variante (el harness usa DB nueva). Variantes típicas:
 
 1. **Baseline in-process**: `backend: llama_cpp` (config actual).
-2. **llama-server**: mismo modelo servido:
-   `llama-server -m modelo.gguf -ngl 99 -c 16384 --parallel 4 --cont-batching --cache-reuse 256 --port 8080`
+2. **llama-server**: mismo modelo servido, sin asumir reuso de prefijos:
+   `llama-server -m modelo.gguf -ngl 99 -c 16384 --parallel 4 --cont-batching --cache-reuse 0 --port 8080`
    y en el config: `backend: llama_server`, `base_url: http://127.0.0.1:8080`,
-   `pipeline.parallel: 4`.
+   `pipeline.parallel: 4`. Si el contexto admite `cache_reuse`, medirlo como variante separada;
+   no tratar una opción desactivada por llama.cpp como parte del baseline.
 3. **Speculative decoding**: variante 2 + `--model-draft draft-chico.gguf`
    en el server. ATENCIÓN: con gramáticas GBNF la aceptación del draft puede
    caer y anular la ganancia; por eso se mide, no se asume. Comparar la

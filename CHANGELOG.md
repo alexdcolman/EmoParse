@@ -22,6 +22,16 @@
 
 ### Ejecución
 
+- `emoparse server` puede mostrar, iniciar en primer plano y comprobar un `llama-server` definido en
+  `config.yaml`; el perfil efectivo explicita slots, contexto por request, continuous batching y KV
+  cache. Los runs que usan ese backend registran además la configuración declarada y observable del
+  servidor y el paralelismo efectivo por stage. La validación pre-golden confirmó cuatro requests
+  simultáneas sobre cuatro slots; el alias Qwen3.6 usa `cache_reuse: 0` porque su contexto actual no
+  admite esa optimización.
+- Los aliases `llama_server` pueden declarar `cpu_moe` o `n_cpu_moe` para trasladar expertos MoE a
+  CPU al construir el comando del servidor. Estas opciones son excluyentes y no se aplican al
+  backend `llama_cpp` en proceso. La validación real con `n_cpu_moe: 8` confirmó menor uso de VRAM;
+  la selección de perfiles y su costo de rendimiento se pospone a los benchmarks post-golden.
 - `emoparse run --budget-tokens N` fija un techo acumulado de tokens reales por DB/run. Al
   alcanzarlo, la corrida queda en `paused_budget` sin marcar ítems como fallidos y puede retomarse
   con `--resume` y un techo mayor; los cache hits no consumen presupuesto nuevo.

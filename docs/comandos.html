@@ -39,6 +39,7 @@
 <!-- indice:inicio -->
       <li><a href="#globales">Opciones globales</a></li>
       <li><a href="#run">emoparse run</a></li>
+      <li><a href="#server">emoparse server</a></li>
       <li><a href="#doctor">emoparse doctor</a></li>
       <li><a href="#ingest-map">emoparse ingest-map</a></li>
       <li><a href="#status">emoparse status</a></li>
@@ -122,6 +123,23 @@
         <tr><td><code>--budget-tokens</code></td><td><code>N</code></td><td></td><td>Techo acumulado de tokens reales para esta DB/run. Al alcanzarlo no se inicia otra llamada LLM; el run queda pausado y puede reanudarse con --resume y un techo mayor. Requiere pipeline.cache_enabled=true.</td></tr>
         <tr><td><code>--overwrite-db</code></td><td></td><td></td><td>Si la DB del run ya existe, la elimina y empieza de cero sin preguntar. Sin esta flag (ni --resume), una DB existente dispara una pregunta interactiva (o un error si no hay TTY).</td></tr>
         <tr><td><code>--resume</code></td><td></td><td></td><td>Si la DB del run ya existe, reanuda sin preguntar (el comportamiento clásico de re-correr el mismo run-id).</td></tr>
+      </tbody>
+    </table>
+    </div>
+
+    <h2 id="server">emoparse server</h2>
+
+    <p>Prepara o lanza llama-server en foreground a partir de un alias backend=llama_server. --dry-run muestra el comando sin ejecutarlo; --check consulta /health y /slots de un server ya iniciado.</p>
+
+    <div class="tabla-caja tabla-comandos">
+    <table>
+      <thead><tr><th>Opción</th><th>Valor</th><th>Default</th><th>Qué hace</th></tr></thead>
+      <tbody>
+        <tr><td><code>--config</code></td><td><code>YAML</code></td><td><code>config.yaml</code></td><td>Config de EmoParse (default: config.yaml).</td></tr>
+        <tr><td><code>--model</code></td><td><code>ALIAS</code></td><td><code>requerido</code></td><td>Alias de models con backend=llama_server.</td></tr>
+        <tr><td><code>--dry-run</code></td><td></td><td></td><td>Mostrar perfil y comando efectivo sin iniciar el proceso.</td></tr>
+        <tr><td><code>--check</code></td><td></td><td></td><td>Comprobar disponibilidad y slots de un server ya iniciado.</td></tr>
+        <tr><td><code>--binary</code></td><td><code>RUTA</code></td><td></td><td>Sobrescribir el ejecutable llama-server sólo para este lanzamiento.</td></tr>
       </tbody>
     </table>
     </div>

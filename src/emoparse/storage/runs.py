@@ -75,6 +75,14 @@ class RunsRepository:
                 ),
             )
 
+    def sync_runtime_config(self, incoming: dict[str, Any]) -> None:
+        """Sincroniza la sección reservada `_emoparse` de un run existente.
+
+        Se usa para completar metadata observable después del bootstrap, por
+        ejemplo el perfil real de un llama-server cuando el backend se carga.
+        """
+        self._sync_runtime_config(incoming)
+
     def _sync_runtime_config(self, incoming: dict[str, Any]) -> None:
         """Actualiza metadata reservada sin reescribir el config del usuario."""
         runtime = incoming.get("_emoparse")

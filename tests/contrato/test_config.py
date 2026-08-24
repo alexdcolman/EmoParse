@@ -273,3 +273,68 @@ def test_production_gemma4_context_length_remains_4096() -> None:
     """La RTX 3090 no usa aumentos de contexto como salida a prompts grandes."""
     cfg = load_config(Path(__file__).parents[2] / "config.yaml")
     assert cfg.models["gemma4-31b"].context_length == 4096
+
+
+def test_production_qwen36_server_disables_unsupported_cache_reuse() -> None:
+    """El perfil validado no declara un reuso que llama.cpp desactiva al iniciar."""
+    cfg = load_config(Path(__file__).parents[2] / "config.yaml")
+    assert cfg.models["qwen3.6-35b-a3b-server"].cache_reuse == 0
+
+
+class TestLlamaServerModelConfig:
+    def test_loads_declarative_server_and_moe_fields(self, tmp_path: Path) -> None:
+        cfg = load_config(
+            _write(
+                tmp_path,
+                """
+models:
+  srv:
+    backend: llama_server
+    path: models/moe.gguf
+    base_url: http://127.0.0.1:8080
+    context_length: 4096
+    n_gpu_layers: -1
+    server_parallel: 4
+    cont_batching: true
+    cache_reuse: 256
+    cache_type_k: f16
+    cache_type_v: f16
+    cpu_moe: true
+    timeout: 180
+pipeline:
+  parallel: 4
+""",
+            )
+        )
+
+        model = cfg.models["srv"]
+        assert model.server_parallel == 4
+        assert model.cont_batching is True
+        assert model.cache_reuse == 256
+        assert model.cache_type_k == "f16"
+        assert model.cache_type_v == "f16"
+        assert model.cpu_moe is True
+        assert model.n_cpu_moe is None
+
+    def test_rejects_both_cpu_moe_modes(self, tmp_path: Path) -> None:
+        bad = """
+models:
+  srv:
+    backend: llama_server
+    path: models/moe.gguf
+    cpu_moe: true
+    n_cpu_moe: 12
+"""
+        with pytest.raises(ConfigError, match="mutuamente excluyentes"):
+            load_config(_write(tmp_path, bad))
+
+    def test_rejects_cpu_moe_on_inprocess_backend(self, tmp_path: Path) -> None:
+        bad = """
+models:
+  local:
+    backend: llama_cpp
+    path: models/moe.gguf
+    cpu_moe: true
+"""
+        with pytest.raises(ConfigError, match="backend=llama_server"):
+            load_config(_write(tmp_path, bad))

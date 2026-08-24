@@ -173,6 +173,7 @@ def test_budget_forces_sequential_llm_calls_when_parallel_requested() -> None:
     runner = object.__new__(PipelineRunner)
     runner._token_budget = TokenBudget(100)
     runner._cfg = SimpleNamespace(pipeline=SimpleNamespace(parallel=4, stages={}))
+    runner._record_effective_parallel = lambda _stage, _effective: None
 
     assert runner._effective_parallel("emotions") == 1
 

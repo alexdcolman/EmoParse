@@ -129,8 +129,35 @@ pip install -e ".[llamacpp,ui,scraping]"</code></pre>
     </div>
 
     <p>El backend <code>llama_server</code> usa el cliente HTTP incluido en la instalación base; no
-    necesita un agregado de Python. El ejecutable <code>llama-server</code> se obtiene con llama.cpp y
-    debe iniciarse antes de correr el análisis.</p>
+    necesita un agregado de Python. El ejecutable <code>llama-server</code> se obtiene con llama.cpp.
+    Una compilación CUDA mínima puede hacerse fuera del repositorio de EmoParse:</p>
+
+<pre><code>git clone https://github.com/ggml-org/llama.cpp.git ~/tools/llama.cpp
+cd ~/tools/llama.cpp
+cmake -B build -DGGML_CUDA=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --target llama-server -j "$(nproc)"
+./build/bin/llama-server --version</code></pre>
+
+    <p>Si el alias del modelo declara también la ruta del GGUF, EmoParse puede mostrar el comando
+    efectivo, iniciarlo en primer plano y comprobar después la salud y los slots observables del
+    servidor. Si el binario no está en <code>PATH</code>, se puede pasar su ruta con
+    <code>--binary</code>.</p>
+
+<pre><code><span class="c"># Revisar sin iniciar nada</span>
+emoparse server --config config.yaml --model mi-modelo-server --dry-run
+
+<span class="c"># Iniciar en primer plano</span>
+emoparse server --config config.yaml --model mi-modelo-server
+
+<span class="c"># Comprobar desde otra terminal</span>
+emoparse server --config config.yaml --model mi-modelo-server --check</code></pre>
+
+    <p class="marginal"><code>server_parallel</code> declara los slots del servidor y
+    <code>pipeline.parallel</code> la concurrencia solicitada por EmoParse. En modelos MoE,
+    <code>cpu_moe</code> o <code>n_cpu_moe</code> permiten declarar la descarga de expertos a CPU
+    para <code>llama_server</code>; no se aplican al backend en proceso <code>llama_cpp</code>.
+    <code>cache_reuse</code> sólo debe activarse cuando el contexto del modelo lo admite; si
+    llama.cpp informa que lo desactiva al iniciar, conviene declararlo en <code>0</code>.</p>
 
     <p>La etapa de modalidad referencial necesita además un modelo gramatical del español, que se baja
     una vez:</p>

@@ -6,9 +6,9 @@
 #  Habilita las optimizaciones que el modo in-process no puede dar:
 #  - Continuous batching: varias requests en vuelo (`--parallel N` en el
 #    server + `pipeline.parallel` en el config) comparten la GPU.
-#  - Reuso de KV-cache por prefijo: los system prompts largos y fijos de
-#    EmoParse (ontologías + heurísticas) se procesan una vez por slot
-#    (`--cache-reuse 256` recomendado en el server).
+#  - Reuso de KV-cache por prefijo: puede activarse con `--cache-reuse N`
+#    cuando el contexto del modelo admite desplazamiento de memoria. Si el
+#    server informa que no lo soporta, debe mantenerse en 0.
 #  - Speculative decoding: `--model-draft <gguf-chico>` del lado del server,
 #    transparente para este cliente. Con gramáticas GBNF la tasa de
 #    aceptación del draft puede caer: medir con `emoparse metrics` antes de
@@ -18,7 +18,7 @@
 #
 #  Lanzamiento típico del server:
 #      llama-server -m modelo.gguf -ngl 99 -c 16384 --parallel 4 \
-#          --cont-batching --cache-reuse 256 --port 8080
+#          --cont-batching --cache-reuse 0 --port 8080
 #
 #  La generación estructurada usa la MISMA gramática GBNF que el backend
 #  in-process (`schema_to_gbnf`, con `max_items`), enviada en el campo
@@ -122,6 +122,89 @@ class LlamaServerBackend(LLMBackend):
             return True
         except BackendError:
             return False
+
+    def runtime_profile(self) -> dict[str, Any]:
+        """Describe el server realmente alcanzado sin ejecutar una generación.
+
+        `/health` es obligatorio para considerar disponible el server. `/slots`
+        y `/props` son diagnósticos: si la versión del binario no los expone,
+        el run puede continuar, pero esos campos quedan como no observados.
+        """
+        try:
+            health = self._http.get("/health")
+        except httpx.TimeoutException as e:
+            raise BackendTimeoutError(
+                f"llama-server timeout al consultar /health tras {self._timeout}s: {e}"
+            ) from e
+        except httpx.HTTPError as e:
+            raise BackendUnavailableError(
+                f"llama-server inaccesible en {self._base_url}: {e}"
+            ) from e
+        if health.status_code != 200:
+            raise BackendUnavailableError(
+                f"llama-server no está listo en {self._base_url}: "
+                f"HTTP {health.status_code} {health.text[:200]}"
+            )
+
+        slots_raw = self._optional_get_json("/slots")
+        props_raw = self._optional_get_json("/props")
+
+        parallel_slots: int | None = None
+        slot_context_lengths: list[int] = []
+        if isinstance(slots_raw, list):
+            parallel_slots = len(slots_raw)
+            values: set[int] = set()
+            for slot in slots_raw:
+                if not isinstance(slot, dict):
+                    continue
+                value = slot.get("n_ctx")
+                if isinstance(value, int) and value > 0:
+                    values.add(value)
+            slot_context_lengths = sorted(values)
+
+        model_path: str | None = None
+        if isinstance(props_raw, dict):
+            value = props_raw.get("model_path")
+            if isinstance(value, str) and value:
+                model_path = value
+            if parallel_slots is None:
+                total_slots = props_raw.get("total_slots")
+                if isinstance(total_slots, int) and total_slots > 0:
+                    parallel_slots = total_slots
+            if not slot_context_lengths:
+                defaults = props_raw.get("default_generation_settings")
+                if isinstance(defaults, dict):
+                    n_ctx = defaults.get("n_ctx")
+                    if isinstance(n_ctx, int) and n_ctx > 0:
+                        slot_context_lengths = [n_ctx]
+
+        return {
+            "base_url": self._base_url,
+            "health": "ok",
+            "parallel_slots": parallel_slots,
+            "slot_context_lengths": slot_context_lengths,
+            "model_path": model_path,
+            "slots_observed": isinstance(slots_raw, list),
+            "props_observed": isinstance(props_raw, dict),
+        }
+
+    def _optional_get_json(self, path: str) -> Any | None:
+        """Consulta un endpoint diagnóstico sin convertir su ausencia en fallo."""
+        try:
+            resp = self._http.get(path)
+        except httpx.HTTPError as e:
+            logger.warning(f"[LlamaServer:{self.alias}] No se pudo consultar {path}: {e}")
+            return None
+        if resp.status_code >= 400:
+            logger.warning(
+                f"[LlamaServer:{self.alias}] {path} no disponible: HTTP {resp.status_code}"
+            )
+            return None
+        try:
+            return resp.json()
+        except ValueError:
+            logger.warning(f"[LlamaServer:{self.alias}] {path} devolvió JSON inválido")
+            return None
 
     # ── Generación principal ─────────────────────────────────────────────────
 

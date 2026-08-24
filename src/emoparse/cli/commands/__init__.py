@@ -33,6 +33,7 @@ from emoparse.cli.commands import (
     run_cmd,
     scrape_cmd,
     semas_cmd,
+    server_cmd,
     stats_cmd,
     status_cmd,
     validate_cmd,
@@ -50,6 +51,7 @@ class CommandModule(Protocol):
 #: Subcomandos registrados, en orden de aparición en la ayuda.
 COMMANDS: tuple[CommandModule, ...] = (
     run_cmd,
+    server_cmd,
     doctor_cmd,
     ingest_map_cmd,
     status_cmd,

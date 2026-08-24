@@ -37,6 +37,18 @@ Carga la config, ingesta los discursos del input, y ejecuta todas las stages hab
 | `--overwrite-db` |  |  | Si la DB del run ya existe, la elimina y empieza de cero sin preguntar. Sin esta flag (ni --resume), una DB existente dispara una pregunta interactiva (o un error si no hay TTY). |
 | `--resume` |  |  | Si la DB del run ya existe, reanuda sin preguntar (el comportamiento clásico de re-correr el mismo run-id). |
 
+## `emoparse server`
+
+Prepara o lanza llama-server en foreground a partir de un alias backend=llama_server. --dry-run muestra el comando sin ejecutarlo; --check consulta /health y /slots de un server ya iniciado.
+
+| Opción | Valor | Default | Qué hace |
+|---|---|---|---|
+| `--config` | YAML | config.yaml | Config de EmoParse (default: config.yaml). |
+| `--model` | ALIAS | requerido | Alias de models con backend=llama_server. |
+| `--dry-run` |  |  | Mostrar perfil y comando efectivo sin iniciar el proceso. |
+| `--check` |  |  | Comprobar disponibilidad y slots de un server ya iniciado. |
+| `--binary` | RUTA |  | Sobrescribir el ejecutable llama-server sólo para este lanzamiento. |
+
 ## `emoparse doctor`
 
 Inspecciona encoding, delimitador, encabezado, columnas, identificadores, contenido, fechas, HTML y granularidad antes de adaptar un corpus tabular. No escribe el input.

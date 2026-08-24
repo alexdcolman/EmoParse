@@ -314,8 +314,21 @@ EmoParse incluye tres rutas locales:
 - `lmstudio`, que usa la interfaz compatible con OpenAI de LM Studio.
 
 El backend servidor puede aprovechar procesamiento concurrente, reutilización de prefijos, cache KV
-cuantizado o modelos multimodales según la forma en que fue iniciado. Esas capacidades pertenecen al
-motor; el agente conserva el mismo schema y la misma tarea.
+o modelos multimodales según la forma en que fue iniciado. Esas capacidades pertenecen al motor; el
+agente conserva el mismo schema y la misma tarea. EmoParse puede derivar un lanzamiento reproducible
+desde el alias `llama_server`: `context_length` expresa la ventana por request, `server_parallel` los
+slots, y el contexto total solicitado al proceso es el producto de ambos. El perfil puede conservar
+el KV cache en `f16`, declarar continuous batching y, cuando el contexto del modelo lo admite,
+reutilización de prefijos. Si llama.cpp informa que `cache_reuse` no está soportado por ese contexto,
+el valor efectivo debe declararse en `0`. Para arquitecturas MoE, el launcher puede trasladar todos
+o los primeros N grupos de expertos a CPU mediante `cpu_moe` o `n_cpu_moe`.
+
+`emoparse server --dry-run` expone el comando efectivo sin ejecutar nada; el modo normal inicia el
+proceso en primer plano y `--check` consulta `/health`, `/slots` y `/props` cuando están disponibles.
+Al usar un alias servidor durante un run, el snapshot `_emoparse.llm` guarda el routing, el
+paralelismo pedido y efectivo, el perfil declarado del server y la configuración observable. Esto no
+convierte a `llama_server` en backend predeterminado: el routing sigue dependiendo exclusivamente de
+`pipeline.stages`.
 
 En una llamada por lotes, cada ítem declara el índice de la unidad a la que corresponde. La
 asignación se hace por ese índice y puede incorporar un ancla textual adicional. El orden en que el

@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -28,6 +29,11 @@ from emoparse.knowledge.loader import KnowledgeError, KnowledgeLoader
 from emoparse.pipeline.dag import EMOPARSE_DAG
 from emoparse.pipeline.genre_context import GenreContextProvider
 from emoparse.pipeline.payload_selection import PayloadSelectionEngine
+from emoparse.pipeline.runtime_config import (
+    attach_llm_runtime,
+    record_server_observed,
+    record_stage_effective_parallel,
+)
 from emoparse.pipeline.stages import (
     ActantsStage,
     ActorsStage,
@@ -50,6 +56,7 @@ from emoparse.pipeline.stages import (
     TechnoparseStage,
     TecnoUsageStage,
     VisionDescribeStage,
+    _DiscursoStage,
     _FraseStage,
 )
 from emoparse.pipeline.token_budget import BudgetedBackend, TokenBudget, TokenBudgetReached
@@ -122,16 +129,18 @@ class _MeteredBackend(LLMBackend):
     ) -> None:
         self._wrapped = wrapped
         self._accumulator = accumulator
+        self._metrics_lock = threading.Lock()
         self.alias = wrapped.alias
 
     def generate(self, *args: Any, **kwargs: Any) -> Any:
         response = self._wrapped.generate(*args, **kwargs)
-        self._accumulator.record_llm_call(
-            latency_ms=response.latency_ms,
-            prompt_tokens=response.usage.prompt_tokens,
-            completion_tokens=response.usage.completion_tokens,
-            cache_hit=response.cache_hit,
-        )
+        with self._metrics_lock:
+            self._accumulator.record_llm_call(
+                latency_ms=response.latency_ms,
+                prompt_tokens=response.usage.prompt_tokens,
+                completion_tokens=response.usage.completion_tokens,
+                cache_hit=response.cache_hit,
+            )
         return response
 
     def healthcheck(self) -> bool:
@@ -245,6 +254,8 @@ class PipelineRunner:
         self._judge_heuristics_filename = judge_heuristics_filename
         self._actants_heuristics_filename = actants_heuristics_filename
         self._actants_components = actants_components
+        self._token_budget_requested = token_budget
+        self._server_runtime_profiles: dict[str, dict[str, Any]] = {}
 
         self._embed_context = bool(embed_context)
         if genre is None:
@@ -329,6 +340,16 @@ class PipelineRunner:
     def _build_run_context(self) -> RunContext:
         """Construye RunContext desde config y run_id."""
         v = self._cfg.versions
+        config_snapshot = attach_genre_presentation(
+            self._cfg.model_dump(by_alias=False, exclude_none=True),
+            self._genre,
+        )
+        config_snapshot = attach_llm_runtime(
+            config_snapshot,
+            self._cfg,
+            self._enabled_stages,
+            token_budget_active=self._token_budget_requested is not None,
+        )
         return RunContext(
             run_id=self._run_id,
             versions=Versions(
@@ -337,10 +358,7 @@ class PipelineRunner:
                 ontology=v.ontology,
                 schema=v.schema_,  # Nota: alias para `schema` reservado.
             ),
-            config=attach_genre_presentation(
-                self._cfg.model_dump(by_alias=False, exclude_none=True),
-                self._genre,
-            ),
+            config=config_snapshot,
         )
 
     def _wrap_with_budget(self, backend: LLMBackend) -> LLMBackend:
@@ -527,7 +545,7 @@ class PipelineRunner:
             stage.set_selector_scope(self._payload_selection.scope_for(stage_name))
             stage.metrics = accumulator
             stage.validate_contracts = self._validate_contracts
-            if isinstance(stage, (_FraseStage, EmotionsPass2Stage)):
+            if isinstance(stage, (_DiscursoStage, _FraseStage, EmotionsPass2Stage)):
                 stage.parallel = self._effective_parallel(stage_name)
             ok = stage.run_pending()
         except TokenBudgetReached:
@@ -1091,7 +1109,9 @@ class PipelineRunner:
         el tipo de backend (in-process → 1)."""
         requested = int(getattr(self._cfg.pipeline, "parallel", 1) or 1)
         if requested <= 1:
-            return 1
+            effective = 1
+            self._record_effective_parallel(stage_name, effective)
+            return effective
         if self._token_budget is not None:
             logger.info(
                 "[Runner] pipeline.parallel={} se acota a 1 para '{}' mientras "
@@ -1100,10 +1120,14 @@ class PipelineRunner:
                 requested,
                 stage_name,
             )
-            return 1
+            effective = 1
+            self._record_effective_parallel(stage_name, effective)
+            return effective
         alias = self._cfg.pipeline.stages.get(stage_name)
         if alias is None or alias not in self._cfg.models:
-            return 1
+            effective = 1
+            self._record_effective_parallel(stage_name, effective)
+            return effective
         backend_kind = self._cfg.models[alias].backend
         if backend_kind == "llama_cpp":
             logger.warning(
@@ -1111,8 +1135,37 @@ class PipelineRunner:
                 f"'{stage_name}': el backend in-process '{alias}' no admite "
                 "concurrencia (usá llama_server para paralelizar)."
             )
-            return 1
-        return requested
+            effective = 1
+            self._record_effective_parallel(stage_name, effective)
+            return effective
+
+        effective = requested
+        if backend_kind == "llama_server":
+            model_cfg = self._cfg.models[alias]
+            observed = self._server_runtime_profiles.get(alias, {})
+            observed_slots = observed.get("parallel_slots")
+            if isinstance(observed_slots, int) and observed_slots > 0:
+                capacity = observed_slots
+            else:
+                capacity = model_cfg.server_parallel
+            if capacity is not None and effective > capacity:
+                logger.warning(
+                    "[Runner] pipeline.parallel={} se acota a {} para '{}' "
+                    "según la capacidad declarada/observada de '{}'.",
+                    requested,
+                    capacity,
+                    stage_name,
+                    alias,
+                )
+                effective = int(capacity)
+
+        self._record_effective_parallel(stage_name, effective)
+        return effective
+
+    def _record_effective_parallel(self, stage_name: str, effective: int) -> None:
+        """Actualiza el snapshot runtime sólo cuando existe routing LLM."""
+        record_stage_effective_parallel(self._ctx.config, stage_name, effective)
+        self._runs_repo.sync_runtime_config(self._ctx.config)
 
     def _hilo_provider(
         self,
@@ -1174,12 +1227,40 @@ class PipelineRunner:
                 f"{list(self._cfg.pipeline.stages)}"
             )
         raw = self._registry.get(alias)
+        if self._cfg.models[alias].backend == "llama_server":
+            self._record_llama_server_runtime(alias, raw)
         budgeted = self._wrap_with_budget(raw)
         cached = self._wrap_with_cache(budgeted)
         accumulator = getattr(self, "_current_accumulator", None)
         if accumulator is not None:
             return self._wrap_with_metrics(cached, accumulator)
         return cached
+
+    def _record_llama_server_runtime(self, alias: str, backend: LLMBackend) -> None:
+        """Comprueba disponibilidad y persiste el perfil observado una sola vez."""
+        if alias in self._server_runtime_profiles:
+            return
+        runtime_profile = getattr(backend, "runtime_profile", None)
+        if not callable(runtime_profile):
+            raise RuntimeError(
+                f"Backend llama_server '{alias}' no expone runtime_profile(); "
+                "no se puede verificar su configuración efectiva."
+            )
+        observed = runtime_profile()
+        if not isinstance(observed, dict):
+            raise RuntimeError(
+                f"Backend llama_server '{alias}' devolvió un perfil runtime inválido."
+            )
+        self._server_runtime_profiles[alias] = observed
+        record_server_observed(self._ctx.config, alias, observed)
+        self._runs_repo.sync_runtime_config(self._ctx.config)
+        logger.info(
+            "[Runner] llama_server '{}' disponible: slots={} contextos={} url={}",
+            alias,
+            observed.get("parallel_slots"),
+            observed.get("slot_context_lengths"),
+            observed.get("base_url"),
+        )
 
     # ── Gestión de VRAM ──────────────────────────────────────────────────────
 

@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  Modelos
@@ -51,19 +51,89 @@ class ModelConfig(BaseModel):
         description="Seed del sampler para idempotencia. Cambiá solo si "
         "querés explorar variaciones.",
     )
-    # Específicos de llama_cpp (extras="allow" permite ignorarlos para lmstudio).
+    # GGUF local: `llama_cpp` lo carga dentro del proceso; `llama_server`
+    # puede usar el mismo path cuando EmoParse prepara/lanzar el server local.
     path: str | None = Field(
         default=None,
-        description="(llama_cpp) Path al GGUF, relativo o absoluto.",
+        description="(llama_cpp/llama_server local) Path al GGUF, relativo o absoluto.",
     )
     context_length: int = Field(
         default=8192,
-        description="(llama_cpp) Tamaño del context window.",
+        gt=0,
+        description=(
+            "Ventana de contexto por request. En llama_server, el launcher "
+            "reserva este tamaño por slot."
+        ),
     )
     n_gpu_layers: int = Field(
         default=-1,
-        description="(llama_cpp) -1 = todo a GPU. 0 = solo CPU.",
+        description="-1 = todo a GPU. 0 = solo CPU. También se usa al lanzar llama_server.",
     )
+
+    # Lanzamiento declarativo de llama-server. Permanecen opcionales para que
+    # un alias `llama_server` pueda seguir apuntando a un server administrado
+    # externamente sin que EmoParse intente controlarlo.
+    base_url: str | None = Field(
+        default=None,
+        description="(llama_server) URL raíz del server OpenAI-compatible.",
+    )
+    timeout: float | None = Field(
+        default=None,
+        gt=0,
+        description="(llama_server) Timeout HTTP por request, en segundos.",
+    )
+    server_binary: str | None = Field(
+        default=None,
+        description="Ejecutable llama-server para `emoparse server` (default: llama-server).",
+    )
+    server_parallel: int | None = Field(
+        default=None,
+        ge=1,
+        description=(
+            "Cantidad de slots a reservar al lanzar llama-server. Si se omite, "
+            "se usa pipeline.parallel."
+        ),
+    )
+    cont_batching: bool | None = Field(
+        default=None,
+        description="(llama_server) Habilitar continuous batching al lanzar el server.",
+    )
+    cache_reuse: int | None = Field(
+        default=None,
+        ge=0,
+        description="(llama_server) Mínimo de tokens para reutilización de prefijos KV.",
+    )
+    cache_type_k: str | None = Field(
+        default=None,
+        min_length=1,
+        description="(llama_server) Tipo de KV cache para claves; mantener f16 pre-golden.",
+    )
+    cache_type_v: str | None = Field(
+        default=None,
+        min_length=1,
+        description="(llama_server) Tipo de KV cache para valores; mantener f16 pre-golden.",
+    )
+    cpu_moe: bool | None = Field(
+        default=None,
+        description="(llama_server) Mantener todos los expertos MoE en CPU.",
+    )
+    n_cpu_moe: int | None = Field(
+        default=None,
+        ge=1,
+        description="(llama_server) Mantener en CPU los expertos de las primeras N capas.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_llama_server_options(self) -> ModelConfig:
+        """Evita perfiles ambiguos o que el backend in-process no puede cumplir."""
+        if self.cpu_moe and self.n_cpu_moe is not None:
+            raise ValueError("cpu_moe y n_cpu_moe son mutuamente excluyentes")
+        if (self.cpu_moe or self.n_cpu_moe is not None) and self.backend != "llama_server":
+            raise ValueError(
+                "cpu_moe/n_cpu_moe se soportan sólo con backend=llama_server; "
+                "llama_cpp in-process no declara overrides de tensores en este contrato"
+            )
+        return self
 
 
 class PipelineConfig(BaseModel):

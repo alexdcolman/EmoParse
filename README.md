@@ -65,6 +65,38 @@ python scripts/container_smoke.py --profile cpu --image emoparse:cpu --no-build
 python scripts/container_smoke.py --profile cuda --image emoparse:cuda --no-build
 ```
 
+Si un alias usa `backend: llama_server` y declara el GGUF en `path`, EmoParse puede construir el
+comando de lanzamiento, ejecutarlo en primer plano y comprobar después la configuración observable
+del servidor. El backend del pipeline no cambia por usar este comando: cada stage sigue usando el
+alias declarado en `pipeline.stages`. `llama-server` se obtiene desde llama.cpp; una compilación CUDA
+mínima puede hacerse fuera del repositorio de EmoParse así:
+
+```bash
+git clone https://github.com/ggml-org/llama.cpp.git ~/tools/llama.cpp
+cd ~/tools/llama.cpp
+cmake -B build -DGGML_CUDA=ON -DCMAKE_BUILD_TYPE=Release
+cmake --build build --config Release --target llama-server -j "$(nproc)"
+./build/bin/llama-server --version
+
+cd /ruta/a/EmoParse
+# Ver el perfil efectivo sin iniciar procesos
+emoparse server --config config.yaml --model mi-modelo-server \
+  --binary ~/tools/llama.cpp/build/bin/llama-server --dry-run
+
+# Iniciar llama-server en primer plano
+emoparse server --config config.yaml --model mi-modelo-server
+
+# Desde otra terminal, comprobar salud, slots y contexto observable
+emoparse server --config config.yaml --model mi-modelo-server --check
+```
+
+Para modelos MoE, los campos `cpu_moe: true` y `n_cpu_moe: N` se traducen a las opciones homónimas
+del ejecutable `llama-server`; son mutuamente excluyentes y no se aplican al backend `llama_cpp`
+in-process. `server_parallel` fija los slots del servidor y `pipeline.parallel` la concurrencia que
+solicita EmoParse. `cache_reuse` es opcional: algunos contextos de llama.cpp no admiten el
+desplazamiento necesario y lo desactivan al iniciar; en ese caso debe declararse `0`. La configuración
+efectiva declarada y, cuando el server se usa, la observada se conservan dentro del snapshot del run.
+
 ---
 
 ## Quickstart
@@ -115,6 +147,7 @@ Para corridas largas, `--budget-tokens N` fija un techo acumulado de tokens nuev
 ```
 emoparse app         Abre el dashboard de revisión y visualización
 emoparse run         Ejecuta el pipeline completo
+emoparse server      Prepara, comprueba o lanza llama-server desde el config
 emoparse doctor      Diagnostica un CSV de terceros sin modificarlo
 emoparse ingest-map  Propone un mapping YAML editable para un CSV de terceros
 emoparse scrape      Adquiere discursos y artículos desde una fuente registrada
