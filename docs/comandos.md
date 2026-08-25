@@ -206,6 +206,19 @@ Adquiere posts (tuits y afines) de una fuente registrada. Modo append incrementa
 | `--pseudonymize` |  |  | Seudonimiza handles al escribir (sal persistida en <out>.salt). Ver emoparse/acquisition/README.md. |
 | `--timeout` | TIMEOUT | 20.0 | Timeout HTTP por request (segundos), si la fuente lo usa. |
 
+## `emoparse cite-corpus`
+
+Parte de una SQLite de posts ya preparada, resuelve padres, raíz, citas y reposts fuera del corpus y publica una SQLite satélite independiente. No ejecuta LLM.
+
+| Opción | Valor | Default | Qué hace |
+|---|---|---|---|
+| `--db` | DB | requerido | SQLite origen ya preparada. |
+| `--source` | SOURCE |  | Fuente capaz de resolver ids concretos. Default: plataforma única del corpus. |
+| `--out` | OUT |  | SQLite satélite. Default: <db>.satellite.sqlite. |
+| `--profundidad` | N | 1 | Generaciones de contexto saliente a resolver. Default: 1. |
+| `--max` | N |  | Máximo de posts externos que puede incorporar el satélite. |
+| `--timeout` | TIMEOUT | 20.0 | Timeout de la fuente si su adapter lo admite. |
+
 ## `emoparse network`
 
 Construye grafos de interacción (reply, mention, rt, qt, hashtag_co) desde los posts del run, calcula métricas y comunidades, las persiste en la DB y reporta el acoplamiento con el análisis emocional. Requiere el extra [network].

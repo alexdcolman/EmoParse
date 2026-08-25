@@ -19,6 +19,7 @@ from typing import Protocol
 from emoparse.cli.commands import (
     acquire_cmd,
     app_cmd,
+    cite_corpus_cmd,
     doctor_cmd,
     eval_cmd,
     export_cmd,
@@ -66,6 +67,7 @@ COMMANDS: tuple[CommandModule, ...] = (
     validate_cmd,
     scrape_cmd,
     acquire_cmd,
+    cite_corpus_cmd,
     network_cmd,
     follows_cmd,
     eval_cmd,

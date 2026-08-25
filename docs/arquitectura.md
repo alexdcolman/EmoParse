@@ -292,6 +292,10 @@ La referencia `docs/comandos.md` y su versión HTML se generan desde el parser r
 actual del programa. Por eso las opciones no deben corregirse a mano solo en la documentación: el
 cambio comienza en el parser y la referencia se regenera.
 
+### Corpus satélite de posts
+
+`emoparse cite-corpus` construye contexto externo sin mezclarlo con el corpus de partida. La DB origen conserva sus `posts`, `discursos` y métricas y registra únicamente la referencia al satélite; la DB satélite usa las tablas normales de posts, autores, hilos y discursos, agrega `corpus_vinculos` y marca su run con `marco = bola_de_nieve`. Las aristas se derivan de los campos estructurales `en_respuesta_a`, `conversacion_id`, `cita_a` y `reposteo_a`; una salida de una stage LLM no es prerrequisito para adquirir contexto. Los destinos pueden quedar `unavailable` o `limit_reached`, y la publicación del satélite precede a su registro transaccional en el origen.
+
 ## 16. Pruebas y controles de integración
 
 La validación del proyecto separa tres niveles:

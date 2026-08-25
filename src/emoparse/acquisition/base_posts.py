@@ -36,6 +36,9 @@ class PostSourceAdapter(ABC):
     #: True si la fuente puede listar a quién sigue una cuenta (`emoparse follows`).
     supports_follows: bool = False
 
+    #: True si la fuente puede resolver posts concretos por sus ids nativos.
+    supports_fetch_posts: bool = False
+
     def fetch_follows(self, handle: str, max_items: int | None = None) -> Iterator[str]:
         """Itera los handles que una cuenta sigue.
 
@@ -53,6 +56,16 @@ class PostSourceAdapter(ABC):
         invoca si `supports_author_profile` es True.
         """
         raise NotImplementedError(f"La fuente '{self.source_id}' no soporta fetch_author_profile.")
+
+    def fetch_posts(self, post_ids: list[str]) -> Iterator[PostRecord]:
+        """Resuelve posts concretos por id nativo de la fuente.
+
+        Es la primitiva que usa `cite-corpus` para construir un corpus satélite
+        sin depender de búsquedas libres ni de una stage LLM. El adapter puede
+        devolver menos ids que los solicitados; quien llama registra los
+        destinos no disponibles.
+        """
+        raise NotImplementedError(f"La fuente '{self.source_id}' no soporta fetch_posts.")
 
     @abstractmethod
     def search(
